@@ -6,10 +6,10 @@
 
 This artifact is bound to the resolved Android releaseRuntimeClasspath and the exact Podfile.lock roots/checksums. Package-specific legal files and NOTICE files take precedence; standard terms are used only for an explicitly declared standard license when no package-specific text is published.
 
-- Android Maven coordinates: 241
-- CocoaPods roots: 128
-- Android retained legal texts: 24
-- CocoaPods retained legal texts: 28
+- Android Maven coordinates: 260
+- CocoaPods roots: 137
+- Android retained legal texts: 28
+- CocoaPods retained legal texts: 36
 
 ## Android release dependencies
 
@@ -871,7 +871,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -1266,11 +1266,11 @@ Apache License
    limitations under the License.
 ```
 
-### androidx.appcompat:appcompat-resources:1.7.0
+### androidx.appcompat:appcompat-resources:1.7.1
 
 - Platform: Android
 - Selected license(s): Apache-2.0
-- POM SHA-256: `bbf2a5b9ac78904c9da792e16731793274f95fb4a61230719140b3e0ef736baa`
+- POM SHA-256: `2faf922e8c3d706f29d862b3fbb3aa1347705c21c6eae18586d2bb1f7366ea01`
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
@@ -1480,11 +1480,11 @@ Apache License
    limitations under the License.
 ```
 
-### androidx.appcompat:appcompat:1.7.0
+### androidx.appcompat:appcompat:1.7.1
 
 - Platform: Android
 - Selected license(s): Apache-2.0
-- POM SHA-256: `a57b428f428a9337d7b483a2162a570d4e672bceff411a6465e53e8747506ac3`
+- POM SHA-256: `1f79910cc20de198acf3867b1e93f9ed59ddb643585b2e9c28ee55518af1bc00`
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
@@ -3408,7 +3408,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -3805,7 +3805,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -4416,7 +4416,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -4813,7 +4813,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -5424,7 +5424,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -6035,7 +6035,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -6860,7 +6860,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -7257,7 +7257,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -7868,7 +7868,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -8479,7 +8479,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -9090,7 +9090,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -9701,7 +9701,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -11382,7 +11382,404 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+```
+
+### androidx.core:core-splashscreen:1.2.0
+
+- Platform: Android
+- Selected license(s): Apache-2.0
+- POM SHA-256: `351c49fa60702a1635749dc1d24c6c02450af874fb67852cbdb0ade06beac66a`
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
+#### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
+
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -11779,7 +12176,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -12176,7 +12573,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -15611,7 +16008,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -16222,7 +16619,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -17903,7 +18300,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -19370,7 +19767,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -19767,7 +20164,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -20378,7 +20775,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -20775,7 +21172,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -21172,7 +21569,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -21569,7 +21966,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -21966,7 +22363,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -22577,7 +22974,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -23402,7 +23799,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -23799,7 +24196,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -24196,7 +24593,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -24807,7 +25204,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -28842,7 +29239,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -29667,7 +30064,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -30064,7 +30461,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -30675,7 +31072,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -32356,7 +32753,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -33823,7 +34220,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -34434,7 +34831,7 @@ Apache License
 
 #### Retained legal document 4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe
 
-Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
+Source(s): `androidx.annotation:annotation-jvm:1.9.1/annotation-jvm-1.9.1.jar/META-INF/androidx/annotation/annotation/LICENSE.txt`, `androidx.collection:collection-jvm:1.5.0/collection-jvm-1.5.0.jar/META-INF/androidx/collection/collection/LICENSE.txt`, `androidx.collection:collection-ktx:1.5.0/collection-ktx-1.5.0.jar/META-INF/androidx/collection/collection-ktx/LICENSE.txt`, `androidx.compose.runtime:runtime-android:1.11.4/runtime.aar/META-INF/androidx/compose/runtime/runtime/LICENSE.txt`, `androidx.compose.runtime:runtime-annotation-android:1.11.4/runtime-annotation.aar/META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt`, `androidx.compose.runtime:runtime-retain-android:1.11.4/runtime-retain.aar/META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt`, `androidx.compose.runtime:runtime-saveable-android:1.11.4/runtime-saveable.aar/META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt`, `androidx.compose.ui:ui-android:1.11.4/ui.aar/META-INF/androidx/compose/ui/ui/LICENSE.txt`, `androidx.compose.ui:ui-geometry-android:1.11.4/ui-geometry.aar/META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt`, `androidx.compose.ui:ui-graphics-android:1.11.4/ui-graphics.aar/META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt`, `androidx.compose.ui:ui-text-android:1.11.4/ui-text.aar/META-INF/androidx/compose/ui/ui-text/LICENSE.txt`, `androidx.compose.ui:ui-unit-android:1.11.4/ui-unit.aar/META-INF/androidx/compose/ui/ui-unit/LICENSE.txt`, `androidx.compose.ui:ui-util-android:1.11.4/ui-util.aar/META-INF/androidx/compose/ui/ui-util/LICENSE.txt`, `androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar/META-INF/androidx/core/core-ktx/LICENSE.txt`, `androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar/META-INF/androidx/core/core-splashscreen/LICENSE.txt`, `androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar/META-INF/androidx/core/core-viewtree/LICENSE.txt`, `androidx.core:core:1.18.0/core-1.18.0.aar/META-INF/androidx/core/core/LICENSE.txt`, `androidx.documentfile:documentfile:1.1.0/documentfile-1.1.0.aar/META-INF/androidx/documentfile/documentfile/LICENSE.txt`, `androidx.dynamicanimation:dynamicanimation:1.1.0/dynamicanimation-1.1.0.aar/META-INF/androidx/dynamicanimation/dynamicanimation/LICENSE.txt`, `androidx.graphics:graphics-shapes-android:1.0.1/graphics-shapes-release.aar/META-INF/androidx/graphics/graphics-shapes/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-java8:2.10.0/lifecycle-common-java8-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt`, `androidx.lifecycle:lifecycle-common-jvm:2.10.0/lifecycle-common-jvm-2.10.0.jar/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core-ktx:2.10.0/lifecycle-livedata-core-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-livedata-core:2.10.0/lifecycle-livedata-core-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt`, `androidx.lifecycle:lifecycle-process:2.10.0/lifecycle-process-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-android:2.10.0/lifecycle-runtime.aar/META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-compose-android:2.10.0/lifecycle-runtime-compose.aar/META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt`, `androidx.lifecycle:lifecycle-runtime-ktx-android:2.10.0/lifecycle-runtime-ktx.aar/META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-android:2.10.0/lifecycle-viewmodel.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/lifecycle-viewmodel-ktx-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.10.0/lifecycle-viewmodel-savedstate.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt`, `androidx.lifecycle:lifecycle-viewmodel:2.10.0/lifecycle-viewmodel-2.10.0.aar/META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt`, `androidx.profileinstaller:profileinstaller:1.4.0/profileinstaller-1.4.0.aar/META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt`, `androidx.savedstate:savedstate-android:1.4.0/savedstate.aar/META-INF/androidx/savedstate/savedstate/LICENSE.txt`, `androidx.savedstate:savedstate-compose-android:1.4.0/savedstate-compose.aar/META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt`, `androidx.savedstate:savedstate-ktx:1.4.0/savedstate-ktx-1.4.0.aar/META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt`, `androidx.transition:transition:1.6.0/transition-1.6.0.aar/META-INF/androidx/transition/transition/LICENSE.txt`, `androidx.window:window-core-android:1.5.0/window-core.aar/META-INF/androidx/window/window-core/LICENSE.txt`, `androidx.window:window:1.5.0/window-1.5.0.aar/META-INF/androidx/window/window/LICENSE.txt`
 
 ```text
 Apache License
@@ -34628,6 +35025,220 @@ Apache License
 - Selected license(s): LicenseRef-Android-SDK
 - POM SHA-256: `901ee79908dbf6ca5518120039e8394c64866b55c2aeffa965f0376a39a73813`
 - Exact reviewed absence: The POM declares the Android SDK License and links the authoritative Google terms; the AAR publishes no standalone legal file.
+
+### com.caverock:androidsvg-aar:1.4
+
+- Platform: Android
+- Selected license(s): Apache-2.0
+- POM SHA-256: `a789196681aeff63a375ed4bf417c721f087729e9c90c5e4efccdbc9e97e924a`
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
 
 ### com.facebook.fbjni:fbjni:0.7.0
 
@@ -36288,6 +36899,1932 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### com.github.bumptech.glide:annotations:5.0.5
+
+- Platform: Android
+- Selected license(s): Apache-2.0, BSD-2-Clause
+- POM SHA-256: `f83571d7d9912ecd9371af7ccc611aa41f0e2e36ad6cf9759a3f61339006438d`
+
+#### Retained legal document 0b31647fbd110c9674b695226715f77f98de0dd3b4127a1b9f739604fe0ca9ec
+
+Source(s): `upstream:https://github.com/bumptech/glide/blob/ebbf7e2680e0a5812bdb428034aa38fb9260dba7/LICENSE/scripts/licenses/upstream/glide-5.0.5-LICENSE`
+
+```text
+License for everything not in third_party and not otherwise marked:
+
+Copyright 2014 Google, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are
+permitted provided that the following conditions are met:
+
+   1. Redistributions of source code must retain the above copyright notice, this list of
+         conditions and the following disclaimer.
+
+   2. Redistributions in binary form must reproduce the above copyright notice, this list
+         of conditions and the following disclaimer in the documentation and/or other materials
+         provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY GOOGLE, INC. ``AS IS'' AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL GOOGLE, INC. OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+The views and conclusions contained in the software and documentation are those of the
+authors and should not be interpreted as representing official policies, either expressed
+or implied, of Google, Inc.
+---------------------------------------------------------------------------------------------
+License for third_party/disklrucache:
+
+Copyright 2012 Jake Wharton
+Copyright 2011 The Android Open Source Project
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+---------------------------------------------------------------------------------------------
+License for third_party/gif_decoder:
+
+Copyright (c) 2013 Xcellent Creations, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+---------------------------------------------------------------------------------------------
+License for third_party/gif_encoder/AnimatedGifEncoder.java and
+third_party/gif_encoder/LZWEncoder.java:
+
+No copyright asserted on the source code of this class. May be used for any
+purpose, however, refer to the Unisys LZW patent for restrictions on use of
+the associated LZWEncoder class. Please forward any corrections to
+kweiner@fmsware.com.
+
+-----------------------------------------------------------------------------
+License for third_party/gif_encoder/NeuQuant.java
+
+Copyright (c) 1994 Anthony Dekker
+
+NEUQUANT Neural-Net quantization algorithm by Anthony Dekker, 1994. See
+"Kohonen neural networks for optimal colour quantization" in "Network:
+Computation in Neural Systems" Vol. 5 (1994) pp 351-367. for a discussion of
+the algorithm.
+
+Any party obtaining a copy of these files from the author, directly or
+indirectly, is granted, free of charge, a full and unrestricted irrevocable,
+world-wide, paid up, royalty-free, nonexclusive right and license to deal in
+this software and documentation files (the "Software"), including without
+limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons who
+receive copies from any such party to do so, with the only requirement being
+that this copyright notice remain intact.
+```
+
+### com.github.bumptech.glide:avif-integration:5.0.5
+
+- Platform: Android
+- Selected license(s): Apache-2.0, BSD-2-Clause
+- POM SHA-256: `7016cbb6098fe4e279f508ce25299c1619de25f88cc1e8337f68b4533e641cb7`
+
+#### Retained legal document 0b31647fbd110c9674b695226715f77f98de0dd3b4127a1b9f739604fe0ca9ec
+
+Source(s): `upstream:https://github.com/bumptech/glide/blob/ebbf7e2680e0a5812bdb428034aa38fb9260dba7/LICENSE/scripts/licenses/upstream/glide-5.0.5-LICENSE`
+
+```text
+License for everything not in third_party and not otherwise marked:
+
+Copyright 2014 Google, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are
+permitted provided that the following conditions are met:
+
+   1. Redistributions of source code must retain the above copyright notice, this list of
+         conditions and the following disclaimer.
+
+   2. Redistributions in binary form must reproduce the above copyright notice, this list
+         of conditions and the following disclaimer in the documentation and/or other materials
+         provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY GOOGLE, INC. ``AS IS'' AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL GOOGLE, INC. OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+The views and conclusions contained in the software and documentation are those of the
+authors and should not be interpreted as representing official policies, either expressed
+or implied, of Google, Inc.
+---------------------------------------------------------------------------------------------
+License for third_party/disklrucache:
+
+Copyright 2012 Jake Wharton
+Copyright 2011 The Android Open Source Project
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+---------------------------------------------------------------------------------------------
+License for third_party/gif_decoder:
+
+Copyright (c) 2013 Xcellent Creations, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+---------------------------------------------------------------------------------------------
+License for third_party/gif_encoder/AnimatedGifEncoder.java and
+third_party/gif_encoder/LZWEncoder.java:
+
+No copyright asserted on the source code of this class. May be used for any
+purpose, however, refer to the Unisys LZW patent for restrictions on use of
+the associated LZWEncoder class. Please forward any corrections to
+kweiner@fmsware.com.
+
+-----------------------------------------------------------------------------
+License for third_party/gif_encoder/NeuQuant.java
+
+Copyright (c) 1994 Anthony Dekker
+
+NEUQUANT Neural-Net quantization algorithm by Anthony Dekker, 1994. See
+"Kohonen neural networks for optimal colour quantization" in "Network:
+Computation in Neural Systems" Vol. 5 (1994) pp 351-367. for a discussion of
+the algorithm.
+
+Any party obtaining a copy of these files from the author, directly or
+indirectly, is granted, free of charge, a full and unrestricted irrevocable,
+world-wide, paid up, royalty-free, nonexclusive right and license to deal in
+this software and documentation files (the "Software"), including without
+limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons who
+receive copies from any such party to do so, with the only requirement being
+that this copyright notice remain intact.
+```
+
+### com.github.bumptech.glide:disklrucache:5.0.5
+
+- Platform: Android
+- Selected license(s): Apache-2.0, BSD-2-Clause
+- POM SHA-256: `f4c90da18417e6e7c45502784e7048166b555fc9f464fca4912bbdae26c3da7c`
+
+#### Retained legal document 0b31647fbd110c9674b695226715f77f98de0dd3b4127a1b9f739604fe0ca9ec
+
+Source(s): `upstream:https://github.com/bumptech/glide/blob/ebbf7e2680e0a5812bdb428034aa38fb9260dba7/LICENSE/scripts/licenses/upstream/glide-5.0.5-LICENSE`
+
+```text
+License for everything not in third_party and not otherwise marked:
+
+Copyright 2014 Google, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are
+permitted provided that the following conditions are met:
+
+   1. Redistributions of source code must retain the above copyright notice, this list of
+         conditions and the following disclaimer.
+
+   2. Redistributions in binary form must reproduce the above copyright notice, this list
+         of conditions and the following disclaimer in the documentation and/or other materials
+         provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY GOOGLE, INC. ``AS IS'' AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL GOOGLE, INC. OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+The views and conclusions contained in the software and documentation are those of the
+authors and should not be interpreted as representing official policies, either expressed
+or implied, of Google, Inc.
+---------------------------------------------------------------------------------------------
+License for third_party/disklrucache:
+
+Copyright 2012 Jake Wharton
+Copyright 2011 The Android Open Source Project
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+---------------------------------------------------------------------------------------------
+License for third_party/gif_decoder:
+
+Copyright (c) 2013 Xcellent Creations, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+---------------------------------------------------------------------------------------------
+License for third_party/gif_encoder/AnimatedGifEncoder.java and
+third_party/gif_encoder/LZWEncoder.java:
+
+No copyright asserted on the source code of this class. May be used for any
+purpose, however, refer to the Unisys LZW patent for restrictions on use of
+the associated LZWEncoder class. Please forward any corrections to
+kweiner@fmsware.com.
+
+-----------------------------------------------------------------------------
+License for third_party/gif_encoder/NeuQuant.java
+
+Copyright (c) 1994 Anthony Dekker
+
+NEUQUANT Neural-Net quantization algorithm by Anthony Dekker, 1994. See
+"Kohonen neural networks for optimal colour quantization" in "Network:
+Computation in Neural Systems" Vol. 5 (1994) pp 351-367. for a discussion of
+the algorithm.
+
+Any party obtaining a copy of these files from the author, directly or
+indirectly, is granted, free of charge, a full and unrestricted irrevocable,
+world-wide, paid up, royalty-free, nonexclusive right and license to deal in
+this software and documentation files (the "Software"), including without
+limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons who
+receive copies from any such party to do so, with the only requirement being
+that this copyright notice remain intact.
+```
+
+### com.github.bumptech.glide:gifdecoder:5.0.5
+
+- Platform: Android
+- Selected license(s): Apache-2.0, BSD-2-Clause
+- POM SHA-256: `c451250598892688f0710fe6a21377649ea606d0cc5d2d45fd75ef7ebecd3c88`
+
+#### Retained legal document 0b31647fbd110c9674b695226715f77f98de0dd3b4127a1b9f739604fe0ca9ec
+
+Source(s): `upstream:https://github.com/bumptech/glide/blob/ebbf7e2680e0a5812bdb428034aa38fb9260dba7/LICENSE/scripts/licenses/upstream/glide-5.0.5-LICENSE`
+
+```text
+License for everything not in third_party and not otherwise marked:
+
+Copyright 2014 Google, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are
+permitted provided that the following conditions are met:
+
+   1. Redistributions of source code must retain the above copyright notice, this list of
+         conditions and the following disclaimer.
+
+   2. Redistributions in binary form must reproduce the above copyright notice, this list
+         of conditions and the following disclaimer in the documentation and/or other materials
+         provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY GOOGLE, INC. ``AS IS'' AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL GOOGLE, INC. OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+The views and conclusions contained in the software and documentation are those of the
+authors and should not be interpreted as representing official policies, either expressed
+or implied, of Google, Inc.
+---------------------------------------------------------------------------------------------
+License for third_party/disklrucache:
+
+Copyright 2012 Jake Wharton
+Copyright 2011 The Android Open Source Project
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+---------------------------------------------------------------------------------------------
+License for third_party/gif_decoder:
+
+Copyright (c) 2013 Xcellent Creations, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+---------------------------------------------------------------------------------------------
+License for third_party/gif_encoder/AnimatedGifEncoder.java and
+third_party/gif_encoder/LZWEncoder.java:
+
+No copyright asserted on the source code of this class. May be used for any
+purpose, however, refer to the Unisys LZW patent for restrictions on use of
+the associated LZWEncoder class. Please forward any corrections to
+kweiner@fmsware.com.
+
+-----------------------------------------------------------------------------
+License for third_party/gif_encoder/NeuQuant.java
+
+Copyright (c) 1994 Anthony Dekker
+
+NEUQUANT Neural-Net quantization algorithm by Anthony Dekker, 1994. See
+"Kohonen neural networks for optimal colour quantization" in "Network:
+Computation in Neural Systems" Vol. 5 (1994) pp 351-367. for a discussion of
+the algorithm.
+
+Any party obtaining a copy of these files from the author, directly or
+indirectly, is granted, free of charge, a full and unrestricted irrevocable,
+world-wide, paid up, royalty-free, nonexclusive right and license to deal in
+this software and documentation files (the "Software"), including without
+limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons who
+receive copies from any such party to do so, with the only requirement being
+that this copyright notice remain intact.
+```
+
+### com.github.bumptech.glide:glide:5.0.5
+
+- Platform: Android
+- Selected license(s): Apache-2.0, BSD-2-Clause
+- POM SHA-256: `be51e34d27126a47df7e45c372ae18c06540d65eafdc3d20a75fbcdfa6a0ab5d`
+
+#### Retained legal document 0b31647fbd110c9674b695226715f77f98de0dd3b4127a1b9f739604fe0ca9ec
+
+Source(s): `upstream:https://github.com/bumptech/glide/blob/ebbf7e2680e0a5812bdb428034aa38fb9260dba7/LICENSE/scripts/licenses/upstream/glide-5.0.5-LICENSE`
+
+```text
+License for everything not in third_party and not otherwise marked:
+
+Copyright 2014 Google, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are
+permitted provided that the following conditions are met:
+
+   1. Redistributions of source code must retain the above copyright notice, this list of
+         conditions and the following disclaimer.
+
+   2. Redistributions in binary form must reproduce the above copyright notice, this list
+         of conditions and the following disclaimer in the documentation and/or other materials
+         provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY GOOGLE, INC. ``AS IS'' AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL GOOGLE, INC. OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+The views and conclusions contained in the software and documentation are those of the
+authors and should not be interpreted as representing official policies, either expressed
+or implied, of Google, Inc.
+---------------------------------------------------------------------------------------------
+License for third_party/disklrucache:
+
+Copyright 2012 Jake Wharton
+Copyright 2011 The Android Open Source Project
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+---------------------------------------------------------------------------------------------
+License for third_party/gif_decoder:
+
+Copyright (c) 2013 Xcellent Creations, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+---------------------------------------------------------------------------------------------
+License for third_party/gif_encoder/AnimatedGifEncoder.java and
+third_party/gif_encoder/LZWEncoder.java:
+
+No copyright asserted on the source code of this class. May be used for any
+purpose, however, refer to the Unisys LZW patent for restrictions on use of
+the associated LZWEncoder class. Please forward any corrections to
+kweiner@fmsware.com.
+
+-----------------------------------------------------------------------------
+License for third_party/gif_encoder/NeuQuant.java
+
+Copyright (c) 1994 Anthony Dekker
+
+NEUQUANT Neural-Net quantization algorithm by Anthony Dekker, 1994. See
+"Kohonen neural networks for optimal colour quantization" in "Network:
+Computation in Neural Systems" Vol. 5 (1994) pp 351-367. for a discussion of
+the algorithm.
+
+Any party obtaining a copy of these files from the author, directly or
+indirectly, is granted, free of charge, a full and unrestricted irrevocable,
+world-wide, paid up, royalty-free, nonexclusive right and license to deal in
+this software and documentation files (the "Software"), including without
+limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons who
+receive copies from any such party to do so, with the only requirement being
+that this copyright notice remain intact.
+```
+
+### com.github.bumptech.glide:okhttp3-integration:5.0.5
+
+- Platform: Android
+- Selected license(s): Apache-2.0, BSD-2-Clause
+- POM SHA-256: `0ba7272b0d93ecab2063cf18846f3af0b2a69f406b5d601db76c2858a87c00de`
+
+#### Retained legal document 0b31647fbd110c9674b695226715f77f98de0dd3b4127a1b9f739604fe0ca9ec
+
+Source(s): `upstream:https://github.com/bumptech/glide/blob/ebbf7e2680e0a5812bdb428034aa38fb9260dba7/LICENSE/scripts/licenses/upstream/glide-5.0.5-LICENSE`
+
+```text
+License for everything not in third_party and not otherwise marked:
+
+Copyright 2014 Google, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are
+permitted provided that the following conditions are met:
+
+   1. Redistributions of source code must retain the above copyright notice, this list of
+         conditions and the following disclaimer.
+
+   2. Redistributions in binary form must reproduce the above copyright notice, this list
+         of conditions and the following disclaimer in the documentation and/or other materials
+         provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY GOOGLE, INC. ``AS IS'' AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL GOOGLE, INC. OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+The views and conclusions contained in the software and documentation are those of the
+authors and should not be interpreted as representing official policies, either expressed
+or implied, of Google, Inc.
+---------------------------------------------------------------------------------------------
+License for third_party/disklrucache:
+
+Copyright 2012 Jake Wharton
+Copyright 2011 The Android Open Source Project
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+---------------------------------------------------------------------------------------------
+License for third_party/gif_decoder:
+
+Copyright (c) 2013 Xcellent Creations, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+---------------------------------------------------------------------------------------------
+License for third_party/gif_encoder/AnimatedGifEncoder.java and
+third_party/gif_encoder/LZWEncoder.java:
+
+No copyright asserted on the source code of this class. May be used for any
+purpose, however, refer to the Unisys LZW patent for restrictions on use of
+the associated LZWEncoder class. Please forward any corrections to
+kweiner@fmsware.com.
+
+-----------------------------------------------------------------------------
+License for third_party/gif_encoder/NeuQuant.java
+
+Copyright (c) 1994 Anthony Dekker
+
+NEUQUANT Neural-Net quantization algorithm by Anthony Dekker, 1994. See
+"Kohonen neural networks for optimal colour quantization" in "Network:
+Computation in Neural Systems" Vol. 5 (1994) pp 351-367. for a discussion of
+the algorithm.
+
+Any party obtaining a copy of these files from the author, directly or
+indirectly, is granted, free of charge, a full and unrestricted irrevocable,
+world-wide, paid up, royalty-free, nonexclusive right and license to deal in
+this software and documentation files (the "Software"), including without
+limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons who
+receive copies from any such party to do so, with the only requirement being
+that this copyright notice remain intact.
+```
+
+### com.github.penfeizhou.android.animation:apng:3.0.5
+
+- Platform: Android
+- Selected license(s): Apache-2.0
+- POM SHA-256: `66fe57d99c21e57f187992a8fd7ecbd12e9c3c126195766f725192cf25513951`
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
+### com.github.penfeizhou.android.animation:avif:3.0.5
+
+- Platform: Android
+- Selected license(s): Apache-2.0
+- POM SHA-256: `4f70d792f7fa02688dda108ce1112cbc52e99f8260091f175421e0e63165b1b9`
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
+### com.github.penfeizhou.android.animation:awebp:3.0.5
+
+- Platform: Android
+- Selected license(s): Apache-2.0
+- POM SHA-256: `3c2628c9d0a39827121cf1bbcd3e69d03ccb3cb02c9a0f3fe180cf21d846d5ae`
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
+### com.github.penfeizhou.android.animation:frameanimation:3.0.5
+
+- Platform: Android
+- Selected license(s): Apache-2.0
+- POM SHA-256: `b23bee85f983eb3c5896beeba3d3c83cd63ea5423fbb8b2d7a1560c0796ad051`
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
+### com.github.penfeizhou.android.animation:gif:3.0.5
+
+- Platform: Android
+- Selected license(s): Apache-2.0
+- POM SHA-256: `baac88d1d898f35f78f1bc9827673d98cdc00669fea2fc32091f294f251c179b`
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
+### com.github.penfeizhou.android.animation:glide-plugin:3.0.5
+
+- Platform: Android
+- Selected license(s): Apache-2.0
+- POM SHA-256: `f95519b7606c0be14798e0a35875bf3598b22b371d0705fbb9d1d02771d24a7d`
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 ```
 
 ### com.google.android.datatransport:transport-api:3.1.0
@@ -42547,6 +45084,41 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
+### expo.modules.image:expo.modules.image:55.0.11
+
+- Platform: Android
+- Selected license(s): MIT
+- POM SHA-256: `c762e6e61f3c4404ffdf3a7e31c838dfb387d7326cb648797483c07a120ce4fd`
+- Owning npm source: `expo-image@55.0.11`
+
+#### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
+
+Source(s): `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ### expo.modules.webview:expo.modules.webview:55.0.6
 
 - Platform: Android
@@ -42869,6 +45441,41 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### host.exp.exponent:expo.modules.splashscreen:55.0.25
+
+- Platform: Android
+- Selected license(s): MIT
+- POM SHA-256: `4a0a2b236dac2d7325f81436f9c6901574918de0b1afc80ea8afde98f437bcb0`
+- Owning npm source: `expo-splash-screen@55.0.25`
+
+#### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
+
+Source(s): `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
 ### host.exp.exponent:expo.modules.webbrowser:55.0.20
@@ -43366,6 +45973,220 @@ Apache License
    limitations under the License.
 ```
 
+### jp.wasabeef:glide-transformations:4.3.0
+
+- Platform: Android
+- Selected license(s): Apache-2.0
+- POM SHA-256: `2518399829d1fd31e0749cddd992a6b406418bc74a72c3c7f1d9fb2da93f9e64`
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
 ### me.leolin:ShortcutBadger:1.1.22
 
 - Platform: Android
@@ -43578,6 +46399,470 @@ Apache License
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+```
+
+### org.aomedia.avif.android:avif:1.1.1.14d8e3c4
+
+- Platform: Android
+- Selected license(s): BSD-2-Clause
+- POM SHA-256: `2f098a4c17f4540f50e302e8203fac3f69f5b4d63adc86841244a0a7e9f62ccc`
+
+#### Retained legal document e11df3e72133a1159eeb7612e4db561d23747b844df9ab020a1835698d693456
+
+Source(s): `upstream:https://github.com/AOMediaCodec/libavif/blob/14d8e3c4b8d74158ec96b4684e663fcea9cf5fb6/LICENSE/scripts/licenses/upstream/libavif-14d8e3c4-LICENSE`
+
+```text
+Copyright 2019 Joe Drago. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+------------------------------------------------------------------------------
+
+Files: src/obu.c
+
+Copyright © 2018-2019, VideoLAN and dav1d authors
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+------------------------------------------------------------------------------
+
+Files: third_party/iccjpeg/*
+
+In plain English:
+
+1. We don't promise that this software works.  (But if you find any bugs,
+   please let us know!)
+2. You can use this software for whatever you want.  You don't have to pay us.
+3. You may not pretend that you wrote this software.  If you use it in a
+   program, you must acknowledge somewhere in your documentation that
+   you've used the IJG code.
+
+In legalese:
+
+The authors make NO WARRANTY or representation, either express or implied,
+with respect to this software, its quality, accuracy, merchantability, or
+fitness for a particular purpose.  This software is provided "AS IS", and you,
+its user, assume the entire risk as to its quality and accuracy.
+
+This software is copyright (C) 1991-2013, Thomas G. Lane, Guido Vollbeding.
+All Rights Reserved except as specified below.
+
+Permission is hereby granted to use, copy, modify, and distribute this
+software (or portions thereof) for any purpose, without fee, subject to these
+conditions:
+(1) If any part of the source code for this software is distributed, then this
+README file must be included, with this copyright and no-warranty notice
+unaltered; and any additions, deletions, or changes to the original files
+must be clearly indicated in accompanying documentation.
+(2) If only executable code is distributed, then the accompanying
+documentation must state that "this software is based in part on the work of
+the Independent JPEG Group".
+(3) Permission for use of this software is granted only if the user accepts
+full responsibility for any undesirable consequences; the authors accept
+NO LIABILITY for damages of any kind.
+
+These conditions apply to any software derived from or based on the IJG code,
+not just to the unmodified library.  If you use our work, you ought to
+acknowledge us.
+
+Permission is NOT granted for the use of any IJG author's name or company name
+in advertising or publicity relating to this software or products derived from
+it.  This software may be referred to only as "the Independent JPEG Group's
+software".
+
+We specifically permit and encourage the use of this software as the basis of
+commercial products, provided that all warranty or liability claims are
+assumed by the product vendor.
+
+
+The Unix configuration script "configure" was produced with GNU Autoconf.
+It is copyright by the Free Software Foundation but is freely distributable.
+The same holds for its supporting scripts (config.guess, config.sub,
+ltmain.sh).  Another support script, install-sh, is copyright by X Consortium
+but is also freely distributable.
+
+The IJG distribution formerly included code to read and write GIF files.
+To avoid entanglement with the Unisys LZW patent, GIF reading support has
+been removed altogether, and the GIF writer has been simplified to produce
+"uncompressed GIFs".  This technique does not use the LZW algorithm; the
+resulting GIF files are larger than usual, but are readable by all standard
+GIF decoders.
+
+We are required to state that
+    "The Graphics Interchange Format(c) is the Copyright property of
+    CompuServe Incorporated.  GIF(sm) is a Service Mark property of
+    CompuServe Incorporated."
+
+------------------------------------------------------------------------------
+
+Files: contrib/gdk-pixbuf/*
+
+Copyright 2020 Emmanuel Gil Peyrot. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+------------------------------------------------------------------------------
+
+Files: android_jni/gradlew*
+
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+------------------------------------------------------------------------------
+
+Files: third_party/libyuv/*
+
+Copyright 2011 The LibYuv Project Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+  * Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+
+  * Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in
+    the documentation and/or other materials provided with the
+    distribution.
+
+  * Neither the name of Google nor the names of its contributors may
+    be used to endorse or promote products derived from this software
+    without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+### org.checkerframework:checker-qual:3.41.0
+
+- Platform: Android
+- Selected license(s): MIT
+- POM SHA-256: `5c73b0770540842cf06a01d264bbb89ae5e248669dc9da80e861e8233dd4675b`
+
+#### Retained legal document 2bf94810693c351040e6c5178cebc67eaf372381a6527f6331700598bbd2d43e
+
+Source(s): `org.checkerframework:checker-qual:3.41.0/checker-qual-3.41.0.jar/META-INF/LICENSE.txt`
+
+```text
+Checker Framework qualifiers
+Copyright 2004-present by the Checker Framework developers
+
+MIT License:
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
 ### org.jetbrains.kotlin:kotlin-android-extensions-runtime:2.1.20
@@ -49653,7 +52938,7 @@ SOFTWARE.
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.2/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -49859,15 +53144,15 @@ Apache License
    limitations under the License.
 ```
 
-### AppCheckCore@11.3.1
+### AppCheckCore@11.3.2
 
 - Platform: iOS
 - Selected license(s): Apache-2.0
-- Podspec checksum: `e215d35177a9cf469927863e69c13e220df32a8b`
+- Podspec checksum: `be8fce5469f68d7f6a29aa94b25f097409ff7fdc`
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.2/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -50210,7 +53495,7 @@ SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50274,7 +53559,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50338,7 +53623,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50466,7 +53751,7 @@ SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50530,7 +53815,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50594,7 +53879,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50658,7 +53943,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50722,7 +54007,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50786,7 +54071,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50850,7 +54135,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50969,6 +54254,70 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
+### ExpoImage@55.0.11
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `eeba1f2a1c6f89ba079e832dfef2b29a5ed1d8ca`
+- Owning npm source: `expo-image@55.0.11`
+
+#### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
+
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
 ### ExpoKeepAwake@55.0.8
 
 - Platform: iOS
@@ -50978,7 +54327,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -51042,7 +54391,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -51106,7 +54455,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -51170,7 +54519,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -51234,7 +54583,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -51298,7 +54647,71 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### ExpoSplashScreen@55.0.25
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `6b9802828ad09baa793f0aa7805be92fd8116b0c`
+- Owning npm source: `expo-splash-screen@55.0.25`
+
+#### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
+
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -51362,7 +54775,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -51490,7 +54903,7 @@ SOFTWARE.
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.2/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -51705,7 +55118,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.2/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -51920,7 +55333,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.2/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -52126,15 +55539,15 @@ Apache License
    limitations under the License.
 ```
 
-### GoogleUtilities@8.1.3
+### GoogleUtilities@8.1.4
 
 - Platform: iOS
 - Selected license(s): Apache-2.0
-- Podspec checksum: `4e0c2ad9fa0d0d18b5c4df8bf57b461cba35b0bb`
+- Podspec checksum: `db34c1c11c6f2eccb6fab2340cb8ceb1451299dc`
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.2/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -52342,7 +55755,7 @@ Apache License
 
 #### Retained legal document d740c03bf4a62abc785a93c7ad5ef6c266124b979f7bb75e2eb80dad836d8f77
 
-Source(s): `installed-pod:GoogleUtilities@8.1.3/LICENSE`
+Source(s): `installed-pod:GoogleUtilities@8.1.4/LICENSE`
 
 ```text
 Apache License
@@ -52578,7 +55991,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.2/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -52792,7 +56205,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.2/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -53007,7 +56420,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.2/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -53698,7 +57111,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.2/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -54167,7 +57580,7 @@ APPENDIX: How to apply the Apache License to your work
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.2/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -58975,7 +62388,7 @@ SOFTWARE.
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.2/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -59179,6 +62592,250 @@ Apache License
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+```
+
+### SDWebImage@5.21.7
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf`
+
+#### Retained legal document 058840bccb1b6783ee15626b361f34095e59bd9296ebc138da100adc168e31ab
+
+Source(s): `installed-pod:SDWebImage@5.21.7/LICENSE`
+
+```text
+Copyright (c) 2009-2020 Olivier Poitrey rs@dailymotion.com
+ 
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions:
+ 
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+ 
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### SDWebImageAVIFCoder@0.11.1
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `afe194a084e851f70228e4be35ef651df0fc5c57`
+
+#### Retained legal document 04b9e8a90d7e3bb8e5afb1df76ba61c09e32aa3511d575012932396a3f630278
+
+Source(s): `installed-pod:SDWebImageAVIFCoder@0.11.1/LICENSE`
+
+```text
+Copyright (c) 2019 lizhuoli1126@126.com <lizhuoli1126@126.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### SDWebImageSVGCoder@1.7.0
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `15a300a97ec1c8ac958f009c02220ac0402e936c`
+
+#### Retained legal document 391e3c3de75e175f2363f65da4451fd1ee76108626f962a5c309c5816ee40034
+
+Source(s): `installed-pod:SDWebImageSVGCoder@1.7.0/LICENSE`
+
+```text
+Copyright (c) 2018 lizhuoli1126@126.com <lizhuoli1126@126.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### SDWebImageWebPCoder@0.14.6
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `e38c0a70396191361d60c092933e22c20d5b1380`
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+#### Retained legal document c2a778e345885f506c10c9bc948bc75dd36b64d2c6b3f1feba33e2f0b9901414
+
+Source(s): `installed-pod:SDWebImageWebPCoder@0.14.6/LICENSE`
+
+```text
+Copyright (c) 2018 Bogdan Poplauschi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 ```
 
 ### Sentry@8.58.0
@@ -59746,6 +63403,524 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+### libavif@1.0.0
+
+- Platform: iOS
+- Selected license(s): BSD-2-Clause
+- Podspec checksum: `5f8e715bea24debec477006f21ef9e95432e254d`
+- Exact license review: The exact libavif 1.0.0 podspec says 'BSD'; its tagged LICENSE begins with Joe Drago's BSD 2-Clause terms and retains the additional source-specific notices.
+
+#### Retained legal document 0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6
+
+Source(s): `canonical:BSD-2-Clause/node_modules/css-select/LICENSE`
+
+```text
+Copyright (c) Felix Böhm
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+THIS IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+#### Retained legal document 2235fa7e67d7ded18af5065fe17bc8065aa34cea1c8dcf12903732e30845ec47
+
+Source(s): `installed-pod:libavif@1.0.0/LICENSE`
+
+```text
+Copyright 2019 Joe Drago. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+------------------------------------------------------------------------------
+
+Files: src/obu.c
+
+Copyright © 2018-2019, VideoLAN and dav1d authors
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+------------------------------------------------------------------------------
+
+Files: apps/shared/iccjpeg.*
+
+In plain English:
+
+1. We don't promise that this software works.  (But if you find any bugs,
+   please let us know!)
+2. You can use this software for whatever you want.  You don't have to pay us.
+3. You may not pretend that you wrote this software.  If you use it in a
+   program, you must acknowledge somewhere in your documentation that
+   you've used the IJG code.
+
+In legalese:
+
+The authors make NO WARRANTY or representation, either express or implied,
+with respect to this software, its quality, accuracy, merchantability, or
+fitness for a particular purpose.  This software is provided "AS IS", and you,
+its user, assume the entire risk as to its quality and accuracy.
+
+This software is copyright (C) 1991-2013, Thomas G. Lane, Guido Vollbeding.
+All Rights Reserved except as specified below.
+
+Permission is hereby granted to use, copy, modify, and distribute this
+software (or portions thereof) for any purpose, without fee, subject to these
+conditions:
+(1) If any part of the source code for this software is distributed, then this
+README file must be included, with this copyright and no-warranty notice
+unaltered; and any additions, deletions, or changes to the original files
+must be clearly indicated in accompanying documentation.
+(2) If only executable code is distributed, then the accompanying
+documentation must state that "this software is based in part on the work of
+the Independent JPEG Group".
+(3) Permission for use of this software is granted only if the user accepts
+full responsibility for any undesirable consequences; the authors accept
+NO LIABILITY for damages of any kind.
+
+These conditions apply to any software derived from or based on the IJG code,
+not just to the unmodified library.  If you use our work, you ought to
+acknowledge us.
+
+Permission is NOT granted for the use of any IJG author's name or company name
+in advertising or publicity relating to this software or products derived from
+it.  This software may be referred to only as "the Independent JPEG Group's
+software".
+
+We specifically permit and encourage the use of this software as the basis of
+commercial products, provided that all warranty or liability claims are
+assumed by the product vendor.
+
+
+The Unix configuration script "configure" was produced with GNU Autoconf.
+It is copyright by the Free Software Foundation but is freely distributable.
+The same holds for its supporting scripts (config.guess, config.sub,
+ltmain.sh).  Another support script, install-sh, is copyright by X Consortium
+but is also freely distributable.
+
+The IJG distribution formerly included code to read and write GIF files.
+To avoid entanglement with the Unisys LZW patent, GIF reading support has
+been removed altogether, and the GIF writer has been simplified to produce
+"uncompressed GIFs".  This technique does not use the LZW algorithm; the
+resulting GIF files are larger than usual, but are readable by all standard
+GIF decoders.
+
+We are required to state that
+    "The Graphics Interchange Format(c) is the Copyright property of
+    CompuServe Incorporated.  GIF(sm) is a Service Mark property of
+    CompuServe Incorporated."
+
+------------------------------------------------------------------------------
+
+Files: contrib/gdk-pixbuf/*
+
+Copyright 2020 Emmanuel Gil Peyrot. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+------------------------------------------------------------------------------
+
+Files: android_jni/gradlew*
+
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
+### libdav1d@1.2.0
+
+- Platform: iOS
+- Selected license(s): BSD-2-Clause
+- Podspec checksum: `23581a4d8ec811ff171ed5e2e05cd27bad64c39f`
+
+#### Retained legal document 0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6
+
+Source(s): `canonical:BSD-2-Clause/node_modules/css-select/LICENSE`
+
+```text
+Copyright (c) Felix Böhm
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+THIS IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+#### Retained legal document d1899b176ad9190c50ec20cdaa574ede2ea27afcf9e4422f15be83c49ba56fa7
+
+Source(s): `installed-pod:libdav1d@1.2.0/dav1d/COPYING`
+
+```text
+Copyright © 2018-2019, VideoLAN and dav1d authors
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+### libwebp@1.6.0
+
+- Platform: iOS
+- Selected license(s): BSD-3-Clause
+- Podspec checksum: `af5937a13536ef73f3784d69cc342b98961acf33`
+- Exact license review: The exact libwebp 1.6.0 podspec says 'BSD'; its declared COPYING file contains Google's BSD 3-Clause terms, including the non-endorsement clause.
+
+#### Retained legal document 5fc4a917a185fc4ff0411ee2b8febb48031f83286beade2a1e3602df71e784a3
+
+Source(s): `installed-pod:libwebp@1.6.0/COPYING`
+
+```text
+Copyright (c) 2010, Google Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+  * Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+
+  * Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in
+    the documentation and/or other materials provided with the
+    distribution.
+
+  * Neither the name of Google nor the names of its contributors may
+    be used to endorse or promote products derived from this software
+    without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+#### Retained legal document 5fe5599c080ef8e9ddcf73795b8facb3852bef1ba7dd14c7e8f66a221ac93505
+
+Source(s): `canonical:BSD-3-Clause/node_modules/@sinonjs/commons/LICENSE`
+
+```text
+BSD 3-Clause License
+
+Copyright (c) 2018, Sinon.JS
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+* Neither the name of the copyright holder nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
 ### openiap@3.3.1

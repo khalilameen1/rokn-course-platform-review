@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "androidDependencyCount": 260,
   "androidProjectComponentCount": 24,
-  "podDependencyCount": 128,
+  "podDependencyCount": 137,
   "android": [
     {
       "coordinate": "androidx.activity:activity-ktx:1.9.3",
@@ -2295,7 +2295,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "AppCheckCore@11.3.1",
+      "coordinate": "AppCheckCore@11.3.2",
       "licenses": [
         "Apache-2.0"
       ],
@@ -2415,6 +2415,14 @@
       "firstPartyGenerated": false
     },
     {
+      "coordinate": "ExpoImage@55.0.11",
+      "licenses": [
+        "MIT"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
       "coordinate": "ExpoKeepAwake@55.0.8",
       "licenses": [
         "MIT"
@@ -2463,6 +2471,14 @@
       "firstPartyGenerated": false
     },
     {
+      "coordinate": "ExpoSplashScreen@55.0.25",
+      "licenses": [
+        "MIT"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
       "coordinate": "ExpoWebBrowser@55.0.20",
       "licenses": [
         "MIT"
@@ -2503,7 +2519,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "GoogleUtilities@8.1.3",
+      "coordinate": "GoogleUtilities@8.1.4",
       "licenses": [
         "Apache-2.0"
       ],
@@ -3195,6 +3211,38 @@
       "firstPartyGenerated": false
     },
     {
+      "coordinate": "SDWebImage@5.21.7",
+      "licenses": [
+        "MIT"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "SDWebImageAVIFCoder@0.11.1",
+      "licenses": [
+        "MIT"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "SDWebImageSVGCoder@1.7.0",
+      "licenses": [
+        "MIT"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "SDWebImageWebPCoder@0.14.6",
+      "licenses": [
+        "MIT"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
       "coordinate": "Sentry@8.58.0",
       "licenses": [
         "MIT"
@@ -3255,6 +3303,30 @@
       "coordinate": "hermes-engine@0.14.1",
       "licenses": [
         "MIT"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "libavif@1.0.0",
+      "licenses": [
+        "BSD-2-Clause"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "libdav1d@1.2.0",
+      "licenses": [
+        "BSD-2-Clause"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "libwebp@1.6.0",
+      "licenses": [
+        "BSD-3-Clause"
       ],
       "legalDocumentCount": 2,
       "firstPartyGenerated": false
@@ -3361,5 +3433,5 @@
       ]
     }
   ],
-  "inventoryHash": "1c8261bba2fbe5a8fcb921d507c15f998cfdbe81ec66cb274981fe96372e9d6d"
+  "inventoryHash": "f11a2c10eca9151d845fa97230f3104bf6f47f7b30bd7ea7d9de3493a49f82a5"
 }

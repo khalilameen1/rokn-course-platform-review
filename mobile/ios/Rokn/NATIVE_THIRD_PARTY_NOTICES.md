@@ -6,8 +6,8 @@
 
 This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retains package-specific LICENSE and NOTICE documents from the distributed sources.
 
-- Dependencies: 128
-- Retained unique legal texts: 28
+- Dependencies: 137
+- Retained unique legal texts: 36
 
 ### AppAuth@2.1.0
 
@@ -16,11 +16,11 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Podspec checksum: `ef4da5a3fc2e10b90c09a0a94a9baeaedc0341d5`
 - Retained legal document(s): `283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b`
 
-### AppCheckCore@11.3.1
+### AppCheckCore@11.3.2
 
 - Platform: iOS
 - Selected license(s): Apache-2.0
-- Podspec checksum: `e215d35177a9cf469927863e69c13e220df32a8b`
+- Podspec checksum: `be8fce5469f68d7f6a29aa94b25f097409ff7fdc`
 - Retained legal document(s): `283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b`
 
 ### BVLinearGradient@2.8.3
@@ -135,6 +135,14 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Owning npm source: `expo-iap@5.4.1`
 - Retained legal document(s): `219baa0f0ec67b168492214cafd8fb602c82d690105278b603f5c4568e20be00`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
+### ExpoImage@55.0.11
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `eeba1f2a1c6f89ba079e832dfef2b29a5ed1d8ca`
+- Owning npm source: `expo-image@55.0.11`
+- Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
+
 ### ExpoKeepAwake@55.0.8
 
 - Platform: iOS
@@ -183,6 +191,14 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Owning npm source: `expo-secure-store@55.0.18`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
+### ExpoSplashScreen@55.0.25
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `6b9802828ad09baa793f0aa7805be92fd8116b0c`
+- Owning npm source: `expo-splash-screen@55.0.25`
+- Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
+
 ### ExpoWebBrowser@55.0.20
 
 - Platform: iOS
@@ -223,11 +239,11 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Exact license review: The exact GoogleSignIn 9.2.0 podspec abbreviates its license as 'Apache'; the tagged LICENSE contains the reviewed Apache License 2.0 terms.
 - Retained legal document(s): `283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b`
 
-### GoogleUtilities@8.1.3
+### GoogleUtilities@8.1.4
 
 - Platform: iOS
 - Selected license(s): Apache-2.0
-- Podspec checksum: `4e0c2ad9fa0d0d18b5c4df8bf57b461cba35b0bb`
+- Podspec checksum: `db34c1c11c6f2eccb6fab2340cb8ceb1451299dc`
 - Retained legal document(s): `283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b`, `d740c03bf4a62abc785a93c7ad5ef6c266124b979f7bb75e2eb80dad836d8f77`
 
 ### PromisesObjC@2.4.1
@@ -913,6 +929,34 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Podspec checksum: `11e0b637842dfb48308d242afc3f448062325aba`
 - Retained legal document(s): `283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b`
 
+### SDWebImage@5.21.7
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf`
+- Retained legal document(s): `058840bccb1b6783ee15626b361f34095e59bd9296ebc138da100adc168e31ab`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
+
+### SDWebImageAVIFCoder@0.11.1
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `afe194a084e851f70228e4be35ef651df0fc5c57`
+- Retained legal document(s): `04b9e8a90d7e3bb8e5afb1df76ba61c09e32aa3511d575012932396a3f630278`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
+
+### SDWebImageSVGCoder@1.7.0
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `15a300a97ec1c8ac958f009c02220ac0402e936c`
+- Retained legal document(s): `391e3c3de75e175f2363f65da4451fd1ee76108626f962a5c309c5816ee40034`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
+
+### SDWebImageWebPCoder@0.14.6
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `e38c0a70396191361d60c092933e22c20d5b1380`
+- Retained legal document(s): `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`, `c2a778e345885f506c10c9bc948bc75dd36b64d2c6b3f1feba33e2f0b9901414`
+
 ### Sentry@8.58.0
 
 - Platform: iOS
@@ -977,6 +1021,29 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Owning npm source: `react-native@0.83.10`
 - Retained legal document(s): `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`, `cf9b17822d1fcd4ff32ccbe14183386fb3adf6f2ff92dc184130823f7fc28173`
 
+### libavif@1.0.0
+
+- Platform: iOS
+- Selected license(s): BSD-2-Clause
+- Podspec checksum: `5f8e715bea24debec477006f21ef9e95432e254d`
+- Exact license review: The exact libavif 1.0.0 podspec says 'BSD'; its tagged LICENSE begins with Joe Drago's BSD 2-Clause terms and retains the additional source-specific notices.
+- Retained legal document(s): `0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6`, `2235fa7e67d7ded18af5065fe17bc8065aa34cea1c8dcf12903732e30845ec47`
+
+### libdav1d@1.2.0
+
+- Platform: iOS
+- Selected license(s): BSD-2-Clause
+- Podspec checksum: `23581a4d8ec811ff171ed5e2e05cd27bad64c39f`
+- Retained legal document(s): `0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6`, `d1899b176ad9190c50ec20cdaa574ede2ea27afcf9e4422f15be83c49ba56fa7`
+
+### libwebp@1.6.0
+
+- Platform: iOS
+- Selected license(s): BSD-3-Clause
+- Podspec checksum: `af5937a13536ef73f3784d69cc342b98961acf33`
+- Exact license review: The exact libwebp 1.6.0 podspec says 'BSD'; its declared COPYING file contains Google's BSD 3-Clause terms, including the non-endorsement clause.
+- Retained legal document(s): `5fc4a917a185fc4ff0411ee2b8febb48031f83286beade2a1e3602df71e784a3`, `5fe5599c080ef8e9ddcf73795b8facb3852bef1ba7dd14c7e8f66a221ac93505`
+
 ### openiap@3.3.1
 
 - Platform: iOS
@@ -1025,6 +1092,76 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Retained legal document(s): `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`, `f4333608f323f709ac5d7f60772d61353b8511e21e22f4ebcc7a3bd434b33d38`
 
 ## Retained legal document catalog
+
+### 04b9e8a90d7e3bb8e5afb1df76ba61c09e32aa3511d575012932396a3f630278
+
+Source(s): `installed-pod:SDWebImageAVIFCoder@0.11.1/LICENSE`
+
+```text
+Copyright (c) 2019 lizhuoli1126@126.com <lizhuoli1126@126.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+### 058840bccb1b6783ee15626b361f34095e59bd9296ebc138da100adc168e31ab
+
+Source(s): `installed-pod:SDWebImage@5.21.7/LICENSE`
+
+```text
+Copyright (c) 2009-2020 Olivier Poitrey rs@dailymotion.com
+ 
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions:
+ 
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+ 
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+### 0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6
+
+Source(s): `canonical:BSD-2-Clause/node_modules/css-select/LICENSE`
+
+```text
+Copyright (c) Felix Böhm
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+THIS IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
 
 ### 1809f6635ba3ca10ff57ff198d09958c8ff2cf7cc15aa3e69c327471b71c43fd
 
@@ -1100,9 +1237,369 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+### 2235fa7e67d7ded18af5065fe17bc8065aa34cea1c8dcf12903732e30845ec47
+
+Source(s): `installed-pod:libavif@1.0.0/LICENSE`
+
+```text
+Copyright 2019 Joe Drago. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+------------------------------------------------------------------------------
+
+Files: src/obu.c
+
+Copyright © 2018-2019, VideoLAN and dav1d authors
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+------------------------------------------------------------------------------
+
+Files: apps/shared/iccjpeg.*
+
+In plain English:
+
+1. We don't promise that this software works.  (But if you find any bugs,
+   please let us know!)
+2. You can use this software for whatever you want.  You don't have to pay us.
+3. You may not pretend that you wrote this software.  If you use it in a
+   program, you must acknowledge somewhere in your documentation that
+   you've used the IJG code.
+
+In legalese:
+
+The authors make NO WARRANTY or representation, either express or implied,
+with respect to this software, its quality, accuracy, merchantability, or
+fitness for a particular purpose.  This software is provided "AS IS", and you,
+its user, assume the entire risk as to its quality and accuracy.
+
+This software is copyright (C) 1991-2013, Thomas G. Lane, Guido Vollbeding.
+All Rights Reserved except as specified below.
+
+Permission is hereby granted to use, copy, modify, and distribute this
+software (or portions thereof) for any purpose, without fee, subject to these
+conditions:
+(1) If any part of the source code for this software is distributed, then this
+README file must be included, with this copyright and no-warranty notice
+unaltered; and any additions, deletions, or changes to the original files
+must be clearly indicated in accompanying documentation.
+(2) If only executable code is distributed, then the accompanying
+documentation must state that "this software is based in part on the work of
+the Independent JPEG Group".
+(3) Permission for use of this software is granted only if the user accepts
+full responsibility for any undesirable consequences; the authors accept
+NO LIABILITY for damages of any kind.
+
+These conditions apply to any software derived from or based on the IJG code,
+not just to the unmodified library.  If you use our work, you ought to
+acknowledge us.
+
+Permission is NOT granted for the use of any IJG author's name or company name
+in advertising or publicity relating to this software or products derived from
+it.  This software may be referred to only as "the Independent JPEG Group's
+software".
+
+We specifically permit and encourage the use of this software as the basis of
+commercial products, provided that all warranty or liability claims are
+assumed by the product vendor.
+
+
+The Unix configuration script "configure" was produced with GNU Autoconf.
+It is copyright by the Free Software Foundation but is freely distributable.
+The same holds for its supporting scripts (config.guess, config.sub,
+ltmain.sh).  Another support script, install-sh, is copyright by X Consortium
+but is also freely distributable.
+
+The IJG distribution formerly included code to read and write GIF files.
+To avoid entanglement with the Unisys LZW patent, GIF reading support has
+been removed altogether, and the GIF writer has been simplified to produce
+"uncompressed GIFs".  This technique does not use the LZW algorithm; the
+resulting GIF files are larger than usual, but are readable by all standard
+GIF decoders.
+
+We are required to state that
+    "The Graphics Interchange Format(c) is the Copyright property of
+    CompuServe Incorporated.  GIF(sm) is a Service Mark property of
+    CompuServe Incorporated."
+
+------------------------------------------------------------------------------
+
+Files: contrib/gdk-pixbuf/*
+
+Copyright 2020 Emmanuel Gil Peyrot. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+------------------------------------------------------------------------------
+
+Files: android_jni/gradlew*
+
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
 ### 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.2/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -1349,7 +1846,7 @@ You may obtain a copy of the Creative Commons Attribution 3.0 License at
 
 ### 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -1429,6 +1926,32 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+### 391e3c3de75e175f2363f65da4451fd1ee76108626f962a5c309c5816ee40034
+
+Source(s): `installed-pod:SDWebImageSVGCoder@1.7.0/LICENSE`
+
+```text
+Copyright (c) 2018 lizhuoli1126@126.com <lizhuoli1126@126.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 ```
 
 ### 3a336fbbf95967b98cab19cc3820756e5b13c246353cea17dcee992df423574b
@@ -1711,6 +2234,42 @@ APPENDIX: How to apply the Apache License to your work
         permissions and limitations under the License.
 ```
 
+### 5fc4a917a185fc4ff0411ee2b8febb48031f83286beade2a1e3602df71e784a3
+
+Source(s): `installed-pod:libwebp@1.6.0/COPYING`
+
+```text
+Copyright (c) 2010, Google Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+  * Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+
+  * Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in
+    the documentation and/or other materials provided with the
+    distribution.
+
+  * Neither the name of Google nor the names of its contributors may
+    be used to endorse or promote products derived from this software
+    without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
 ### 5fe5599c080ef8e9ddcf73795b8facb3852bef1ba7dd14c7e8f66a221ac93505
 
 Source(s): `canonical:BSD-3-Clause/node_modules/@sinonjs/commons/LICENSE`
@@ -1874,6 +2433,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+### c2a778e345885f506c10c9bc948bc75dd36b64d2c6b3f1feba33e2f0b9901414
+
+Source(s): `installed-pod:SDWebImageWebPCoder@0.14.6/LICENSE`
+
+```text
+Copyright (c) 2018 Bogdan Poplauschi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
 ### c37f7b559adedcd8a3a988f40f13bfa9b297327ff16325604a650acddb44d7ec
 
 Source(s): `installed-pod:RNSVG@15.15.3/LICENSE`, `npm:react-native-svg@15.15.3/LICENSE`
@@ -1986,6 +2571,36 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+### d1899b176ad9190c50ec20cdaa574ede2ea27afcf9e4422f15be83c49ba56fa7
+
+Source(s): `installed-pod:libdav1d@1.2.0/dav1d/COPYING`
+
+```text
+Copyright © 2018-2019, VideoLAN and dav1d authors
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
 ### d1d91013bad44a8e9205add3f028f1a3343d1e4856bbbdb38802b02787ad147d
 
 Source(s): `installed-pod:RNFBMessaging@26.3.2/LICENSE`, `npm:@react-native-firebase/messaging@26.3.2/LICENSE`
@@ -2055,7 +2670,7 @@ SOFTWARE.
 
 ### d740c03bf4a62abc785a93c7ad5ef6c266124b979f7bb75e2eb80dad836d8f77
 
-Source(s): `installed-pod:GoogleUtilities@8.1.3/LICENSE`
+Source(s): `installed-pod:GoogleUtilities@8.1.4/LICENSE`
 
 ```text
 Apache License

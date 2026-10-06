@@ -3,9 +3,9 @@
   "generatedFrom": "Podfile.lock exact roots, CocoaPods SPEC CHECKSUMS, Pods/Manifest.lock, and installed source bytes",
   "podfileChecksum": "bc486f7163589e6fd01f35b3c3bd18386b55b0b9",
   "cocoapodsVersion": "1.16.2",
-  "manifestSha256": "709207eab9e525267b60ef1e78bc911d9b4eec4d1730b6c10edc11d1137e409c",
-  "installedSourceCount": 126,
-  "dependencyCount": 128,
+  "manifestSha256": "f2ea861fb226816b1a1e128fad8be2d60ce121d8c447ef2a9c1a09f9c493598f",
+  "installedSourceCount": 135,
+  "dependencyCount": 137,
   "dependencies": [
     {
       "name": "AppAuth",
@@ -47,14 +47,14 @@
     },
     {
       "name": "AppCheckCore",
-      "version": "11.3.1",
-      "coordinate": "AppCheckCore@11.3.1",
-      "specChecksum": "e215d35177a9cf469927863e69c13e220df32a8b",
+      "version": "11.3.2",
+      "coordinate": "AppCheckCore@11.3.2",
+      "specChecksum": "be8fce5469f68d7f6a29aa94b25f097409ff7fdc",
       "firstPartyGenerated": false,
       "sourceKind": "cocoapods-trunk",
       "externalSource": null,
-      "sourceReference": "https://cdn.cocoapods.org/Specs/3/b/6/AppCheckCore/11.3.1/AppCheckCore.podspec.json",
-      "specSha256": "5fec37f620ddf9f0a26948425f8f693c616cdaf67034a257f6e4baf38a000526",
+      "sourceReference": "https://cdn.cocoapods.org/Specs/3/b/6/AppCheckCore/11.3.2/AppCheckCore.podspec.json",
+      "specSha256": "d8dd5914188ff511369274585e98d861483319eb7ce887c909461fffa7b12940",
       "selectedLicenses": [
         "Apache-2.0"
       ],
@@ -65,7 +65,7 @@
       "homepage": "https://firebase.google.com",
       "source": {
         "git": "https://github.com/google/app-check.git",
-        "tag": "CocoaPods-11.3.1"
+        "tag": "CocoaPods-11.3.2"
       },
       "owningNpmPackage": null,
       "exactLicenseSelection": null,
@@ -78,9 +78,9 @@
       ],
       "installedSource": {
         "kind": "pod-sandbox-source-tree",
-        "fileCount": 80,
+        "fileCount": 85,
         "sourceLocation": "Pods/AppCheckCore",
-        "treeSha256": "b001eb91e498f4b1311a971b869ef24bd3bb6308325c4775fef4692ea3e67e1d"
+        "treeSha256": "baf69cb55d123be7733fcc56c58e19da7724428387e4831b81174dd1df73d128"
       }
     },
     {
@@ -712,6 +712,52 @@
       }
     },
     {
+      "name": "ExpoImage",
+      "version": "55.0.11",
+      "coordinate": "ExpoImage@55.0.11",
+      "specChecksum": "eeba1f2a1c6f89ba079e832dfef2b29a5ed1d8ca",
+      "firstPartyGenerated": false,
+      "sourceKind": "external",
+      "externalSource": {
+        "path": "../node_modules/expo-image/ios"
+      },
+      "sourceReference": {
+        "path": "../node_modules/expo-image/ios"
+      },
+      "specSha256": "9ec96a87df3b981ae583e91c37386f3d9fca938803ad1b4884853b50200a1ac5",
+      "selectedLicenses": [
+        "MIT"
+      ],
+      "licenseMetadata": {
+        "type": null,
+        "file": null
+      },
+      "owningNpmPackage": {
+        "coordinate": "expo-image@55.0.11",
+        "license": "MIT"
+      },
+      "upstreamLegalDocument": {
+        "npmCoordinate": "expo-image@55.0.11",
+        "gitHead": "bb1d4bd298e5bcaff86b04aabca7c56659e57138",
+        "path": "scripts/licenses/upstream/expo-expo-LICENSE",
+        "sha256": "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
+        "sourceUrl": "https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE"
+      },
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
+        "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [],
+      "installedSource": {
+        "kind": "npm-lock-sri",
+        "npmCoordinate": "expo-image@55.0.11",
+        "npmIntegrity": "sha512-PVIBYQJW/h1f6Zb9xnoWlgfqyOPVm2yb6eo6ZogaKbvMrhb/Q/fiERbagi4oqmR6IPljWPEpkXXQyFBUh7TjpQ==",
+        "sourceLocation": "npm:expo-image@55.0.11"
+      }
+    },
+    {
       "name": "ExpoKeepAwake",
       "version": "55.0.8",
       "coordinate": "ExpoKeepAwake@55.0.8",
@@ -988,6 +1034,52 @@
       }
     },
     {
+      "name": "ExpoSplashScreen",
+      "version": "55.0.25",
+      "coordinate": "ExpoSplashScreen@55.0.25",
+      "specChecksum": "6b9802828ad09baa793f0aa7805be92fd8116b0c",
+      "firstPartyGenerated": false,
+      "sourceKind": "external",
+      "externalSource": {
+        "path": "../node_modules/expo-splash-screen/ios"
+      },
+      "sourceReference": {
+        "path": "../node_modules/expo-splash-screen/ios"
+      },
+      "specSha256": "ebd0b69b715194edcfab1a333fc4c57a24399bfa9513550d799f2fdb6ebd7acc",
+      "selectedLicenses": [
+        "MIT"
+      ],
+      "licenseMetadata": {
+        "type": null,
+        "file": null
+      },
+      "owningNpmPackage": {
+        "coordinate": "expo-splash-screen@55.0.25",
+        "license": "MIT"
+      },
+      "upstreamLegalDocument": {
+        "npmCoordinate": "expo-splash-screen@55.0.25",
+        "gitHead": "856b99321eeb04bd528b33f90c0e7fa2859a1fcb",
+        "path": "scripts/licenses/upstream/expo-expo-LICENSE",
+        "sha256": "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
+        "sourceUrl": "https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE"
+      },
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
+        "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [],
+      "installedSource": {
+        "kind": "npm-lock-sri",
+        "npmCoordinate": "expo-splash-screen@55.0.25",
+        "npmIntegrity": "sha512-Jl3VPbNqbgGjXlkH93hi4Y4p6GB5DasLNbpL2Gb4kl8grujKaIGi4rXL25qYbYxIzefSlt96NqG9czanxxooPg==",
+        "sourceLocation": "npm:expo-splash-screen@55.0.25"
+      }
+    },
+    {
       "name": "ExpoWebBrowser",
       "version": "55.0.20",
       "coordinate": "ExpoWebBrowser@55.0.20",
@@ -1200,14 +1292,14 @@
     },
     {
       "name": "GoogleUtilities",
-      "version": "8.1.3",
-      "coordinate": "GoogleUtilities@8.1.3",
-      "specChecksum": "4e0c2ad9fa0d0d18b5c4df8bf57b461cba35b0bb",
+      "version": "8.1.4",
+      "coordinate": "GoogleUtilities@8.1.4",
+      "specChecksum": "db34c1c11c6f2eccb6fab2340cb8ceb1451299dc",
       "firstPartyGenerated": false,
       "sourceKind": "cocoapods-trunk",
       "externalSource": null,
-      "sourceReference": "https://cdn.cocoapods.org/Specs/0/8/4/GoogleUtilities/8.1.3/GoogleUtilities.podspec.json",
-      "specSha256": "f70a3c6caa2cbd5edcb8b6244da2b682753db7e13ab6474e0dbbe21bac2b540a",
+      "sourceReference": "https://cdn.cocoapods.org/Specs/0/8/4/GoogleUtilities/8.1.4/GoogleUtilities.podspec.json",
+      "specSha256": "a54d8a21cada17b938955779d9c93fc1e2cfed49afbad553e1d81cd014bb6f4a",
       "selectedLicenses": [
         "Apache-2.0"
       ],
@@ -1218,7 +1310,7 @@
       "homepage": "https://github.com/google/GoogleUtilities",
       "source": {
         "git": "https://github.com/google/GoogleUtilities.git",
-        "tag": "CocoaPods-8.1.3"
+        "tag": "CocoaPods-8.1.4"
       },
       "owningNpmPackage": null,
       "exactLicenseSelection": null,
@@ -1234,7 +1326,7 @@
         "kind": "pod-sandbox-source-tree",
         "fileCount": 18,
         "sourceLocation": "Pods/GoogleUtilities",
-        "treeSha256": "4571d5ec5eceb52f7999c84b9c1dad32f49eb01d9d35009b1f66d5d3923cd458"
+        "treeSha256": "fbe043e278c72bb2e232e330bf4bfc39b69489279d11a4dc6dce602057612cc1"
       }
     },
     {
@@ -4814,6 +4906,162 @@
       }
     },
     {
+      "name": "SDWebImage",
+      "version": "5.21.7",
+      "coordinate": "SDWebImage@5.21.7",
+      "specChecksum": "e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/1/1/7/SDWebImage/5.21.7/SDWebImage.podspec.json",
+      "specSha256": "b1e8b40312604323fdc423f512d1e9bb55e6fbdace2e9118715104398b8bc907",
+      "selectedLicenses": [
+        "MIT"
+      ],
+      "licenseMetadata": {
+        "type": "MIT",
+        "file": null
+      },
+      "homepage": "https://github.com/SDWebImage/SDWebImage",
+      "source": {
+        "git": "https://github.com/SDWebImage/SDWebImage.git",
+        "tag": "5.21.7"
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "058840bccb1b6783ee15626b361f34095e59bd9296ebc138da100adc168e31ab",
+        "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "058840bccb1b6783ee15626b361f34095e59bd9296ebc138da100adc168e31ab"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 151,
+        "sourceLocation": "Pods/SDWebImage",
+        "treeSha256": "799925321ee6c9b63724c12d451900c6a223862534232f2a3b6563cda0c3e9f4"
+      }
+    },
+    {
+      "name": "SDWebImageAVIFCoder",
+      "version": "0.11.1",
+      "coordinate": "SDWebImageAVIFCoder@0.11.1",
+      "specChecksum": "afe194a084e851f70228e4be35ef651df0fc5c57",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/3/7/e/SDWebImageAVIFCoder/0.11.1/SDWebImageAVIFCoder.podspec.json",
+      "specSha256": "b1b230cb13a6e46e4cd6c564409f71a58db251948e784a819b1a73ebf84ab024",
+      "selectedLicenses": [
+        "MIT"
+      ],
+      "licenseMetadata": {
+        "type": "MIT",
+        "file": "LICENSE"
+      },
+      "homepage": "https://github.com/SDWebImage/SDWebImageAVIFCoder",
+      "source": {
+        "git": "https://github.com/SDWebImage/SDWebImageAVIFCoder.git",
+        "tag": "0.11.1"
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "04b9e8a90d7e3bb8e5afb1df76ba61c09e32aa3511d575012932396a3f630278",
+        "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "04b9e8a90d7e3bb8e5afb1df76ba61c09e32aa3511d575012932396a3f630278"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 9,
+        "sourceLocation": "Pods/SDWebImageAVIFCoder",
+        "treeSha256": "7dee37213c27f011000d1b9963c05c36cbb46c98941456e787899d4c7461852f"
+      }
+    },
+    {
+      "name": "SDWebImageSVGCoder",
+      "version": "1.7.0",
+      "coordinate": "SDWebImageSVGCoder@1.7.0",
+      "specChecksum": "15a300a97ec1c8ac958f009c02220ac0402e936c",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/a/0/c/SDWebImageSVGCoder/1.7.0/SDWebImageSVGCoder.podspec.json",
+      "specSha256": "2d7ae4255b1ea54eb88c7f857d13d5b9a92eac3a9ad36d34e6837641db59941e",
+      "selectedLicenses": [
+        "MIT"
+      ],
+      "licenseMetadata": {
+        "type": "MIT",
+        "file": "LICENSE"
+      },
+      "homepage": "https://github.com/SDWebImage/SDWebImageSVGCoder",
+      "source": {
+        "git": "https://github.com/SDWebImage/SDWebImageSVGCoder.git",
+        "tag": "1.7.0"
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "391e3c3de75e175f2363f65da4451fd1ee76108626f962a5c309c5816ee40034",
+        "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "391e3c3de75e175f2363f65da4451fd1ee76108626f962a5c309c5816ee40034"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 8,
+        "sourceLocation": "Pods/SDWebImageSVGCoder",
+        "treeSha256": "da784b63a47385c291ea707e70823536d9b1191373908154b3962c4651164904"
+      }
+    },
+    {
+      "name": "SDWebImageWebPCoder",
+      "version": "0.14.6",
+      "coordinate": "SDWebImageWebPCoder@0.14.6",
+      "specChecksum": "e38c0a70396191361d60c092933e22c20d5b1380",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/e/9/d/SDWebImageWebPCoder/0.14.6/SDWebImageWebPCoder.podspec.json",
+      "specSha256": "74be5210c077c7d5ec96fc4d92754d4fbf941ab824f9c67e6db06ffdd340c230",
+      "selectedLicenses": [
+        "MIT"
+      ],
+      "licenseMetadata": {
+        "type": "MIT",
+        "file": "LICENSE"
+      },
+      "homepage": "https://github.com/SDWebImage/SDWebImageWebPCoder",
+      "source": {
+        "git": "https://github.com/SDWebImage/SDWebImageWebPCoder.git",
+        "tag": "0.14.6"
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2",
+        "c2a778e345885f506c10c9bc948bc75dd36b64d2c6b3f1feba33e2f0b9901414"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "c2a778e345885f506c10c9bc948bc75dd36b64d2c6b3f1feba33e2f0b9901414"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 12,
+        "sourceLocation": "Pods/SDWebImageWebPCoder",
+        "treeSha256": "2fa673365230886078a925dca24e4d5d0beb46d9910985ce08396396992439c3"
+      }
+    },
+    {
       "name": "Sentry",
       "version": "8.58.0",
       "coordinate": "Sentry@8.58.0",
@@ -5156,6 +5404,130 @@
       }
     },
     {
+      "name": "libavif",
+      "version": "1.0.0",
+      "coordinate": "libavif@1.0.0",
+      "specChecksum": "5f8e715bea24debec477006f21ef9e95432e254d",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/f/d/e/libavif/1.0.0/libavif.podspec.json",
+      "specSha256": "6273875ed91ecb88308e212ad3e9d779aa2eb1fce00112793029aa2fe68c1722",
+      "selectedLicenses": [
+        "BSD-2-Clause"
+      ],
+      "licenseMetadata": {
+        "type": "BSD",
+        "file": null
+      },
+      "homepage": "https://github.com/joedrago/avif/",
+      "source": {
+        "git": "https://github.com/AOMediaCodec/libavif.git",
+        "tag": "v1.0.0"
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": {
+        "license": "BSD-2-Clause",
+        "reason": "The exact libavif 1.0.0 podspec says 'BSD'; its tagged LICENSE begins with Joe Drago's BSD 2-Clause terms and retains the additional source-specific notices."
+      },
+      "legalDocumentSha256s": [
+        "0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6",
+        "2235fa7e67d7ded18af5065fe17bc8065aa34cea1c8dcf12903732e30845ec47"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "2235fa7e67d7ded18af5065fe17bc8065aa34cea1c8dcf12903732e30845ec47"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 22,
+        "sourceLocation": "Pods/libavif",
+        "treeSha256": "fcd14e5b93836ff0360c9bb1ceb8cf0b068ccbfd605815bce396abd643b40d7f"
+      }
+    },
+    {
+      "name": "libdav1d",
+      "version": "1.2.0",
+      "coordinate": "libdav1d@1.2.0",
+      "specChecksum": "23581a4d8ec811ff171ed5e2e05cd27bad64c39f",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/b/2/b/libdav1d/1.2.0/libdav1d.podspec.json",
+      "specSha256": "091cd6ce2cf2fe984e0bcbf5e6d846a3a2e2dfc8c330b12c693824ca825e6cce",
+      "selectedLicenses": [
+        "BSD-2-Clause"
+      ],
+      "licenseMetadata": {
+        "type": "BSD 2-clause",
+        "file": null
+      },
+      "homepage": "https://github.com/videolan/dav1d",
+      "source": {
+        "git": "https://github.com/SDWebImage/libdav1d-Xcode.git",
+        "tag": "1.2.0",
+        "submodules": true
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6",
+        "d1899b176ad9190c50ec20cdaa574ede2ea27afcf9e4422f15be83c49ba56fa7"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "d1899b176ad9190c50ec20cdaa574ede2ea27afcf9e4422f15be83c49ba56fa7"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 332,
+        "sourceLocation": "Pods/libdav1d",
+        "treeSha256": "b64587a5ea7c59ae47de320d7dcfe081ca453619e2e38b4fc64feb0ff9d15ae2"
+      }
+    },
+    {
+      "name": "libwebp",
+      "version": "1.6.0",
+      "coordinate": "libwebp@1.6.0",
+      "specChecksum": "af5937a13536ef73f3784d69cc342b98961acf33",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/1/9/2/libwebp/1.6.0/libwebp.podspec.json",
+      "specSha256": "07d9fa3efdbddf1148458d3927aea96a7808c40a776b02d4549c28e83e8cfe4c",
+      "selectedLicenses": [
+        "BSD-3-Clause"
+      ],
+      "licenseMetadata": {
+        "type": "BSD",
+        "file": "COPYING"
+      },
+      "homepage": "https://developers.google.com/speed/webp/",
+      "source": {
+        "git": "https://github.com/webmproject/libwebp.git",
+        "tag": "v1.6.0"
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": {
+        "license": "BSD-3-Clause",
+        "reason": "The exact libwebp 1.6.0 podspec says 'BSD'; its declared COPYING file contains Google's BSD 3-Clause terms, including the non-endorsement clause."
+      },
+      "legalDocumentSha256s": [
+        "5fc4a917a185fc4ff0411ee2b8febb48031f83286beade2a1e3602df71e784a3",
+        "5fe5599c080ef8e9ddcf73795b8facb3852bef1ba7dd14c7e8f66a221ac93505"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "5fc4a917a185fc4ff0411ee2b8febb48031f83286beade2a1e3602df71e784a3"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 197,
+        "sourceLocation": "Pods/libwebp",
+        "treeSha256": "d9e2a1d6ee375bce90072e72e3e65d690bca13088b77cb6ec46934ca83ad13fb"
+      }
+    },
+    {
       "name": "openiap",
       "version": "3.3.1",
       "coordinate": "openiap@3.3.1",
@@ -5407,6 +5779,36 @@
   ],
   "documents": [
     {
+      "sha256": "04b9e8a90d7e3bb8e5afb1df76ba61c09e32aa3511d575012932396a3f630278",
+      "text": "Copyright (c) 2019 lizhuoli1126@126.com <lizhuoli1126@126.com>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
+      "sources": [
+        {
+          "source": "installed-pod:SDWebImageAVIFCoder@0.11.1",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "058840bccb1b6783ee15626b361f34095e59bd9296ebc138da100adc168e31ab",
+      "text": "Copyright (c) 2009-2020 Olivier Poitrey rs@dailymotion.com\n \nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is furnished\nto do so, subject to the following conditions:\n \nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n \nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
+      "sources": [
+        {
+          "source": "installed-pod:SDWebImage@5.21.7",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6",
+      "text": "Copyright (c) Felix Böhm\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:\n\nRedistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.\n\nRedistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.\n\nTHIS IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS,\nEVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.",
+      "sources": [
+        {
+          "source": "canonical:BSD-2-Clause",
+          "path": "node_modules/css-select/LICENSE"
+        }
+      ]
+    },
+    {
       "sha256": "1809f6635ba3ca10ff57ff198d09958c8ff2cf7cc15aa3e69c327471b71c43fd",
       "text": "Copyright (c) 2016-present, Facebook, Inc. All rights reserved.\n\nThe examples provided by Facebook are for non-commercial testing and evaluation\npurposes only. Facebook reserves all rights not expressly granted.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL\nFACEBOOK BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN\nACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
       "sources": [
@@ -5469,6 +5871,16 @@
       ]
     },
     {
+      "sha256": "2235fa7e67d7ded18af5065fe17bc8065aa34cea1c8dcf12903732e30845ec47",
+      "text": "Copyright 2019 Joe Drago. All rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n1. Redistributions of source code must retain the above copyright notice, this\nlist of conditions and the following disclaimer.\n\n2. Redistributions in binary form must reproduce the above copyright notice,\nthis list of conditions and the following disclaimer in the documentation\nand/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\nAND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\nFOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n------------------------------------------------------------------------------\n\nFiles: src/obu.c\n\nCopyright © 2018-2019, VideoLAN and dav1d authors\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n1. Redistributions of source code must retain the above copyright notice, this\n   list of conditions and the following disclaimer.\n\n2. Redistributions in binary form must reproduce the above copyright notice,\n   this list of conditions and the following disclaimer in the documentation\n   and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR\nANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\nLOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND\nON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\nSOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n------------------------------------------------------------------------------\n\nFiles: apps/shared/iccjpeg.*\n\nIn plain English:\n\n1. We don't promise that this software works.  (But if you find any bugs,\n   please let us know!)\n2. You can use this software for whatever you want.  You don't have to pay us.\n3. You may not pretend that you wrote this software.  If you use it in a\n   program, you must acknowledge somewhere in your documentation that\n   you've used the IJG code.\n\nIn legalese:\n\nThe authors make NO WARRANTY or representation, either express or implied,\nwith respect to this software, its quality, accuracy, merchantability, or\nfitness for a particular purpose.  This software is provided \"AS IS\", and you,\nits user, assume the entire risk as to its quality and accuracy.\n\nThis software is copyright (C) 1991-2013, Thomas G. Lane, Guido Vollbeding.\nAll Rights Reserved except as specified below.\n\nPermission is hereby granted to use, copy, modify, and distribute this\nsoftware (or portions thereof) for any purpose, without fee, subject to these\nconditions:\n(1) If any part of the source code for this software is distributed, then this\nREADME file must be included, with this copyright and no-warranty notice\nunaltered; and any additions, deletions, or changes to the original files\nmust be clearly indicated in accompanying documentation.\n(2) If only executable code is distributed, then the accompanying\ndocumentation must state that \"this software is based in part on the work of\nthe Independent JPEG Group\".\n(3) Permission for use of this software is granted only if the user accepts\nfull responsibility for any undesirable consequences; the authors accept\nNO LIABILITY for damages of any kind.\n\nThese conditions apply to any software derived from or based on the IJG code,\nnot just to the unmodified library.  If you use our work, you ought to\nacknowledge us.\n\nPermission is NOT granted for the use of any IJG author's name or company name\nin advertising or publicity relating to this software or products derived from\nit.  This software may be referred to only as \"the Independent JPEG Group's\nsoftware\".\n\nWe specifically permit and encourage the use of this software as the basis of\ncommercial products, provided that all warranty or liability claims are\nassumed by the product vendor.\n\n\nThe Unix configuration script \"configure\" was produced with GNU Autoconf.\nIt is copyright by the Free Software Foundation but is freely distributable.\nThe same holds for its supporting scripts (config.guess, config.sub,\nltmain.sh).  Another support script, install-sh, is copyright by X Consortium\nbut is also freely distributable.\n\nThe IJG distribution formerly included code to read and write GIF files.\nTo avoid entanglement with the Unisys LZW patent, GIF reading support has\nbeen removed altogether, and the GIF writer has been simplified to produce\n\"uncompressed GIFs\".  This technique does not use the LZW algorithm; the\nresulting GIF files are larger than usual, but are readable by all standard\nGIF decoders.\n\nWe are required to state that\n    \"The Graphics Interchange Format(c) is the Copyright property of\n    CompuServe Incorporated.  GIF(sm) is a Service Mark property of\n    CompuServe Incorporated.\"\n\n------------------------------------------------------------------------------\n\nFiles: contrib/gdk-pixbuf/*\n\nCopyright 2020 Emmanuel Gil Peyrot. All rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n1. Redistributions of source code must retain the above copyright notice, this\nlist of conditions and the following disclaimer.\n\n2. Redistributions in binary form must reproduce the above copyright notice,\nthis list of conditions and the following disclaimer in the documentation\nand/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\nAND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\nFOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n------------------------------------------------------------------------------\n\nFiles: android_jni/gradlew*\n\n\n                                 Apache License\n                           Version 2.0, January 2004\n                        http://www.apache.org/licenses/\n\n   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION\n\n   1. Definitions.\n\n      \"License\" shall mean the terms and conditions for use, reproduction,\n      and distribution as defined by Sections 1 through 9 of this document.\n\n      \"Licensor\" shall mean the copyright owner or entity authorized by\n      the copyright owner that is granting the License.\n\n      \"Legal Entity\" shall mean the union of the acting entity and all\n      other entities that control, are controlled by, or are under common\n      control with that entity. For the purposes of this definition,\n      \"control\" means (i) the power, direct or indirect, to cause the\n      direction or management of such entity, whether by contract or\n      otherwise, or (ii) ownership of fifty percent (50%) or more of the\n      outstanding shares, or (iii) beneficial ownership of such entity.\n\n      \"You\" (or \"Your\") shall mean an individual or Legal Entity\n      exercising permissions granted by this License.\n\n      \"Source\" form shall mean the preferred form for making modifications,\n      including but not limited to software source code, documentation\n      source, and configuration files.\n\n      \"Object\" form shall mean any form resulting from mechanical\n      transformation or translation of a Source form, including but\n      not limited to compiled object code, generated documentation,\n      and conversions to other media types.\n\n      \"Work\" shall mean the work of authorship, whether in Source or\n      Object form, made available under the License, as indicated by a\n      copyright notice that is included in or attached to the work\n      (an example is provided in the Appendix below).\n\n      \"Derivative Works\" shall mean any work, whether in Source or Object\n      form, that is based on (or derived from) the Work and for which the\n      editorial revisions, annotations, elaborations, or other modifications\n      represent, as a whole, an original work of authorship. For the purposes\n      of this License, Derivative Works shall not include works that remain\n      separable from, or merely link (or bind by name) to the interfaces of,\n      the Work and Derivative Works thereof.\n\n      \"Contribution\" shall mean any work of authorship, including\n      the original version of the Work and any modifications or additions\n      to that Work or Derivative Works thereof, that is intentionally\n      submitted to Licensor for inclusion in the Work by the copyright owner\n      or by an individual or Legal Entity authorized to submit on behalf of\n      the copyright owner. For the purposes of this definition, \"submitted\"\n      means any form of electronic, verbal, or written communication sent\n      to the Licensor or its representatives, including but not limited to\n      communication on electronic mailing lists, source code control systems,\n      and issue tracking systems that are managed by, or on behalf of, the\n      Licensor for the purpose of discussing and improving the Work, but\n      excluding communication that is conspicuously marked or otherwise\n      designated in writing by the copyright owner as \"Not a Contribution.\"\n\n      \"Contributor\" shall mean Licensor and any individual or Legal Entity\n      on behalf of whom a Contribution has been received by Licensor and\n      subsequently incorporated within the Work.\n\n   2. Grant of Copyright License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      copyright license to reproduce, prepare Derivative Works of,\n      publicly display, publicly perform, sublicense, and distribute the\n      Work and such Derivative Works in Source or Object form.\n\n   3. Grant of Patent License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      (except as stated in this section) patent license to make, have made,\n      use, offer to sell, sell, import, and otherwise transfer the Work,\n      where such license applies only to those patent claims licensable\n      by such Contributor that are necessarily infringed by their\n      Contribution(s) alone or by combination of their Contribution(s)\n      with the Work to which such Contribution(s) was submitted. If You\n      institute patent litigation against any entity (including a\n      cross-claim or counterclaim in a lawsuit) alleging that the Work\n      or a Contribution incorporated within the Work constitutes direct\n      or contributory patent infringement, then any patent licenses\n      granted to You under this License for that Work shall terminate\n      as of the date such litigation is filed.\n\n   4. Redistribution. You may reproduce and distribute copies of the\n      Work or Derivative Works thereof in any medium, with or without\n      modifications, and in Source or Object form, provided that You\n      meet the following conditions:\n\n      (a) You must give any other recipients of the Work or\n          Derivative Works a copy of this License; and\n\n      (b) You must cause any modified files to carry prominent notices\n          stating that You changed the files; and\n\n      (c) You must retain, in the Source form of any Derivative Works\n          that You distribute, all copyright, patent, trademark, and\n          attribution notices from the Source form of the Work,\n          excluding those notices that do not pertain to any part of\n          the Derivative Works; and\n\n      (d) If the Work includes a \"NOTICE\" text file as part of its\n          distribution, then any Derivative Works that You distribute must\n          include a readable copy of the attribution notices contained\n          within such NOTICE file, excluding those notices that do not\n          pertain to any part of the Derivative Works, in at least one\n          of the following places: within a NOTICE text file distributed\n          as part of the Derivative Works; within the Source form or\n          documentation, if provided along with the Derivative Works; or,\n          within a display generated by the Derivative Works, if and\n          wherever such third-party notices normally appear. The contents\n          of the NOTICE file are for informational purposes only and\n          do not modify the License. You may add Your own attribution\n          notices within Derivative Works that You distribute, alongside\n          or as an addendum to the NOTICE text from the Work, provided\n          that such additional attribution notices cannot be construed\n          as modifying the License.\n\n      You may add Your own copyright statement to Your modifications and\n      may provide additional or different license terms and conditions\n      for use, reproduction, or distribution of Your modifications, or\n      for any such Derivative Works as a whole, provided Your use,\n      reproduction, and distribution of the Work otherwise complies with\n      the conditions stated in this License.\n\n   5. Submission of Contributions. Unless You explicitly state otherwise,\n      any Contribution intentionally submitted for inclusion in the Work\n      by You to the Licensor shall be under the terms and conditions of\n      this License, without any additional terms or conditions.\n      Notwithstanding the above, nothing herein shall supersede or modify\n      the terms of any separate license agreement you may have executed\n      with Licensor regarding such Contributions.\n\n   6. Trademarks. This License does not grant permission to use the trade\n      names, trademarks, service marks, or product names of the Licensor,\n      except as required for reasonable and customary use in describing the\n      origin of the Work and reproducing the content of the NOTICE file.\n\n   7. Disclaimer of Warranty. Unless required by applicable law or\n      agreed to in writing, Licensor provides the Work (and each\n      Contributor provides its Contributions) on an \"AS IS\" BASIS,\n      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or\n      implied, including, without limitation, any warranties or conditions\n      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A\n      PARTICULAR PURPOSE. You are solely responsible for determining the\n      appropriateness of using or redistributing the Work and assume any\n      risks associated with Your exercise of permissions under this License.\n\n   8. Limitation of Liability. In no event and under no legal theory,\n      whether in tort (including negligence), contract, or otherwise,\n      unless required by applicable law (such as deliberate and grossly\n      negligent acts) or agreed to in writing, shall any Contributor be\n      liable to You for damages, including any direct, indirect, special,\n      incidental, or consequential damages of any character arising as a\n      result of this License or out of the use or inability to use the\n      Work (including but not limited to damages for loss of goodwill,\n      work stoppage, computer failure or malfunction, or any and all\n      other commercial damages or losses), even if such Contributor\n      has been advised of the possibility of such damages.\n\n   9. Accepting Warranty or Additional Liability. While redistributing\n      the Work or Derivative Works thereof, You may choose to offer,\n      and charge a fee for, acceptance of support, warranty, indemnity,\n      or other liability obligations and/or rights consistent with this\n      License. However, in accepting such obligations, You may act only\n      on Your own behalf and on Your sole responsibility, not on behalf\n      of any other Contributor, and only if You agree to indemnify,\n      defend, and hold each Contributor harmless for any liability\n      incurred by, or claims asserted against, such Contributor by reason\n      of your accepting any such warranty or additional liability.\n\n   END OF TERMS AND CONDITIONS\n\n   APPENDIX: How to apply the Apache License to your work.\n\n      To apply the Apache License to your work, attach the following\n      boilerplate notice, with the fields enclosed by brackets \"[]\"\n      replaced with your own identifying information. (Don't include\n      the brackets!)  The text should be enclosed in the appropriate\n      comment syntax for the file format. We also recommend that a\n      file or class name and description of purpose be included on the\n      same \"printed page\" as the copyright notice for easier\n      identification within third-party archives.\n\n   Copyright [yyyy] [name of copyright owner]\n\n   Licensed under the Apache License, Version 2.0 (the \"License\");\n   you may not use this file except in compliance with the License.\n   You may obtain a copy of the License at\n\n       http://www.apache.org/licenses/LICENSE-2.0\n\n   Unless required by applicable law or agreed to in writing, software\n   distributed under the License is distributed on an \"AS IS\" BASIS,\n   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n   See the License for the specific language governing permissions and\n   limitations under the License.",
+      "sources": [
+        {
+          "source": "installed-pod:libavif@1.0.0",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
       "sha256": "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b",
       "text": "Apache License\n                           Version 2.0, January 2004\n                        http://www.apache.org/licenses/\n\n   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION\n\n   1. Definitions.\n\n      \"License\" shall mean the terms and conditions for use, reproduction,\n      and distribution as defined by Sections 1 through 9 of this document.\n\n      \"Licensor\" shall mean the copyright owner or entity authorized by\n      the copyright owner that is granting the License.\n\n      \"Legal Entity\" shall mean the union of the acting entity and all\n      other entities that control, are controlled by, or are under common\n      control with that entity. For the purposes of this definition,\n      \"control\" means (i) the power, direct or indirect, to cause the\n      direction or management of such entity, whether by contract or\n      otherwise, or (ii) ownership of fifty percent (50%) or more of the\n      outstanding shares, or (iii) beneficial ownership of such entity.\n\n      \"You\" (or \"Your\") shall mean an individual or Legal Entity\n      exercising permissions granted by this License.\n\n      \"Source\" form shall mean the preferred form for making modifications,\n      including but not limited to software source code, documentation\n      source, and configuration files.\n\n      \"Object\" form shall mean any form resulting from mechanical\n      transformation or translation of a Source form, including but\n      not limited to compiled object code, generated documentation,\n      and conversions to other media types.\n\n      \"Work\" shall mean the work of authorship, whether in Source or\n      Object form, made available under the License, as indicated by a\n      copyright notice that is included in or attached to the work\n      (an example is provided in the Appendix below).\n\n      \"Derivative Works\" shall mean any work, whether in Source or Object\n      form, that is based on (or derived from) the Work and for which the\n      editorial revisions, annotations, elaborations, or other modifications\n      represent, as a whole, an original work of authorship. For the purposes\n      of this License, Derivative Works shall not include works that remain\n      separable from, or merely link (or bind by name) to the interfaces of,\n      the Work and Derivative Works thereof.\n\n      \"Contribution\" shall mean any work of authorship, including\n      the original version of the Work and any modifications or additions\n      to that Work or Derivative Works thereof, that is intentionally\n      submitted to Licensor for inclusion in the Work by the copyright owner\n      or by an individual or Legal Entity authorized to submit on behalf of\n      the copyright owner. For the purposes of this definition, \"submitted\"\n      means any form of electronic, verbal, or written communication sent\n      to the Licensor or its representatives, including but not limited to\n      communication on electronic mailing lists, source code control systems,\n      and issue tracking systems that are managed by, or on behalf of, the\n      Licensor for the purpose of discussing and improving the Work, but\n      excluding communication that is conspicuously marked or otherwise\n      designated in writing by the copyright owner as \"Not a Contribution.\"\n\n      \"Contributor\" shall mean Licensor and any individual or Legal Entity\n      on behalf of whom a Contribution has been received by Licensor and\n      subsequently incorporated within the Work.\n\n   2. Grant of Copyright License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      copyright license to reproduce, prepare Derivative Works of,\n      publicly display, publicly perform, sublicense, and distribute the\n      Work and such Derivative Works in Source or Object form.\n\n   3. Grant of Patent License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      (except as stated in this section) patent license to make, have made,\n      use, offer to sell, sell, import, and otherwise transfer the Work,\n      where such license applies only to those patent claims licensable\n      by such Contributor that are necessarily infringed by their\n      Contribution(s) alone or by combination of their Contribution(s)\n      with the Work to which such Contribution(s) was submitted. If You\n      institute patent litigation against any entity (including a\n      cross-claim or counterclaim in a lawsuit) alleging that the Work\n      or a Contribution incorporated within the Work constitutes direct\n      or contributory patent infringement, then any patent licenses\n      granted to You under this License for that Work shall terminate\n      as of the date such litigation is filed.\n\n   4. Redistribution. You may reproduce and distribute copies of the\n      Work or Derivative Works thereof in any medium, with or without\n      modifications, and in Source or Object form, provided that You\n      meet the following conditions:\n\n      (a) You must give any other recipients of the Work or\n          Derivative Works a copy of this License; and\n\n      (b) You must cause any modified files to carry prominent notices\n          stating that You changed the files; and\n\n      (c) You must retain, in the Source form of any Derivative Works\n          that You distribute, all copyright, patent, trademark, and\n          attribution notices from the Source form of the Work,\n          excluding those notices that do not pertain to any part of\n          the Derivative Works; and\n\n      (d) If the Work includes a \"NOTICE\" text file as part of its\n          distribution, then any Derivative Works that You distribute must\n          include a readable copy of the attribution notices contained\n          within such NOTICE file, excluding those notices that do not\n          pertain to any part of the Derivative Works, in at least one\n          of the following places: within a NOTICE text file distributed\n          as part of the Derivative Works; within the Source form or\n          documentation, if provided along with the Derivative Works; or,\n          within a display generated by the Derivative Works, if and\n          wherever such third-party notices normally appear. The contents\n          of the NOTICE file are for informational purposes only and\n          do not modify the License. You may add Your own attribution\n          notices within Derivative Works that You distribute, alongside\n          or as an addendum to the NOTICE text from the Work, provided\n          that such additional attribution notices cannot be construed\n          as modifying the License.\n\n      You may add Your own copyright statement to Your modifications and\n      may provide additional or different license terms and conditions\n      for use, reproduction, or distribution of Your modifications, or\n      for any such Derivative Works as a whole, provided Your use,\n      reproduction, and distribution of the Work otherwise complies with\n      the conditions stated in this License.\n\n   5. Submission of Contributions. Unless You explicitly state otherwise,\n      any Contribution intentionally submitted for inclusion in the Work\n      by You to the Licensor shall be under the terms and conditions of\n      this License, without any additional terms or conditions.\n      Notwithstanding the above, nothing herein shall supersede or modify\n      the terms of any separate license agreement you may have executed\n      with Licensor regarding such Contributions.\n\n   6. Trademarks. This License does not grant permission to use the trade\n      names, trademarks, service marks, or product names of the Licensor,\n      except as required for reasonable and customary use in describing the\n      origin of the Work and reproducing the content of the NOTICE file.\n\n   7. Disclaimer of Warranty. Unless required by applicable law or\n      agreed to in writing, Licensor provides the Work (and each\n      Contributor provides its Contributions) on an \"AS IS\" BASIS,\n      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or\n      implied, including, without limitation, any warranties or conditions\n      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A\n      PARTICULAR PURPOSE. You are solely responsible for determining the\n      appropriateness of using or redistributing the Work and assume any\n      risks associated with Your exercise of permissions under this License.\n\n   8. Limitation of Liability. In no event and under no legal theory,\n      whether in tort (including negligence), contract, or otherwise,\n      unless required by applicable law (such as deliberate and grossly\n      negligent acts) or agreed to in writing, shall any Contributor be\n      liable to You for damages, including any direct, indirect, special,\n      incidental, or consequential damages of any character arising as a\n      result of this License or out of the use or inability to use the\n      Work (including but not limited to damages for loss of goodwill,\n      work stoppage, computer failure or malfunction, or any and all\n      other commercial damages or losses), even if such Contributor\n      has been advised of the possibility of such damages.\n\n   9. Accepting Warranty or Additional Liability. While redistributing\n      the Work or Derivative Works thereof, You may choose to offer,\n      and charge a fee for, acceptance of support, warranty, indemnity,\n      or other liability obligations and/or rights consistent with this\n      License. However, in accepting such obligations, You may act only\n      on Your own behalf and on Your sole responsibility, not on behalf\n      of any other Contributor, and only if You agree to indemnify,\n      defend, and hold each Contributor harmless for any liability\n      incurred by, or claims asserted against, such Contributor by reason\n      of your accepting any such warranty or additional liability.\n\n   END OF TERMS AND CONDITIONS\n\n   APPENDIX: How to apply the Apache License to your work.\n\n      To apply the Apache License to your work, attach the following\n      boilerplate notice, with the fields enclosed by brackets \"[]\"\n      replaced with your own identifying information. (Don't include\n      the brackets!)  The text should be enclosed in the appropriate\n      comment syntax for the file format. We also recommend that a\n      file or class name and description of purpose be included on the\n      same \"printed page\" as the copyright notice for easier\n      identification within third-party archives.\n\n   Copyright [yyyy] [name of copyright owner]\n\n   Licensed under the Apache License, Version 2.0 (the \"License\");\n   you may not use this file except in compliance with the License.\n   You may obtain a copy of the License at\n\n       http://www.apache.org/licenses/LICENSE-2.0\n\n   Unless required by applicable law or agreed to in writing, software\n   distributed under the License is distributed on an \"AS IS\" BASIS,\n   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n   See the License for the specific language governing permissions and\n   limitations under the License.",
       "sources": [
@@ -5481,7 +5893,7 @@
           "path": "LICENSE"
         },
         {
-          "source": "installed-pod:AppCheckCore@11.3.1",
+          "source": "installed-pod:AppCheckCore@11.3.2",
           "path": "LICENSE"
         },
         {
@@ -5541,6 +5953,10 @@
           "path": "scripts/licenses/upstream/expo-expo-LICENSE"
         },
         {
+          "source": "upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE",
+          "path": "scripts/licenses/upstream/expo-expo-LICENSE"
+        },
+        {
           "source": "upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE",
           "path": "scripts/licenses/upstream/expo-expo-LICENSE"
         },
@@ -5574,6 +5990,16 @@
         },
         {
           "source": "npm:react-native-share@12.2.2",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "391e3c3de75e175f2363f65da4451fd1ee76108626f962a5c309c5816ee40034",
+      "text": "Copyright (c) 2018 lizhuoli1126@126.com <lizhuoli1126@126.com>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
+      "sources": [
+        {
+          "source": "installed-pod:SDWebImageSVGCoder@1.7.0",
           "path": "LICENSE"
         }
       ]
@@ -5621,6 +6047,16 @@
         {
           "source": "npm:@react-native-firebase/app@26.3.2",
           "path": "lib/internal/web/memidb/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "5fc4a917a185fc4ff0411ee2b8febb48031f83286beade2a1e3602df71e784a3",
+      "text": "Copyright (c) 2010, Google Inc. All rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are\nmet:\n\n  * Redistributions of source code must retain the above copyright\n    notice, this list of conditions and the following disclaimer.\n\n  * Redistributions in binary form must reproduce the above copyright\n    notice, this list of conditions and the following disclaimer in\n    the documentation and/or other materials provided with the\n    distribution.\n\n  * Neither the name of Google nor the names of its contributors may\n    be used to endorse or promote products derived from this software\n    without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nHOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.",
+      "sources": [
+        {
+          "source": "installed-pod:libwebp@1.6.0",
+          "path": "COPYING"
         }
       ]
     },
@@ -5684,6 +6120,16 @@
       "sources": [
         {
           "source": "installed-pod:openiap@3.3.1",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "c2a778e345885f506c10c9bc948bc75dd36b64d2c6b3f1feba33e2f0b9901414",
+      "text": "Copyright (c) 2018 Bogdan Poplauschi\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
+      "sources": [
+        {
+          "source": "installed-pod:SDWebImageWebPCoder@0.14.6",
           "path": "LICENSE"
         }
       ]
@@ -6053,6 +6499,16 @@
       ]
     },
     {
+      "sha256": "d1899b176ad9190c50ec20cdaa574ede2ea27afcf9e4422f15be83c49ba56fa7",
+      "text": "Copyright © 2018-2019, VideoLAN and dav1d authors\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n1. Redistributions of source code must retain the above copyright notice, this\n   list of conditions and the following disclaimer.\n\n2. Redistributions in binary form must reproduce the above copyright notice,\n   this list of conditions and the following disclaimer in the documentation\n   and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR\nANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\nLOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND\nON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\nSOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.",
+      "sources": [
+        {
+          "source": "installed-pod:libdav1d@1.2.0",
+          "path": "dav1d/COPYING"
+        }
+      ]
+    },
+    {
       "sha256": "d1d91013bad44a8e9205add3f028f1a3343d1e4856bbbdb38802b02787ad147d",
       "text": "Apache-2.0 License\n------------------\n\nCopyright (c) 2016-present Invertase Limited <oss@invertase.io> & Contributors\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this library except in compliance with the License.\n\nYou may obtain a copy of the Apache-2.0 License at\n\n    http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an \"AS IS\" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.\n\n\nCreative Commons Attribution 3.0 License\n----------------------------------------\n\nCopyright (c) 2016-present Invertase Limited <oss@invertase.io> & Contributors\n\nDocumentation and other instructional materials provided for this project\n(including on a separate documentation repository or it's documentation website) are\nlicensed under the Creative Commons Attribution 3.0 License. Code samples/blocks\ncontained therein are licensed under the Apache License, Version 2.0 (the \"License\"), as above.\n\nYou may obtain a copy of the Creative Commons Attribution 3.0 License at\n\n    https://creativecommons.org/licenses/by/3.0/",
       "sources": [
@@ -6085,7 +6541,7 @@
       "text": "Apache License\n                           Version 2.0, January 2004\n                        http://www.apache.org/licenses/\n\n   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION\n\n   1. Definitions.\n\n      \"License\" shall mean the terms and conditions for use, reproduction,\n      and distribution as defined by Sections 1 through 9 of this document.\n\n      \"Licensor\" shall mean the copyright owner or entity authorized by\n      the copyright owner that is granting the License.\n\n      \"Legal Entity\" shall mean the union of the acting entity and all\n      other entities that control, are controlled by, or are under common\n      control with that entity. For the purposes of this definition,\n      \"control\" means (i) the power, direct or indirect, to cause the\n      direction or management of such entity, whether by contract or\n      otherwise, or (ii) ownership of fifty percent (50%) or more of the\n      outstanding shares, or (iii) beneficial ownership of such entity.\n\n      \"You\" (or \"Your\") shall mean an individual or Legal Entity\n      exercising permissions granted by this License.\n\n      \"Source\" form shall mean the preferred form for making modifications,\n      including but not limited to software source code, documentation\n      source, and configuration files.\n\n      \"Object\" form shall mean any form resulting from mechanical\n      transformation or translation of a Source form, including but\n      not limited to compiled object code, generated documentation,\n      and conversions to other media types.\n\n      \"Work\" shall mean the work of authorship, whether in Source or\n      Object form, made available under the License, as indicated by a\n      copyright notice that is included in or attached to the work\n      (an example is provided in the Appendix below).\n\n      \"Derivative Works\" shall mean any work, whether in Source or Object\n      form, that is based on (or derived from) the Work and for which the\n      editorial revisions, annotations, elaborations, or other modifications\n      represent, as a whole, an original work of authorship. For the purposes\n      of this License, Derivative Works shall not include works that remain\n      separable from, or merely link (or bind by name) to the interfaces of,\n      the Work and Derivative Works thereof.\n\n      \"Contribution\" shall mean any work of authorship, including\n      the original version of the Work and any modifications or additions\n      to that Work or Derivative Works thereof, that is intentionally\n      submitted to Licensor for inclusion in the Work by the copyright owner\n      or by an individual or Legal Entity authorized to submit on behalf of\n      the copyright owner. For the purposes of this definition, \"submitted\"\n      means any form of electronic, verbal, or written communication sent\n      to the Licensor or its representatives, including but not limited to\n      communication on electronic mailing lists, source code control systems,\n      and issue tracking systems that are managed by, or on behalf of, the\n      Licensor for the purpose of discussing and improving the Work, but\n      excluding communication that is conspicuously marked or otherwise\n      designated in writing by the copyright owner as \"Not a Contribution.\"\n\n      \"Contributor\" shall mean Licensor and any individual or Legal Entity\n      on behalf of whom a Contribution has been received by Licensor and\n      subsequently incorporated within the Work.\n\n   2. Grant of Copyright License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      copyright license to reproduce, prepare Derivative Works of,\n      publicly display, publicly perform, sublicense, and distribute the\n      Work and such Derivative Works in Source or Object form.\n\n   3. Grant of Patent License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      (except as stated in this section) patent license to make, have made,\n      use, offer to sell, sell, import, and otherwise transfer the Work,\n      where such license applies only to those patent claims licensable\n      by such Contributor that are necessarily infringed by their\n      Contribution(s) alone or by combination of their Contribution(s)\n      with the Work to which such Contribution(s) was submitted. If You\n      institute patent litigation against any entity (including a\n      cross-claim or counterclaim in a lawsuit) alleging that the Work\n      or a Contribution incorporated within the Work constitutes direct\n      or contributory patent infringement, then any patent licenses\n      granted to You under this License for that Work shall terminate\n      as of the date such litigation is filed.\n\n   4. Redistribution. You may reproduce and distribute copies of the\n      Work or Derivative Works thereof in any medium, with or without\n      modifications, and in Source or Object form, provided that You\n      meet the following conditions:\n\n      (a) You must give any other recipients of the Work or\n          Derivative Works a copy of this License; and\n\n      (b) You must cause any modified files to carry prominent notices\n          stating that You changed the files; and\n\n      (c) You must retain, in the Source form of any Derivative Works\n          that You distribute, all copyright, patent, trademark, and\n          attribution notices from the Source form of the Work,\n          excluding those notices that do not pertain to any part of\n          the Derivative Works; and\n\n      (d) If the Work includes a \"NOTICE\" text file as part of its\n          distribution, then any Derivative Works that You distribute must\n          include a readable copy of the attribution notices contained\n          within such NOTICE file, excluding those notices that do not\n          pertain to any part of the Derivative Works, in at least one\n          of the following places: within a NOTICE text file distributed\n          as part of the Derivative Works; within the Source form or\n          documentation, if provided along with the Derivative Works; or,\n          within a display generated by the Derivative Works, if and\n          wherever such third-party notices normally appear. The contents\n          of the NOTICE file are for informational purposes only and\n          do not modify the License. You may add Your own attribution\n          notices within Derivative Works that You distribute, alongside\n          or as an addendum to the NOTICE text from the Work, provided\n          that such additional attribution notices cannot be construed\n          as modifying the License.\n\n      You may add Your own copyright statement to Your modifications and\n      may provide additional or different license terms and conditions\n      for use, reproduction, or distribution of Your modifications, or\n      for any such Derivative Works as a whole, provided Your use,\n      reproduction, and distribution of the Work otherwise complies with\n      the conditions stated in this License.\n\n   5. Submission of Contributions. Unless You explicitly state otherwise,\n      any Contribution intentionally submitted for inclusion in the Work\n      by You to the Licensor shall be under the terms and conditions of\n      this License, without any additional terms or conditions.\n      Notwithstanding the above, nothing herein shall supersede or modify\n      the terms of any separate license agreement you may have executed\n      with Licensor regarding such Contributions.\n\n   6. Trademarks. This License does not grant permission to use the trade\n      names, trademarks, service marks, or product names of the Licensor,\n      except as required for reasonable and customary use in describing the\n      origin of the Work and reproducing the content of the NOTICE file.\n\n   7. Disclaimer of Warranty. Unless required by applicable law or\n      agreed to in writing, Licensor provides the Work (and each\n      Contributor provides its Contributions) on an \"AS IS\" BASIS,\n      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or\n      implied, including, without limitation, any warranties or conditions\n      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A\n      PARTICULAR PURPOSE. You are solely responsible for determining the\n      appropriateness of using or redistributing the Work and assume any\n      risks associated with Your exercise of permissions under this License.\n\n   8. Limitation of Liability. In no event and under no legal theory,\n      whether in tort (including negligence), contract, or otherwise,\n      unless required by applicable law (such as deliberate and grossly\n      negligent acts) or agreed to in writing, shall any Contributor be\n      liable to You for damages, including any direct, indirect, special,\n      incidental, or consequential damages of any character arising as a\n      result of this License or out of the use or inability to use the\n      Work (including but not limited to damages for loss of goodwill,\n      work stoppage, computer failure or malfunction, or any and all\n      other commercial damages or losses), even if such Contributor\n      has been advised of the possibility of such damages.\n\n   9. Accepting Warranty or Additional Liability. While redistributing\n      the Work or Derivative Works thereof, You may choose to offer,\n      and charge a fee for, acceptance of support, warranty, indemnity,\n      or other liability obligations and/or rights consistent with this\n      License. However, in accepting such obligations, You may act only\n      on Your own behalf and on Your sole responsibility, not on behalf\n      of any other Contributor, and only if You agree to indemnify,\n      defend, and hold each Contributor harmless for any liability\n      incurred by, or claims asserted against, such Contributor by reason\n      of your accepting any such warranty or additional liability.\n\n   END OF TERMS AND CONDITIONS\n\n   APPENDIX: How to apply the Apache License to your work.\n\n      To apply the Apache License to your work, attach the following\n      boilerplate notice, with the fields enclosed by brackets \"[]\"\n      replaced with your own identifying information. (Don't include\n      the brackets!)  The text should be enclosed in the appropriate\n      comment syntax for the file format. We also recommend that a\n      file or class name and description of purpose be included on the\n      same \"printed page\" as the copyright notice for easier\n      identification within third-party archives.\n\n   Copyright [yyyy] [name of copyright owner]\n\n   Licensed under the Apache License, Version 2.0 (the \"License\");\n   you may not use this file except in compliance with the License.\n   You may obtain a copy of the License at\n\n       http://www.apache.org/licenses/LICENSE-2.0\n\n   Unless required by applicable law or agreed to in writing, software\n   distributed under the License is distributed on an \"AS IS\" BASIS,\n   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n   See the License for the specific language governing permissions and\n   limitations under the License.\n\n================================================================================\n\nCopyright (c) 2017 Landon J. Fuller <landon@landonf.org>\nAll rights reserved.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of\nthis software and associated documentation files (the \"Software\"), to deal in\nthe Software without restriction, including without limitation the rights to\nuse, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of\nthe Software, and to permit persons to whom the Software is furnished to do so,\nsubject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS\nFOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR\nCOPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER\nIN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN\nCONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
       "sources": [
         {
-          "source": "installed-pod:GoogleUtilities@8.1.3",
+          "source": "installed-pod:GoogleUtilities@8.1.4",
           "path": "LICENSE"
         }
       ]
