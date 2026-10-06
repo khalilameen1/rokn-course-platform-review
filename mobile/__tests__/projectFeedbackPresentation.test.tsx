@@ -147,7 +147,7 @@ describe('project feedback report and conversation presentation', () => {
     }
   });
 
-  it('copies completed report and follow-up content without display controls or native text selection', () => {
+  it('copies only the report and assistant reply while keeping the inquiry visible', () => {
     const inquiry = 'value = ٣ + 2;\n\nهل أغيّر Grease Pencil 4؟';
     const answer = 'غيّر value فقط\n\nاحتفظ بالإصدار 4';
     const base = props();
@@ -169,12 +169,11 @@ describe('project feedback report and conversation presentation', () => {
     const copyActions = renderer.root.findAllByType(CopyButton);
     expect(copyActions.map(action => action.props.value)).toEqual([
       reportText,
-      inquiry,
       answer,
     ]);
+    expect(texts(renderer)).toContain(inquiry);
     expect(copyActions.map(action => action.props.accessibilityLabel)).toEqual([
       'نسخ تقرير المشروع',
-      'نسخ الرسالة',
       'نسخ الرسالة',
     ]);
     for (const copyAction of copyActions) {
@@ -187,7 +186,6 @@ describe('project feedback report and conversation presentation', () => {
     }
     expect(jest.mocked(Clipboard.setString).mock.calls).toEqual([
       [reportText],
-      [inquiry],
       [answer],
     ]);
     expect(texts(renderer)).not.toContain('نسخ');

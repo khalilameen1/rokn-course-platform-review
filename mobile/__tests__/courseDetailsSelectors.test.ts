@@ -82,11 +82,10 @@ describe('course details presentation contract', () => {
     expect(result.selectedPlan?.code).toBe('mentor');
   });
 
-  it('keeps the free sample available to guests without exposing purchase', () => {
+  it('uses purchase as the primary entry and keeps the sample separate for a paid guest course', () => {
     const guestSample = presentation({remoteSession: false});
-    expect(guestSample.primaryActionLabel).toBe('شاهد مجانًا');
-    expect(guestSample.primaryAction.kind).toBe('preview');
-    expect(guestSample.showSecondaryPreview).toBe(false);
+    expect(guestSample.primaryAction).toEqual({kind: 'login', label: 'اشترِ الآن'});
+    expect(guestSample.showSecondaryPreview).toBe(true);
     expect(presentation({remoteSession: true}).showSecondaryPreview).toBe(true);
     expect(
       presentation({
@@ -99,7 +98,7 @@ describe('course details presentation contract', () => {
         remoteCourse: {...course, previewReelCount: 0},
         remoteSession: false,
       }).primaryActionLabel,
-    ).toContain('سجّل الدخول');
+    ).toBe('اشترِ الآن');
     expect(
       presentation({
         remoteCourse: {...course, owned: true, started: true},
@@ -110,7 +109,17 @@ describe('course details presentation contract', () => {
         remoteCourse: {...course, owned: true, started: false},
       }).primaryAction,
     ).toEqual({kind: 'start', label: 'ابدأ الكورس'});
-    expect(presentation().primaryActionLabel).toBe('اختر الاشتراك');
+    expect(presentation().primaryAction).toEqual({kind: 'choose_plan', label: 'اشترِ الآن'});
+  });
+
+  it('buys a single paid tier but does not relabel an entirely free course as a purchase', () => {
+    expect(presentation({remoteCourse: {...course, accessPlans: [plan('basic', 300)]}})
+      .primaryAction).toEqual({kind: 'purchase', label: 'اشترِ الآن'});
+    const freeCourse = {...course, price: 0, accessPlans: [plan('basic', 0)]};
+    expect(presentation({remoteCourse: freeCourse}).primaryAction)
+      .toEqual({kind: 'free', label: 'ابدأ التعلّم مجانًا'});
+    expect(presentation({remoteCourse: freeCourse, remoteSession: false}).primaryAction)
+      .toEqual({kind: 'preview', label: 'شاهد مجانًا'});
   });
 
   it('derives ownership only from the course entitlement snapshot', () => {
@@ -167,7 +176,7 @@ describe('course details presentation contract', () => {
 
     expect(result.primaryAction).toEqual({
       kind: 'choose_plan',
-      label: 'اختر الاشتراك',
+      label: 'اشترِ الآن',
     });
   });
 

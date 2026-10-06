@@ -9,6 +9,12 @@ require('react-native-gesture-handler/jestSetup');
 // Component contracts inspect the source/cache/error callbacks here. Native
 // Glide/SDWebImage rendering still requires signed-device acceptance.
 jest.mock('expo-image', () => ({Image: 'ExpoImage'}));
+// Units inspect startup ownership; actual native handoff needs the signed build.
+jest.mock('expo-splash-screen', () => ({
+  hide: jest.fn(),
+  preventAutoHideAsync: jest.fn(async () => undefined),
+  setOptions: jest.fn(),
+}));
 
 jest.mock('@react-native-community/netinfo', () =>
   require('@react-native-community/netinfo/jest/netinfo-mock'),

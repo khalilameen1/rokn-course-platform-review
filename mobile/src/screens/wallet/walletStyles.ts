@@ -39,7 +39,6 @@ export const walletStyles = StyleSheet.create({
     paddingBottom: Spacing.md,
     gap: Spacing.md,
   },
-  rewardsHeroStacked: {flexDirection: 'column', alignItems: 'center'},
   rewardsBalanceCopy: {flexShrink: 1, minWidth: 0},
   rewardsBalance: {
     ...Type.display,

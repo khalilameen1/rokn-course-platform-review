@@ -19,8 +19,10 @@ No extra dependency or purchase flow was introduced.
 ## Approved screen
 
 - Header: مكافآتي and a visible السجل label beside the history icon.
-- Hero: earned balance only, number beside coin_stack on normal phone widths.
-  Enlarged text reflows instead of shrinking or truncating the amount.
+- Hero: earned balance only, number physically right of coin_stack in one RTL
+  row, including enlarged phone text. The complete numeral fits its available
+  cell instead of moving above the artwork; its full value is also exposed to
+  the screen reader. Task rows retain their separate large-text reflow.
 - Task title/brand/reward and a filled primary action. Completed tasks stay
   collapsed until requested. Welcome rewards remain automatic, not claim tasks.
 - Below tasks: كيف يعمل الرصيد as a full-width disclosure, matching the

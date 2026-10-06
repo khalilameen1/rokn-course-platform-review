@@ -806,14 +806,23 @@ const nativeSplashPlugin = app.plugins?.find(
 );
 assert(
   nativeSplashPlugin?.[1]?.imageWidth === 205 &&
+    nativeSplashPlugin[1].image === './src/assets/images/brand/rokn-startup-brand.png' &&
     nativeSplashPlugin[1].backgroundColor === '#0B1628' &&
-    nativeSplashPlugin[1].android?.imageWidth === 180 &&
+    nativeSplashPlugin[1].android?.image === './src/assets/images/brand/rokn-startup-brand-android.png' &&
+    nativeSplashPlugin[1].android?.imageWidth === 192 &&
     nativeSplashPlugin[1].resizeMode === 'contain',
-  'Native startup must retain the approved Rokn wordmark composition.',
+  'Native startup must retain the approved complete Rokn wordmark and slogan composition.',
 );
 const requiredAssets = [
   app.icon,
   nativeSplashPlugin?.[1]?.image,
+  nativeSplashPlugin?.[1]?.android?.image,
+  'android/app/src/main/res/drawable-mdpi/splashscreen_logo.png',
+  'android/app/src/main/res/drawable-hdpi/splashscreen_logo.png',
+  'android/app/src/main/res/drawable-xhdpi/splashscreen_logo.png',
+  'android/app/src/main/res/drawable-xxhdpi/splashscreen_logo.png',
+  'android/app/src/main/res/drawable-xxxhdpi/splashscreen_logo.png',
+  'ios/Rokn/Images.xcassets/RoknStartupBrand.imageset/rokn-startup-brand@3x.png',
   app.android?.adaptiveIcon?.foregroundImage,
   'android/gradle/wrapper/gradle-wrapper.jar',
   'android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml',

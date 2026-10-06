@@ -143,6 +143,8 @@ export const selectCourseDetailsPresentation = ({
     ? started
       ? ({kind: 'resume', label: 'استكمل الكورس'} as const)
       : ({kind: 'start', label: 'ابدأ الكورس'} as const)
+    : remoteSession === false && requiresWallet && CAN_START_COIN_CHECKOUT
+    ? ({kind: 'login', label: 'اشترِ الآن'} as const)
     : remoteSession === false && hasPreview
     ? ({kind: 'preview', label: 'شاهد مجانًا'} as const)
     : remoteSession === false
@@ -156,12 +158,15 @@ export const selectCourseDetailsPresentation = ({
     : requiresWallet && remoteCommerceLoading
     ? ({kind: 'disabled', label: 'جارٍ تجهيز الشراء'} as const)
     : requiresWallet && remoteBalance === null
-    ? ({kind: 'wallet_unavailable', label: 'شراء الكورس'} as const)
+    ? ({kind: 'wallet_unavailable', label: 'اشترِ الآن'} as const)
     : accessPlans.length > 1
-    ? ({kind: 'choose_plan', label: 'اختر الاشتراك'} as const)
+    ? ({
+        kind: 'choose_plan',
+        label: requiresWallet ? 'اشترِ الآن' : 'اختر الاشتراك',
+      } as const)
     : coursePrice === 0
     ? ({kind: 'free', label: 'ابدأ التعلّم مجانًا'} as const)
-    : ({kind: 'purchase', label: 'شراء الكورس'} as const);
+    : ({kind: 'purchase', label: 'اشترِ الآن'} as const);
   const canChooseAccess =
     !owned && pageReady && !remoteError && remoteSession === true;
   const showSecondaryPreview =

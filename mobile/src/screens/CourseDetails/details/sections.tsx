@@ -290,14 +290,14 @@ export const CourseIntro = ({
     )}
     {!remoteError && showSecondaryPreview && (
       <Pressable
-        accessibilityLabel="شاهد مجانًا"
+        accessibilityLabel="معاينة الكورس"
         accessibilityRole="button"
         onPress={onPreview}
         style={({pressed}) => [
           styles.previewButton,
           pressed && styles.pressed,
         ]}>
-        <Text style={styles.previewButtonText}>شاهد مجانًا</Text>
+        <Text style={styles.previewButtonText}>معاينة الكورس</Text>
         <Svg
           accessible={false}
           accessibilityElementsHidden

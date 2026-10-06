@@ -2,6 +2,7 @@ import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
 import React from 'react';
+import {StyleSheet, View} from 'react-native';
 
 import {navigationRef} from './RootNavigationHelper';
 
@@ -38,11 +39,14 @@ import {AuthenticatedScreenBoundary} from './AuthenticatedScreenBoundary';
 import {extractApiToken} from '../constants/helpers';
 import {useSelector} from 'react-redux';
 import type {RootState} from '../store/store';
-import {StartupBrand} from '../components/ui/StartupBrand';
 import {useStartupExperience} from '../screens/appInitializer/StartupExperience';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const NavigationFallback = () => <StartupBrand />;
+// The native splash already owns the brand while initial linking resolves.
+const NavigationFallback = () => <View style={styles.navigationFallback} />;
+const styles = StyleSheet.create({
+  navigationFallback: {flex: 1, backgroundColor: '#0B1628'},
+});
 
 const Stacks = ({sessionReady}: {sessionReady: boolean}) => {
   const reducedMotion = useReducedMotion();

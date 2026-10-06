@@ -47,6 +47,9 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
     walletStatus,
     setWalletModal,
   } = controller;
+  const rewardAmount = displayedBalance === null
+    ? '—'
+    : formatArabicNumber(displayedRewardBalance);
   const header = <HeaderWithBack hasArrow={false} title="مكافآتي" />;
   if (!ownerReady || serverSession === null) {
     return (
@@ -123,16 +126,16 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
               <Text style={styles.historyLabel}>السجل</Text>
             </Pressable>
           </View>
-          <View
-            style={[styles.rewardsHero, stacked && styles.rewardsHeroStacked]}>
+          <View style={styles.rewardsHero}>
             <View style={styles.rewardsBalanceCopy}>
               <Text
                 accessibilityLabel="رصيد المكافآت"
+                accessibilityValue={{text: rewardAmount}}
                 accessibilityLiveRegion="polite"
+                numberOfLines={1}
+                adjustsFontSizeToFit
                 style={styles.rewardsBalance}>
-                {displayedBalance === null
-                  ? '—'
-                  : formatArabicNumber(displayedRewardBalance)}
+                {rewardAmount}
               </Text>
             </View>
             <RoknCoinStack size={102} style={styles.rewardsArt} />

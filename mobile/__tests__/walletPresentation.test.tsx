@@ -1,5 +1,5 @@
 import React from 'react';
-import {StyleSheet, Text} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import {WalletView} from '../src/screens/wallet/WalletView';
 import {WalletPackageRail} from '../src/screens/wallet/WalletPackageRail';
@@ -112,10 +112,31 @@ describe('rewards presentation', () => {
       const balance = root
         .findAllByType(Text)
         .find(node => node.props.accessibilityLabel === 'رصيد المكافآت')!;
-      expect(balance.props.numberOfLines).toBeUndefined();
+      expect(balance.props.numberOfLines).toBe(1);
+      expect(balance.props.adjustsFontSizeToFit).toBe(true);
       expect(balance.props.allowFontScaling).not.toBe(false);
+      expect(balance.props.accessibilityValue).toEqual({text: formatArabicNumber(250)});
+      const hero = root.findAllByType(View).find(node =>
+        node.props.style === walletStyles.rewardsHero,
+      )!;
+      expect(StyleSheet.flatten(hero.props.style)).toMatchObject({
+        direction: 'rtl', flexDirection: 'row',
+      });
+      // With RTL Yoga row semantics, the first child is physically on the right.
+      expect(hero.children[0]).toBe(balance.parent);
+      expect(hero.children[1]).toBe(root.findByType(RoknCoinStack));
     },
   );
+  it.each([0, 60, 7890, 1000000])('keeps the complete amount available beside the artwork (balance=%i)', async balance => {
+    mockDimensions = {...mockDimensions, width: 320, fontScale: 2};
+    const root = await render(makeController({displayedRewardBalance: balance}));
+    const amount = root.findAllByType(Text).find(node =>
+      node.props.accessibilityLabel === 'رصيد المكافآت',
+    )!;
+    expect(amount.props.children).toBe(formatArabicNumber(balance));
+    expect(amount.props.accessibilityValue.text).toBe(formatArabicNumber(balance));
+    expect(amount.props.adjustsFontSizeToFit).toBe(true);
+  });
   it('keeps the task title, brand and reward without a description paragraph', async () => {
     const controller = makeController();
     const root = await render(controller);

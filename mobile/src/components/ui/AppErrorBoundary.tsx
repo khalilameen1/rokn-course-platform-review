@@ -2,6 +2,7 @@ import React, {ErrorInfo, ReactNode} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import RNRestart from 'react-native-restart';
+import {hide as hideNativeSplash} from 'expo-splash-screen';
 import {
   Accessibility,
   Palette,
@@ -27,6 +28,9 @@ export default class AppErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
+    // React has committed the recovery surface. Never leave it hidden behind
+    // native launch if a render fault unmounted StartupExperience before ready.
+    hideNativeSplash();
     if (__DEV__) {
       console.error('Rokn render failure', error, info.componentStack);
     }

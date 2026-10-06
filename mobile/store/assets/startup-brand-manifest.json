@@ -1,0 +1,95 @@
+{
+  "method": "original-wordmark-real-Cairo-fonts-native-single-splash",
+  "sharp": "0.35.4",
+  "slogan": "كورسات هتكملها",
+  "background": "#0B1628",
+  "logical": {
+    "width": 205,
+    "height": 118,
+    "wordmarkHeight": 68,
+    "gap": 23,
+    "lineHeight": 27
+  },
+  "android": {
+    "frameDp": 192,
+    "compositionWidthDp": 160,
+    "maskRadiusDp": 96,
+    "maxAlphaRadiusDp": 91.39970596232791,
+    "nativeCanvasDp": 288,
+    "imageWidthDp": 192,
+    "generator": "@expo/prebuild-config/setSplashImageDrawablesForThemeAsync",
+    "generatorVersion": "55.0.22"
+  },
+  "sources": [
+    {
+      "file": "src/assets/images/logo.png",
+      "sha256": "a257b8279434edef0813f5d6ed92f20698a5cc81bc03ba14855ea0603494ea8c"
+    },
+    {
+      "file": "src/assets/fonts/Cairo/Cairo-Medium.ttf",
+      "sha256": "64c7cab8e2cf003c3fc4edca1820e7e1b0ee667373cf8500060bca97262a2b65"
+    },
+    {
+      "file": "src/assets/fonts/Cairo/Cairo-ExtraBold.ttf",
+      "sha256": "67526b4f18bb9bb568e81135df9eec813a15cc1252ae784ea505236e75a5b56e"
+    }
+  ],
+  "outputs": [
+    {
+      "file": "src/assets/images/brand/rokn-startup-brand.png",
+      "width": 820,
+      "height": 472,
+      "bytes": 56482,
+      "sha256": "394b88bc7fee47582db6a79d24bf0a889b0abdb6b730aabb37da2b03daa32b2b"
+    },
+    {
+      "file": "src/assets/images/brand/rokn-startup-brand-android.png",
+      "width": 768,
+      "height": 768,
+      "bytes": 54349,
+      "sha256": "b2ae826f31332629353b71bb81ab5365f5bb84e3e6f7907b774473c1eddd8291"
+    },
+    {
+      "file": "ios/Rokn/Images.xcassets/RoknStartupBrand.imageset/rokn-startup-brand@3x.png",
+      "width": 615,
+      "height": 354,
+      "bytes": 47164,
+      "sha256": "75c6aae88b94047c144cfe970872e16e06bf4466aa74ed403887ef57a4b6faad"
+    },
+    {
+      "file": "android/app/src/main/res/drawable-mdpi/splashscreen_logo.png",
+      "width": 288,
+      "height": 288,
+      "bytes": 8509,
+      "sha256": "48ff9e73c8cdaf9019f75bedb0fa0f502ffac65f30efab1cd98c1dd19f93f550"
+    },
+    {
+      "file": "android/app/src/main/res/drawable-hdpi/splashscreen_logo.png",
+      "width": 432,
+      "height": 432,
+      "bytes": 14522,
+      "sha256": "39a76949bb3eb78dfdea6679ab0e2ec7bd2fd9c3bea34bcc470f573d742a05e6"
+    },
+    {
+      "file": "android/app/src/main/res/drawable-xhdpi/splashscreen_logo.png",
+      "width": 576,
+      "height": 576,
+      "bytes": 21145,
+      "sha256": "aa7cf525389918831efb541aaa3d03070afa9d8e7325c473fa5bc13f62c37e51"
+    },
+    {
+      "file": "android/app/src/main/res/drawable-xxhdpi/splashscreen_logo.png",
+      "width": 864,
+      "height": 864,
+      "bytes": 39293,
+      "sha256": "b193508cea65573eabfad2eb7b5f71c2b79f2af6fbc7ca040c6cccda65bdcef0"
+    },
+    {
+      "file": "android/app/src/main/res/drawable-xxxhdpi/splashscreen_logo.png",
+      "width": 1152,
+      "height": 1152,
+      "bytes": 59898,
+      "sha256": "a300a67aac66edf773e46290d036d8e164db8fc72d4817a2a731d62679d1c1e8"
+    }
+  ]
+}

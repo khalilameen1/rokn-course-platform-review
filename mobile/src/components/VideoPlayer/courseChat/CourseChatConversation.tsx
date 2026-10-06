@@ -3,7 +3,6 @@ import type {RefObject} from 'react';
 import {ActivityIndicator, Animated, Pressable, ScrollView, Text, TextInput, View} from 'react-native';
 import {RasterImage as Image} from '../../ui/RasterImage';
 import Svg, {Path} from 'react-native-svg';
-import {Palette} from '../../../constants/designSystem';
 import {useReducedMotion} from '../../../hooks/useReducedMotion';
 import {cleanUnicodeText} from '../../../utils/unicodeText';
 import {CopyButton} from '../../ui/CopyButton';
@@ -18,10 +17,10 @@ import {courseChatStyles as styles} from './styles';
 import type {AssistantPresence} from './conversation';
 
 const canCopyMessage = (message: ChatMessage): boolean =>
+  message.role === 'assistant' &&
   Boolean(cleanUnicodeText(message.text)) &&
   !message.id.startsWith('welcome-') &&
-  (message.role === 'user' ||
-    !courseChatTurnShowsActivity(message.deliveryStatus));
+  !courseChatTurnShowsActivity(message.deliveryStatus);
 
 const SendIcon = () => (
   <Svg width={21} height={21} viewBox="0 0 24 24">
@@ -227,7 +226,6 @@ export const CourseChatConversation = ({
                   <CopyButton
                     accessibilityLabel="نسخ الرسالة"
                     value={cleanUnicodeText(message.text)}
-                    color={message.role === 'user' ? Palette.text : undefined}
                   />
                 )}
                 {message.role === 'assistant' &&

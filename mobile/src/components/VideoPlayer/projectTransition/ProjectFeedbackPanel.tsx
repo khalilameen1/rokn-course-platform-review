@@ -131,9 +131,9 @@ const FeedbackMessage = ({
 }) => {
   const copyValue = cleanUnicodeText(message.text);
   const canCopy =
+    message.role === 'assistant' &&
     Boolean(copyValue) &&
-    (message.role === 'user' ||
-      ['completed', 'failed'].includes(message.status));
+    ['completed', 'failed'].includes(message.status);
 
   return (
     <View

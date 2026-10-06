@@ -12,6 +12,7 @@ jest.mock('../src/services/productAnalytics', () => ({
 }));
 
 import {usePurchaseEntry} from '../src/screens/CourseDetails/details/usePurchaseEntry';
+import {openGuestLogin} from '../src/navigation/journeyNavigation';
 
 type EntryParams = Parameters<typeof usePurchaseEntry>[0];
 const plans: EntryParams['accessPlans'] = ['basic', 'mentor'].map(code => ({
@@ -50,22 +51,57 @@ function setup(overrides: Partial<EntryParams> = {}) {
     spendableBalance: 0,
     ...overrides,
   };
+  let entry!: ReturnType<typeof usePurchaseEntry>;
   const Harness = ({ready}: {ready: boolean}) => {
-    usePurchaseEntry(
+    entry = usePurchaseEntry(
       ready
         ? {
             ...params,
-            primaryAction: {kind: 'choose_plan', label: 'اختر الاشتراك'},
+            primaryAction: {kind: 'choose_plan', label: 'اشترِ الآن'},
             spendableBalance: 900,
           }
         : params,
     );
     return null;
   };
-  return {consume, openForTerms, setNotice, Harness};
+  return {consume, openForTerms, setNotice, Harness, entry: () => entry};
 }
 
 describe('purchase return readiness', () => {
+  it.each([false, true])('routes buy now to login or plan selection, never preview (session=%s)', async remoteSession => {
+    jest.mocked(openGuestLogin).mockClear();
+    const fixture = setup({
+      remoteSession,
+      routeParams: {courseId: '52'},
+      primaryAction: remoteSession
+        ? {kind: 'choose_plan', label: 'اشترِ الآن'}
+        : {kind: 'login', label: 'اشترِ الآن'},
+    });
+    const onPreview = jest.fn();
+    const onStart = jest.fn();
+    let renderer!: TestRenderer.ReactTestRenderer;
+    try {
+      await act(async () => {
+        renderer = TestRenderer.create(<fixture.Harness ready={false} />);
+      });
+      await act(async () => fixture.entry().runPrimaryAction({onPreview, onStart}));
+      expect(onPreview).not.toHaveBeenCalled();
+      expect(onStart).not.toHaveBeenCalled();
+      if (remoteSession) {
+        expect(openGuestLogin).not.toHaveBeenCalled();
+        expect(fixture.openForTerms).toHaveBeenCalledWith({
+          forcePlanSelection: true, purchasePrice: 700, spendableBalance: 0,
+        });
+      } else {
+        expect(fixture.openForTerms).not.toHaveBeenCalled();
+        expect(openGuestLogin).toHaveBeenCalledWith(expect.anything(), {
+          name: 'CourseDetails', params: {courseId: '52', openPurchase: true},
+        });
+      }
+    } finally {
+      if (renderer) await act(async () => renderer.unmount());
+    }
+  });
   it.each([undefined, 'mentor'])(
     'keeps the login return intent until commerce is ready (plan=%s)',
     async purchasePlanCode => {
@@ -97,7 +133,7 @@ describe('purchase return readiness', () => {
 
   it('reports a completed wallet failure instead of waiting forever', async () => {
     const {consume, openForTerms, setNotice, Harness} = setup({
-      primaryAction: {kind: 'wallet_unavailable', label: 'شراء الكورس'},
+      primaryAction: {kind: 'wallet_unavailable', label: 'اشترِ الآن'},
     });
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {

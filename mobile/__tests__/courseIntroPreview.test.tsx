@@ -55,7 +55,7 @@ describe('CourseIntro preview availability', () => {
   const previewButtons = () =>
     renderer!.root.findAll(
       node =>
-        node.props.accessibilityLabel === 'شاهد مجانًا' &&
+        node.props.accessibilityLabel === 'معاينة الكورس' &&
         typeof node.props.onPress === 'function',
     );
 

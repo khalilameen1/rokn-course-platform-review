@@ -21,9 +21,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./src/assets/images/logo.png",
+          "image": "./src/assets/images/brand/rokn-startup-brand.png",
           "imageWidth": 205,
-          "android": {"imageWidth": 180},
+          "android": {
+            "image": "./src/assets/images/brand/rokn-startup-brand-android.png",
+            "imageWidth": 192
+          },
           "resizeMode": "contain",
           "backgroundColor": "#0B1628"
         }
@@ -36,7 +39,7 @@
     ],
     "android": {
       "package": "com.rokn",
-      "versionCode": 64,
+      "versionCode": 65,
       "googleServicesFile": "./android/app/google-services.json",
       "intentFilters": [
         {
@@ -78,7 +81,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.rokn",
-      "buildNumber": "53",
+      "buildNumber": "54",
       "googleServicesFile": "./ios/GoogleService-Info.plist",
       "supportsTablet": true,
       "usesAppleSignIn": true,

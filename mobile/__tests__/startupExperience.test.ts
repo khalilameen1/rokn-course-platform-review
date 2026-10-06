@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import {createHash} from 'crypto';
 
 const readSource = (relativePath: string) =>
   fs.readFileSync(path.resolve(__dirname, '..', relativePath), 'utf8');
@@ -24,7 +25,7 @@ describe('first-launch experience', () => {
 
   it('keeps native loading limited to the Rokn brand and one slogan at most', () => {
     const androidSplash = readSource(
-      'android/app/src/main/res/drawable/rokn_launch_screen.xml',
+      'android/app/src/main/res/values/styles.xml',
     );
     const iosSplash = readSource('ios/Rokn/LaunchScreen.storyboard');
     const appConfig = JSON.parse(readSource('app.json')) as {
@@ -35,9 +36,9 @@ describe('first-launch experience', () => {
       };
     };
 
-    expect(androidSplash).toContain('@drawable/rokn_wordmark');
-    expect(iosSplash).toContain('image="RoknWordmark"');
-    expect(iosSplash).toContain('text="كورسات هتكملها"');
+    expect(androidSplash).toContain('@drawable/splashscreen_logo');
+    expect(iosSplash).toContain('image="RoknStartupBrand"');
+    expect(iosSplash).not.toContain('<label');
     expect(`${androidSplash}\n${iosSplash}`).not.toMatch(
       /تعلّم بمقاطع|مشروعات|Rokn AI|ابدأ الآن/,
     );
@@ -45,9 +46,9 @@ describe('first-launch experience', () => {
       entry => Array.isArray(entry) && entry[0] === 'expo-splash-screen',
     ) as [string, Record<string, unknown>];
     expect(plugin[1]).toEqual({
-      image: './src/assets/images/logo.png',
+      image: './src/assets/images/brand/rokn-startup-brand.png',
       imageWidth: 205,
-      android: {imageWidth: 180},
+      android: {image: './src/assets/images/brand/rokn-startup-brand-android.png', imageWidth: 192},
       resizeMode: 'contain',
       backgroundColor: '#0B1628',
     });
@@ -55,7 +56,7 @@ describe('first-launch experience', () => {
     expect(appConfig.expo.android.splash).toBeUndefined();
   });
 
-  it('hands native startup to the first React frame without a second I/O gate', () => {
+  it('holds Expo native launch before registration without a second React brand', () => {
     const activity = readSource(
       'android/app/src/main/java/com/rokn/MainActivity.kt',
     );
@@ -77,8 +78,35 @@ describe('first-launch experience', () => {
     expect(theme).toContain('name="postSplashScreenTheme">@style/AppTheme');
     expect(manifest).toContain('android:theme="@style/RoknLaunchTheme"');
     expect(entry).toContain('setSplashOptions({duration: 0, fade: false})');
-    expect(entry).not.toContain('preventAutoHideAsync');
+    expect(entry).toContain('void preventAutoHideAsync();');
+    expect(entry.indexOf('void preventAutoHideAsync();')).toBeLessThan(entry.indexOf('registerRootComponent(RNapp)'));
+    const startup = readSource('src/screens/appInitializer/StartupExperience.tsx');
+    expect(startup).toContain('hideNativeSplash();');
+    expect(startup).not.toMatch(/Animated|StartupBrand|startup-cover/);
+    expect(readSource('src/navigation/Navigation.tsx')).not.toContain('StartupBrand');
+    expect(readSource('src/components/ui/AppErrorBoundary.tsx')).toContain('hideNativeSplash();');
     expect(podfile).toContain('use_expo_modules!');
+  });
+
+  it('ships the original logo and font composition consistently in native and Expo config', () => {
+    const manifest = JSON.parse(readSource('store/assets/startup-brand-manifest.json'));
+    expect(manifest.slogan).toBe('كورسات هتكملها');
+    expect(manifest.logical).toMatchObject({width: 205, height: 118, gap: 23});
+    expect(manifest.android.maxAlphaRadiusDp).toBeLessThan(manifest.android.maskRadiusDp);
+    for (const source of [...manifest.sources, ...manifest.outputs]) {
+      const bytes = fs.readFileSync(path.resolve(__dirname, '..', source.file));
+      expect(createHash('sha256').update(bytes).digest('hex')).toBe(source.sha256);
+    }
+    expect(manifest.android.generator).toBe('@expo/prebuild-config/setSplashImageDrawablesForThemeAsync');
+    expect(manifest.android.nativeCanvasDp).toBe(288);
+    expect(manifest.android.imageWidthDp).toBe(192);
+    for (const [density, multiplier] of [['mdpi', 1], ['hdpi', 1.5], ['xhdpi', 2], ['xxhdpi', 3], ['xxxhdpi', 4]] as const) {
+      const image = fs.readFileSync(path.resolve(__dirname, `../android/app/src/main/res/drawable-${density}/splashscreen_logo.png`));
+      expect(image.readUInt32BE(16)).toBe(288 * multiplier);
+      expect(image.readUInt32BE(20)).toBe(288 * multiplier);
+    }
+    const catalog = JSON.parse(readSource('ios/Rokn/Images.xcassets/RoknStartupBrand.imageset/Contents.json'));
+    expect(catalog.images).toEqual([{filename: 'rokn-startup-brand@3x.png', idiom: 'universal', scale: '3x'}]);
   });
 
   it('qualifies Android 13 splash behavior without losing the shared launch theme', () => {
@@ -95,7 +123,7 @@ describe('first-launch experience', () => {
       'name="windowSplashScreenBackground">@color/rokn_startup_background',
     );
     expect(base).toContain(
-      'name="windowSplashScreenAnimatedIcon">@drawable/rokn_launch_screen',
+      'name="windowSplashScreenAnimatedIcon">@drawable/splashscreen_logo',
     );
     expect(base).toContain('name="postSplashScreenTheme">@style/AppTheme');
     expect(`${base}\n${api33}`).not.toMatch(/tools:(?:ignore|targetApi)/);

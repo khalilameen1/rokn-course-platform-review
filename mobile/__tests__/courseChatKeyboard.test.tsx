@@ -313,7 +313,7 @@ describe('course conversation keyboard ownership', () => {
     ).toBe(sheetProps);
   });
 
-  it('offers copy for authored questions even when delivery is unresolved or failed', async () => {
+  it('keeps authored questions visible without a copy action in every delivery state', async () => {
     mockChatState.messages = (
       ['submitting', 'sent', 'completed', 'failed', 'cancelled'] as const
     ).map((deliveryStatus, index) => ({
@@ -325,9 +325,13 @@ describe('course conversation keyboard ownership', () => {
       contextEligible: deliveryStatus === 'completed',
     }));
     await render();
-    expect(
-      renderer.root.findAllByType(CopyButton).map(button => button.props.value),
-    ).toEqual(mockChatState.messages.map(message => message.text));
+    expect(renderer.root.findAllByType(CopyButton)).toHaveLength(0);
+    const visibleTexts = renderer.root
+      .findAllByType(Text)
+      .map(node => node.props.children);
+    for (const message of mockChatState.messages) {
+      expect(visibleTexts).toContain(message.text);
+    }
   });
 
   it('preserves settled assistant text for copy and hides welcome, empty, and active replies', async () => {
