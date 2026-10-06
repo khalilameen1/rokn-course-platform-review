@@ -62,7 +62,11 @@ jest.mock('../src/components/containers/Containers', () => {
   return {Container: View, Content: View};
 });
 jest.mock('../src/components/view/HeaderWithBack', () => () => null);
+jest.mock('../src/components/FullTrackUpgradeSheet', () => () => null);
+jest.mock('../src/hooks/useReducedMotion', () => ({useReducedMotion: () => true}));
 jest.mock('../src/components/ui/PremiumUI', () => ({
+  MetaPill: () => null,
+  SectionHeading: () => null,
   StatusView: ({title, actionLabel, onAction}: {title: string; actionLabel?: string; onAction?: () => void}) => {
     const ReactModule = require('react') as typeof React;
     const {Text: NativeText, View} = require('react-native');
@@ -88,6 +92,7 @@ jest.mock('../src/screens/Profile/certificates/CertificateArtifactPreview', () =
 }));
 
 import CourseCertificate from '../src/screens/CourseCertificate';
+import Certificates from '../src/screens/Profile/Certificates';
 
 const course = (id = '52', certificateAvailable = true) => ({
   id, title: `كورس ${id}`, certificateAvailable, progress: 100,
@@ -216,12 +221,90 @@ describe('Udemy-style exact-course certificate access with Rokn issuance rules',
     mockCertificates.mockRejectedValue(new Error('offline'));
     mockLearning.mockRejectedValue(new Error('offline'));
     await mount();
-    expect(texts()).toContain('تعذّر تحميل الشهادة');
+    expect(texts()).toContain('تعذّر تحديث الشهادة');
     expect(mockIssue).not.toHaveBeenCalled();
     mockCertificates.mockResolvedValue([]);
     mockLearning.mockResolvedValue([course()]);
     await press('إعادة المحاولة');
     expect(renderer!.root.findAllByType(TextInput)).toHaveLength(1);
+    expect(mockIssue).not.toHaveBeenCalled();
+  });
+
+  it('offers a read retry after returning offline to the name form and preserves the edited name', async () => {
+    await mount();
+    await act(async () => renderer!.root.findByType(TextInput).props.onChangeText('خليل أمين'));
+    mockCertificates.mockRejectedValue(new Error('offline'));
+    mockLearning.mockRejectedValue(new Error('offline'));
+    await act(async () => {
+      mockForeground = false;
+      renderer!.update(<CourseCertificate />);
+    });
+    await act(async () => {
+      mockForeground = true;
+      renderer!.update(<CourseCertificate />);
+    });
+    expect(mockIssue).not.toHaveBeenCalled();
+    expect(renderer!.root.findAll(node =>
+      node.props.accessibilityLabel === 'إصدار الشهادة' && typeof node.props.onPress === 'function',
+    )).toHaveLength(0);
+    mockCertificates.mockResolvedValue([]);
+    mockLearning.mockResolvedValue([course()]);
+    await press('إعادة المحاولة');
+    expect(renderer!.root.findByType(TextInput).props.value).toBe('خليل أمين');
+    expect(mockIssue).not.toHaveBeenCalled();
+    expect(mockRecover).not.toHaveBeenCalled();
+    await press('إصدار الشهادة');
+    expect(mockIssue).toHaveBeenCalledWith('52', 'خليل أمين', {scope: 'account-a'});
+  });
+
+  it('retries a failed pending-status read before requesting artifact regeneration', async () => {
+    mockCertificates.mockResolvedValue([credential('52', 'pending')]);
+    await mount();
+    mockCertificates.mockRejectedValue(new Error('offline'));
+    mockLearning.mockRejectedValue(new Error('offline'));
+    await act(async () => {
+      mockForeground = false;
+      renderer!.update(<CourseCertificate />);
+    });
+    await act(async () => {
+      mockForeground = true;
+      renderer!.update(<CourseCertificate />);
+    });
+    mockCertificates.mockResolvedValue([credential()]);
+    mockLearning.mockResolvedValue([course()]);
+    await press('إعادة المحاولة');
+    expect(mockRecover).not.toHaveBeenCalled();
+    expect(mockIssue).not.toHaveBeenCalled();
+    expect(renderer!.root.findByProps({testID: 'issued-artifact'}).props.certificateUrl).toBe(credential().certificateUrl);
+  });
+
+  it('keeps Profile pending controls read-only after an offline refresh until a successful status read', async () => {
+    mockCertificates.mockResolvedValue([credential('52', 'pending')]);
+    await act(async () => {renderer = TestRenderer.create(<Certificates />);});
+    mockCertificates.mockRejectedValue(new Error('offline'));
+    mockLearning.mockRejectedValue(new Error('offline'));
+    await act(async () => {
+      mockForeground = false;
+      renderer!.update(<Certificates />);
+    });
+    await act(async () => {
+      mockForeground = true;
+      renderer!.update(<Certificates />);
+    });
+    const readsBeforeCard = mockCertificates.mock.calls.length;
+    await press('تحديث حالة شهادة كورس 52');
+    expect(mockCertificates).toHaveBeenCalledTimes(readsBeforeCard + 1);
+    expect(mockRecover).not.toHaveBeenCalled();
+    expect(mockIssue).not.toHaveBeenCalled();
+    mockCertificates.mockResolvedValue([credential('52', 'pending')]);
+    mockLearning.mockResolvedValue([course()]);
+    await press('إعادة المحاولة');
+    expect(mockRecover).not.toHaveBeenCalled();
+    expect(mockIssue).not.toHaveBeenCalled();
+    expect(texts()).not.toContain('تعذّر تحديث الشهادة');
+    await press('تحديث حالة شهادة كورس 52');
+    expect(mockRecover).toHaveBeenCalledTimes(1);
+    expect(mockRecover).toHaveBeenCalledWith('52', {scope: 'account-a'});
     expect(mockIssue).not.toHaveBeenCalled();
   });
 

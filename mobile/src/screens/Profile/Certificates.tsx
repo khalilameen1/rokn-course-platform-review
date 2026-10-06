@@ -18,6 +18,7 @@ import {CertificateArtifactPreview} from './certificates/CertificateArtifactPrev
 import {
   CertificateDetailContent,
   CertificateNameForm,
+  CertificateReadError,
 } from './certificates/CertificateContent';
 import {certificateStyles as styles} from './certificates/styles';
 import {useCertificatesController} from './certificates/useCertificatesController';
@@ -69,13 +70,7 @@ export default function Certificates({
         !certificates.length &&
         !readyCourses.length &&
         !grantCourses.length ? (
-        <StatusView
-          actionLabel="إعادة المحاولة"
-          description={loadError}
-          onAction={loadCertificates}
-          state="error"
-          title="تعذّر تحميل الشهادات"
-        />
+        <CertificateReadError controller={controller} />
       ) : certificatePending &&
         !certificates.length &&
         !readyCourses.length &&
@@ -118,12 +113,8 @@ export default function Certificates({
         />
       ) : (
         <>
-          {!!loadError && (
-            <Text accessibilityRole="alert" style={styles.partialNotice}>
-              {loadError}
-            </Text>
-          )}
-          {certificatePending && (
+          <CertificateReadError controller={controller} />
+          {certificatePending && !loadError && (
             <Pressable
               accessibilityState={{disabled: !mutationReady}}
               accessibilityRole="button"
@@ -152,7 +143,9 @@ export default function Certificates({
                 key={certificate.publicId}
                 onPress={() =>
                   certificate.status === 'pending'
-                    ? void retryPendingCertificate(certificate)
+                    ? loadError
+                      ? void loadCertificates()
+                      : void retryPendingCertificate(certificate)
                     : selectCertificate(certificate.publicId)
                 }
                 style={({pressed}) => [

@@ -3,6 +3,7 @@ import {Pressable, Text, TextInput, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Button from '../../../components/touchables/Button';
 import QRCode from '../../../components/ui/QRCode';
+import {StatusView} from '../../../components/ui/PremiumUI';
 import {
   Palette,
   Spacing,
@@ -15,21 +16,50 @@ import type {useCertificatesController} from './useCertificatesController';
 
 type Controller = ReturnType<typeof useCertificatesController>;
 
+type CertificateReadState = Pick<
+  Controller,
+  'loadError' | 'loading' | 'mutationReady' | 'loadCertificates'
+>;
+
+/** A failed status read is retried as a read, never as artifact generation. */
+export const CertificateReadError = ({
+  controller,
+}: {
+  controller: CertificateReadState;
+}) => {
+  if (!controller.loadError || controller.loading) return null;
+  return (
+    <StatusView
+      state="error"
+      title="تعذّر تحديث الشهادة"
+      description={controller.loadError}
+      actionLabel="إعادة المحاولة"
+      onAction={
+        controller.mutationReady
+          ? () => void controller.loadCertificates()
+          : undefined
+      }
+    />
+  );
+};
+
 export const CertificateNameForm = ({
   controller,
   onCancel,
 }: {
-  controller: Pick<
-    Controller,
-    | 'issueName'
-    | 'issueReady'
-    | 'issuing'
-    | 'setIssueName'
-    | 'confirmIssueCertificate'
-  >;
+  controller: CertificateReadState &
+    Pick<
+      Controller,
+      | 'issueName'
+      | 'issueReady'
+      | 'issuing'
+      | 'setIssueName'
+      | 'confirmIssueCertificate'
+    >;
   onCancel: () => void;
 }) => (
   <>
+    <CertificateReadError controller={controller} />
     <Text style={styles.detailTitle}>الاسم على الشهادة</Text>
     <Text style={styles.issueHint}>
       راجعه قبل الإصدار{'\n'}لن يتغير بعد ذلك
@@ -109,7 +139,8 @@ export const CertificateDetailContent = ({
           {activeCourseTitle}
         </Text>
         <Text style={styles.detailMeta}>
-          رقم الشهادة{'\n'}{isolateBidirectionalText(activeCredential)}
+          رقم الشهادة{'\n'}
+          {isolateBidirectionalText(activeCredential)}
         </Text>
         <View style={styles.detailActions}>
           <Pressable

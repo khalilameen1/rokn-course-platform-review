@@ -13,6 +13,7 @@ import type {RootState} from '../store/store';
 import {
   CertificateDetailContent,
   CertificateNameForm,
+  CertificateReadError,
 } from './Profile/certificates/CertificateContent';
 import {certificateStyles as styles} from './Profile/certificates/styles';
 import {useCertificatesController} from './Profile/certificates/useCertificatesController';
@@ -73,8 +74,14 @@ const CourseCertificateJourney = ({courseId}: {courseId: string}) => {
         />
       </View>
     );
-  } else if (controller.loading || !controller.identityOwned || readyCourse) {
+  } else if (
+    controller.loading ||
+    !controller.identityOwned ||
+    (readyCourse && !controller.loadError)
+  ) {
     content = <StatusView state="loading" title="جارٍ تحميل الشهادة" />;
+  } else if (controller.loadError) {
+    content = <CertificateReadError controller={controller} />;
   } else if (controller.certificatePending) {
     content = (
       <StatusView
@@ -92,16 +99,6 @@ const CourseCertificateJourney = ({courseId}: {courseId: string}) => {
               }
             : undefined
         }
-      />
-    );
-  } else if (controller.loadError) {
-    content = (
-      <StatusView
-        state="error"
-        title="تعذّر تحميل الشهادة"
-        description={controller.loadError}
-        actionLabel="إعادة المحاولة"
-        onAction={() => void controller.loadCertificates()}
       />
     );
   } else {
