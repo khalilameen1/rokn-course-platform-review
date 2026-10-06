@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
   "generatedFrom": "package-lock.json production dependency closure",
-  "packageCount": 735,
-  "packagePathCount": 818,
-  "inventoryHash": "5f47e379a80983759233c5aa73b2c3f9cd6536a1eb6cab48c28fec143e866c09",
+  "packageCount": 731,
+  "packagePathCount": 814,
+  "inventoryHash": "9ac7fd2c76c810c92464dd7d2687e6b267f16a92e0d98556ec3d49cc59713b5f",
   "packages": [
     {
       "name": "@babel/code-frame",
@@ -2817,16 +2817,6 @@
     },
     {
       "name": "argparse",
-      "version": "1.0.10",
-      "license": "MIT",
-      "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/argparse/v/1.0.10",
-      "legalSource": "package-root",
-      "legalFileCount": 1,
-      "apacheNotice": null
-    },
-    {
-      "name": "argparse",
       "version": "2.0.1",
       "license": "Python-2.0",
       "declaredLicense": "Python-2.0",
@@ -3427,10 +3417,10 @@
     },
     {
       "name": "compression",
-      "version": "1.8.1",
+      "version": "1.8.2",
       "license": "MIT",
       "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/compression/v/1.8.1",
+      "sourceUrl": "https://www.npmjs.com/package/compression/v/1.8.2",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
@@ -3841,16 +3831,6 @@
       "license": "MIT",
       "declaredLicense": "MIT",
       "sourceUrl": "https://www.npmjs.com/package/escape-string-regexp/v/4.0.0",
-      "legalSource": "package-root",
-      "legalFileCount": 1,
-      "apacheNotice": null
-    },
-    {
-      "name": "esprima",
-      "version": "4.0.1",
-      "license": "BSD-2-Clause",
-      "declaredLicense": "BSD-2-Clause",
-      "sourceUrl": "https://www.npmjs.com/package/esprima/v/4.0.1",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
@@ -4811,16 +4791,6 @@
       "license": "MIT",
       "declaredLicense": "MIT",
       "sourceUrl": "https://www.npmjs.com/package/js-tokens/v/4.0.0",
-      "legalSource": "package-root",
-      "legalFileCount": 1,
-      "apacheNotice": null
-    },
-    {
-      "name": "js-yaml",
-      "version": "3.15.2",
-      "license": "MIT",
-      "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/js-yaml/v/3.15.2",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
@@ -6587,10 +6557,10 @@
     },
     {
       "name": "source-map-js",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "license": "BSD-3-Clause",
       "declaredLicense": "BSD-3-Clause",
-      "sourceUrl": "https://www.npmjs.com/package/source-map-js/v/1.2.1",
+      "sourceUrl": "https://www.npmjs.com/package/source-map-js/v/1.2.2",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
@@ -6631,16 +6601,6 @@
       "license": "MIT",
       "declaredLicense": "MIT",
       "sourceUrl": "https://www.npmjs.com/package/split-on-first/v/1.1.0",
-      "legalSource": "package-root",
-      "legalFileCount": 1,
-      "apacheNotice": null
-    },
-    {
-      "name": "sprintf-js",
-      "version": "1.0.3",
-      "license": "BSD-3-Clause",
-      "declaredLicense": "BSD-3-Clause",
-      "sourceUrl": "https://www.npmjs.com/package/sprintf-js/v/1.0.3",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
