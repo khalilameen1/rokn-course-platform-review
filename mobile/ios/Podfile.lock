@@ -5,7 +5,7 @@ PODS:
   - AppAuth/Core (2.1.0)
   - AppAuth/ExternalUserAgent (2.1.0):
     - AppAuth/Core
-  - AppCheckCore (11.3.1):
+  - AppCheckCore (11.3.2):
     - GoogleUtilities/Environment (~> 8.0)
     - GoogleUtilities/UserDefaults (~> 8.0)
     - PromisesObjC (~> 2.4)
@@ -71,6 +71,13 @@ PODS:
   - ExpoIap (5.4.1):
     - ExpoModulesCore
     - openiap (= 3.3.1)
+  - ExpoImage (55.0.11):
+    - ExpoModulesCore
+    - libavif/libdav1d
+    - SDWebImage (~> 5.21.0)
+    - SDWebImageAVIFCoder (~> 0.11.0)
+    - SDWebImageSVGCoder (~> 1.7.0)
+    - SDWebImageWebPCoder (~> 0.14.6)
   - ExpoKeepAwake (55.0.8):
     - ExpoModulesCore
   - ExpoLogBox (55.0.13):
@@ -115,6 +122,8 @@ PODS:
     - ExpoModulesCore
   - ExpoSecureStore (55.0.18):
     - ExpoModulesCore
+  - ExpoSplashScreen (55.0.25):
+    - ExpoModulesCore
   - ExpoWebBrowser (55.0.20):
     - ExpoModulesCore
   - fast_float (8.0.0)
@@ -126,13 +135,13 @@ PODS:
     - AppCheckCore (~> 11.0)
     - GTMAppAuth (~> 5.0)
     - GTMSessionFetcher/Core (~> 3.3)
-  - GoogleUtilities/Environment (8.1.3):
+  - GoogleUtilities/Environment (8.1.4):
     - GoogleUtilities/Privacy
-  - GoogleUtilities/Logger (8.1.3):
+  - GoogleUtilities/Logger (8.1.4):
     - GoogleUtilities/Environment
     - GoogleUtilities/Privacy
-  - GoogleUtilities/Privacy (8.1.3)
-  - GoogleUtilities/UserDefaults (8.1.3):
+  - GoogleUtilities/Privacy (8.1.4)
+  - GoogleUtilities/UserDefaults (8.1.4):
     - GoogleUtilities/Logger
     - GoogleUtilities/Privacy
   - GTMAppAuth (5.0.0):
@@ -142,6 +151,23 @@ PODS:
   - hermes-engine (0.14.1):
     - hermes-engine/Pre-built (= 0.14.1)
   - hermes-engine/Pre-built (0.14.1)
+  - libavif/core (1.0.0)
+  - libavif/libdav1d (1.0.0):
+    - libavif/core
+    - libdav1d (>= 0.6.0)
+  - libdav1d (1.2.0)
+  - libwebp (1.6.0):
+    - libwebp/demux (= 1.6.0)
+    - libwebp/mux (= 1.6.0)
+    - libwebp/sharpyuv (= 1.6.0)
+    - libwebp/webp (= 1.6.0)
+  - libwebp/demux (1.6.0):
+    - libwebp/webp
+  - libwebp/mux (1.6.0):
+    - libwebp/demux
+  - libwebp/sharpyuv (1.6.0)
+  - libwebp/webp (1.6.0):
+    - libwebp/sharpyuv
   - openiap (3.3.1)
   - PromisesObjC (2.4.1)
   - PromisesSwift (2.4.1):
@@ -3399,6 +3425,17 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
+  - SDWebImage (5.21.7):
+    - SDWebImage/Core (= 5.21.7)
+  - SDWebImage/Core (5.21.7)
+  - SDWebImageAVIFCoder (0.11.1):
+    - libavif/core (>= 0.11.0)
+    - SDWebImage (~> 5.10)
+  - SDWebImageSVGCoder (1.7.0):
+    - SDWebImage/Core (~> 5.6)
+  - SDWebImageWebPCoder (0.14.6):
+    - libwebp (~> 1.0)
+    - SDWebImage/Core (~> 5.17)
   - Sentry/HybridSDK (8.58.0)
   - SocketRocket (0.7.1)
   - Yoga (0.0.0)
@@ -3419,12 +3456,14 @@ DEPENDENCIES:
   - ExpoFileSystem (from `../node_modules/expo/node_modules/expo-file-system/ios`)
   - ExpoFont (from `../node_modules/expo/node_modules/expo-font/ios`)
   - ExpoIap (from `../node_modules/expo-iap/ios`)
+  - ExpoImage (from `../node_modules/expo-image/ios`)
   - ExpoKeepAwake (from `../node_modules/expo/node_modules/expo-keep-awake/ios`)
   - "ExpoLogBox (from `../node_modules/expo/node_modules/@expo/log-box`)"
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoModulesJSI (from `../node_modules/expo-modules-core`)
   - ExpoNotifications (from `../node_modules/expo-notifications/ios`)
   - ExpoSecureStore (from `../node_modules/expo-secure-store/ios`)
+  - ExpoSplashScreen (from `../node_modules/expo-splash-screen/ios`)
   - ExpoWebBrowser (from `../node_modules/expo-web-browser/ios`)
   - fast_float (from `../node_modules/react-native/third-party-podspecs/fast_float.podspec`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
@@ -3531,10 +3570,17 @@ SPEC REPOS:
     - GoogleUtilities
     - GTMAppAuth
     - GTMSessionFetcher
+    - libavif
+    - libdav1d
+    - libwebp
     - openiap
     - PromisesObjC
     - PromisesSwift
     - RecaptchaInterop
+    - SDWebImage
+    - SDWebImageAVIFCoder
+    - SDWebImageSVGCoder
+    - SDWebImageWebPCoder
     - Sentry
     - SocketRocket
 
@@ -3569,6 +3615,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo/node_modules/expo-font/ios"
   ExpoIap:
     :path: "../node_modules/expo-iap/ios"
+  ExpoImage:
+    :path: "../node_modules/expo-image/ios"
   ExpoKeepAwake:
     :path: "../node_modules/expo/node_modules/expo-keep-awake/ios"
   ExpoLogBox:
@@ -3581,6 +3629,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-notifications/ios"
   ExpoSecureStore:
     :path: "../node_modules/expo-secure-store/ios"
+  ExpoSplashScreen:
+    :path: "../node_modules/expo-splash-screen/ios"
   ExpoWebBrowser:
     :path: "../node_modules/expo-web-browser/ios"
   fast_float:
@@ -3775,7 +3825,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   AppAuth: ef4da5a3fc2e10b90c09a0a94a9baeaedc0341d5
-  AppCheckCore: e215d35177a9cf469927863e69c13e220df32a8b
+  AppCheckCore: be8fce5469f68d7f6a29aa94b25f097409ff7fdc
   boost: 7e761d76ca2ce687f7cc98e698152abd03a18f90
   BVLinearGradient: 880f91a7854faff2df62518f0281afb1c60d49a3
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
@@ -3791,22 +3841,27 @@ SPEC CHECKSUMS:
   ExpoFileSystem: 7874fb1de3cd3f866cb8dd7dbe05361c5c278ef6
   ExpoFont: 21550be2946ea5bbf50f1a20b31facd19ba4150c
   ExpoIap: b92c306e1a22c53109557106e6fe921a35b45879
+  ExpoImage: eeba1f2a1c6f89ba079e832dfef2b29a5ed1d8ca
   ExpoKeepAwake: 45e456e29335bbd400554646a2f29e628c24072e
   ExpoLogBox: 87ffef2b3ae204b602748ab4020eb1cc5454a6d6
   ExpoModulesCore: 9aabd1a060f905848cac6f42baf658921db697d4
   ExpoModulesJSI: 483d791904bf8579a384c2bf5f6265bf6e8362cb
   ExpoNotifications: 793cb016faf9ee414ed9ae94e8951c95ca31d619
   ExpoSecureStore: 93300a260cf19518f78afc7a114fbf2c287eef70
+  ExpoSplashScreen: 6b9802828ad09baa793f0aa7805be92fd8116b0c
   ExpoWebBrowser: d8f05a76ddf8aded64ca5972b577f6a8ccc0be2d
   fast_float: b32c788ed9c6a8c584d114d0047beda9664e7cc6
   FBLazyVector: 07433c4ab85da44d0b5ceac374ff4e1d57c7aa23
   fmt: 530618a01105dae0fa3a2f27c81ae11fa8f67eac
   glog: 0456694f3aaf09460b660ea327cfc11defbeea4c
   GoogleSignIn: e449a40a92e9f2eea56e98b5214d13725dc5a00a
-  GoogleUtilities: 4e0c2ad9fa0d0d18b5c4df8bf57b461cba35b0bb
+  GoogleUtilities: db34c1c11c6f2eccb6fab2340cb8ceb1451299dc
   GTMAppAuth: 217a876b249c3c585a54fd6f73e6b58c4f5c4238
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
   hermes-engine: f37e1d6f1eb198649a60b3f17b6f685a6ac12470
+  libavif: 5f8e715bea24debec477006f21ef9e95432e254d
+  libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
+  libwebp: af5937a13536ef73f3784d69cc342b98961acf33
   openiap: 98a778ba35f085cef035f235b5dc31c06640bef6
   PromisesObjC: 752c3227f599e3467650e47ea36f433eeb10c273
   PromisesSwift: 217dea0fd5d2ad65222a109c48698add13cc1c5b
@@ -3899,6 +3954,10 @@ SPEC CHECKSUMS:
   RNShare: 6b9b50b92c088364edbeb9e5fb805aaef67653e8
   RNSVG: 4d484ec4a8cb484c1c0e33972670724e194dba09
   RNWorklets: 79252e2fa12db14970f4e881168ce82a4d1fe823
+  SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
+  SDWebImageAVIFCoder: afe194a084e851f70228e4be35ef651df0fc5c57
+  SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
+  SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
   Sentry: d587a8fe91ca13503ecd69a1905f3e8a0fcf61be
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: 36c8d57a563ad609c1f7342857de6e23fa1edd5a
