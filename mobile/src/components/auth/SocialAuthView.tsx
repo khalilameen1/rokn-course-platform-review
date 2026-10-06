@@ -1,6 +1,16 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import React from 'react';
-import {ActivityIndicator, type ImageSourcePropType, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions} from 'react-native';
+import {
+  ActivityIndicator,
+  type ImageSourcePropType,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import {RasterImage as Image} from '../ui/RasterImage';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Svg, {Path} from 'react-native-svg';
@@ -173,34 +183,10 @@ export default function SocialAuthView({
             <View style={styles.providers}>
               {orderedProviders.map(provider => {
                 const disabled = busy;
-                if (provider.id === 'apple') {
-                  return (
-                    <View
-                      key={provider.id}
-                      pointerEvents={disabled ? 'none' : 'auto'}
-                      style={disabled ? styles.providerDisabled : undefined}>
-                      <AppleAuthentication.AppleAuthenticationButton
-                        buttonStyle={
-                          AppleAuthentication.AppleAuthenticationButtonStyle
-                            .WHITE
-                        }
-                        buttonType={
-                          AppleAuthentication.AppleAuthenticationButtonType
-                            .CONTINUE
-                        }
-                        cornerRadius={14}
-                        onPress={() => {
-                          if (!busy) onContinue('apple');
-                        }}
-                        style={styles.appleProvider}
-                      />
-                    </View>
-                  );
-                }
-
                 return (
                   <View
                     key={provider.id}
+                    testID={`social-auth-provider-${provider.id}`}
                     style={
                       provider.id === recommendedProvider && recommendationText
                         ? styles.recommendedProviderWrap
@@ -210,6 +196,7 @@ export default function SocialAuthView({
                       recommendationText && (
                         <View
                           pointerEvents="none"
+                          testID="social-auth-recommendation"
                           style={styles.recommendedBadge}>
                           <Text
                             maxFontSizeMultiplier={1.6}
@@ -218,56 +205,78 @@ export default function SocialAuthView({
                           </Text>
                         </View>
                       )}
-                    <Pressable
-                      accessibilityLabel={provider.label}
-                      accessibilityRole="button"
-                      accessibilityState={{
-                        busy: loading === provider.id,
-                        disabled,
-                      }}
-                      disabled={disabled}
-                      onPress={() => {
-                        if (!busy) onContinue(provider.id);
-                      }}
-                      style={({pressed}) => [
-                        styles.provider,
-                        provider.id === 'google' && styles.googleProvider,
-                        provider.id === 'tiktok' && styles.tiktokProvider,
-                        provider.id === 'facebook' && styles.facebookProvider,
-                        loading &&
-                          loading !== provider.id &&
-                          styles.providerDisabled,
-                        pressed && styles.pressed,
-                      ]}>
-                      <View style={styles.providerIcon}>
-                        {loading === provider.id ? (
-                          <ActivityIndicator
-                            color={
-                              provider.id === 'google'
-                                ? Palette.canvas
-                                : '#FFFFFF'
-                            }
-                            size="small"
-                          />
-                        ) : provider.image ? (
-                          <Image
-                            accessibilityElementsHidden
-                            importantForAccessibility="no"
-                            source={provider.image}
-                            style={styles.providerImage}
-                          />
-                        ) : provider.brandMark === 'tiktok' ? (
-                          <TikTokMark />
-                        ) : null}
+                    {provider.id === 'apple' ? (
+                      <View
+                        pointerEvents={disabled ? 'none' : 'auto'}
+                        style={disabled ? styles.providerDisabled : undefined}>
+                        <AppleAuthentication.AppleAuthenticationButton
+                          buttonStyle={
+                            AppleAuthentication.AppleAuthenticationButtonStyle
+                              .WHITE
+                          }
+                          buttonType={
+                            AppleAuthentication.AppleAuthenticationButtonType
+                              .CONTINUE
+                          }
+                          cornerRadius={14}
+                          onPress={() => {
+                            if (!busy) onContinue('apple');
+                          }}
+                          style={styles.appleProvider}
+                        />
                       </View>
-                      <Text
-                        style={[
-                          styles.providerLabel,
-                          provider.id === 'google' && styles.googleLabel,
+                    ) : (
+                      <Pressable
+                        accessibilityLabel={provider.label}
+                        accessibilityRole="button"
+                        accessibilityState={{
+                          busy: loading === provider.id,
+                          disabled,
+                        }}
+                        disabled={disabled}
+                        onPress={() => {
+                          if (!busy) onContinue(provider.id);
+                        }}
+                        style={({pressed}) => [
+                          styles.provider,
+                          provider.id === 'google' && styles.googleProvider,
+                          provider.id === 'tiktok' && styles.tiktokProvider,
+                          provider.id === 'facebook' && styles.facebookProvider,
+                          loading &&
+                            loading !== provider.id &&
+                            styles.providerDisabled,
+                          pressed && styles.pressed,
                         ]}>
-                        {provider.label}
-                      </Text>
-                    </Pressable>
+                        <View style={styles.providerIcon}>
+                          {loading === provider.id ? (
+                            <ActivityIndicator
+                              color={
+                                provider.id === 'google'
+                                  ? Palette.canvas
+                                  : '#FFFFFF'
+                              }
+                              size="small"
+                            />
+                          ) : provider.image ? (
+                            <Image
+                              accessibilityElementsHidden
+                              importantForAccessibility="no"
+                              source={provider.image}
+                              style={styles.providerImage}
+                            />
+                          ) : provider.brandMark === 'tiktok' ? (
+                            <TikTokMark />
+                          ) : null}
+                        </View>
+                        <Text
+                          style={[
+                            styles.providerLabel,
+                            provider.id === 'google' && styles.googleLabel,
+                          ]}>
+                          {provider.label}
+                        </Text>
+                      </Pressable>
+                    )}
                   </View>
                 );
               })}
@@ -407,13 +416,17 @@ const styles = StyleSheet.create({
   googleLabel: {color: '#202124'},
   recommendedBadge: {
     zIndex: 2,
-    alignSelf: 'flex-end',
-    marginEnd: 14,
-    marginBottom: Spacing.xs,
+    alignSelf: 'flex-start',
+    marginStart: 14,
+    marginBottom: -2,
     maxWidth: '86%',
     minHeight: 24,
     justifyContent: 'center',
-    paddingVertical: 2,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+    backgroundColor: Palette.primary,
   },
   recommendedText: {
     fontFamily: 'Cairo-SemiBold',
@@ -422,7 +435,7 @@ const styles = StyleSheet.create({
     direction: 'rtl',
     writingDirection: 'rtl',
     textAlign: 'center',
-    color: Palette.coin,
+    color: Palette.text,
     flexShrink: 1,
   },
   legal: {

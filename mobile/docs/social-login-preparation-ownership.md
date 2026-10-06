@@ -38,6 +38,39 @@ Only local lifecycle ownership changes. `SocialOAuthController` still accepts S2
 
 ## Deferred verification
 
+### Attached dashboard-owned recommendation badge — 6 October 2026
+
+The user relaxed the requested ReelShort-specific reference to any successful
+ordinary badge and identified the actual defect: the label floated away from
+the control. The small filled label adapts Udemy's displayed `Bestseller` badge,
+not its private source or authentication flow. The inspected [course page](https://www.udemy.com/course/the-complete-web-development-bootcamp/)
+showed the badge and 1,592,757 enrolled students; [Udemy's Android listing](https://play.google.com/store/apps/details?id=com.udemy.android)
+showed 10M+ downloads. These establish adoption of the reference and label,
+not measured conversion improvement or native acceptance of Rokn.
+
+The existing RN View/Text implementation is reused. The label stays in normal
+flow, touches the control's upper edge, uses Rokn primary/white and logical start
+in RTL, and can grow vertically for authored text or large fonts rather than
+being absolutely overlaid on the button. One common wrapper now covers Google,
+Facebook, TikTok and the original native Apple button. Backend/provider
+availability, dashboard preference selection, authored text, authentication
+callbacks and actual reward amounts stay with their existing owners. A generic
+preference badge no longer disappears when the optional reward offer is zero;
+explicit `{coins}` copy still requires an available indivisible offer.
+
+After disclosure that no measured share was established, the owner explicitly
+requested `اختيار 89% من المستخدمين` as marketing copy. That supplied string
+and its English translation are now shared defaults in `social_auth` config;
+dashboard-authored labels override them. This is owner-authored copy, not a
+calculated usage metric or proof of conversion/share. No analytics records,
+measurement evidence, new fields, ledger mutation or provider bonus were made.
+Production text has not been changed in this local unit.
+
+Multi-provider, attached-flow and zero-offer/template contracts are authored
+but not run. Independent review accepted the source behavior only. The single
+final native/functional gate still must accept the rendered result and button
+callbacks. The new source is still local.
+
 The independent reviewer accepted the source after claim snapshots waited for physical writer cleanup, failed optional journeys retired after their flight finished, and explicit Back consistently retired a resuming handoff whether its route was ready or delayed. This is acceptance of source coherence and authored coverage within the unit, not executed test or device evidence.
 
 Authored but not executed: departure during secure preflight by blur, beforeRemove and unmount; opening terms then returning and starting again; a raw route write finishing after departure with a newer Wallet return preserved; a claim requested while a retired raw envelope awaits cleanup; leaving during final service preparation; an old provider cancellation retaining a newer receipt; committed-session adoption after the old Login unmounts. Late optional scope completion covers failure, recoverable browser waiting and committed login with both blur and beforeRemove. A durable resuming route also retires with its expected encrypted attempt on explicit Back. Existing facade tests add installation identity retirement and reject a different owner's duplicate. Browser tests hold the real PKCE journal before Android open. Apple tests hold availability, nonce and journal preparation before native open. The real secure commit delivery suite also adds unmount during credential persistence, with no Redux adoption before the durable write completes.

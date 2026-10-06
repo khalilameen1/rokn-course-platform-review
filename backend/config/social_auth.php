@@ -9,6 +9,10 @@ return [
         explode(',', (string) env('SOCIAL_AUTH_PROVIDERS', 'google,tiktok,facebook,apple'))
     )))),
     'recommended_provider' => env('SOCIAL_AUTH_RECOMMENDED_PROVIDER', 'google'),
+    // Owner-authored marketing copy, not a value derived from usage analytics.
+    // Dashboard-authored labels override these cross-surface defaults.
+    'recommended_provider_badge_ar' => 'اختيار 89% من المستخدمين',
+    'recommended_provider_badge_en' => 'Chosen by 89% of users',
     'welcome_bonus_coins' => (int) env('WELCOME_BONUS_COINS', 20),
     'legal_notice_version' => env('LEGAL_NOTICE_VERSION', '2026-08-06'),
     'timeout_seconds' => (int) env('SOCIAL_AUTH_TIMEOUT_SECONDS', 10),

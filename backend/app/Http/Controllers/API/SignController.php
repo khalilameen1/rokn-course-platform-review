@@ -152,18 +152,27 @@ class SignController extends Controller
                 'recommended_provider_bonus_coins' => $providerBonus,
                 'recommended_provider_total_coins' => $recommendedTotal,
                 'recommended_provider' => $recommendedProvider,
-                'recommendation_badge' => $recommendedProvider && $recommendedTotal > 0
-                    ? ($badgeAr !== ''
-                        ? str_replace('{coins}', (string) $recommendedTotal, $badgeAr)
-                        : 'اختيار أسرع + ' . $recommendedTotal . ' عملة ركن')
-                    : null,
-                'recommendation_badge_en' => $recommendedProvider && $recommendedTotal > 0
-                    ? ($badgeEn !== ''
-                        ? str_replace('{coins}', (string) $recommendedTotal, $badgeEn)
-                        : 'Faster choice + ' . $recommendedTotal . ' Rokn coins')
-                    : null,
+                'recommendation_badge' => $this->recommendationBadge(
+                    $recommendedProvider, $recommendedTotal, $badgeAr,
+                    (string) config('social_auth.recommended_provider_badge_ar')
+                ),
+                'recommendation_badge_en' => $this->recommendationBadge(
+                    $recommendedProvider, $recommendedTotal, $badgeEn,
+                    (string) config('social_auth.recommended_provider_badge_en')
+                ),
             ],
         ]);
+    }
+
+    private function recommendationBadge(?string $provider, int $coins, string $authored, string $fallback): ?string
+    {
+        if (!$provider) return null;
+        if ($authored === '') return $fallback;
+        // A preference badge is independent of a reward. Only explicit reward
+        // templates require an offer the canonical ledger can actually credit.
+        if ($coins <= 0 && str_contains($authored, '{coins}')) return null;
+
+        return str_replace('{coins}', (string) $coins, $authored);
     }
 
     /**

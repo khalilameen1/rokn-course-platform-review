@@ -6,6 +6,8 @@ namespace Tests\Feature\API;
 
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -49,6 +51,7 @@ class AuthEndpointTest extends ApiTestCase
             ->assertJsonPath('data.providers', ['google'])
             ->assertJsonPath('data.authorization_api_url', $expectedAuthorizationApiUrl)
             ->assertJsonPath('data.recommended_provider', 'google')
+            ->assertJsonPath('data.recommendation_badge', config('social_auth.recommended_provider_badge_ar'))
             ->assertJsonStructure([
                 'data' => ['providers', 'authorization_api_url', 'authorization_urls', 'recommendation_badge'],
             ]);
@@ -70,6 +73,32 @@ class AuthEndpointTest extends ApiTestCase
                 'data.authorization_urls.google',
                 'https://identity.rokn.test/api/v1/social-auth/google/start'
             );
+    }
+
+    public function test_plain_preference_badge_is_not_hidden_when_the_optional_welcome_offer_is_zero(): void
+    {
+        (require database_path('migrations/2026_08_30_000007_add_social_acquisition_offer_to_settings.php'))->up();
+        config()->set([
+            'social_auth.providers' => ['google'],
+            'services.google.client_id' => 'configured',
+            'services.google.client_secret' => 'configured',
+        ]);
+        DB::table('settings')->update([
+            'recommended_social_provider' => 'google',
+            'reward_balance_cap' => 0,
+            'recommended_provider_badge_ar' => 'موصى به',
+            'recommended_provider_badge_en' => 'Recommended',
+        ]);
+        Cache::forget('auth-methods:dynamic:v2');
+        $this->getJson('/api/v1/auth-methods')->assertOk()
+            ->assertJsonPath('data.recommended_provider', 'google')
+            ->assertJsonPath('data.recommended_provider_total_coins', 0)
+            ->assertJsonPath('data.recommendation_badge', 'موصى به');
+
+        DB::table('settings')->update(['recommended_provider_badge_ar' => 'هدية {coins}']);
+        Cache::forget('auth-methods:dynamic:v2');
+        $this->getJson('/api/v1/auth-methods')->assertOk()
+            ->assertJsonPath('data.recommendation_badge', null);
     }
 
     public function test_every_api_response_has_a_safe_support_request_id(): void

@@ -1,5 +1,49 @@
 # Store release status — 2026-09-14
 
+## Latest source-fidelity checkpoint — 2026-10-06
+
+The candidate checkout is `rokn-final-gate-ci-20261005`, branch
+`codex/release-validation-20261005`. Local commits after deployed `16c77ebe`
+restore the approved Home hero geometry/typography (`758fb6da`), popup
+composition/RTL (`b1f72c43`), native/React startup handoff and catalogue readiness
+(`514b96f1`), and separate cached cover delivery (`9358e78e`). These corrections
+are local source changes, not part of the signed version 63. Earlier green gates
+and screenshots must not be relabeled as acceptance of this newer source.
+
+The observed Play internal version remains 63 / 1.0.62, whose mobile source
+identity is `703f2e044385c123191a80bc8a2751a16f384f29`. The next new binary needs
+version code 64, not a reupload/rename of 63. Production 60 was not changed by
+these local edits. The blue listing-icon submission is a separate metadata
+review recorded in `store/assets/APP_ICON_EXPORT.md`, not an app binary update.
+
+Independent source review accepted the cover unit after source-keyed image
+failure ownership was corrected. Source review is not measured startup speed,
+executed backfill, native appearance or release readiness. Preserve the approved
+Cake-style startup appearance. There is no image readiness registry or minimum
+marketing delay; Home settles to content/cache/error before its brand cover
+leaves. Course authoring retains originals and stages light public renditions
+through its existing upload/cleanup owner; the old API `image` URL shape stays
+compatible. Migration, worker drain/restart, rendition backfill and actual public
+delivery checks belong to the matching backend deployment.
+
+Final combined verification/build/device gate still has to run for this source:
+new backend/mobile cases, actual dependency/native lock and notices refresh,
+signed cold startup and approved visual comparison, provider callback return,
+real project selection/upload/report, certificate issuance/download/QR, and
+course purchase/upgrade/cancellation/return. Existing source fixes are retained;
+do not redo them or treat a new narrow green test as proof of the whole goal.
+The user subsequently relaxed the ReelShort-specific requirement to any
+successful ordinary badge and clarified attachment to whichever available
+provider is chosen in the dashboard. The local source now adapts the small
+Udemy label pattern, keeps it attached in normal flow, and includes the native
+Apple control in the same wrapper. Independent review accepted the source
+behavior, not device rendering or release readiness. The owner subsequently
+requested the supplied 89% marketing copy after the lack of measured data was
+disclosed; it is a shared, dashboard-overridable text default, not an analytics
+calculation or verified share. The live dashboard/API remains
+unchanged with the old `اختيار أسرع + 20 عملة ركن` and actual welcome offer 20,
+not the illustrative 60 in older previews. See `social-login-preparation-ownership.md`.
+
 ## Current local final-gate checkpoint — 2026-10-05
 
 ### Isolated resource creation and original-mark blue icons — 2026-10-05

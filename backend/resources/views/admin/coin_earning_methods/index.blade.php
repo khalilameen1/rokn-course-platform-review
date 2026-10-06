@@ -106,12 +106,12 @@
                         <input class="form-control" id="recommended_provider_bonus_coins" min="0" name="recommended_provider_bonus_coins" required type="number" value="{{ old('recommended_provider_bonus_coins', $setting?->recommended_provider_bonus_coins ?? 0) }}">
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="font-weight-bold" for="recommended_provider_badge_ar">النص الظاهر فوق المنصة</label>
-                        <input class="form-control" id="recommended_provider_badge_ar" maxlength="255" name="recommended_provider_badge_ar" placeholder="الأفضل: بيانات أقل تكتبها ومكافأة أكبر" value="{{ old('recommended_provider_badge_ar', $setting?->recommended_provider_badge_ar) }}">
+                        <label class="font-weight-bold" for="recommended_provider_badge_ar">نص الشارة</label>
+                        <input class="form-control" id="recommended_provider_badge_ar" maxlength="255" name="recommended_provider_badge_ar" placeholder="{{ config('social_auth.recommended_provider_badge_ar') }}" value="{{ old('recommended_provider_badge_ar', $setting?->recommended_provider_badge_ar ?? config('social_auth.recommended_provider_badge_ar')) }}">
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="font-weight-bold" for="recommended_provider_badge_en">English badge</label>
-                        <input class="form-control" dir="ltr" id="recommended_provider_badge_en" maxlength="255" name="recommended_provider_badge_en" value="{{ old('recommended_provider_badge_en', $setting?->recommended_provider_badge_en) }}">
+                        <input class="form-control" dir="ltr" id="recommended_provider_badge_en" maxlength="255" name="recommended_provider_badge_en" value="{{ old('recommended_provider_badge_en', $setting?->recommended_provider_badge_en ?? config('social_auth.recommended_provider_badge_en')) }}">
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary px-4 coin-form-action">

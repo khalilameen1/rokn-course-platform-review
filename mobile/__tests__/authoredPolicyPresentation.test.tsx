@@ -1,6 +1,7 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
-import {Text} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
+import {Palette} from '../src/constants/designSystem';
 import {cleanUnicodeText} from '../src/utils/unicodeText';
 
 const mockMethods = jest.fn();
@@ -14,7 +15,11 @@ jest.mock('react-redux', () => ({
   useDispatch: () => jest.fn(),
   useSelector: () => null,
 }));
-jest.mock('expo-apple-authentication', () => ({}));
+jest.mock('expo-apple-authentication', () => ({
+  AppleAuthenticationButton: 'NativeAppleButton',
+  AppleAuthenticationButtonStyle: {WHITE: 0},
+  AppleAuthenticationButtonType: {CONTINUE: 0},
+}));
 jest.mock('../src/services/socialAuth', () => ({
   getSocialAuthMethods: () => mockMethods(),
   signInWithSocialProvider: jest.fn(),
@@ -49,6 +54,53 @@ const visibleText = (renderer: TestRenderer.ReactTestRenderer) =>
     .map(node => cleanUnicodeText(node.props.children));
 
 describe('authored settings and release text', () => {
+  it.each(['google', 'facebook', 'tiktok', 'apple'] as const)(
+    'attaches the authored badge only to the chosen %s control',
+    provider => {
+      let renderer!: TestRenderer.ReactTestRenderer;
+      try {
+        act(() => {
+          renderer = TestRenderer.create(
+            <SocialAuthView
+              phase="ready"
+              methods={null}
+              orderedProviderIds={['google', 'facebook', 'tiktok', 'apple']}
+              recommendedProvider={provider}
+              recommendationText="موصى به"
+              loading={null}
+              onContinue={jest.fn()}
+              onRetry={jest.fn()}
+              onExplore={jest.fn()}
+              onOpenTerms={jest.fn()}
+              onOpenPrivacy={jest.fn()}
+            />,
+          );
+        });
+        const chosen = renderer.root.findByProps({
+          testID: `social-auth-provider-${provider}`,
+        });
+        const badge = chosen.findByProps({
+          testID: 'social-auth-recommendation',
+        });
+        expect(
+          renderer.root
+            .findAllByType(View)
+            .filter(node => node.props.testID === 'social-auth-recommendation'),
+        ).toHaveLength(1);
+        expect(StyleSheet.flatten(badge.props.style)).toMatchObject({
+          backgroundColor: Palette.primary,
+          alignSelf: 'flex-start',
+          marginStart: 14,
+          marginBottom: -2,
+        });
+        expect(StyleSheet.flatten(badge.props.style).position).toBeUndefined();
+        expect(visibleText(renderer)).toContain('موصى به');
+      } finally {
+        act(() => renderer?.unmount());
+      }
+    },
+  );
+
   it('renders a discovered recommendation without treating Google as an API error', async () => {
     const recommendation = 'Google: Fast sign-in + 25 coins — ريلز 2026';
     mockMethods.mockResolvedValue({
