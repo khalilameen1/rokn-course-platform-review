@@ -209,6 +209,48 @@ const EXPO_GIT_HEAD_7C = '7c081282cf88968f81732feb67a71840e769a40f';
 const EXPO_GIT_HEAD_FC = 'fcb091766242d53248cd3c5949965961dbc5ec1d';
 const EXPO_GIT_HEAD_85 = '856b99321eeb04bd528b33f90c0e7fa2859a1fcb';
 const EXPO_GIT_HEAD_30 = '30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f';
+const ANDROID_UPSTREAM_LEGAL_DOCUMENTS = new Map([
+  [
+    'expo.modules.image:expo.modules.image:55.0.11',
+    expoUpstreamLicense(
+      'expo-image@55.0.11',
+      'bb1d4bd298e5bcaff86b04aabca7c56659e57138',
+    ),
+  ],
+  [
+    'host.exp.exponent:expo.modules.splashscreen:55.0.25',
+    expoUpstreamLicense('expo-splash-screen@55.0.25', EXPO_GIT_HEAD_85),
+  ],
+  ...[
+    'annotations',
+    'avif-integration',
+    'disklrucache',
+    'gifdecoder',
+    'glide',
+    'okhttp3-integration',
+  ].map(module => [
+    `com.github.bumptech.glide:${module}:5.0.5`,
+    {
+      sourceCommit: 'ebbf7e2680e0a5812bdb428034aa38fb9260dba7',
+      path: ['scripts', 'licenses', 'upstream', 'glide-5.0.5-LICENSE'],
+      sha256:
+        '0b31647fbd110c9674b695226715f77f98de0dd3b4127a1b9f739604fe0ca9ec',
+      sourceUrl:
+        'https://github.com/bumptech/glide/blob/ebbf7e2680e0a5812bdb428034aa38fb9260dba7/LICENSE',
+    },
+  ]),
+  [
+    'org.aomedia.avif.android:avif:1.1.1.14d8e3c4',
+    {
+      sourceCommit: '14d8e3c4b8d74158ec96b4684e663fcea9cf5fb6',
+      path: ['scripts', 'licenses', 'upstream', 'libavif-14d8e3c4-LICENSE'],
+      sha256:
+        'e11df3e72133a1159eeb7612e4db561d23747b844df9ab020a1835698d693456',
+      sourceUrl:
+        'https://github.com/AOMediaCodec/libavif/blob/14d8e3c4b8d74158ec96b4684e663fcea9cf5fb6/LICENSE',
+    },
+  ],
+]);
 const POD_UPSTREAM_LEGAL_DOCUMENTS = new Map([
   [
     'ExpoImage@55.0.11',
@@ -742,15 +784,15 @@ const canonicalLicenseDocument = license => {
   };
 };
 
-const upstreamLegalDocumentForPod = (coordinate, owner) => {
-  const review = POD_UPSTREAM_LEGAL_DOCUMENTS.get(coordinate);
+const upstreamLegalDocument = (coordinate, review, owner) => {
   if (!review) return null;
   const npmCoordinate = owner
     ? `${owner.manifest.name}@${owner.manifest.version}`
     : null;
   if (
-    npmCoordinate !== review.npmCoordinate ||
-    owner.manifest.gitHead !== review.gitHead
+    review.npmCoordinate &&
+    (npmCoordinate !== review.npmCoordinate ||
+      owner.manifest.gitHead !== review.gitHead)
   ) {
     throw new Error(
       `Stale upstream legal-document review for ${coordinate}: installed npm owner or gitHead changed.`,
@@ -774,6 +816,13 @@ const upstreamLegalDocumentForPod = (coordinate, owner) => {
     review: {...review, path: review.path.join('/')},
   };
 };
+
+const upstreamLegalDocumentForPod = (coordinate, owner) =>
+  upstreamLegalDocument(
+    coordinate,
+    POD_UPSTREAM_LEGAL_DOCUMENTS.get(coordinate),
+    owner,
+  );
 
 const addDocument = (documents, file, source) => {
   const existing = documents.get(file.sha256);
@@ -979,6 +1028,7 @@ const buildAndroidSnapshot = input => {
     const artifactRecords = [];
     const legalDocumentSha256s = new Set();
     let owningNpmPackage = null;
+    let npmOwner = null;
     const seenArtifacts = new Set();
     for (const artifact of item.artifacts || []) {
       if (!artifact.file || !fs.existsSync(artifact.file)) {
@@ -1006,6 +1056,7 @@ const buildAndroidSnapshot = input => {
         ? packageRootForPath(artifact.file)
         : null;
       if (owner) {
+        npmOwner = owner;
         const coordinate = `${owner.manifest.name}@${owner.manifest.version}`;
         if (owningNpmPackage && owningNpmPackage.coordinate !== coordinate) {
           throw new Error(`Conflicting npm owners for ${item.coordinate}.`);
@@ -1054,7 +1105,21 @@ const buildAndroidSnapshot = input => {
       platform: 'Android',
       selectedLicenses,
     });
-    for (const license of selectedLicenses) {
+    const upstream = upstreamLegalDocument(
+      item.coordinate,
+      ANDROID_UPSTREAM_LEGAL_DOCUMENTS.get(item.coordinate),
+      npmOwner,
+    );
+    if (upstream) {
+      legalDocumentSha256s.add(
+        addDocument(
+          documents,
+          upstream.document,
+          `upstream:${upstream.review.sourceUrl}`,
+        ),
+      );
+    }
+    for (const license of upstream ? [] : selectedLicenses) {
       const canonical = canonicalLicenseDocument(license);
       if (canonical) {
         legalDocumentSha256s.add(
@@ -1081,6 +1146,7 @@ const buildAndroidSnapshot = input => {
       ),
       owningNpmPackage,
       exactLicenseSelection,
+      ...(upstream ? {upstreamLegalDocument: upstream.review} : {}),
       legalDocumentSha256s: [...legalDocumentSha256s].sort(compareText),
       reviewedAbsence: absenceNote || null,
     });
@@ -2483,6 +2549,7 @@ if (require.main === module) {
 
 module.exports = {
   ALLOWED_LICENSES,
+  ANDROID_UPSTREAM_LEGAL_DOCUMENTS,
   ANDROID_EXACT_LICENSE_SELECTIONS,
   ANDROID_LEGAL_METADATA_ABSENCE_ALLOWLIST,
   FIRST_PARTY_GENERATED_PODS,
@@ -2506,4 +2573,5 @@ module.exports = {
   validateInstalledPodBindings,
   validatePodsSnapshot,
   verifyIosLock,
+  upstreamLegalDocument,
 };

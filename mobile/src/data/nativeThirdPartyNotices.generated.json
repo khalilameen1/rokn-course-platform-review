@@ -1298,7 +1298,7 @@
         "Apache-2.0",
         "BSD-2-Clause"
       ],
-      "legalDocumentCount": 2,
+      "legalDocumentCount": 1,
       "firstPartyGenerated": false
     },
     {
@@ -1307,7 +1307,7 @@
         "Apache-2.0",
         "BSD-2-Clause"
       ],
-      "legalDocumentCount": 2,
+      "legalDocumentCount": 1,
       "firstPartyGenerated": false
     },
     {
@@ -1316,7 +1316,7 @@
         "Apache-2.0",
         "BSD-2-Clause"
       ],
-      "legalDocumentCount": 2,
+      "legalDocumentCount": 1,
       "firstPartyGenerated": false
     },
     {
@@ -1325,7 +1325,7 @@
         "Apache-2.0",
         "BSD-2-Clause"
       ],
-      "legalDocumentCount": 2,
+      "legalDocumentCount": 1,
       "firstPartyGenerated": false
     },
     {
@@ -1334,7 +1334,7 @@
         "Apache-2.0",
         "BSD-2-Clause"
       ],
-      "legalDocumentCount": 2,
+      "legalDocumentCount": 1,
       "firstPartyGenerated": false
     },
     {
@@ -1343,7 +1343,7 @@
         "Apache-2.0",
         "BSD-2-Clause"
       ],
-      "legalDocumentCount": 2,
+      "legalDocumentCount": 1,
       "firstPartyGenerated": false
     },
     {
@@ -3361,5 +3361,5 @@
       ]
     }
   ],
-  "inventoryHash": "663597d01d6f531c792b0064b3d5735b978f07474fabf47a0258903db6234f42"
+  "inventoryHash": "1c8261bba2fbe5a8fcb921d507c15f998cfdbe81ec66cb274981fe96372e9d6d"
 }

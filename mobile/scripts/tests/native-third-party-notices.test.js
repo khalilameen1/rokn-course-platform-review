@@ -10,6 +10,7 @@ const test = require('node:test');
 const ROOT = path.resolve(__dirname, '..', '..');
 const {
   ALLOWED_LICENSES,
+  ANDROID_UPSTREAM_LEGAL_DOCUMENTS,
   ANDROID_LEGAL_METADATA_ABSENCE_ALLOWLIST,
   POD_UPSTREAM_LEGAL_DOCUMENTS,
   POD_EXACT_LICENSE_SELECTIONS,
@@ -23,6 +24,7 @@ const {
   parsePomLicenses,
   resolveInstalledPodBindings,
   validateAndroidSnapshot,
+  upstreamLegalDocument,
 } = require('../generate-native-third-party-notices');
 
 const sha256 = value =>
@@ -705,6 +707,85 @@ test('Android release snapshot covers the resolved closure and ships exact texts
     podSnapshot.dependencies.map(item => item.coordinate),
   );
   assert.ok(!appMetadataText.includes('"text"'));
+});
+
+test('Android upstream notices retain the actual Expo, Glide and libavif copyright owners', () => {
+  const snapshot = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        ROOT,
+        'scripts',
+        'licenses',
+        'android-release-notices.generated.json',
+      ),
+      'utf8',
+    ),
+  );
+  const documents = new Map(
+    snapshot.documents.map(item => [item.sha256, item]),
+  );
+  assert.equal(ANDROID_UPSTREAM_LEGAL_DOCUMENTS.size, 9);
+  for (const [coordinate, review] of ANDROID_UPSTREAM_LEGAL_DOCUMENTS) {
+    const dependency = snapshot.dependencies.find(
+      item => item.coordinate === coordinate,
+    );
+    assert.ok(dependency, coordinate);
+    assert.deepEqual(dependency.upstreamLegalDocument, {
+      ...review,
+      path: review.path.join('/'),
+    });
+    assert.ok(
+      dependency.legalDocumentSha256s.includes(review.sha256),
+      coordinate,
+    );
+    const text = documents.get(review.sha256)?.text;
+    assert.equal(sha256(text), review.sha256);
+    assert.match(
+      text,
+      coordinate.includes('expo.modules')
+        ? /650 Industries, Inc\. \(aka Expo\)/
+        : coordinate.startsWith('com.github.bumptech.glide:')
+        ? /Copyright 2014 Google, Inc\./
+        : /Copyright 2019 Joe Drago/,
+    );
+    const owner = review.npmCoordinate
+      ? {
+          manifest: JSON.parse(
+            fs.readFileSync(
+              path.join(
+                ROOT,
+                'node_modules',
+                review.npmCoordinate.split('@')[0],
+                'package.json',
+              ),
+              'utf8',
+            ),
+          ),
+        }
+      : null;
+    assert.equal(
+      upstreamLegalDocument(coordinate, review, owner).document.sha256,
+      review.sha256,
+    );
+    assert.throws(
+      () =>
+        upstreamLegalDocument(
+          coordinate,
+          {...review, sha256: '0'.repeat(64)},
+          owner,
+        ),
+      /Pinned upstream legal document changed/,
+    );
+    if (owner) {
+      assert.throws(
+        () =>
+          upstreamLegalDocument(coordinate, review, {
+            manifest: {...owner.manifest, gitHead: '0'.repeat(40)},
+          }),
+        /Stale upstream legal-document review/,
+      );
+    }
+  }
 });
 
 test('Pod inventory binds every root to a checksum and exact source class', () => {
