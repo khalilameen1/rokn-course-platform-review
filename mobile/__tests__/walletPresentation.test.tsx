@@ -28,12 +28,12 @@ jest.mock('../src/hooks/useReducedMotion', () => ({
   useReducedMotion: () => true,
 }));
 jest.mock('../src/components/containers/Containers', () => {
-  const {View} = require('react-native');
-  return {Container: View, Content: View};
+  const {View: MockView} = require('react-native');
+  return {Container: MockView, Content: MockView};
 });
 jest.mock('../src/components/ui/PremiumUI', () => {
-  const {View} = require('react-native');
-  return {ResponsiveFrame: View, StatusView: () => null};
+  const {View: MockView} = require('react-native');
+  return {ResponsiveFrame: MockView, StatusView: () => null};
 });
 
 const makeController = (
