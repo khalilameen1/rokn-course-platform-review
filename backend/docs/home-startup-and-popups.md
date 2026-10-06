@@ -84,3 +84,56 @@ OAuth/deep-link behavior; it did not verify completed cover-image decoding.
 The approved 18/27 slogan typography is retained in the React startup surface.
 Final acceptance must inspect the signed cold-launch transition, not merely
 assert that launch XML and React logo files exist.
+
+## Catalogue cover delivery — 6 October 2026
+
+Read-only HEAD requests to the current public catalogue's first four covers
+returned PNG payloads of 2,053,486 / 2,228,393 / 1,890,254 / 1,998,360 bytes.
+This identifies a real payload cost, not a measured cold-start duration. The
+same successful open-source reference uses a small delivery image rather than
+the original in a scrolling feed: [Bluesky AutoSizedImage](https://github.com/bluesky-social/social-app/blob/main/src/components/images/AutoSizedImage.tsx)
+renders `image.thumb` with `expo-image`. Its Play listing above establishes
+10M+ downloads. The local change actually reuses Expo Image 55.0.11 (the
+installed SDK 55 recommendation), whose native Glide/SDWebImage implementation
+owns caching, resizing and WebP decoding. No Bluesky private source or SDK 57
+application code is claimed or copied. There is no image readiness registry,
+onLoad startup dependency, prefetch-everything promise or additional splash
+deadline. The approved startup composition/animation remains unchanged.
+
+The backend uses its existing Intervention Image 2.7.2 encoding implementation
+and existing tracked upload/reference-aware cleanup services. That installed
+legacy major is retained here; this is not a claim that v2 is currently
+maintained or a new dependency upgrade. Course authoring stages the unchanged
+original plus a separate proportional static WebP, quality 82 and maximum edge
+1280px, in one Photo ownership transaction. EXIF orientation is read from the
+original temporary file and the original/alpha are retained. `Photo.path`
+still serves the dashboard's original. `preview_path` serves only the public
+course resource through `Course.catalogue_image`, with original fallback for
+unconverted covers. Existing field `image` remains a URL, including for
+Android 60 with static WebP support already enabled. Draft replication retains
+both paths; deletion/replay/race cleanup checks all owners of both files.
+
+Existing featured Course Photo originals are converted outside all app HTTP
+reads by `php artisan courses:generate-cover-previews --limit=100`. Its dry-run
+only counts pending original paths; reruns skip converted rows, and revisions
+sharing an original receive the same preview. Deploy the additive migration
+before serving the new source, run the backfill and inspect actual public URLs
+and payload sizes before claiming the old covers are optimized. Do not rerender
+or replace approved CMS artwork. The preflight checks the column and GD WebP
+encoder; normal API reads never inspect storage or encode images.
+
+Backend owner/rollback/shared-file/backfill cases and native-cache component
+contracts are authored but not executed. They deliberately do not prove native
+networking or throughput. Node/npm final gates use the existing pinned runtime;
+package installation used scripts disabled and is not a passing release gate.
+CocoaPods lock resolution on macOS, license/fingerprint refresh, and signed
+cold-launch/cache/offline/failed-cover visual acceptance remain in the single
+final gate. Neither this source nor its renditions have been deployed, built or
+uploaded as version 64 yet.
+
+Independent source review accepted this unit after the cover error state was
+given a source-keyed component owner. A failed A followed by B then A retries;
+late A callbacks cannot clear failed B. Both cases are authored for final
+execution. This acceptance is explicitly limited to source behavior and is not
+measured load performance, applied backfill, native visual acceptance or release
+readiness.

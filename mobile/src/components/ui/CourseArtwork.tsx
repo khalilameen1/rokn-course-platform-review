@@ -1,6 +1,13 @@
-import React, {useEffect, useState} from 'react';
-import {type ImageSourcePropType, type ImageStyle, StyleSheet, type StyleProp, View} from 'react-native';
+import React, {useState} from 'react';
+import {
+  type ImageSourcePropType,
+  type ImageStyle,
+  StyleSheet,
+  type StyleProp,
+  View,
+} from 'react-native';
 import {RasterImage as Image} from './RasterImage';
+import {Image as CachedImage} from 'expo-image';
 import {SvgUri} from 'react-native-svg';
 
 const sourceUri = (source?: ImageSourcePropType) =>
@@ -17,15 +24,18 @@ type CourseArtworkProps = {
   style: StyleProp<ImageStyle>;
 };
 
-export const CourseArtwork = ({
-  fallback,
-  source,
-  style,
-}: CourseArtworkProps) => {
+// A source change gives its error state a fresh owner. Late callbacks from the
+// former image cannot replace a recycled card's newly loaded cover.
+export const CourseArtwork = (props: CourseArtworkProps) => (
+  <CourseArtworkFrame
+    key={sourceUri(props.source) ?? JSON.stringify(props.source)}
+    {...props}
+  />
+);
+
+const CourseArtworkFrame = ({fallback, source, style}: CourseArtworkProps) => {
   const uri = sourceUri(source);
   const [failed, setFailed] = useState(false);
-
-  useEffect(() => setFailed(false), [uri]);
 
   if (failed || !source) {
     return (
@@ -57,15 +67,19 @@ export const CourseArtwork = ({
   }
 
   return (
-    <Image
+    <CachedImage
       accessibilityElementsHidden
-      fadeDuration={120}
+      accessible={false}
+      allowDownscaling
+      cachePolicy="disk"
+      contentFit="cover"
       importantForAccessibility="no"
       onError={() => setFailed(true)}
-      progressiveRenderingEnabled
-      resizeMethod="resize"
+      recyclingKey={uri}
       source={source}
       style={style}
+      transition={120}
+      useAppleWebpCodec
     />
   );
 };

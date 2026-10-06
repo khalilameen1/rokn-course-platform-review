@@ -142,7 +142,7 @@ class BaseCourseResource extends JsonResource
             ),
             'title' => (string) $this->title,
             'description' => $this->description ,
-            'image' => $this->image ? (string)$this->image : null,
+            'image' => $this->catalogue_image,
             'price' => $price,
             // Course prices are virtual Rokn credits, never a cash or crypto amount.
             'currency' => 'rokn_coins',

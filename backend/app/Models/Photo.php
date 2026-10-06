@@ -12,17 +12,16 @@ class Photo extends Model
     /**
      * @var array
      */
-    protected $fillable = ['path', 'type'];
+    protected $fillable = ['path', 'preview_path', 'type'];
 
     protected static function boot()
     {
         parent::boot();
         static::deleted(function (Photo $photo): void {
-            $path = (string) $photo->path;
             // Reserve cleanup while the owner deletion can still roll back.
             // StoredFileDeletionService defers only the broker dispatch until
             // commit and its worker checks references again before deleting.
-            if (!Photo::query()->where('path', $path)->exists()) {
+            foreach (array_unique(array_filter([$photo->path, $photo->preview_path])) as $path) {
                 app(StoredFileDeletionService::class)->deleteOrQueue('public', $path);
             }
         });

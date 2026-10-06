@@ -19,6 +19,29 @@ final class StoredFileUploadService
     {
     }
 
+    /** A generated rendition follows the same immutable upload/cleanup owner. */
+    public function storeTrackedBytes(
+        string $bytes,
+        string $directory,
+        string $extension,
+        string $disk = 'public'
+    ): string {
+        $directory = trim($directory, '/');
+        if ($bytes === '' || $directory === '' || trim($disk) === ''
+            || !preg_match('/^[a-z0-9]{1,10}$/', $extension)) {
+            throw new \InvalidArgumentException('Tracked rendition destination is invalid.');
+        }
+        $path = $directory.'/'.Str::uuid().'.'.$extension;
+        $this->cleanup->trackPotentialOrphan($disk, $path, 60);
+        if (!Storage::disk($disk)->put($path, $bytes, [
+            'CacheControl' => 'public, max-age=31536000, immutable',
+        ])) {
+            throw new RuntimeException('Tracked rendition storage failed.');
+        }
+
+        return $path;
+    }
+
     /**
      * Stage a fresh physical attempt before the owning domain row commits.
      * A worker death after storage succeeds but before the owning row commits

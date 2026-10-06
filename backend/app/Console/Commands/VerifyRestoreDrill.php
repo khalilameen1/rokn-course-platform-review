@@ -387,6 +387,7 @@ final class VerifyRestoreDrill extends Command
             ['feedback_attachments', 'path', 'disk', null, 'feedback'],
             ['certificates', 'image_path', null, 'status', (string) config('certificate.disk', 'public')],
             ['photos', 'path', null, null, 'public'],
+            ['photos', 'preview_path', null, null, 'public'],
         ];
         foreach ($families as [$table, $pathColumn, $diskColumn, $statusColumn, $defaultDisk]) {
             if (!$schema->hasTable($table) || !$schema->hasColumn($table, $pathColumn)) continue;

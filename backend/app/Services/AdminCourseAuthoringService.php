@@ -8,7 +8,6 @@ use App\Data\CourseAuthoringEdit;
 use App\Models\Course;
 use App\Models\Photo;
 use Closure;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -23,8 +22,7 @@ final readonly class AdminCourseAuthoringService
         private CoursePublishingService $publishing,
         private CourseStagedAuthoringService $stagedAuthoring,
         private CourseRevisionResolver $revisions,
-        private StoredFileDeletionService $files,
-        private StoredFileUploadService $uploads
+        private CourseCoverStorageService $covers
     ) {
     }
 
@@ -57,11 +55,11 @@ final readonly class AdminCourseAuthoringService
             // setting. It can be enabled explicitly after attachments exist.
             'attachment_prompt_enabled' => false,
         ]);
-        $imagePath = null;
+        $cover = null;
 
         try {
-            $imagePath = $this->storeImage($edit->image);
-            $course = DB::transaction(function () use ($data, $edit, $imagePath, $completeIntent): Course {
+            $cover = $edit->image ? $this->covers->stage($edit->image) : null;
+            $course = DB::transaction(function () use ($data, $edit, $cover, $completeIntent): Course {
                 $course = Course::create($data);
                 $this->planAuthoring->createDefaults($course);
                 if ($edit->planOffers !== null) {
@@ -72,8 +70,8 @@ final readonly class AdminCourseAuthoringService
                 }
                 $course->classifications()->sync($edit->classificationIds ?? []);
                 $course->teachers()->sync($edit->teacherIds ?? []);
-                if ($imagePath) {
-                    $course->allPhotos()->create(['path' => $imagePath, 'type' => 'featured']);
+                if ($cover) {
+                    $course->allPhotos()->create($cover + ['type' => 'featured']);
                 }
                 $completeIntent($course);
 
@@ -82,9 +80,7 @@ final readonly class AdminCourseAuthoringService
 
             return ['status' => 'created', 'course' => $course];
         } catch (\Throwable $exception) {
-            if ($imagePath) {
-                $this->files->deleteOrQueue('public', $imagePath);
-            }
+            $this->covers->discard($cover);
             if ($exception instanceof ValidationException) {
                 throw $exception;
             }
@@ -123,7 +119,7 @@ final readonly class AdminCourseAuthoringService
             $data['is_coming_soon'] = true;
         }
 
-        $imagePath = null;
+        $cover = null;
         $oldPhotos = collect();
         $liveIssues = [];
         $ownedVersion = null;
@@ -143,8 +139,8 @@ final readonly class AdminCourseAuthoringService
             : $preservedHero;
 
         try {
-            $imagePath = $this->storeImage($edit->image);
-            if ($imagePath) {
+            $cover = $edit->image ? $this->covers->stage($edit->image) : null;
+            if ($cover) {
                 $oldPhotos = $course->allPhotos()->where('type', 'featured')->get(['photos.id', 'photos.path']);
             }
             DB::transaction(function () use (
@@ -152,7 +148,7 @@ final readonly class AdminCourseAuthoringService
                 $data,
                 $edit,
                 $administrator,
-                $imagePath,
+                $cover,
                 $oldPhotos,
                 $managedDraft,
                 $canCurateHome,
@@ -197,8 +193,8 @@ final readonly class AdminCourseAuthoringService
                 if ($edit->teacherIds !== null) {
                     $locked->teachers()->sync($edit->teacherIds);
                 }
-                if ($imagePath) {
-                    $locked->allPhotos()->create(['path' => $imagePath, 'type' => 'featured']);
+                if ($cover) {
+                    $locked->allPhotos()->create($cover + ['type' => 'featured']);
                     Photo::query()->whereIn('id', $oldPhotos->pluck('id'))
                         ->lockForUpdate()->get()->each->delete();
                 }
@@ -212,9 +208,7 @@ final readonly class AdminCourseAuthoringService
                 $ownedVersion = $this->authoring->advance($locked);
             }, 3);
         } catch (\Throwable $exception) {
-            if ($imagePath) {
-                $this->files->deleteOrQueue('public', $imagePath);
-            }
+            $this->covers->discard($cover);
             if ($exception instanceof ValidationException) {
                 throw $exception;
             }
@@ -378,18 +372,5 @@ final readonly class AdminCourseAuthoringService
             $locked = Course::query()->whereKey($course->id)->lockForUpdate()->firstOrFail();
             $completeIntent($locked);
         }, 3);
-    }
-
-    private function storeImage(?UploadedFile $image): ?string
-    {
-        if (!$image) {
-            return null;
-        }
-        $path = $this->uploads->storeTrackedUpload($image, 'courses');
-        if (!is_string($path) || trim($path) === '') {
-            throw new \RuntimeException('Course image storage failed');
-        }
-
-        return $path;
     }
 }

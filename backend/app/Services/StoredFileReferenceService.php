@@ -140,6 +140,7 @@ final class StoredFileReferenceService
         if ($disk === 'public') {
             foreach ([
                 ['photos', 'path'],
+                ['photos', 'preview_path'],
                 ['users', 'profile_image'],
                 ['courses', 'image'],
                 ['levels', 'badge_image'],

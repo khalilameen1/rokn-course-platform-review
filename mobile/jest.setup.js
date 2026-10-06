@@ -6,6 +6,10 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 
 require('react-native-gesture-handler/jestSetup');
 
+// Component contracts inspect the source/cache/error callbacks here. Native
+// Glide/SDWebImage rendering still requires signed-device acceptance.
+jest.mock('expo-image', () => ({Image: 'ExpoImage'}));
+
 jest.mock('@react-native-community/netinfo', () =>
   require('@react-native-community/netinfo/jest/netinfo-mock'),
 );

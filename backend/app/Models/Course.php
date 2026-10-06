@@ -72,6 +72,16 @@ class Course extends Model
         });
     }
 
+    /** Public catalogue delivery; the authoring image still points to its original. */
+    public function getCatalogueImageAttribute(): ?string
+    {
+        $preview = trim((string) $this->photo?->preview_path);
+
+        return $preview !== ''
+            ? \App\Support\PublicDiskUrl::from($preview)
+            : $this->image;
+    }
+
     public function scopeVisibleInCatalog($query)
     {
         // Publication controls learning access. Catalogue visibility controls
