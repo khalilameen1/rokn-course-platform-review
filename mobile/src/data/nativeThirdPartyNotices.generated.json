@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "androidDependencyCount": 241,
+  "androidDependencyCount": 260,
   "androidProjectComponentCount": 24,
   "podDependencyCount": 128,
   "android": [
@@ -45,7 +45,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "androidx.appcompat:appcompat-resources:1.7.0",
+      "coordinate": "androidx.appcompat:appcompat-resources:1.7.1",
       "licenses": [
         "Apache-2.0"
       ],
@@ -53,7 +53,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "androidx.appcompat:appcompat:1.7.0",
+      "coordinate": "androidx.appcompat:appcompat:1.7.1",
       "licenses": [
         "Apache-2.0"
       ],
@@ -334,6 +334,14 @@
     },
     {
       "coordinate": "androidx.core:core-ktx:1.18.0",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "androidx.core:core-splashscreen:1.2.0",
       "licenses": [
         "Apache-2.0"
       ],
@@ -1061,6 +1069,14 @@
       "firstPartyGenerated": false
     },
     {
+      "coordinate": "com.caverock:androidsvg-aar:1.4",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
       "coordinate": "com.facebook.fbjni:fbjni:0.7.0",
       "licenses": [
         "Apache-2.0"
@@ -1272,6 +1288,108 @@
       "coordinate": "com.facebook.yoga:proguard-annotations:1.19.0",
       "licenses": [
         "MIT"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "com.github.bumptech.glide:annotations:5.0.5",
+      "licenses": [
+        "Apache-2.0",
+        "BSD-2-Clause"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "com.github.bumptech.glide:avif-integration:5.0.5",
+      "licenses": [
+        "Apache-2.0",
+        "BSD-2-Clause"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "com.github.bumptech.glide:disklrucache:5.0.5",
+      "licenses": [
+        "Apache-2.0",
+        "BSD-2-Clause"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "com.github.bumptech.glide:gifdecoder:5.0.5",
+      "licenses": [
+        "Apache-2.0",
+        "BSD-2-Clause"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "com.github.bumptech.glide:glide:5.0.5",
+      "licenses": [
+        "Apache-2.0",
+        "BSD-2-Clause"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "com.github.bumptech.glide:okhttp3-integration:5.0.5",
+      "licenses": [
+        "Apache-2.0",
+        "BSD-2-Clause"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "com.github.penfeizhou.android.animation:apng:3.0.5",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "com.github.penfeizhou.android.animation:avif:3.0.5",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "com.github.penfeizhou.android.animation:awebp:3.0.5",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "com.github.penfeizhou.android.animation:frameanimation:3.0.5",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "com.github.penfeizhou.android.animation:gif:3.0.5",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "com.github.penfeizhou.android.animation:glide-plugin:3.0.5",
+      "licenses": [
+        "Apache-2.0"
       ],
       "legalDocumentCount": 1,
       "firstPartyGenerated": false
@@ -1629,6 +1747,14 @@
       "firstPartyGenerated": false
     },
     {
+      "coordinate": "expo.modules.image:expo.modules.image:55.0.11",
+      "licenses": [
+        "MIT"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
       "coordinate": "expo.modules.webview:expo.modules.webview:55.0.6",
       "licenses": [
         "MIT"
@@ -1694,6 +1820,14 @@
     },
     {
       "coordinate": "host.exp.exponent:expo.modules.securestore:55.0.18",
+      "licenses": [
+        "MIT"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "host.exp.exponent:expo.modules.splashscreen:55.0.25",
       "licenses": [
         "MIT"
       ],
@@ -1773,11 +1907,35 @@
       "firstPartyGenerated": false
     },
     {
+      "coordinate": "jp.wasabeef:glide-transformations:4.3.0",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
       "coordinate": "me.leolin:ShortcutBadger:1.1.22",
       "licenses": [
         "Apache-2.0"
       ],
       "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "org.aomedia.avif.android:avif:1.1.1.14d8e3c4",
+      "licenses": [
+        "BSD-2-Clause"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "org.checkerframework:checker-qual:3.41.0",
+      "licenses": [
+        "MIT"
+      ],
+      "legalDocumentCount": 2,
       "firstPartyGenerated": false
     },
     {
@@ -3203,5 +3361,5 @@
       ]
     }
   ],
-  "inventoryHash": "67cfa0f86aef5f2faeb14d7d9aec96e2a4f26a818b86b615c392dc1446aed932"
+  "inventoryHash": "663597d01d6f531c792b0064b3d5735b978f07474fabf47a0258903db6234f42"
 }

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "generatedFrom": "Gradle releaseRuntimeClasspath artifact resolution",
   "configuration": "releaseRuntimeClasspath",
-  "dependencyCount": 241,
+  "dependencyCount": 260,
   "dependencies": [
     {
       "coordinate": "androidx.activity:activity-ktx:1.9.3",
@@ -144,8 +144,8 @@
       "reviewedAbsence": null
     },
     {
-      "coordinate": "androidx.appcompat:appcompat-resources:1.7.0",
-      "pomSha256": "bbf2a5b9ac78904c9da792e16731793274f95fb4a61230719140b3e0ef736baa",
+      "coordinate": "androidx.appcompat:appcompat-resources:1.7.1",
+      "pomSha256": "2faf922e8c3d706f29d862b3fbb3aa1347705c21c6eae18586d2bb1f7366ea01",
       "pomLicenses": [
         {
           "name": "The Apache Software License, Version 2.0",
@@ -159,10 +159,10 @@
       ],
       "artifacts": [
         {
-          "fileName": "appcompat-resources-1.7.0.aar",
+          "fileName": "appcompat-resources-1.7.1.aar",
           "type": "aar",
-          "sha256": "55b6778602680f3c288ce350a2c2d3dd158d97dbffc63476275826655582c388",
-          "size": 63996
+          "sha256": "8e2db31224ca53b108c784da2b361959062716d416b210cfef3d5a3828306df0",
+          "size": 63997
         }
       ],
       "owningNpmPackage": null,
@@ -173,8 +173,8 @@
       "reviewedAbsence": null
     },
     {
-      "coordinate": "androidx.appcompat:appcompat:1.7.0",
-      "pomSha256": "a57b428f428a9337d7b483a2162a570d4e672bceff411a6465e53e8747506ac3",
+      "coordinate": "androidx.appcompat:appcompat:1.7.1",
+      "pomSha256": "1f79910cc20de198acf3867b1e93f9ed59ddb643585b2e9c28ee55518af1bc00",
       "pomLicenses": [
         {
           "name": "The Apache Software License, Version 2.0",
@@ -188,10 +188,10 @@
       ],
       "artifacts": [
         {
-          "fileName": "appcompat-1.7.0.aar",
+          "fileName": "appcompat-1.7.1.aar",
           "type": "aar",
-          "sha256": "67189713b30a3fab6971713cc5fab1cb7f022bcf648a257563715c91d719d584",
-          "size": 1148962
+          "sha256": "2ad334a323b28046e89b738c77d184cb3dcca32a551ab048851b2fda23a3ba26",
+          "size": 1148656
         }
       ],
       "owningNpmPackage": null,
@@ -1142,6 +1142,36 @@
           "type": "aar",
           "sha256": "c7c511e3df838fcbcb61ace36944de6bb7c10eb597be546974f001119939c85d",
           "size": 184113
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b",
+        "4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe"
+      ],
+      "reviewedAbsence": null
+    },
+    {
+      "coordinate": "androidx.core:core-splashscreen:1.2.0",
+      "pomSha256": "351c49fa60702a1635749dc1d24c6c02450af874fb67852cbdb0ade06beac66a",
+      "pomLicenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "distribution": "repo",
+          "selectedLicense": "Apache-2.0"
+        }
+      ],
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "artifacts": [
+        {
+          "fileName": "core-splashscreen-1.2.0.aar",
+          "type": "aar",
+          "sha256": "5ace865c4eb7e0f24369790d2c76eddafd0dbb1ebea3288f55c18d9605ea0ee0",
+          "size": 42293
         }
       ],
       "owningNpmPackage": null,
@@ -3685,6 +3715,35 @@
       "reviewedAbsence": "The POM declares the Android SDK License and links the authoritative Google terms; the AAR publishes no standalone legal file."
     },
     {
+      "coordinate": "com.caverock:androidsvg-aar:1.4",
+      "pomSha256": "a789196681aeff63a375ed4bf417c721f087729e9c90c5e4efccdbc9e97e924a",
+      "pomLicenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "distribution": "repo",
+          "selectedLicense": "Apache-2.0"
+        }
+      ],
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "artifacts": [
+        {
+          "fileName": "androidsvg-aar-1.4.aar",
+          "type": "aar",
+          "sha256": "02a5b08a2b35d2d58eb2eaca9d84ac00fb341da725fdbd653ea3ed130437e95a",
+          "size": 202395
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null
+    },
+    {
       "coordinate": "com.facebook.fbjni:fbjni:0.7.0",
       "pomSha256": "48b53b5dd4f70f3988e2bad97aa7bf5f9271369045cc0776ebe9e760d9703f04",
       "pomLicenses": [
@@ -4464,6 +4523,402 @@
       "exactLicenseSelection": null,
       "legalDocumentSha256s": [
         "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2"
+      ],
+      "reviewedAbsence": null
+    },
+    {
+      "coordinate": "com.github.bumptech.glide:annotations:5.0.5",
+      "pomSha256": "f83571d7d9912ecd9371af7ccc611aa41f0e2e36ad6cf9759a3f61339006438d",
+      "pomLicenses": [
+        {
+          "name": "Simplified BSD License",
+          "url": "http://www.opensource.org/licenses/bsd-license",
+          "distribution": "repo",
+          "selectedLicense": "BSD-2-Clause"
+        },
+        {
+          "name": "Apache License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "distribution": "repo",
+          "selectedLicense": "Apache-2.0"
+        }
+      ],
+      "selectedLicenses": [
+        "Apache-2.0",
+        "BSD-2-Clause"
+      ],
+      "artifacts": [
+        {
+          "fileName": "annotations-5.0.5.jar",
+          "type": "jar",
+          "sha256": "fb3e596a60c182f3251170bd1e2dfe32ca1d1f0d79763408d1bf168c81d61ae1",
+          "size": 4305
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6",
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null
+    },
+    {
+      "coordinate": "com.github.bumptech.glide:avif-integration:5.0.5",
+      "pomSha256": "7016cbb6098fe4e279f508ce25299c1619de25f88cc1e8337f68b4533e641cb7",
+      "pomLicenses": [
+        {
+          "name": "Simplified BSD License",
+          "url": "http://www.opensource.org/licenses/bsd-license",
+          "distribution": "repo",
+          "selectedLicense": "BSD-2-Clause"
+        },
+        {
+          "name": "Apache License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "distribution": "repo",
+          "selectedLicense": "Apache-2.0"
+        }
+      ],
+      "selectedLicenses": [
+        "Apache-2.0",
+        "BSD-2-Clause"
+      ],
+      "artifacts": [
+        {
+          "fileName": "avif-integration-5.0.5.aar",
+          "type": "aar",
+          "sha256": "a994ea472be803f7c9fde37a98d7d149f5cd8fd53310adc8d7a7a5e97da2fea7",
+          "size": 5676
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6",
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null
+    },
+    {
+      "coordinate": "com.github.bumptech.glide:disklrucache:5.0.5",
+      "pomSha256": "f4c90da18417e6e7c45502784e7048166b555fc9f464fca4912bbdae26c3da7c",
+      "pomLicenses": [
+        {
+          "name": "Simplified BSD License",
+          "url": "http://www.opensource.org/licenses/bsd-license",
+          "distribution": "repo",
+          "selectedLicense": "BSD-2-Clause"
+        },
+        {
+          "name": "Apache License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "distribution": "repo",
+          "selectedLicense": "Apache-2.0"
+        }
+      ],
+      "selectedLicenses": [
+        "Apache-2.0",
+        "BSD-2-Clause"
+      ],
+      "artifacts": [
+        {
+          "fileName": "disklrucache-5.0.5.aar",
+          "type": "aar",
+          "sha256": "509f94cbe85e3aa393c019b026ac904e2eece355a52795e355d82e3e774b2419",
+          "size": 18981
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6",
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null
+    },
+    {
+      "coordinate": "com.github.bumptech.glide:gifdecoder:5.0.5",
+      "pomSha256": "c451250598892688f0710fe6a21377649ea606d0cc5d2d45fd75ef7ebecd3c88",
+      "pomLicenses": [
+        {
+          "name": "Simplified BSD License",
+          "url": "http://www.opensource.org/licenses/bsd-license",
+          "distribution": "repo",
+          "selectedLicense": "BSD-2-Clause"
+        },
+        {
+          "name": "Apache License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "distribution": "repo",
+          "selectedLicense": "Apache-2.0"
+        }
+      ],
+      "selectedLicenses": [
+        "Apache-2.0",
+        "BSD-2-Clause"
+      ],
+      "artifacts": [
+        {
+          "fileName": "gifdecoder-5.0.5.aar",
+          "type": "aar",
+          "sha256": "df9e4620e87b68b719ef8af3d100324a144bfc88f43518af9a013674109fe078",
+          "size": 18000
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6",
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null
+    },
+    {
+      "coordinate": "com.github.bumptech.glide:glide:5.0.5",
+      "pomSha256": "be51e34d27126a47df7e45c372ae18c06540d65eafdc3d20a75fbcdfa6a0ab5d",
+      "pomLicenses": [
+        {
+          "name": "Simplified BSD License",
+          "url": "http://www.opensource.org/licenses/bsd-license",
+          "distribution": "repo",
+          "selectedLicense": "BSD-2-Clause"
+        },
+        {
+          "name": "Apache License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "distribution": "repo",
+          "selectedLicense": "Apache-2.0"
+        }
+      ],
+      "selectedLicenses": [
+        "Apache-2.0",
+        "BSD-2-Clause"
+      ],
+      "artifacts": [
+        {
+          "fileName": "glide-5.0.5.aar",
+          "type": "aar",
+          "sha256": "73ed8af676087d46400f7b6b9e940e433c3f2a9fd9387b361726a4db2d6d277c",
+          "size": 705957
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6",
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null
+    },
+    {
+      "coordinate": "com.github.bumptech.glide:okhttp3-integration:5.0.5",
+      "pomSha256": "0ba7272b0d93ecab2063cf18846f3af0b2a69f406b5d601db76c2858a87c00de",
+      "pomLicenses": [
+        {
+          "name": "Simplified BSD License",
+          "url": "http://www.opensource.org/licenses/bsd-license",
+          "distribution": "repo",
+          "selectedLicense": "BSD-2-Clause"
+        },
+        {
+          "name": "Apache License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "distribution": "repo",
+          "selectedLicense": "Apache-2.0"
+        }
+      ],
+      "selectedLicenses": [
+        "Apache-2.0",
+        "BSD-2-Clause"
+      ],
+      "artifacts": [
+        {
+          "fileName": "okhttp3-integration-5.0.5.aar",
+          "type": "aar",
+          "sha256": "1a98d943e738ce25a2ceec699d0ee3a8d76e33174b25e91538e5a8565a2d499a",
+          "size": 7016
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6",
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null
+    },
+    {
+      "coordinate": "com.github.penfeizhou.android.animation:apng:3.0.5",
+      "pomSha256": "66fe57d99c21e57f187992a8fd7ecbd12e9c3c126195766f725192cf25513951",
+      "pomLicenses": [
+        {
+          "name": "The Apache License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "distribution": null,
+          "selectedLicense": "Apache-2.0"
+        }
+      ],
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "artifacts": [
+        {
+          "fileName": "apng-3.0.5.aar",
+          "type": "aar",
+          "sha256": "3dc9019711f6205f5a11fee7ef990332572ac5f6fdffc1ddefbd28c91097668b",
+          "size": 20902
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null
+    },
+    {
+      "coordinate": "com.github.penfeizhou.android.animation:avif:3.0.5",
+      "pomSha256": "4f70d792f7fa02688dda108ce1112cbc52e99f8260091f175421e0e63165b1b9",
+      "pomLicenses": [
+        {
+          "name": "The Apache License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "distribution": null,
+          "selectedLicense": "Apache-2.0"
+        }
+      ],
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "artifacts": [
+        {
+          "fileName": "avif-3.0.5.aar",
+          "type": "aar",
+          "sha256": "0be871370c8bc3e5ecde4a589ce821ca53528918989f9ed311338973f0b964c9",
+          "size": 8373
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null
+    },
+    {
+      "coordinate": "com.github.penfeizhou.android.animation:awebp:3.0.5",
+      "pomSha256": "3c2628c9d0a39827121cf1bbcd3e69d03ccb3cb02c9a0f3fe180cf21d846d5ae",
+      "pomLicenses": [
+        {
+          "name": "The Apache License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "distribution": null,
+          "selectedLicense": "Apache-2.0"
+        }
+      ],
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "artifacts": [
+        {
+          "fileName": "awebp-3.0.5.aar",
+          "type": "aar",
+          "sha256": "14e1f14afb33b4115baa82a33131b351e05307fca89f8b47c7d8a8dbb68af0c7",
+          "size": 20218
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null
+    },
+    {
+      "coordinate": "com.github.penfeizhou.android.animation:frameanimation:3.0.5",
+      "pomSha256": "b23bee85f983eb3c5896beeba3d3c83cd63ea5423fbb8b2d7a1560c0796ad051",
+      "pomLicenses": [
+        {
+          "name": "The Apache License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "distribution": null,
+          "selectedLicense": "Apache-2.0"
+        }
+      ],
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "artifacts": [
+        {
+          "fileName": "frameanimation-3.0.5.aar",
+          "type": "aar",
+          "sha256": "17e735a6a379972340515a91d96eac5228c1fb6b47f4652aa67f99d735231b08",
+          "size": 32226
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null
+    },
+    {
+      "coordinate": "com.github.penfeizhou.android.animation:gif:3.0.5",
+      "pomSha256": "baac88d1d898f35f78f1bc9827673d98cdc00669fea2fc32091f294f251c179b",
+      "pomLicenses": [
+        {
+          "name": "The Apache License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "distribution": null,
+          "selectedLicense": "Apache-2.0"
+        }
+      ],
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "artifacts": [
+        {
+          "fileName": "gif-3.0.5.aar",
+          "type": "aar",
+          "sha256": "78c478c0fcc98a382f0a9e00bf671ce2a1d3ffb34ef817d7caeaf890ba493369",
+          "size": 359819
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null
+    },
+    {
+      "coordinate": "com.github.penfeizhou.android.animation:glide-plugin:3.0.5",
+      "pomSha256": "f95519b7606c0be14798e0a35875bf3598b22b371d0705fbb9d1d02771d24a7d",
+      "pomLicenses": [
+        {
+          "name": "The Apache License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "distribution": null,
+          "selectedLicense": "Apache-2.0"
+        }
+      ],
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "artifacts": [
+        {
+          "fileName": "glide-plugin-3.0.5.aar",
+          "type": "aar",
+          "sha256": "81cccbbad121366c7e2ba767b3c46f5150bfccf4b67f33caf094ef34ac4471be",
+          "size": 13470
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
       ],
       "reviewedAbsence": null
     },
@@ -5687,6 +6142,38 @@
       "reviewedAbsence": null
     },
     {
+      "coordinate": "expo.modules.image:expo.modules.image:55.0.11",
+      "pomSha256": "c762e6e61f3c4404ffdf3a7e31c838dfb387d7326cb648797483c07a120ce4fd",
+      "pomLicenses": [
+        {
+          "name": "MIT License",
+          "url": "https://github.com/expo/expo/blob/main/LICENSE",
+          "distribution": "https://github.com/expo/expo/blob/main/LICENSE",
+          "selectedLicense": "MIT"
+        }
+      ],
+      "selectedLicenses": [
+        "MIT"
+      ],
+      "artifacts": [
+        {
+          "fileName": "expo.modules.image-55.0.11.aar",
+          "type": "aar",
+          "sha256": "24a9c293f29dbe931326f570bd5571f836d8a77875a3f4e3982fc300996362d5",
+          "size": 294914
+        }
+      ],
+      "owningNpmPackage": {
+        "coordinate": "expo-image@55.0.11",
+        "license": "MIT"
+      },
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2"
+      ],
+      "reviewedAbsence": null
+    },
+    {
       "coordinate": "expo.modules.webview:expo.modules.webview:55.0.6",
       "pomSha256": "9b3797c47d17a71bb8bfcf1b6474b65ae2a3d2903853bc66fb2dc997510a98fc",
       "pomLicenses": [
@@ -5975,6 +6462,38 @@
       "reviewedAbsence": null
     },
     {
+      "coordinate": "host.exp.exponent:expo.modules.splashscreen:55.0.25",
+      "pomSha256": "4a0a2b236dac2d7325f81436f9c6901574918de0b1afc80ea8afde98f437bcb0",
+      "pomLicenses": [
+        {
+          "name": "MIT License",
+          "url": "https://github.com/expo/expo/blob/main/LICENSE",
+          "distribution": "https://github.com/expo/expo/blob/main/LICENSE",
+          "selectedLicense": "MIT"
+        }
+      ],
+      "selectedLicenses": [
+        "MIT"
+      ],
+      "artifacts": [
+        {
+          "fileName": "expo.modules.splashscreen-55.0.25.aar",
+          "type": "aar",
+          "sha256": "840c7d66996e1c2b0e96f7e57e1001480d8c7ccf1667d75722b9854409225ca6",
+          "size": 22826
+        }
+      ],
+      "owningNpmPackage": {
+        "coordinate": "expo-splash-screen@55.0.25",
+        "license": "MIT"
+      },
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2"
+      ],
+      "reviewedAbsence": null
+    },
+    {
       "coordinate": "host.exp.exponent:expo.modules.webbrowser:55.0.20",
       "pomSha256": "eecc9d5d4f38f27a39d0007b60ad92fc972e3f980c0ef3f295d9a972e67c3b97",
       "pomLicenses": [
@@ -6245,6 +6764,35 @@
       "reviewedAbsence": null
     },
     {
+      "coordinate": "jp.wasabeef:glide-transformations:4.3.0",
+      "pomSha256": "2518399829d1fd31e0749cddd992a6b406418bc74a72c3c7f1d9fb2da93f9e64",
+      "pomLicenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "distribution": null,
+          "selectedLicense": "Apache-2.0"
+        }
+      ],
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "artifacts": [
+        {
+          "fileName": "glide-transformations-4.3.0.aar",
+          "type": "aar",
+          "sha256": "ce3a57e80456a2380a07b31c6156644ad491022424df38a47de1e814d746d6e3",
+          "size": 41310
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null
+    },
+    {
       "coordinate": "me.leolin:ShortcutBadger:1.1.22",
       "pomSha256": "1cfb0a209ad4de5d95bbefdb48cc3da7af1c70fa9eda8b8a06ae0616946cd28a",
       "pomLicenses": [
@@ -6270,6 +6818,65 @@
       "exactLicenseSelection": null,
       "legalDocumentSha256s": [
         "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null
+    },
+    {
+      "coordinate": "org.aomedia.avif.android:avif:1.1.1.14d8e3c4",
+      "pomSha256": "2f098a4c17f4540f50e302e8203fac3f69f5b4d63adc86841244a0a7e9f62ccc",
+      "pomLicenses": [
+        {
+          "name": "BSD 2-Clause License",
+          "url": "https://github.com/AOMediaCodec/libavif/blob/master/LICENSE",
+          "distribution": "repo",
+          "selectedLicense": "BSD-2-Clause"
+        }
+      ],
+      "selectedLicenses": [
+        "BSD-2-Clause"
+      ],
+      "artifacts": [
+        {
+          "fileName": "avif-1.1.1.14d8e3c4.aar",
+          "type": "aar",
+          "sha256": "d46e1e215388a6ccd9cd2e333929ba3f03671e5e72a7ab1f1f0a2a35c8bd66a5",
+          "size": 2075107
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6"
+      ],
+      "reviewedAbsence": null
+    },
+    {
+      "coordinate": "org.checkerframework:checker-qual:3.41.0",
+      "pomSha256": "5c73b0770540842cf06a01d264bbb89ae5e248669dc9da80e861e8233dd4675b",
+      "pomLicenses": [
+        {
+          "name": "The MIT License",
+          "url": "http://opensource.org/licenses/MIT",
+          "distribution": "repo",
+          "selectedLicense": "MIT"
+        }
+      ],
+      "selectedLicenses": [
+        "MIT"
+      ],
+      "artifacts": [
+        {
+          "fileName": "checker-qual-3.41.0.jar",
+          "type": "jar",
+          "sha256": "2f9f245bf68e4259d610894f2406dc1f6363dc639302bd566e8272e4f4541172",
+          "size": 228963
+        }
+      ],
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "2bf94810693c351040e6c5178cebc67eaf372381a6527f6331700598bbd2d43e",
+        "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2"
       ],
       "reviewedAbsence": null
     },
@@ -7170,8 +7777,8 @@
   "unresolvedDependencyCount": 0,
   "unclassifiedLocalFileCount": 0,
   "unclassifiedResolvedArtifactCount": 0,
-  "resolvedArtifactCount": 231,
-  "moduleArtifactCount": 207,
+  "resolvedArtifactCount": 250,
+  "moduleArtifactCount": 226,
   "projectArtifactCount": 24,
   "documents": [
     {
@@ -7181,6 +7788,16 @@
         {
           "source": "commons-io:commons-io:2.6/commons-io-2.6.jar",
           "path": "META-INF/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "sha256": "0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6",
+      "text": "Copyright (c) Felix Böhm\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:\n\nRedistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.\n\nRedistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.\n\nTHIS IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS,\nEVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.",
+      "sources": [
+        {
+          "source": "canonical:BSD-2-Clause",
+          "path": "node_modules/css-select/LICENSE"
         }
       ]
     },
@@ -7230,6 +7847,16 @@
         },
         {
           "source": "commons-io:commons-io:2.6/commons-io-2.6.jar",
+          "path": "META-INF/LICENSE.txt"
+        }
+      ]
+    },
+    {
+      "sha256": "2bf94810693c351040e6c5178cebc67eaf372381a6527f6331700598bbd2d43e",
+      "text": "Checker Framework qualifiers\nCopyright 2004-present by the Checker Framework developers\n\nMIT License:\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
+      "sources": [
+        {
+          "source": "org.checkerframework:checker-qual:3.41.0/checker-qual-3.41.0.jar",
           "path": "META-INF/LICENSE.txt"
         }
       ]
@@ -7333,6 +7960,10 @@
         {
           "source": "androidx.core:core-ktx:1.18.0/core-ktx-1.18.0.aar",
           "path": "META-INF/androidx/core/core-ktx/LICENSE.txt"
+        },
+        {
+          "source": "androidx.core:core-splashscreen:1.2.0/core-splashscreen-1.2.0.aar",
+          "path": "META-INF/androidx/core/core-splashscreen/LICENSE.txt"
         },
         {
           "source": "androidx.core:core-viewtree:1.0.0/core-viewtree-1.0.0.aar",

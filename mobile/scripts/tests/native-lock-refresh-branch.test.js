@@ -51,6 +51,19 @@ const androidFiles = [
 const nativeFiles = [...androidFiles, 'mobile/Gemfile.lock', 'mobile/ios/Podfile.lock'];
 const legalFile = 'mobile/NATIVE_THIRD_PARTY_NOTICES.md';
 
+test('native refresh compiles Android once on Linux and resolves CocoaPods on macOS', () => {
+  const linux = workflow.jobs['refresh-android'];
+  const mac = workflow.jobs.refresh;
+  const linuxRun = linux.steps.map(step => step.run || '').join('\n');
+  const macRun = mac.steps.map(step => step.run || '').join('\n');
+  assert.equal(mac.needs, 'refresh-android');
+  assert.match(linuxRun, /:app:lintRelease :app:testReleaseUnitTest :app:bundleRelease/);
+  assert.doesNotMatch(macRun, /:app:(?:bundleRelease|lintRelease|testReleaseUnitTest)/);
+  assert.match(macRun, /:app:roknResolvedReleaseLicenseInputs/);
+  assert.match(macRun, /bundle _4\.0\.20_ exec pod install/);
+  assert.match(macRun, /npm run verify:ios-lock/);
+});
+
 const fixture = t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'rokn-lock-ref-test-'));
   t.after(() => {

@@ -570,8 +570,8 @@ test('Android release snapshot covers the resolved closure and ships exact texts
   );
   assert.equal(snapshot.schemaVersion, 1);
   assert.equal(snapshot.configuration, 'releaseRuntimeClasspath');
-  assert.equal(snapshot.dependencyCount, 241);
-  assert.equal(snapshot.dependencies.length, 241);
+  assert.equal(snapshot.dependencyCount, 260);
+  assert.equal(snapshot.dependencies.length, 260);
   assert.equal(
     snapshot.dependencies.filter(item => item.artifacts.length === 0).length,
     34,
@@ -689,10 +689,10 @@ test('Android release snapshot covers the resolved closure and ships exact texts
       'utf8',
     ),
   );
-  assert.equal(appMetadata.androidDependencyCount, 241);
+  assert.equal(appMetadata.androidDependencyCount, 260);
   assert.equal(appMetadata.androidProjectComponentCount, 24);
   assert.equal(appMetadata.podDependencyCount, podSnapshot.dependencyCount);
-  assert.equal(appMetadata.android.length, 241);
+  assert.equal(appMetadata.android.length, 260);
   assert.equal(appMetadata.androidProjects.length, 24);
   assert.ok(
     appMetadata.androidProjects.some(

@@ -154,24 +154,10 @@ jobs:
             "-ProknLicenseInventoryOutput=$RUNNER_TEMP/android-license-inputs.json" \
             --write-verification-metadata sha256
           test -s "$RUNNER_TEMP/android-license-inputs.json"
-          keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/metadata-upload.jks" \
-            -storepass ci-password -keypass ci-password -alias ci-upload \
-            -keyalg RSA -keysize 2048 -validity 2 -dname "CN=Rokn Metadata CI"
-          ./gradlew -q :app:lintRelease :app:testReleaseUnitTest :app:bundleRelease \
-            --no-daemon --refresh-dependencies \
-            --write-locks \
-            -PreactNativeArchitectures=arm64-v8a \
-            -ProknDistributionChannel=play \
-            -ProknBuildProfile=production \
-            -ProknRequireReleaseSigning=true \
-            -ProknRequireApiUrl=true \
-            -ProknEnableMinify=true \
-            -ProknEnableResourceShrink=true \
-            "-PUPLOAD_STORE_FILE=$RUNNER_TEMP/metadata-upload.jks" \
-            -PUPLOAD_STORE_PASSWORD=ci-password \
-            -PUPLOAD_KEY_ALIAS=ci-upload \
-            -PUPLOAD_KEY_PASSWORD=ci-password \
-            --write-verification-metadata sha256
+          # The Linux job owns Android compilation/lint/R8 and its complete
+          # production lock closure. macOS only needs its host-specific POM
+          # inventory plus CocoaPods; rebuilding Android here can exhaust
+          # this job before the iOS locks are generated.
           cd ..
           node --test scripts/tests/gradle-dependency-provenance.test.js
           cd ios
