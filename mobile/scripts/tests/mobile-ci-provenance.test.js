@@ -734,6 +734,11 @@ test('native lock refresh captures the production Android metadata closure', () 
     path.join(root, '..', '.github', 'workflows', 'refresh-ios-lock.yml'),
     'utf8',
   );
+  const parsed = YAML.parse(workflow);
+  const linuxRun = parsed.jobs['refresh-android'].steps
+    .map(step => step.run || '').join('\n');
+  const macRun = parsed.jobs.refresh.steps
+    .map(step => step.run || '').join('\n');
   assert.equal(
     [...workflow.matchAll(/npm ci --include=dev/g)].length,
     2,
@@ -744,18 +749,19 @@ test('native lock refresh captures the production Android metadata closure', () 
     ':app:testReleaseUnitTest',
     ':app:bundleRelease',
   ]) {
-    assert.equal([...workflow.matchAll(new RegExp(task, 'g'))].length, 2);
+    assert.equal([...linuxRun.matchAll(new RegExp(task, 'g'))].length, 1);
+    assert.doesNotMatch(macRun, new RegExp(task));
   }
-  assert.match(workflow, /--refresh-dependencies/);
-  assert.match(workflow, /-ProknDistributionChannel=play/);
-  assert.match(workflow, /-ProknBuildProfile=production/);
-  assert.match(workflow, /-ProknRequireReleaseSigning=true/);
-  assert.match(workflow, /-ProknEnableMinify=true/);
-  assert.match(workflow, /-ProknEnableResourceShrink=true/);
-  assert.match(workflow, /--write-verification-metadata sha256/);
+  assert.match(linuxRun, /--refresh-dependencies/);
+  assert.match(linuxRun, /-ProknDistributionChannel=play/);
+  assert.match(linuxRun, /-ProknBuildProfile=production/);
+  assert.match(linuxRun, /-ProknRequireReleaseSigning=true/);
+  assert.match(linuxRun, /-ProknEnableMinify=true/);
+  assert.match(linuxRun, /-ProknEnableResourceShrink=true/);
+  assert.match(linuxRun, /--write-verification-metadata sha256/);
   assert.equal(
-    [...workflow.matchAll(/--write-locks/g)].length,
-    2,
+    [...linuxRun.matchAll(/--write-locks/g)].length,
+    1,
     'native lock refresh must update dependency locks before strict release resolution',
   );
   for (const lockfile of [
