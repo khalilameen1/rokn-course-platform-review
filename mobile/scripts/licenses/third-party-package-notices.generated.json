@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
   "generatedFrom": "verified package-lock.json production closure",
-  "packageCount": 731,
-  "packagePathCount": 814,
+  "packageCount": 733,
+  "packagePathCount": 818,
   "packages": [
     {
       "coordinate": "@babel/code-frame@7.10.4",
@@ -7900,6 +7900,26 @@
       ]
     },
     {
+      "coordinate": "expo-image@55.0.11",
+      "name": "expo-image",
+      "version": "55.0.11",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-PVIBYQJW/h1f6Zb9xnoWlgfqyOPVm2yb6eo6ZogaKbvMrhb/Q/fiERbagi4oqmR6IPljWPEpkXXQyFBUh7TjpQ==",
+      "resolved": "https://registry.npmjs.org/expo-image/-/expo-image-55.0.11.tgz",
+      "legalSource": "reviewed-metadata-fallback",
+      "sourceReference": "https://registry.npmjs.org/expo-image/-/expo-image-55.0.11.tgz",
+      "publishedLegalFileCount": 0,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt",
+          "sha256": "f2e0b7e60114b4cf08d8f78e0ddae91c99e8e191057b23233f9883cc9df53e5d",
+          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: expo-image@55.0.11\nExact npm tarball: https://registry.npmjs.org/expo-image/-/expo-image-55.0.11.tgz\nTarball integrity: sha512-PVIBYQJW/h1f6Zb9xnoWlgfqyOPVm2yb6eo6ZogaKbvMrhb/Q/fiERbagi4oqmR6IPljWPEpkXXQyFBUh7TjpQ==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: 650 Industries, Inc.\nRepository metadata: https://github.com/expo/expo.git\nHomepage metadata: https://docs.expo.dev/versions/latest/sdk/image/\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nUpstream terms source: https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE\nRetained upstream file: scripts/licenses/upstream/expo-expo-LICENSE\nUpstream SHA-256: 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa\n\nThe MIT License (MIT)\n\nCopyright (c) 2015-present 650 Industries, Inc. (aka Expo)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
+        }
+      ]
+    },
+    {
       "coordinate": "expo-keep-awake@55.0.8",
       "name": "expo-keep-awake",
       "version": "55.0.8",
@@ -8016,6 +8036,26 @@
           "path": "ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt",
           "sha256": "e6b0533517f795d4f97c942418b9fe877cbeb0212f98fee927c9a7aff31e64a5",
           "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: expo-server@55.0.12\nExact npm tarball: https://registry.npmjs.org/expo-server/-/expo-server-55.0.12.tgz\nTarball integrity: sha512-yuNHbxobUKCXWn9Z/H+lgYk6heXEFub6q1h8Yo9kCLxgL2afluWZ/YylbtxgHgmFwDVUmi6milQYfL+wwQMlzw==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: <not published>\nRepository metadata: https://github.com/expo/expo.git\nHomepage metadata: https://github.com/expo/expo/tree/main/packages/expo-server#readme\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nStandard terms source: @babel/code-frame@7.29.7/LICENSE\n\nMIT License\n\nCopyright (c) 2014-present Sebastian McKenzie and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+        }
+      ]
+    },
+    {
+      "coordinate": "expo-splash-screen@55.0.25",
+      "name": "expo-splash-screen",
+      "version": "55.0.25",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-Jl3VPbNqbgGjXlkH93hi4Y4p6GB5DasLNbpL2Gb4kl8grujKaIGi4rXL25qYbYxIzefSlt96NqG9czanxxooPg==",
+      "resolved": "https://registry.npmjs.org/expo-splash-screen/-/expo-splash-screen-55.0.25.tgz",
+      "legalSource": "reviewed-metadata-fallback",
+      "sourceReference": "https://registry.npmjs.org/expo-splash-screen/-/expo-splash-screen-55.0.25.tgz",
+      "publishedLegalFileCount": 0,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt",
+          "sha256": "426f17cd56544224f34c08b96198fe0bcc346899121d61f786155e1978f12a55",
+          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: expo-splash-screen@55.0.25\nExact npm tarball: https://registry.npmjs.org/expo-splash-screen/-/expo-splash-screen-55.0.25.tgz\nTarball integrity: sha512-Jl3VPbNqbgGjXlkH93hi4Y4p6GB5DasLNbpL2Gb4kl8grujKaIGi4rXL25qYbYxIzefSlt96NqG9czanxxooPg==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: 650 Industries, Inc.\nRepository metadata: https://github.com/expo/expo.git\nHomepage metadata: https://docs.expo.dev/versions/latest/sdk/splash-screen/\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nUpstream terms source: https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE\nRetained upstream file: scripts/licenses/upstream/expo-expo-LICENSE\nUpstream SHA-256: 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa\n\nThe MIT License (MIT)\n\nCopyright (c) 2015-present 650 Industries, Inc. (aka Expo)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
         }
       ]
     },
@@ -12985,15 +13025,15 @@
       ]
     },
     {
-      "coordinate": "shell-quote@1.10.0",
+      "coordinate": "shell-quote@1.11.0",
       "name": "shell-quote",
-      "version": "1.10.0",
+      "version": "1.11.0",
       "selectedLicense": "MIT",
       "declaredLicense": "MIT",
-      "integrity": "sha512-w1aiOKwKuRgtwAReIIj89puqg+I7GvX4IbLrvmhXbzQsj1+Zwi4VO3+fa6ZF91TWSjIxoEkKnMeHcLEODK5ZXA==",
-      "resolved": "https://registry.npmjs.org/shell-quote/-/shell-quote-1.10.0.tgz",
+      "integrity": "sha512-JdxDPD0DBTyu08pq0kPC0xSNet/qsU07qT6IsX1AS8oO2ICNRY4ldNa8OAI6PuwAH8tG3lxEhbqmyp4Dw4036g==",
+      "resolved": "https://registry.npmjs.org/shell-quote/-/shell-quote-1.11.0.tgz",
       "legalSource": "package-root",
-      "sourceReference": "https://registry.npmjs.org/shell-quote/-/shell-quote-1.10.0.tgz",
+      "sourceReference": "https://registry.npmjs.org/shell-quote/-/shell-quote-1.11.0.tgz",
       "publishedLegalFileCount": 1,
       "apacheNotice": null,
       "files": [

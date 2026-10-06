@@ -726,7 +726,7 @@ test('Expo Pods without package-local notices retain commit-pinned upstream lice
   const documents = new Map();
   const packageCache = new Map();
   const currentReviews = [...POD_UPSTREAM_LEGAL_DOCUMENTS];
-  assert.equal(currentReviews.length, 17);
+  assert.equal(currentReviews.length, 19);
   assert.deepEqual(
     currentReviews
       .map(([coordinate]) => coordinate)

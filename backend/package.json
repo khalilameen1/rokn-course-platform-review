@@ -47,5 +47,8 @@
         "sass": "^1.102.0",
         "sortablejs": "1.15.0",
         "sweetalert2": "11.26.25"
+    },
+    "overrides": {
+        "shell-quote": "1.11.0"
     }
 }

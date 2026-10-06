@@ -1,5 +1,28 @@
 # Store release status — 2026-09-14
 
+## Candidate 64 preparation — 2026-10-06
+
+The source-fidelity corrections below are now prepared as Android version code
+64 / 1.0.63 and iOS build 53 / 1.0.63. This is a source version bump, not a built
+or uploaded binary. Internal 63 and production 60 remain unchanged.
+
+The pinned npm toolchains regenerated both lockfiles with the official
+`shell-quote@1.11.0` fix for GHSA-pqg4-j6r4-53mv. The subsequent live backend
+audit reported zero vulnerabilities. Mobile still reports the same 43 accepted
+entries (3 moderate, 40 high, zero critical); their installed identities,
+advisories and 2026-10-19 expiry are unchanged. Its new canonical lockfile hash
+is `b9cb47bf0db487d515350f8ec96f1b604ff7347d756141f7798f3f854ba884c0`.
+This is not a claim that every mobile dependency is vulnerability-free.
+
+The two newly reused Expo modules have exact legal-file absence reviews. JS
+notices now retain Expo's existing upstream MIT document and copyright, bound
+to each published gitHead and the retained document hash, rather than borrowing
+the generic Babel MIT attribution. The same exact package reviews are registered
+for their iOS Pods. Regeneration produced 733 JS package records, 606 retaining
+package-root notices and 127 reviewed absence records. Native dependency locks
+and legal closures still require real Android/macOS resolution before the final
+combined gate. No new full tests or application build have run at this point.
+
 ## Latest source-fidelity checkpoint — 2026-10-06
 
 The candidate checkout is `rokn-final-gate-ci-20261005`, branch

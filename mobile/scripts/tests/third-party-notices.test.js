@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
@@ -137,7 +138,7 @@ test('retains every package legal file and every reviewed absence record', () =>
       ALLOWED_LICENSES.has(item.license),
     ),
   );
-  assert.equal(artifacts.snapshot.packages.length, 731);
+  assert.equal(artifacts.snapshot.packages.length, 733);
   assert.equal(
     artifacts.snapshot.packages.filter(
       item => item.legalSource === 'package-root',
@@ -147,7 +148,7 @@ test('retains every package legal file and every reviewed absence record', () =>
   const fallbacks = artifacts.snapshot.packages.filter(
     item => item.legalSource === 'reviewed-metadata-fallback',
   );
-  assert.equal(fallbacks.length, 125);
+  assert.equal(fallbacks.length, 127);
   assert.deepEqual(
     new Set(fallbacks.map(item => item.coordinate)),
     LEGAL_FILE_ABSENCE_ALLOWLIST,
@@ -163,11 +164,25 @@ test('retains every package legal file and every reviewed absence record', () =>
   const byCoordinate = new Map(
     artifacts.snapshot.packages.map(item => [item.coordinate, item]),
   );
-  for (const coordinate of ['compression@1.8.2', 'source-map-js@1.2.2', 'js-yaml@4.3.2']) {
-    assert.equal(byCoordinate.get(coordinate)?.legalSource, 'package-root', coordinate);
+  for (const coordinate of [
+    'compression@1.8.2',
+    'source-map-js@1.2.2',
+    'js-yaml@4.3.2',
+  ]) {
+    assert.equal(
+      byCoordinate.get(coordinate)?.legalSource,
+      'package-root',
+      coordinate,
+    );
   }
-  for (const coordinate of ['argparse@1.0.10', 'esprima@4.0.1', 'js-yaml@3.15.2',
-    'sprintf-js@1.0.3', 'compression@1.8.1', 'source-map-js@1.2.1']) {
+  for (const coordinate of [
+    'argparse@1.0.10',
+    'esprima@4.0.1',
+    'js-yaml@3.15.2',
+    'sprintf-js@1.0.3',
+    'compression@1.8.1',
+    'source-map-js@1.2.1',
+  ]) {
     assert.equal(byCoordinate.has(coordinate), false, coordinate);
   }
   const netInfo = byCoordinate.get('@react-native-community/netinfo@11.5.2');
@@ -216,7 +231,7 @@ test('retains every package legal file and every reviewed absence record', () =>
 
   const appData = JSON.parse(artifacts.appData);
   assert.equal(appData.schemaVersion, 2);
-  assert.equal(appData.packages.length, 731);
+  assert.equal(appData.packages.length, 733);
   assert.equal(appData.licenseTexts, undefined);
   assert.ok(Buffer.byteLength(artifacts.appData) < 250000);
 
@@ -249,6 +264,44 @@ test('retains every package legal file and every reviewed absence record', () =>
     ),
     /THIRD_PARTY_NOTICES\.md in Resources/,
   );
+});
+
+test('new Expo modules retain their actual upstream copyright even without installed comparison', () => {
+  const artifacts = buildArtifacts(lock);
+  const upstream = fs
+    .readFileSync(
+      path.join(root, 'scripts/licenses/upstream/expo-expo-LICENSE'),
+      'utf8',
+    )
+    .replace(/\r\n/g, '\n')
+    .trim();
+  for (const coordinate of [
+    'expo-image@55.0.11',
+    'expo-splash-screen@55.0.25',
+  ]) {
+    const entry = artifacts.snapshot.packages.find(
+      item => item.coordinate === coordinate,
+    );
+    assert.equal(entry.legalSource, 'reviewed-metadata-fallback');
+    assert.ok(entry.files[0].text.trim().endsWith(upstream));
+    assert.match(entry.files[0].text, /650 Industries, Inc\. \(aka Expo\)/);
+    assert.doesNotMatch(entry.files[0].text, /Sebastian McKenzie/);
+    const tampered = JSON.parse(JSON.stringify(artifacts.snapshot));
+    const file = tampered.packages.find(item => item.coordinate === coordinate)
+      .files[0];
+    file.text = file.text.replace(
+      '650 Industries, Inc. (aka Expo)',
+      'Wrong copyright holder',
+    );
+    file.sha256 = crypto.createHash('sha256').update(file.text).digest('hex');
+    assert.throws(
+      () =>
+        validateSnapshot(artifacts.inventory, tampered, {
+          compareInstalled: false,
+        }),
+      /Missing pinned upstream attribution/,
+    );
+  }
 });
 
 test('gate rejects removal of a published Apache NOTICE', () => {

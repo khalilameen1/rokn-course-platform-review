@@ -6,10 +6,10 @@
 
 This file retains the legal documents published with every production package, including NOTICE files. An exact name/version/integrity-bound review record is used only when an npm package publishes no standalone legal file.
 
-- Unique packages: 731
-- Resolved production package paths: 814
+- Unique packages: 733
+- Resolved production package paths: 818
 - Exact package-root legal documents: 606
-- Reviewed legal-file absence records: 125
+- Reviewed legal-file absence records: 127
 
 ## Explicit license choices
 
@@ -30,7 +30,7 @@ This file retains the legal documents published with every production package, i
 | CC0-1.0 | 1 |
 | FSL-1.1-MIT | 9 |
 | ISC | 38 |
-| MIT | 559 |
+| MIT | 561 |
 | MPL-2.0 | 12 |
 | Python-2.0 | 1 |
 | Unlicense | 2 |
@@ -26798,6 +26798,63 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+### expo-image@55.0.11
+
+- Selected license: `MIT`
+- Declared license: `MIT`
+- Legal source: `reviewed-metadata-fallback`
+- Exact source: [npm](https://www.npmjs.com/package/expo-image/v/55.0.11)
+- Integrity: `sha512-PVIBYQJW/h1f6Zb9xnoWlgfqyOPVm2yb6eo6ZogaKbvMrhb/Q/fiERbagi4oqmR6IPljWPEpkXXQyFBUh7TjpQ==`
+
+#### ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt
+
+SHA-256: `f2e0b7e60114b4cf08d8f78e0ddae91c99e8e191057b23233f9883cc9df53e5d`
+
+```text
+UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD
+
+Package: expo-image@55.0.11
+Exact npm tarball: https://registry.npmjs.org/expo-image/-/expo-image-55.0.11.tgz
+Tarball integrity: sha512-PVIBYQJW/h1f6Zb9xnoWlgfqyOPVm2yb6eo6ZogaKbvMrhb/Q/fiERbagi4oqmR6IPljWPEpkXXQyFBUh7TjpQ==
+Declared license: MIT
+Selected license: MIT
+Author metadata: 650 Industries, Inc.
+Repository metadata: https://github.com/expo/expo.git
+Homepage metadata: https://docs.expo.dev/versions/latest/sdk/image/
+
+The exact npm package root was inspected and did not publish a standalone
+LICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is
+therefore covered by an exact, reviewed absence exception. The package
+metadata above and the selected standard license terms are retained here;
+the exception does not apply to any other name or version.
+
+Upstream terms source: https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE
+Retained upstream file: scripts/licenses/upstream/expo-expo-LICENSE
+Upstream SHA-256: 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
+
+The MIT License (MIT)
+
+Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ### expo-keep-awake@55.0.8
 
 - Selected license: `MIT`
@@ -27132,6 +27189,63 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### expo-splash-screen@55.0.25
+
+- Selected license: `MIT`
+- Declared license: `MIT`
+- Legal source: `reviewed-metadata-fallback`
+- Exact source: [npm](https://www.npmjs.com/package/expo-splash-screen/v/55.0.25)
+- Integrity: `sha512-Jl3VPbNqbgGjXlkH93hi4Y4p6GB5DasLNbpL2Gb4kl8grujKaIGi4rXL25qYbYxIzefSlt96NqG9czanxxooPg==`
+
+#### ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt
+
+SHA-256: `426f17cd56544224f34c08b96198fe0bcc346899121d61f786155e1978f12a55`
+
+```text
+UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD
+
+Package: expo-splash-screen@55.0.25
+Exact npm tarball: https://registry.npmjs.org/expo-splash-screen/-/expo-splash-screen-55.0.25.tgz
+Tarball integrity: sha512-Jl3VPbNqbgGjXlkH93hi4Y4p6GB5DasLNbpL2Gb4kl8grujKaIGi4rXL25qYbYxIzefSlt96NqG9czanxxooPg==
+Declared license: MIT
+Selected license: MIT
+Author metadata: 650 Industries, Inc.
+Repository metadata: https://github.com/expo/expo.git
+Homepage metadata: https://docs.expo.dev/versions/latest/sdk/splash-screen/
+
+The exact npm package root was inspected and did not publish a standalone
+LICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is
+therefore covered by an exact, reviewed absence exception. The package
+metadata above and the selected standard license terms are retained here;
+the exception does not apply to any other name or version.
+
+Upstream terms source: https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE
+Retained upstream file: scripts/licenses/upstream/expo-expo-LICENSE
+Upstream SHA-256: 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
+
+The MIT License (MIT)
+
+Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
 ### expo-web-browser@55.0.20
@@ -42387,13 +42501,13 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### shell-quote@1.10.0
+### shell-quote@1.11.0
 
 - Selected license: `MIT`
 - Declared license: `MIT`
 - Legal source: `package-root`
-- Exact source: [npm](https://www.npmjs.com/package/shell-quote/v/1.10.0)
-- Integrity: `sha512-w1aiOKwKuRgtwAReIIj89puqg+I7GvX4IbLrvmhXbzQsj1+Zwi4VO3+fa6ZF91TWSjIxoEkKnMeHcLEODK5ZXA==`
+- Exact source: [npm](https://www.npmjs.com/package/shell-quote/v/1.11.0)
+- Integrity: `sha512-JdxDPD0DBTyu08pq0kPC0xSNet/qsU07qT6IsX1AS8oO2ICNRY4ldNa8OAI6PuwAH8tG3lxEhbqmyp4Dw4036g==`
 
 #### LICENSE
 

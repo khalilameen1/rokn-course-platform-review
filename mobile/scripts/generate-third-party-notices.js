@@ -75,6 +75,25 @@ const CANONICAL_LICENSE_SOURCES = {
   Unlicense: ['node_modules/big-integer', 'LICENSE'],
 };
 
+// These exact tarballs omit their monorepo LICENSE. Retain Expo's actual
+// attribution from their published gitHead instead of another MIT author's
+// copyright. Package-root legal files still take precedence.
+const UPSTREAM_LICENSE_SOURCES = new Map(
+  [
+    ['expo-image@55.0.11', 'bb1d4bd298e5bcaff86b04aabca7c56659e57138'],
+    ['expo-splash-screen@55.0.25', '856b99321eeb04bd528b33f90c0e7fa2859a1fcb'],
+  ].map(([coordinate, gitHead]) => [
+    coordinate,
+    {
+      gitHead,
+      path: 'scripts/licenses/upstream/expo-expo-LICENSE',
+      sha256:
+        '371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa',
+      sourceUrl: `https://github.com/expo/expo/blob/${gitHead}/LICENSE`,
+    },
+  ]),
+);
+
 // Each coordinate below was inspected because its exact npm package root
 // contains no LICENSE/LICENCE/COPYING/NOTICE/COPYRIGHT file. A new or changed
 // coordinate fails closed and requires a fresh review instead of inheriting a
@@ -168,12 +187,14 @@ const LEGAL_FILE_ABSENCE_ALLOWLIST = new Set([
   'expo-document-picker@55.0.17',
   'expo-file-system@55.0.26',
   'expo-font@55.0.8',
+  'expo-image@55.0.11',
   'expo-keep-awake@55.0.8',
   'expo-modules-autolinking@55.0.27',
   'expo-modules-core@55.0.26',
   'expo-notifications@55.0.27',
   'expo-secure-store@55.0.18',
   'expo-server@55.0.12',
+  'expo-splash-screen@55.0.25',
   'expo-web-browser@55.0.20',
   'fb-dotslash@0.5.8',
   'fb-watchman@2.0.2',
@@ -712,12 +733,40 @@ const loadCanonicalLicenseTexts = inventory => {
   return result;
 };
 
+const reviewedUpstreamLicense = (item, manifest = null) => {
+  const review = UPSTREAM_LICENSE_SOURCES.get(item.coordinate);
+  if (!review) return null;
+  if (
+    item.license !== 'MIT' ||
+    (manifest && manifest.gitHead !== review.gitHead)
+  ) {
+    throw new Error(`Stale upstream license review for ${item.coordinate}.`);
+  }
+  const text = decodeUtf8(
+    fs.readFileSync(path.join(ROOT, review.path)),
+    review.path,
+  );
+  if (sha256(normalizeText(text)) !== review.sha256) {
+    throw new Error(`Pinned upstream license changed for ${item.coordinate}.`);
+  }
+  return {...review, text};
+};
+
 const buildMetadataFallback = (item, manifest, canonical) => {
   if (!LEGAL_FILE_ABSENCE_ALLOWLIST.has(item.coordinate)) {
     throw new Error(
       `${item.coordinate} publishes no legal file. Review it and update the exact absence allowlist.`,
     );
   }
+  const upstream = reviewedUpstreamLicense(item, manifest);
+  const terms = upstream || canonical;
+  const termsSource = upstream
+    ? [
+        `Upstream terms source: ${upstream.sourceUrl}`,
+        `Retained upstream file: ${upstream.path}`,
+        `Upstream SHA-256: ${upstream.sha256}`,
+      ]
+    : [`Standard terms source: ${canonical.coordinate}/${canonical.fileName}`];
   const metadata = [
     'UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD',
     '',
@@ -740,9 +789,9 @@ const buildMetadataFallback = (item, manifest, canonical) => {
     'metadata above and the selected standard license terms are retained here;',
     'the exception does not apply to any other name or version.',
     '',
-    `Standard terms source: ${canonical.coordinate}/${canonical.fileName}`,
+    ...termsSource,
     '',
-    canonical.text,
+    terms.text,
   ].join('\n');
   const text = normalizeText(metadata);
   return [
@@ -891,6 +940,21 @@ const validateSnapshot = (
       ) {
         throw new Error(
           `Invalid legal-file absence fallback: ${item.coordinate}.`,
+        );
+      }
+      const upstream = reviewedUpstreamLicense(item);
+      if (
+        upstream &&
+        (!entry.files[0].text.includes(
+          `Upstream terms source: ${upstream.sourceUrl}`,
+        ) ||
+          !entry.files[0].text.includes(
+            `Upstream SHA-256: ${upstream.sha256}`,
+          ) ||
+          !entry.files[0].text.endsWith(normalizeText(upstream.text)))
+      ) {
+        throw new Error(
+          `Missing pinned upstream attribution for ${item.coordinate}.`,
         );
       }
     } else if (

@@ -211,6 +211,17 @@ const EXPO_GIT_HEAD_85 = '856b99321eeb04bd528b33f90c0e7fa2859a1fcb';
 const EXPO_GIT_HEAD_30 = '30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f';
 const POD_UPSTREAM_LEGAL_DOCUMENTS = new Map([
   [
+    'ExpoImage@55.0.11',
+    expoUpstreamLicense(
+      'expo-image@55.0.11',
+      'bb1d4bd298e5bcaff86b04aabca7c56659e57138',
+    ),
+  ],
+  [
+    'ExpoSplashScreen@55.0.25',
+    expoUpstreamLicense('expo-splash-screen@55.0.25', EXPO_GIT_HEAD_85),
+  ],
+  [
     'EXApplication@55.0.19',
     expoUpstreamLicense('expo-application@55.0.19', EXPO_GIT_HEAD_85),
   ],

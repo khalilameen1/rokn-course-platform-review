@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
   "generatedFrom": "package-lock.json production dependency closure",
-  "packageCount": 731,
-  "packagePathCount": 814,
-  "inventoryHash": "9ac7fd2c76c810c92464dd7d2687e6b267f16a92e0d98556ec3d49cc59713b5f",
+  "packageCount": 733,
+  "packagePathCount": 818,
+  "inventoryHash": "205743d3ad47b1fbef49229342a46435e53b09be04bdb2f22b3285752cb2debf",
   "packages": [
     {
       "name": "@babel/code-frame",
@@ -3946,6 +3946,16 @@
       "apacheNotice": null
     },
     {
+      "name": "expo-image",
+      "version": "55.0.11",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/expo-image/v/55.0.11",
+      "legalSource": "reviewed-metadata-fallback",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
       "name": "expo-keep-awake",
       "version": "55.0.8",
       "license": "MIT",
@@ -4001,6 +4011,16 @@
       "license": "MIT",
       "declaredLicense": "MIT",
       "sourceUrl": "https://www.npmjs.com/package/expo-server/v/55.0.12",
+      "legalSource": "reviewed-metadata-fallback",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "expo-splash-screen",
+      "version": "55.0.25",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/expo-splash-screen/v/55.0.25",
       "legalSource": "reviewed-metadata-fallback",
       "legalFileCount": 1,
       "apacheNotice": null
@@ -6487,10 +6507,10 @@
     },
     {
       "name": "shell-quote",
-      "version": "1.10.0",
+      "version": "1.11.0",
       "license": "MIT",
       "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/shell-quote/v/1.10.0",
+      "sourceUrl": "https://www.npmjs.com/package/shell-quote/v/1.11.0",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
