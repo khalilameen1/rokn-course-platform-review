@@ -36,8 +36,16 @@ describe('profile recovery contracts', () => {
     expect(certificates).toContain(
       'await recoverCertificate(certificate.courseId, boundary)',
     );
-    expect(certificateView).toContain(
-      '? void retryPendingCertificate(certificate)',
+    // A failed GET must remain a read retry. Explicit artifact recovery is
+    // offered again only after a successful read still reports pending.
+    expect(certificateView).toContain('certificatePending && !loadError &&');
+    expect(certificateView).toMatch(
+      /certificate\.status === 'pending'\s*\? loadError\s*\? void loadCertificates\(\)\s*:\s*void retryPendingCertificate\(certificate\)/,
+    );
+    expect(
+      source('src/screens/Profile/certificates/CertificateContent.tsx'),
+    ).toMatch(
+      /controller\.mutationReady\s*\? \(\) => void controller\.loadCertificates\(\)/,
     );
     expect(certificates).toMatch(
       /const timer = setTimeout\(\(\) => \{[\s\S]*?void loadCertificates\(\);[\s\S]*?\}, delayMs\);/,
