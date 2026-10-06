@@ -137,12 +137,12 @@ test('retains every package legal file and every reviewed absence record', () =>
       ALLOWED_LICENSES.has(item.license),
     ),
   );
-  assert.equal(artifacts.snapshot.packages.length, 735);
+  assert.equal(artifacts.snapshot.packages.length, 731);
   assert.equal(
     artifacts.snapshot.packages.filter(
       item => item.legalSource === 'package-root',
     ).length,
-    610,
+    606,
   );
   const fallbacks = artifacts.snapshot.packages.filter(
     item => item.legalSource === 'reviewed-metadata-fallback',
@@ -163,6 +163,13 @@ test('retains every package legal file and every reviewed absence record', () =>
   const byCoordinate = new Map(
     artifacts.snapshot.packages.map(item => [item.coordinate, item]),
   );
+  for (const coordinate of ['compression@1.8.2', 'source-map-js@1.2.2', 'js-yaml@4.3.2']) {
+    assert.equal(byCoordinate.get(coordinate)?.legalSource, 'package-root', coordinate);
+  }
+  for (const coordinate of ['argparse@1.0.10', 'esprima@4.0.1', 'js-yaml@3.15.2',
+    'sprintf-js@1.0.3', 'compression@1.8.1', 'source-map-js@1.2.1']) {
+    assert.equal(byCoordinate.has(coordinate), false, coordinate);
+  }
   const netInfo = byCoordinate.get('@react-native-community/netinfo@11.5.2');
   assert.equal(netInfo.selectedLicense, 'MIT');
   assert.equal(netInfo.legalSource, 'package-root');
@@ -209,7 +216,7 @@ test('retains every package legal file and every reviewed absence record', () =>
 
   const appData = JSON.parse(artifacts.appData);
   assert.equal(appData.schemaVersion, 2);
-  assert.equal(appData.packages.length, 735);
+  assert.equal(appData.packages.length, 731);
   assert.equal(appData.licenseTexts, undefined);
   assert.ok(Buffer.byteLength(artifacts.appData) < 250000);
 
