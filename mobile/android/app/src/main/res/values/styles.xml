@@ -17,12 +17,13 @@
 
     <!-- Expo's native owner retains Android's launch surface until React's
          first content frame. Keep the existing full Rokn wordmark artwork. -->
-    <style name="RoknLaunchTheme" parent="Theme.SplashScreen">
+    <style name="RoknLaunchBaseTheme" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/rokn_startup_background</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/rokn_launch_screen</item>
         <item name="postSplashScreenTheme">@style/AppTheme</item>
-        <item name="android:windowSplashScreenBehavior">icon_preferred</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
+
+    <style name="RoknLaunchTheme" parent="RoknLaunchBaseTheme" />
 
 </resources>

@@ -69,13 +69,36 @@ describe('first-launch experience', () => {
     ).toBeLessThan(activity.indexOf('super.onCreate(null)'));
     expect(activity).not.toContain('setTheme(R.style.AppTheme)');
     expect(theme).toContain(
-      'name="RoknLaunchTheme" parent="Theme.SplashScreen"',
+      'name="RoknLaunchBaseTheme" parent="Theme.SplashScreen"',
+    );
+    expect(theme).toContain(
+      'name="RoknLaunchTheme" parent="RoknLaunchBaseTheme"',
     );
     expect(theme).toContain('name="postSplashScreenTheme">@style/AppTheme');
     expect(manifest).toContain('android:theme="@style/RoknLaunchTheme"');
     expect(entry).toContain('setSplashOptions({duration: 0, fade: false})');
     expect(entry).not.toContain('preventAutoHideAsync');
     expect(podfile).toContain('use_expo_modules!');
+  });
+
+  it('qualifies Android 13 splash behavior without losing the shared launch theme', () => {
+    const base = readSource('android/app/src/main/res/values/styles.xml');
+    const api33 = readSource('android/app/src/main/res/values-v33/styles.xml');
+    expect(base).not.toContain('android:windowSplashScreenBehavior');
+    expect(api33).toContain(
+      'name="RoknLaunchTheme" parent="RoknLaunchBaseTheme"',
+    );
+    expect(api33).toContain(
+      'name="android:windowSplashScreenBehavior">icon_preferred',
+    );
+    expect(base).toContain(
+      'name="windowSplashScreenBackground">@color/rokn_startup_background',
+    );
+    expect(base).toContain(
+      'name="windowSplashScreenAnimatedIcon">@drawable/rokn_launch_screen',
+    );
+    expect(base).toContain('name="postSplashScreenTheme">@style/AppTheme');
+    expect(`${base}\n${api33}`).not.toMatch(/tools:(?:ignore|targetApi)/);
   });
 
   it('does not hold guest Home behind session restore', () => {

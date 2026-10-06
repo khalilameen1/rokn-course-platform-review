@@ -1,0 +1,8 @@
+<resources>
+    <!-- Android 13 introduced icon_preferred. Inherit the complete shared
+         splash theme so qualifying this one attribute cannot drop its artwork,
+         background or post-splash AppCompat theme on newer devices. -->
+    <style name="RoknLaunchTheme" parent="RoknLaunchBaseTheme">
+        <item name="android:windowSplashScreenBehavior">icon_preferred</item>
+    </style>
+</resources>
