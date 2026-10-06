@@ -59,18 +59,26 @@ describe('startup brand covers real loading, not a fixed animation delay', () =>
     ).toHaveLength(0);
     expect(startup.readyForPrompts).toBe(true);
   });
-  it('releases stalled startup to the ordinary retry UI without authorizing guest popups', () => {
-    act(() => {
-      renderer = TestRenderer.create(
-        <StartupExperience sessionReady={false}>
-          <Home />
-        </StartupExperience>,
-      );
-    });
-    act(() => jest.advanceTimersByTime(8_000));
-    expect(
-      renderer.root.findAllByProps({testID: 'startup-cover'}),
-    ).toHaveLength(0);
-    expect(startup.readyForPrompts).toBe(false);
-  });
+  it.each([false, true])(
+    'keeps a loading Home covered beyond eight seconds with sessionReady=%s',
+    sessionReady => {
+      act(() => {
+        renderer = TestRenderer.create(
+          <StartupExperience sessionReady={sessionReady}>
+            <Home />
+          </StartupExperience>,
+        );
+      });
+      act(() => jest.advanceTimersByTime(8_000));
+      expect(
+        renderer.root.findAllByProps({testID: 'startup-cover'}),
+      ).not.toHaveLength(0);
+      // The catalogue independently settles to content/cache or its retry UI.
+      act(() => startup.initialContentReady());
+      expect(
+        renderer.root.findAllByProps({testID: 'startup-cover'}),
+      ).toHaveLength(0);
+      expect(startup.readyForPrompts).toBe(sessionReady);
+    },
+  );
 });

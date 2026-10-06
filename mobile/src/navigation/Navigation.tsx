@@ -111,7 +111,8 @@ const Navigation = ({sessionReady}: {sessionReady: boolean}) => {
       onReady={() => {
         void restoreInterruptedJourney().finally(() => {
           markRoknNavigationReady();
-          if (navigationRef.getCurrentRoute()?.name !== 'Home') {
+          const initialRoute = navigationRef.getCurrentRoute()?.name;
+          if (initialRoute && initialRoute !== 'Home') {
             startup?.initialContentReady();
           }
           flushLateInitialDestination();

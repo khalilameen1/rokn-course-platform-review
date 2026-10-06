@@ -15,12 +15,14 @@
 
     <style name="AppTheme" parent="RoknBaseTheme" />
 
-    <!-- Drawn by Android before React Native exists, so launch never flashes
-         white or looks frozen on slower devices. -->
-    <style name="RoknLaunchTheme" parent="AppTheme">
-        <item name="android:windowBackground">@drawable/rokn_launch_screen</item>
-        <item name="android:windowDisablePreview">false</item>
-        <item name="android:windowActionModeOverlay">true</item>
+    <!-- Expo's native owner retains Android's launch surface until React's
+         first content frame. Keep the existing full Rokn wordmark artwork. -->
+    <style name="RoknLaunchTheme" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/rokn_startup_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/rokn_launch_screen</item>
+        <item name="postSplashScreenTheme">@style/AppTheme</item>
+        <item name="android:windowSplashScreenBehavior">icon_preferred</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
 </resources>

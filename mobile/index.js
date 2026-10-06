@@ -3,6 +3,7 @@
  */
 
 import {registerRootComponent} from 'expo';
+import {setOptions as setSplashOptions} from 'expo-splash-screen';
 import React from 'react';
 import {I18nManager} from 'react-native';
 import {Provider} from 'react-redux';
@@ -20,6 +21,9 @@ import {configureNotificationPresentation} from './src/services/notificationPres
 // tree is mounted so navigation, lists and touch targets all agree on direction.
 I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
+// Expo automatically hands off on React's first content frame. The approved
+// StartupExperience owns the only exit fade and catalogue/session deadline.
+setSplashOptions({duration: 0, fade: false});
 initializeSentry();
 installGlobalErrorReporting();
 configureNotificationPresentation();

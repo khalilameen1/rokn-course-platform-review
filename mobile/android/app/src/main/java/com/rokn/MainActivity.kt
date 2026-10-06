@@ -7,6 +7,7 @@ import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 import expo.modules.ReactActivityDelegateWrapper
+import expo.modules.splashscreen.SplashScreenManager
 class MainActivity : ReactActivity() {
 
   /**
@@ -27,7 +28,7 @@ class MainActivity : ReactActivity() {
       )
 
   override fun onCreate(savedInstanceState: Bundle?) {
-    setTheme(R.style.AppTheme)
+    SplashScreenManager.registerOnActivity(this)
     super.onCreate(null)
   }
 

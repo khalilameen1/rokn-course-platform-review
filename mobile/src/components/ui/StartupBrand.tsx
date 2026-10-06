@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
   slogan: {
     fontFamily: Fonts.medium,
     fontSize: 18,
-    lineHeight: 32,
+    lineHeight: 27,
     color: '#B8C3D4',
     writingDirection: 'rtl',
     textAlign: 'center',

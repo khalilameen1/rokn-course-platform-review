@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/rokn_startup_background" />
-    <item android:gravity="center" android:width="205dp" android:height="68dp">
+    <!-- Android's system splash masks the icon to a 192dp circle. Keep the
+         complete wordmark inside it; React and iOS retain their 205dp frame. -->
+    <item android:gravity="center" android:width="180dp" android:height="59.1dp">
         <bitmap
             android:gravity="fill"
             android:src="@drawable/rokn_wordmark" />

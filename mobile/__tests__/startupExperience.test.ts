@@ -29,8 +29,9 @@ describe('first-launch experience', () => {
     const iosSplash = readSource('ios/Rokn/LaunchScreen.storyboard');
     const appConfig = JSON.parse(readSource('app.json')) as {
       expo: {
-        splash: {image: string; backgroundColor: string};
-        android: {splash: {image: string; backgroundColor: string}};
+        plugins: Array<string | [string, Record<string, unknown>]>;
+        splash?: unknown;
+        android: {splash?: unknown};
       };
     };
 
@@ -40,12 +41,41 @@ describe('first-launch experience', () => {
     expect(`${androidSplash}\n${iosSplash}`).not.toMatch(
       /تعلّم بمقاطع|مشروعات|Rokn AI|ابدأ الآن/,
     );
-    expect(appConfig.expo.splash).toEqual({
+    const plugin = appConfig.expo.plugins.find(
+      entry => Array.isArray(entry) && entry[0] === 'expo-splash-screen',
+    ) as [string, Record<string, unknown>];
+    expect(plugin[1]).toEqual({
       image: './src/assets/images/logo.png',
+      imageWidth: 205,
+      android: {imageWidth: 180},
       resizeMode: 'contain',
       backgroundColor: '#0B1628',
     });
-    expect(appConfig.expo.android.splash).toEqual(appConfig.expo.splash);
+    expect(appConfig.expo.splash).toBeUndefined();
+    expect(appConfig.expo.android.splash).toBeUndefined();
+  });
+
+  it('hands native startup to the first React frame without a second I/O gate', () => {
+    const activity = readSource(
+      'android/app/src/main/java/com/rokn/MainActivity.kt',
+    );
+    const theme = readSource('android/app/src/main/res/values/styles.xml');
+    const manifest = readSource('android/app/src/main/AndroidManifest.xml');
+    const entry = readSource('index.js');
+    const podfile = readSource('ios/Podfile');
+    expect(activity).toContain('SplashScreenManager.registerOnActivity(this)');
+    expect(
+      activity.indexOf('SplashScreenManager.registerOnActivity(this)'),
+    ).toBeLessThan(activity.indexOf('super.onCreate(null)'));
+    expect(activity).not.toContain('setTheme(R.style.AppTheme)');
+    expect(theme).toContain(
+      'name="RoknLaunchTheme" parent="Theme.SplashScreen"',
+    );
+    expect(theme).toContain('name="postSplashScreenTheme">@style/AppTheme');
+    expect(manifest).toContain('android:theme="@style/RoknLaunchTheme"');
+    expect(entry).toContain('setSplashOptions({duration: 0, fade: false})');
+    expect(entry).not.toContain('preventAutoHideAsync');
+    expect(podfile).toContain('use_expo_modules!');
   });
 
   it('does not hold guest Home behind session restore', () => {

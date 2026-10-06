@@ -49,9 +49,14 @@ const objectKeyPaths = (value, prefix = '') => {
 const packageJson = json('package.json');
 const packageLock = json('package-lock.json');
 try {
-  require('./rnv-shared-playback-resources').applyExtension({root, check: true});
+  require('./rnv-shared-playback-resources').applyExtension({
+    root,
+    check: true,
+  });
 } catch (error) {
-  failures.push(`Native reel preloader integration is not installed: ${error.message}`);
+  failures.push(
+    `Native reel preloader integration is not installed: ${error.message}`,
+  );
 }
 const app = json('app.json').expo;
 const eas = json('eas.json');
@@ -108,8 +113,7 @@ const appVersionCheck = read('src/services/appVersionCheck.ts');
 const releaseChannels = read('RELEASE_CHANNELS.md');
 const nativePushTokens = read('src/services/nativePushTokens.ts');
 const mobileCi = read('../.github/workflows/mobile-ci.yml');
-const productionApiBase =
-  'https://rokn.app/api/v1/';
+const productionApiBase = 'https://rokn.app/api/v1/';
 const firebaseClientPaths = [
   'android/app/google-services.json',
   'ios/GoogleService-Info.plist',
@@ -370,8 +374,7 @@ assert(
   'Android versionCode must be a positive integer.',
 );
 assert(
-  /^\d+$/.test(app.ios?.buildNumber || '') &&
-    Number(app.ios.buildNumber) > 0,
+  /^\d+$/.test(app.ios?.buildNumber || '') && Number(app.ios.buildNumber) > 0,
   'iOS buildNumber must be a positive numeric string.',
 );
 assert(
@@ -684,9 +687,7 @@ assert(
   'The distributed preview must exercise the live API and remote feature flags without synthetic content.',
 );
 assert(
-  androidReleaseScript.includes(
-    "$env:EXPO_PUBLIC_REQUIRE_FEATURE_FLAGS = '1'",
-  ),
+  androidReleaseScript.includes("$env:EXPO_PUBLIC_REQUIRE_FEATURE_FLAGS = '1'"),
   'The local APK builder must preserve the same live-test contract as EAS preview.',
 );
 const directProductionProfile = eas.build?.['production-direct'];
@@ -800,9 +801,19 @@ assert(
   'The native checkout Activity is not fail-closed for Google Play builds.',
 );
 
+const nativeSplashPlugin = app.plugins?.find(
+  plugin => Array.isArray(plugin) && plugin[0] === 'expo-splash-screen',
+);
+assert(
+  nativeSplashPlugin?.[1]?.imageWidth === 205 &&
+    nativeSplashPlugin[1].backgroundColor === '#0B1628' &&
+    nativeSplashPlugin[1].android?.imageWidth === 180 &&
+    nativeSplashPlugin[1].resizeMode === 'contain',
+  'Native startup must retain the approved Rokn wordmark composition.',
+);
 const requiredAssets = [
   app.icon,
-  app.splash?.image,
+  nativeSplashPlugin?.[1]?.image,
   app.android?.adaptiveIcon?.foregroundImage,
   'android/gradle/wrapper/gradle-wrapper.jar',
   'android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml',

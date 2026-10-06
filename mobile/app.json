@@ -18,17 +18,22 @@
           "defaultChannel": "rokn-updates"
         }
       ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./src/assets/images/logo.png",
+          "imageWidth": 205,
+          "android": {"imageWidth": 180},
+          "resizeMode": "contain",
+          "backgroundColor": "#0B1628"
+        }
+      ],
       "expo-secure-store",
       "expo-apple-authentication",
       "./plugins/withNotificationManifestOverrides",
       "expo-iap",
       "@sentry/react-native"
     ],
-    "splash": {
-      "image": "./src/assets/images/logo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0B1628"
-    },
     "android": {
       "package": "com.rokn",
       "versionCode": 63,
@@ -69,11 +74,6 @@
         "foregroundImage": "./src/assets/images/brand/rokn-app-icon-foreground.png",
         "monochromeImage": "./src/assets/images/brand/rokn-app-icon-foreground.png",
         "backgroundColor": "#2C69DB"
-      },
-      "splash": {
-        "image": "./src/assets/images/logo.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#0B1628"
       }
     },
     "ios": {

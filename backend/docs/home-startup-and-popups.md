@@ -4,7 +4,7 @@ The approved composition is `rokn-notification-patterns-oct4.html` in the existi
 
 Reference provenance: [Cake's published Android listing](https://play.google.com/store/apps/details?hl=en-US&id=me.mycake) showed 100M+ downloads when checked on 2026-10-04; [Cake's own site](https://cake.day/) also reports 100M users. These establish real-world adoption of the reference app, not measured performance of Rokn or access to Cake's implementation. The popup composition is the user's approved local preview; existing Rokn artwork, dashboard-owned values and campaign targeting are reused rather than replaced by a competitor's code.
 
-`StartupExperience` keeps navigation/Home mounted during loading. Home signals that its catalogue request has settled, including its ordinary error/offline state. A non-Home initial destination signals readiness through the existing navigation owner. Session readiness also gates exit, with an eight-second upper bound against an unavailable dependency. There is no minimum presentation delay. Reduced-motion users get no fade. Native launch artwork and the navigation fallback use the same wordmark and background.
+`StartupExperience` keeps navigation/Home mounted during loading. Home signals that its catalogue request has settled, including its ordinary error/offline state. A known non-Home initial destination signals readiness through the existing navigation owner; an absent route is not readiness. Session readiness also gates exit, with an eight-second escape for a stalled restore only after initial content is ready. That deadline never uncovers a still-loading Home. Catalogue transport has its existing bounded timeout/recovery policy. There is no minimum presentation delay. Reduced-motion users get no fade. Native launch artwork and the navigation fallback use the same wordmark and background.
 
 `StartupExperience` owns one Home presentation slot for the app launch. `useHomeEngagement` owns candidate selection and account-bound callbacks. Signing in or switching accounts suppresses further presentations in that launch. Dismissing a card or remounting Home does not drain a queue. A later application launch may select an unseen course campaign.
 
@@ -48,9 +48,39 @@ Sources: [Android splash owner](https://github.com/bluesky-social/social-app/blo
 [runtime dependency](https://github.com/bluesky-social/social-app/blob/main/package.json),
 [adoption](https://play.google.com/store/apps/details?id=xyz.blueskyweb.app),
 [Expo SDK 55 integration](https://docs.expo.dev/versions/v55.0.0/sdk/splash-screen/).
-This is a verified reusable library candidate, not an implemented fix. Use the
-SDK 55-compatible version rather than copying Bluesky's SDK 57 dependencies.
-Do not hide native coverage before Rokn's own startup frame has painted, add a
-minimum marketing delay, or hold Home mounting behind catalogue/session I/O.
+The local source now reuses `expo-splash-screen` 55.0.25, exactly the installed
+Expo SDK 55 recommendation, instead of copying Bluesky's SDK 57 dependencies or
+its application gating/animation. The upstream MIT implementation owns the
+native first-content handoff through Android's `CONTENT_APPEARED` marker and
+the existing iOS Expo delegate subscriber. Android registration happens before
+`super.onCreate`, and the SDK's post-splash theme remains Rokn's AppCompat theme.
+There is no `preventAutoHideAsync` hold, additional JS readiness owner or I/O
+gate. Native exit animation is disabled so the existing Rokn cover alone owns
+the approved transition. Home remains mounted while catalogue/session work runs.
+
+The Android system-only wordmark frame is 180×59.1 instead of 205×68 to retain
+the complete logo inside the platform's 192dp circular icon mask. Independent
+source/alpha inspection found the corrected maximum visible radius 93.45dp,
+inside its 96dp limit. React and the existing iOS storyboard retain 205dp.
+The plugin configuration captures that Android-only size and replaces deprecated
+legacy splash config; the source asset is unchanged and no AI artwork is made.
+
+The source review accepted native ownership and the corrected mask geometry.
+New native-config/readiness assertions are authored, not executed. Package
+installation ran with scripts disabled and changed only the new module and
+hoisted prebuild-config subtree; its local Node 24.18 warning is not a passed
+release gate. The pinned final runtime, CocoaPods lock resolution on macOS,
+native/JS notice regeneration, dependency fingerprint updates and signed cold
+launch acceptance remain required before shipping. No Pod lock is fabricated,
+and this local dependency change has not been deployed or uploaded.
+
+The user also reported Home being revealed while its loader was still visible.
+The previous eight-second escape allowed that while the transport's existing
+12-second read recovery budget could still be active. The corrected condition
+requires initial content readiness even after that session deadline. Both ready
+and stalled-session cases are authored in the lifecycle regression case. Source
+review confirmed the ordinary public load/cache/error paths settle and retained
+OAuth/deep-link behavior; it did not verify completed cover-image decoding.
+The approved 18/27 slogan typography is retained in the React startup surface.
 Final acceptance must inspect the signed cold-launch transition, not merely
 assert that launch XML and React logo files exist.

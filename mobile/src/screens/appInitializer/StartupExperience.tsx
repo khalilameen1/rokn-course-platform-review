@@ -36,13 +36,14 @@ export const StartupExperience = ({
   const initialContentReady = useCallback(() => setContentReady(true), []);
   useEffect(() => {
     if (!visible) return;
-    // An unavailable API or stalled native restore may not trap the learner.
-    // Home keeps its ordinary retry/offline UI behind this bounded cover.
+    // A stalled session restore may not trap a ready public catalogue. This
+    // deadline never exposes Home's loader; its bounded request must first
+    // settle to content, a cached view, or the ordinary retry/offline state.
     const timer = setTimeout(() => setDeadlineReached(true), 8_000);
     return () => clearTimeout(timer);
   }, [visible]);
   useEffect(() => {
-    if (!(contentReady && sessionReady) && !deadlineReached) return;
+    if (!contentReady || (!sessionReady && !deadlineReached)) return;
     if (reducedMotion) {
       setVisible(false);
       return;
