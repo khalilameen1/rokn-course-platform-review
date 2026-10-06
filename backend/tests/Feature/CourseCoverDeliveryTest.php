@@ -13,9 +13,11 @@ use App\Services\AdminCourseAuthoringService;
 use App\Services\CourseCoverStorageService;
 use App\Services\StoredFileReferenceService;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -27,6 +29,13 @@ final class CourseCoverDeliveryTest extends TestCase
         parent::setUp();
         // The byte-write ledger commits before the owning domain transaction.
         $this->artisan('migrate:fresh')->assertExitCode(0);
+        // Match the existing course-authoring fixture's production contract.
+        // Its historical tenant-removal migration deliberately skips SQLite;
+        // the retired NOT NULL column must not turn owner tests into SQL errors.
+        if (DB::connection()->getDriverName() === 'sqlite' && Schema::hasColumn('courses', 'tenant_id')) {
+            DB::statement('DROP INDEX IF EXISTS courses_tenant_id_index');
+            DB::statement('ALTER TABLE courses DROP COLUMN tenant_id');
+        }
         Storage::fake('public');
         Queue::fake();
         Exceptions::fake();
@@ -43,6 +52,7 @@ final class CourseCoverDeliveryTest extends TestCase
         ]);
         $writer = app(AdminCourseAuthoringService::class);
         $result = $writer->create($edit, static fn (Course $course) => null);
+        Exceptions::throwFirstReported();
         self::assertSame('created', $result['status']);
         $course = $result['course']->fresh();
         $photo = $course->allPhotos()->sole();
@@ -66,9 +76,14 @@ final class CourseCoverDeliveryTest extends TestCase
             'authoring_request_id' => (string) Str::uuid(),
             'image' => UploadedFile::fake()->image('cover.png', 640, 360),
         ]);
-        $result = app(AdminCourseAuthoringService::class)->create($edit, static function (Course $course): never {
+        $receiptReached = false;
+        $result = app(AdminCourseAuthoringService::class)->create($edit, static function (Course $course) use (&$receiptReached): never {
+            self::assertSame(3, $course->accessPlans()->count());
+            $receiptReached = true;
             throw new \RuntimeException('Receipt could not commit.');
         });
+        self::assertTrue($receiptReached);
+        Exceptions::assertReported(static fn (\RuntimeException $exception): bool => $exception->getMessage() === 'Receipt could not commit.');
         self::assertSame('failed', $result['status']);
         self::assertSame(0, Course::query()->count());
         self::assertCount(2, Storage::disk('public')->allFiles('courses'));
