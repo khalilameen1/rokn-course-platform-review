@@ -31,6 +31,10 @@ export const walletStyles = StyleSheet.create({
     fontSize: 14,
     color: Palette.text,
   },
+  // The existing subscription rail uses the same native horizontal-overflow
+  // pattern: grow to the viewport, but never shrink system-scaled content.
+  rewardsHeroViewport: {flexGrow: 0},
+  rewardsHeroContent: {flexGrow: 1},
   rewardsHero: {
     ...rtlRowStyle,
     alignItems: 'center',
@@ -38,8 +42,10 @@ export const walletStyles = StyleSheet.create({
     paddingTop: Spacing.xxs,
     paddingBottom: Spacing.md,
     gap: Spacing.md,
+    flexGrow: 1,
+    flexShrink: 0,
   },
-  rewardsBalanceCopy: {flexShrink: 1, minWidth: 0},
+  rewardsBalanceCopy: {flexShrink: 0},
   rewardsBalance: {
     ...Type.display,
     ...textDirection,
@@ -47,8 +53,7 @@ export const walletStyles = StyleSheet.create({
     fontSize: 44,
     lineHeight: 60,
     textAlign: 'center',
-    maxWidth: '100%',
-    flexShrink: 1,
+    flexShrink: 0,
   },
   rewardsArt: {flexShrink: 0, alignSelf: 'center'},
   disclosure: {

@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
+  ScrollView,
   Text,
   View,
 } from 'react-native';
@@ -126,20 +127,27 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
               <Text style={styles.historyLabel}>السجل</Text>
             </Pressable>
           </View>
-          <View style={styles.rewardsHero}>
-            <View style={styles.rewardsBalanceCopy}>
-              <Text
-                accessibilityLabel="رصيد المكافآت"
-                accessibilityValue={{text: rewardAmount}}
-                accessibilityLiveRegion="polite"
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                style={styles.rewardsBalance}>
-                {rewardAmount}
-              </Text>
+          <ScrollView
+            horizontal
+            alwaysBounceHorizontal={false}
+            indicatorStyle="white"
+            showsHorizontalScrollIndicator
+            style={styles.rewardsHeroViewport}
+            contentContainerStyle={styles.rewardsHeroContent}>
+            <View style={styles.rewardsHero}>
+              <View style={styles.rewardsBalanceCopy}>
+                <Text
+                  accessibilityLabel="رصيد المكافآت"
+                  accessibilityValue={{text: rewardAmount}}
+                  accessibilityLiveRegion="polite"
+                  numberOfLines={1}
+                  style={styles.rewardsBalance}>
+                  {rewardAmount}
+                </Text>
+              </View>
+              <RoknCoinStack size={102} style={styles.rewardsArt} />
             </View>
-            <RoknCoinStack size={102} style={styles.rewardsArt} />
-          </View>
+          </ScrollView>
           {displayedBalance === null && walletStatus === 'loading' && (
             <Text style={styles.balanceHint}>جارٍ تحديث الرصيد</Text>
           )}

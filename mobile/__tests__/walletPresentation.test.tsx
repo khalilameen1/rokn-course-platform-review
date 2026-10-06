@@ -1,5 +1,5 @@
 import React from 'react';
-import {StyleSheet, Text} from 'react-native';
+import {ScrollView, StyleSheet, Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import {WalletView} from '../src/screens/wallet/WalletView';
 import {WalletPackageRail} from '../src/screens/wallet/WalletPackageRail';
@@ -113,9 +113,19 @@ describe('rewards presentation', () => {
         .findAllByType(Text)
         .find(node => node.props.accessibilityLabel === 'رصيد المكافآت')!;
       expect(balance.props.numberOfLines).toBe(1);
-      expect(balance.props.adjustsFontSizeToFit).toBe(true);
+      expect(balance.props.adjustsFontSizeToFit).not.toBe(true);
+      expect(balance.props.maxFontSizeMultiplier).toBeUndefined();
       expect(balance.props.allowFontScaling).not.toBe(false);
       expect(balance.props.accessibilityValue).toEqual({text: formatArabicNumber(250)});
+      const rail = root.findAllByType(ScrollView).find(node =>
+        node.props.horizontal === true,
+      )!;
+      expect(rail.props.alwaysBounceHorizontal).toBe(false);
+      expect(rail.props.showsHorizontalScrollIndicator).toBe(true);
+      expect(StyleSheet.flatten(rail.props.contentContainerStyle)).toMatchObject({flexGrow: 1});
+      expect(StyleSheet.flatten(walletStyles.rewardsBalanceCopy).flexShrink).toBe(0);
+      expect(StyleSheet.flatten(walletStyles.rewardsBalance).flexShrink).toBe(0);
+      expect(walletStyles.rewardsBalance).not.toHaveProperty('maxWidth');
       const hero = root.findAll(node =>
         typeof node.type === 'string' &&
         node.props.style === walletStyles.rewardsHero,
@@ -146,7 +156,10 @@ describe('rewards presentation', () => {
     )!;
     expect(amount.props.children).toBe(formatArabicNumber(balance));
     expect(amount.props.accessibilityValue.text).toBe(formatArabicNumber(balance));
-    expect(amount.props.adjustsFontSizeToFit).toBe(true);
+    expect(amount.props.adjustsFontSizeToFit).not.toBe(true);
+    expect(amount.props.allowFontScaling).not.toBe(false);
+    expect(amount.props.maxFontSizeMultiplier).toBeUndefined();
+    expect(root.findAllByType(ScrollView).some(node => node.props.horizontal === true)).toBe(true);
   });
   it('keeps the task title, brand and reward without a description paragraph', async () => {
     const controller = makeController();

@@ -20,9 +20,13 @@ No extra dependency or purchase flow was introduced.
 
 - Header: مكافآتي and a visible السجل label beside the history icon.
 - Hero: earned balance only, number physically right of coin_stack in one RTL
-  row, including enlarged phone text. The complete numeral fits its available
-  cell instead of moving above the artwork; its full value is also exposed to
-  the screen reader. Task rows retain their separate large-text reflow.
+  row, including enlarged phone text. The full numeral keeps OS font scaling
+  instead of being squeezed or ellipsized. Like the existing subscription
+  choices, the native horizontal rail can scroll when enlarged text or a long
+  amount exceeds the viewport; it remains centered when it fits. Its complete
+  value is also exposed to the screen reader. Task rows retain their separate
+  large-text reflow. This overflow adaptation reuses React Native ScrollView;
+  it is not a claim about QANDA's unavailable implementation.
 - Task title/brand/reward and a filled primary action. Completed tasks stay
   collapsed until requested. Welcome rewards remain automatic, not claim tasks.
 - Below tasks: كيف يعمل الرصيد as a full-width disclosure, matching the
