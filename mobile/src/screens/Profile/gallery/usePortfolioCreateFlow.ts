@@ -41,6 +41,7 @@ import {
 import type {PortfolioPublicationResult} from './usePortfolioPublication';
 import type {PortfolioUploadProgress} from '../../../services/portfolioUploadProgress';
 import {usePortfolioUploadSession} from './usePortfolioUploadSession';
+import {MAX_PORTFOLIO_MEDIA_COUNT} from '../../../services/portfolioMediaPolicy';
 
 type Options = {
   onSubscriptions?: PortfolioSubscriptionAction;
@@ -225,6 +226,7 @@ export const usePortfolioCreateFlow = ({
   const pickDraftMedia = useCallback(async () => {
     if (
       !draftReady ||
+      draftMediaAssets.length >= MAX_PORTFOLIO_MEDIA_COUNT ||
       pickerFlightRef.current ||
       saving ||
       busyRef.current ||
@@ -243,7 +245,7 @@ export const usePortfolioCreateFlow = ({
         return;
       const result = await launchImageLibrary({
         mediaType: 'mixed' as MediaType,
-        selectionLimit: 12,
+        selectionLimit: MAX_PORTFOLIO_MEDIA_COUNT - draftMediaAssets.length,
         quality: 0.8,
       });
       assertAccountSessionBoundary(boundary);
@@ -253,7 +255,9 @@ export const usePortfolioCreateFlow = ({
         showMediaPickerFailure(result.errorCode);
         return;
       }
-      const assets = (result.assets || []).filter(asset => asset.uri);
+      const assets = (result.assets || [])
+        .filter(asset => asset.uri)
+        .slice(0, MAX_PORTFOLIO_MEDIA_COUNT - draftMediaAssets.length);
       if (!assets.length) return;
       const cached: Array<{
         uri: string;
@@ -293,19 +297,18 @@ export const usePortfolioCreateFlow = ({
         discardPickerFiles(cached);
         return;
       }
-      const previous = draftMediaAssets;
-      const cover = cached.find(
+      const next = [...draftMediaAssets, ...cached];
+      const cover = next.find(
         file =>
           !String(file.type || '')
             .toLowerCase()
             .startsWith('video/'),
       );
       changeDraft(() => {
-        setDraftMediaAssets(cached);
+        setDraftMediaAssets(next);
         setDraftCover(cover ? {uri: cover.uri} : null);
         setDraftCoverAsset(cover);
       });
-      discardPickerFiles(previous);
     } catch (error: unknown) {
       if (!isPortfolioAccountChangedError(error) && mountedRef.current) {
         if (
@@ -338,6 +341,45 @@ export const usePortfolioCreateFlow = ({
     setDraftCoverAsset,
     setDraftMediaAssets,
   ]);
+
+  const removeDraftMedia = useCallback(
+    (file: PortfolioDraftAsset) => {
+      if (
+        !draftReady ||
+        pickerFlightRef.current ||
+        saving ||
+        busyRef.current ||
+        isDetailBusy()
+      ) {
+        return;
+      }
+      if (!draftMediaAssets.some(asset => asset.uri === file.uri)) return;
+      const next = draftMediaAssets.filter(asset => asset.uri !== file.uri);
+      const cover = next.find(
+        asset =>
+          !String(asset.type || '')
+            .toLowerCase()
+            .startsWith('video/'),
+      );
+      changeDraft(() => {
+        setDraftMediaAssets(next);
+        setDraftCover(cover ? {uri: cover.uri} : null);
+        setDraftCoverAsset(cover);
+      });
+      // The draft writer retires files only after the new snapshot is durable.
+    },
+    [
+      busyRef,
+      changeDraft,
+      draftMediaAssets,
+      draftReady,
+      isDetailBusy,
+      saving,
+      setDraftCover,
+      setDraftCoverAsset,
+      setDraftMediaAssets,
+    ],
+  );
 
   const chooseSourceProject = useCallback(
     (project: EligibleProject) => {
@@ -606,7 +648,8 @@ export const usePortfolioCreateFlow = ({
     eligibleLoading,
     eligibleProjects,
     openAddProject,
-    pickCover: pickDraftMedia,
+    pickDraftMedia,
+    removeDraftMedia,
     pickingMedia,
     retryDraftLoad,
     saving,

@@ -354,7 +354,7 @@ describe('portfolio draft hydration lifecycle', () => {
     await act(async () => {
       flow.updateDraftTitle('بديل');
       flow.updateDraftSummary('بديل');
-      await flow.pickCover();
+      await flow.pickDraftMedia();
       await flow.addProject();
     });
     expect(flow.draftTitle).toBe('');

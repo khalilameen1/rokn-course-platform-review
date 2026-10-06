@@ -227,23 +227,6 @@ export const galleryStyles = StyleSheet.create({
   },
   coverPickerLabel: {...Type.bodyStrong, color: Palette.textMuted},
   pickedMediaPreview: {width: '100%', position: 'relative'},
-  pickedCover: {width: '100%', height: 160, resizeMode: 'cover'},
-  pickedCoverFallback: {
-    height: 160,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pickedMediaCount: {
-    ...Type.caption,
-    color: Palette.text,
-    position: 'absolute',
-    bottom: Spacing.sm,
-    right: Spacing.sm,
-    backgroundColor: Palette.overlay,
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-  },
   eligibleSection: {marginTop: Spacing.sm},
   eligibleLoader: {alignSelf: 'flex-end', marginVertical: Spacing.md},
   eligibleList: {

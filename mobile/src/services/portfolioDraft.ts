@@ -152,28 +152,40 @@ export const writePortfolioEditorDraft = async (
       !draft.media?.length
     ) {
       await AsyncStorage.removeItem(key);
-      await retainLearnerDraftFiles(REFERENCE_OWNER, [], boundary.scope);
-      await Promise.all(draftFiles(previous).map(removeLearnerDraftFile));
+      assertAccountSessionBoundary(boundary);
+      await retainLearnerDraftFiles(REFERENCE_OWNER, [], boundary.scope).catch(
+        () => undefined,
+      );
+      await Promise.all(
+        draftFiles(previous).map(file =>
+          removeLearnerDraftFile(file).catch(() => undefined),
+        ),
+      );
       assertAccountSessionBoundary(boundary);
       return;
     }
     const nextFiles = draftFiles(draft);
-    await retainLearnerDraftFiles(REFERENCE_OWNER, nextFiles, boundary.scope);
-    try {
-      await AsyncStorage.setItem(key, JSON.stringify(draft));
-    } catch (error) {
-      await retainLearnerDraftFiles(
-        REFERENCE_OWNER,
-        draftFiles(previous),
-        boundary.scope,
-      ).catch(() => undefined);
-      throw error;
-    }
+    // As in projectSubmissionDraft, both snapshots own their files until the
+    // replacement is durable. A failed write keeps both available for retry.
+    await retainLearnerDraftFiles(
+      REFERENCE_OWNER,
+      [...draftFiles(previous), ...nextFiles],
+      boundary.scope,
+    );
+    assertAccountSessionBoundary(boundary);
+    await AsyncStorage.setItem(key, JSON.stringify(draft));
+    assertAccountSessionBoundary(boundary);
+    // These are housekeeping after ACK, not a false failed save of good work.
+    await retainLearnerDraftFiles(
+      REFERENCE_OWNER,
+      nextFiles,
+      boundary.scope,
+    ).catch(() => undefined);
     const nextUris = new Set(nextFiles.map(file => file.uri));
     await Promise.all(
       draftFiles(previous)
         .filter(file => !nextUris.has(file.uri))
-        .map(removeLearnerDraftFile),
+        .map(file => removeLearnerDraftFile(file).catch(() => undefined)),
     );
     assertAccountSessionBoundary(boundary);
   });

@@ -1,5 +1,8 @@
 import {remainingServerMilliseconds} from '../utils/serverClock';
 
+// Matches PortfolioController.expected_media_count and the upload service cap.
+export const MAX_PORTFOLIO_MEDIA_COUNT = 12;
+
 export const usablePortfolioMediaUrl = (
   value: unknown,
   expiresAt?: unknown,

@@ -207,7 +207,7 @@ describe('portfolio picker versus create submission', () => {
     });
     expect(flow.adding).toBe(false);
     await act(async () => {
-      await flow.pickCover();
+      await flow.pickDraftMedia();
     });
     expect(mockPicker).not.toHaveBeenCalled();
     expect(mockCacheFile).not.toHaveBeenCalled();
@@ -218,13 +218,13 @@ describe('portfolio picker versus create submission', () => {
     );
   });
 
-  it('does not send the old files while a replacement selection is being copied', async () => {
+  it('cannot submit while an additional selection is being copied and retains the earlier files', async () => {
     const copy = deferred<typeof selectedMedia>();
     mockCacheFile.mockReturnValueOnce(copy.promise);
     let picking!: Promise<void>;
     try {
       await act(async () => {
-        picking = flow.pickCover();
+        picking = flow.pickDraftMedia();
         await flush();
       });
       expect(mockCacheFile).toHaveBeenCalledTimes(1);
@@ -238,23 +238,26 @@ describe('portfolio picker versus create submission', () => {
         accessibilityLabel: 'اختيار صور وفيديوهات المشروع',
       });
       expect(picker.props.disabled).toBe(true);
-      expect(picker.props.accessibilityState).toEqual({busy: true});
+      expect(picker.props.accessibilityState).toEqual({
+        busy: true,
+        disabled: true,
+      });
       await act(async () => {
-        await flow.pickCover();
+        await flow.pickDraftMedia();
       });
       expect(mockPicker).toHaveBeenCalledTimes(1);
       await act(async () => {
         copy.resolve(selectedMedia);
         await picking;
       });
-      expect(flow.draftMediaAssets).toEqual([selectedMedia]);
+      expect(flow.draftMediaAssets).toEqual([previousMedia, selectedMedia]);
       expect(addButton().props.disable).toBe(false);
       await act(async () => {
         await flow.addProject();
       });
       expect(mockCreate).toHaveBeenCalledTimes(1);
       expect(mockStage).toHaveBeenCalledWith(
-        expect.objectContaining({sources: [selectedMedia]}),
+        expect.objectContaining({sources: [previousMedia, selectedMedia]}),
       );
     } finally {
       await act(async () => {
@@ -270,7 +273,7 @@ describe('portfolio picker versus create submission', () => {
     let picking!: Promise<void>;
     try {
       await act(async () => {
-        picking = flow.pickCover();
+        picking = flow.pickDraftMedia();
         await flush();
         flow.chooseSourceProject(sourceProject);
       });
@@ -298,7 +301,7 @@ describe('portfolio picker versus create submission', () => {
     mockPicker.mockReturnValueOnce(picker.promise);
     let picking!: Promise<void>;
     await act(async () => {
-      picking = flow.pickCover();
+      picking = flow.pickDraftMedia();
       await flow.addProject();
       await flush();
     });
@@ -321,7 +324,7 @@ describe('portfolio picker versus create submission', () => {
       mockCaptureBoundary.mockReturnValueOnce(capture.promise);
       let picking!: Promise<void>;
       await act(async () => {
-        picking = flow.pickCover();
+        picking = flow.pickDraftMedia();
         await flush();
       });
       expect(mockPicker).not.toHaveBeenCalled();
@@ -355,10 +358,10 @@ describe('portfolio picker versus create submission', () => {
           await flush();
         });
         await act(async () => {
-          await flow.pickCover();
+          await flow.pickDraftMedia();
         });
         expect(mockPicker).toHaveBeenCalledTimes(1);
-        expect(flow.draftMediaAssets).toEqual([selectedMedia]);
+        expect(flow.draftMediaAssets).toEqual([previousMedia, selectedMedia]);
       }
     },
   );
@@ -370,16 +373,16 @@ describe('portfolio picker versus create submission', () => {
         mockPicker.mockResolvedValueOnce({errorCode: 'permission'});
       else mockCacheFile.mockRejectedValueOnce(new Error('STORAGE_FULL'));
       await act(async () => {
-        await flow.pickCover();
+        await flow.pickDraftMedia();
       });
       expect(flow.pickingMedia).toBe(false);
       expect(flow.draftMediaAssets).toEqual([previousMedia]);
       expect(mockCreate).not.toHaveBeenCalled();
       expect(addButton().props.disable).toBe(false);
       await act(async () => {
-        await flow.pickCover();
+        await flow.pickDraftMedia();
       });
-      expect(flow.draftMediaAssets).toEqual([selectedMedia]);
+      expect(flow.draftMediaAssets).toEqual([previousMedia, selectedMedia]);
       expect(mockPicker).toHaveBeenCalledTimes(2);
     },
   );
@@ -391,7 +394,7 @@ describe('portfolio picker versus create submission', () => {
       mockCacheFile.mockReturnValueOnce(copy.promise);
       let picking!: Promise<void>;
       await act(async () => {
-        picking = flow.pickCover();
+        picking = flow.pickDraftMedia();
         await flush();
       });
       await act(async () => {
@@ -420,14 +423,14 @@ describe('portfolio picker versus create submission', () => {
       if (retirement === 'close') {
         expect(flow.pickingMedia).toBe(false);
         await act(async () => {
-          await flow.pickCover();
+          await flow.pickDraftMedia();
         });
-        expect(flow.draftMediaAssets).toEqual([selectedMedia]);
+        expect(flow.draftMediaAssets).toEqual([previousMedia, selectedMedia]);
       }
     },
   );
 
-  it('does not hold an accepted selection behind old-file cleanup or let its completion unlock a newer picker', async () => {
+  it('does not lock a new picker behind retirement of a removed draft file', async () => {
     const cleanup = deferred<void>();
     mockRemoveFile.mockReturnValueOnce(cleanup.promise);
     let first!: Promise<void>;
@@ -435,7 +438,13 @@ describe('portfolio picker versus create submission', () => {
     let second!: Promise<void>;
     try {
       await act(async () => {
-        first = flow.pickCover();
+        first = flow.pickDraftMedia();
+        await flush();
+      });
+      expect(flow.draftMediaAssets).toEqual([previousMedia, selectedMedia]);
+      await act(async () => {
+        flow.removeDraftMedia(previousMedia);
+        jest.advanceTimersByTime(250);
         await flush();
       });
       expect(flow.draftMediaAssets).toEqual([selectedMedia]);
@@ -443,7 +452,7 @@ describe('portfolio picker versus create submission', () => {
       expect(addButton().props.disable).toBe(false);
       mockCacheFile.mockReturnValueOnce(secondCopy.promise);
       await act(async () => {
-        second = flow.pickCover();
+        second = flow.pickDraftMedia();
         await flush();
       });
       expect(flow.pickingMedia).toBe(true);
@@ -456,12 +465,97 @@ describe('portfolio picker versus create submission', () => {
     } finally {
       await act(async () => {
         cleanup.resolve();
-        secondCopy.resolve(selectedMedia);
+        secondCopy.resolve({...selectedMedia, uri: 'file:///draft/second.jpg'});
         await first;
         await second;
       });
     }
     expect(flow.pickingMedia).toBe(false);
+  });
+
+  it('renders each selected file and removes one by its URI without publishing', async () => {
+    await act(async () => {
+      await flow.pickDraftMedia();
+    });
+    expect(flow.draftMediaAssets).toEqual([previousMedia, selectedMedia]);
+    const removes = renderer!.root.findAll(
+      node =>
+        String(node.props.accessibilityLabel || '').startsWith('إزالة ') &&
+        typeof node.props.onPress === 'function',
+    );
+    expect(removes).toHaveLength(2);
+    await act(async () => removes[1].props.onPress());
+    expect(flow.draftMediaAssets).toEqual([previousMedia]);
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it('blocks file removal while the picker owns the draft', async () => {
+    const picker = deferred<{didCancel: boolean}>();
+    mockPicker.mockReturnValueOnce(picker.promise);
+    let picking!: Promise<void>;
+    await act(async () => {
+      picking = flow.pickDraftMedia();
+      await flush();
+      flow.removeDraftMedia(previousMedia);
+    });
+    expect(flow.draftMediaAssets).toEqual([previousMedia]);
+    const remove = renderer!.root.findAll(
+      node =>
+        String(node.props.accessibilityLabel || '').startsWith('إزالة ') &&
+        typeof node.props.onPress === 'function',
+    )[0];
+    expect(remove.props.disabled).toBe(true);
+    await act(async () => {
+      picker.resolve({didCancel: true});
+      await picking;
+    });
+    expect(flow.draftMediaAssets).toEqual([previousMedia]);
+  });
+
+  it('caps appended files at twelve and never opens an unlimited picker when full', async () => {
+    const next = Array.from({length: 15}, (_, index) => ({
+      uri: `file:///picker/${index}.jpg`,
+      type: 'image/jpeg',
+    }));
+    mockPicker.mockResolvedValueOnce({assets: next});
+    mockCacheFile.mockImplementation(async (_kind, asset) => asset);
+    await act(async () => {
+      await flow.pickDraftMedia();
+    });
+    expect(mockPicker).toHaveBeenLastCalledWith(
+      expect.objectContaining({selectionLimit: 11}),
+    );
+    expect(flow.draftMediaAssets).toHaveLength(12);
+    expect(flow.draftMediaAssets[0]).toEqual(previousMedia);
+    expect(mockCacheFile).toHaveBeenCalledTimes(11);
+    await act(async () => {
+      await flow.pickDraftMedia();
+    });
+    expect(mockPicker).toHaveBeenCalledTimes(1);
+    expect(
+      renderer!.root.findByProps({
+        accessibilityLabel: 'اختيار صور وفيديوهات المشروع',
+      }).props.disabled,
+    ).toBe(true);
+    await act(async () => flow.removeDraftMedia(flow.draftMediaAssets[5]));
+    expect(flow.draftMediaAssets).toHaveLength(11);
+    expect(flow.draftMediaAssets[0]).toEqual(previousMedia);
+    expect(flow.draftCover).toEqual({uri: previousMedia.uri});
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('removes the cover and derives the next cover from remaining images', async () => {
+    await act(async () => {
+      await flow.pickDraftMedia();
+    });
+    await act(async () => flow.removeDraftMedia(previousMedia));
+    expect(flow.draftMediaAssets).toEqual([selectedMedia]);
+    expect(flow.draftCover).toEqual({uri: selectedMedia.uri});
+    await act(async () => flow.removeDraftMedia(selectedMedia));
+    expect(flow.draftMediaAssets).toEqual([]);
+    expect(flow.draftCover).toBeNull();
+    expect(addButton().props.disable).toBe(true);
   });
 
   it.each(['failure', 'closed visit'])(
@@ -483,7 +577,7 @@ describe('portfolio picker versus create submission', () => {
       let settled = false;
       try {
         await act(async () => {
-          picking = flow.pickCover().then(() => {
+          picking = flow.pickDraftMedia().then(() => {
             settled = true;
           });
           await flush();

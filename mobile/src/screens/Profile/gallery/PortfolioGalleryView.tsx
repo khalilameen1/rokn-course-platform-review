@@ -31,6 +31,8 @@ import type {PortfolioGalleryController} from './usePortfolioGalleryController';
 import {galleryStyles as styles} from './galleryStyles';
 import {PortfolioProjectGrid} from './PortfolioProjectGrid';
 import {PortfolioUploadStatus} from './PortfolioUploadStatus';
+import {PortfolioDraftMediaList} from './PortfolioDraftMediaList';
+import {MAX_PORTFOLIO_MEDIA_COUNT} from '../../../services/portfolioMediaPolicy';
 
 type DetailActionsController = Pick<
   PortfolioGalleryController,
@@ -245,7 +247,6 @@ export const PortfolioGalleryView = ({
     pausingCreateUpload,
     closeProject,
     detailLoading,
-    draftCover,
     draftMediaAssets,
     draftLoadError,
     draftReady,
@@ -266,7 +267,8 @@ export const PortfolioGalleryView = ({
     loadProjects,
     openAddProject,
     openProject,
-    pickCover,
+    pickDraftMedia,
+    removeDraftMedia,
     pickingMedia,
     previewMedia,
     projects,
@@ -674,9 +676,21 @@ export const PortfolioGalleryView = ({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="اختيار صور وفيديوهات المشروع"
-                  disabled={saving || pickingMedia || !draftReady}
-                  accessibilityState={{busy: pickingMedia}}
-                  onPress={pickCover}
+                  disabled={
+                    saving ||
+                    pickingMedia ||
+                    !draftReady ||
+                    draftMediaAssets.length >= MAX_PORTFOLIO_MEDIA_COUNT
+                  }
+                  accessibilityState={{
+                    busy: pickingMedia,
+                    disabled:
+                      saving ||
+                      pickingMedia ||
+                      !draftReady ||
+                      draftMediaAssets.length >= MAX_PORTFOLIO_MEDIA_COUNT,
+                  }}
+                  onPress={pickDraftMedia}
                   style={styles.coverPicker}>
                   {pickingMedia ? (
                     <View style={styles.pickedMediaPreview}>
@@ -685,30 +699,19 @@ export const PortfolioGalleryView = ({
                         جارٍ تجهيز الملفات
                       </Text>
                     </View>
-                  ) : draftMediaAssets.length ? (
-                    <View style={styles.pickedMediaPreview}>
-                      {draftCover ? (
-                        <Image
-                          progressiveRenderingEnabled
-                          resizeMethod="resize"
-                          source={draftCover}
-                          style={styles.pickedCover}
-                        />
-                      ) : (
-                        <View style={styles.pickedCoverFallback}>
-                          <Text style={styles.coverPickerLabel}>فيديو</Text>
-                        </View>
-                      )}
-                      <Text style={styles.pickedMediaCount}>
-                        {draftMediaAssets.length} ملفات
-                      </Text>
-                    </View>
                   ) : (
                     <Text style={styles.coverPickerLabel}>
-                      إضافة صور أو فيديوهات
+                      {draftMediaAssets.length >= MAX_PORTFOLIO_MEDIA_COUNT
+                        ? 'اكتمل عدد الملفات'
+                        : 'إضافة صور أو فيديوهات'}
                     </Text>
                   )}
                 </Pressable>
+                <PortfolioDraftMediaList
+                  files={draftMediaAssets}
+                  disabled={saving || pickingMedia || !draftReady}
+                  onRemove={removeDraftMedia}
+                />
                 <Button
                   disable={
                     !draftReady ||
