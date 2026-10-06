@@ -99,3 +99,8 @@ dashboard amount/copy, campaign course identity, single presentation ownership
 and callbacks are unchanged. New renderer assertions are authored, not executed.
 The first-guest evidence belongs to the old binary, not the corrected source.
 Visual acceptance of both corrected cards remains deferred to the final build.
+
+Independent review accepted the local spacing, typography, logical placement
+and unchanged action/source contracts; it did not run tests or approve the
+corrected binary. The preview backdrop was subsequently restored from the shared
+0.76 overlay to its local 0.56 value. No server setting or reward grant changed.

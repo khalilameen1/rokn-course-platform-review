@@ -43,3 +43,24 @@ screenshot, course art, in-app header logo or startup screen.
 Native resource/PNG checks are not proof of the installed APK or an iOS archive.
 Check the actual launcher masks after the final build. Nothing here publishes
 store metadata or changes a running server.
+
+## Store metadata handoff — 2026-10-06
+
+The published Play listing still displayed the old black icon after internal
+release 63 was made available. Uploading the AAB had not updated the separate
+store listing. The default listing was last edited on September 14.
+
+The existing blue `play-icon-512.png` was independently inspected visually and
+uploaded unchanged (SHA-256 `065cce03746a3e3c01ff52d4a3d3300e83d1f26e4986390230f2876937eb4e78`).
+Only the old listing icon was replaced; its library asset remains recoverable.
+The five existing phone screenshots, feature graphic, name and descriptions
+were retained. Publishing overview showed exactly one change: default Arabic
+listing, change app icon. The review confirmation was submitted and the page
+then showed changes under review, with automated checks still running.
+
+Evidence: `E:/RoknBuild/release63-evidence-20261006/play-blue-icon-review-requested-20261006.png`
+and the accompanying `.txt` accessibility capture. This proves the saved icon
+and requested review, not approval or propagation to the public store. No new
+binary was built or promoted; production remains version 60 and internal testing
+remains version 63. Home, startup and notification fidelity are separate open
+acceptance items, not covered by this icon handoff.

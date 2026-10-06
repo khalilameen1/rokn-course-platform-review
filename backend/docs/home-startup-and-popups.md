@@ -29,3 +29,28 @@ reward/template contracts. See [Gift artwork framing](../../mobile/docs/home-gif
 for source reuse, dashboard guidance and deferred native acceptance.
 
 Authored local cases cover startup readiness, deadline release, installation-level welcome display, configured amounts, login/account suppression, popup deduplication, course artwork/title ownership and stale callback rejection. These latest source changes have not had their deferred final test run. Native launch appearance, real-device layout and live backend behavior still require integration verification before release. Local tests do not prove deployment or native performance.
+
+## Native first-paint handoff — 6 October 2026
+
+Signed version 63 was opened in an isolated ephemeral emulator user without
+clearing the existing learner session. `64-first-guest-launch.png` captured a
+blank dark MainActivity before React content, followed by the actual guest Home
+gift in `65-first-guest-settled.png`. This proves a gap in that observed cold
+launch, not a measured delay on every device. The temporary profile was removed
+and the original emulator user retained. MainActivity immediately switches its
+launch theme to AppTheme; no native splash retention library is installed.
+
+The next correction must retain the approved Cake-inspired Rokn composition,
+not replace it with a newly invented animation. A compatible established owner
+is Expo SplashScreen: Bluesky's public Android source actually uses it to release
+the native splash when ready, and its Play listing shows 10M+ downloads.
+Sources: [Android splash owner](https://github.com/bluesky-social/social-app/blob/main/src/Splash.android.tsx),
+[runtime dependency](https://github.com/bluesky-social/social-app/blob/main/package.json),
+[adoption](https://play.google.com/store/apps/details?id=xyz.blueskyweb.app),
+[Expo SDK 55 integration](https://docs.expo.dev/versions/v55.0.0/sdk/splash-screen/).
+This is a verified reusable library candidate, not an implemented fix. Use the
+SDK 55-compatible version rather than copying Bluesky's SDK 57 dependencies.
+Do not hide native coverage before Rokn's own startup frame has painted, add a
+minimum marketing delay, or hold Home mounting behind catalogue/session I/O.
+Final acceptance must inspect the signed cold-launch transition, not merely
+assert that launch XML and React logo files exist.
