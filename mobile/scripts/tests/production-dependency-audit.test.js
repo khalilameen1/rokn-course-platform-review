@@ -12,9 +12,12 @@ const {loadNycConfig, isLoading} = require('@istanbuljs/load-nyc-config');
 // Exercise the shipped Istanbul consumer, not a replacement YAML parser.
 // Fixtures are owned temporary directories; never touch the app's config.
 function nycFixture(t, files) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'rokn-nyc-compat-'));
+  // The real loader resolves extended config paths through realpath. Keep
+  // this owned fixture on the same physical root when TEMP is a junction.
+  const temporaryRoot = fs.realpathSync(os.tmpdir());
+  const directory = fs.mkdtempSync(path.join(temporaryRoot, 'rokn-nyc-compat-'));
   t.after(() => {
-    assert.equal(path.dirname(directory), os.tmpdir());
+    assert.equal(path.dirname(directory), temporaryRoot);
     assert.ok(path.basename(directory).startsWith('rokn-nyc-compat-'));
     fs.rmSync(directory, {recursive: true, force: true});
   });
