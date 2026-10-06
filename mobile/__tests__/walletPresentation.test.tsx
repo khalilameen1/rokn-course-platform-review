@@ -1,5 +1,5 @@
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import {WalletView} from '../src/screens/wallet/WalletView';
 import {WalletPackageRail} from '../src/screens/wallet/WalletPackageRail';
@@ -116,15 +116,26 @@ describe('rewards presentation', () => {
       expect(balance.props.adjustsFontSizeToFit).toBe(true);
       expect(balance.props.allowFontScaling).not.toBe(false);
       expect(balance.props.accessibilityValue).toEqual({text: formatArabicNumber(250)});
-      const hero = root.findAllByType(View).find(node =>
+      const hero = root.findAll(node =>
+        typeof node.type === 'string' &&
         node.props.style === walletStyles.rewardsHero,
-      )!;
+      )[0];
       expect(StyleSheet.flatten(hero.props.style)).toMatchObject({
         direction: 'rtl', flexDirection: 'row',
       });
-      // With RTL Yoga row semantics, the first child is physically on the right.
-      expect(hero.children[0]).toBe(balance.parent);
-      expect(hero.children[1]).toBe(root.findByType(RoknCoinStack));
+      // Inspect the rendered host row, not React Native's component/host wrapper
+      // identity. In RTL Yoga the first slot is physically on the right.
+      expect(hero.children.map(child => {
+        if (typeof child === 'string') return 'unexpected-text';
+        if (child.props.style === walletStyles.rewardsBalanceCopy) return 'amount';
+        if (child.type === RoknCoinStack) return 'artwork';
+        return 'unexpected-slot';
+      })).toEqual(['amount', 'artwork']);
+      const amountSlot = hero.children[0] as TestRenderer.ReactTestInstance;
+      expect(amountSlot.findAllByType(Text).map(node => ({
+        label: node.props.accessibilityLabel,
+        amount: node.props.children,
+      }))).toEqual([{label: 'رصيد المكافآت', amount: formatArabicNumber(250)}]);
     },
   );
   it.each([0, 60, 7890, 1000000])('keeps the complete amount available beside the artwork (balance=%i)', async balance => {
