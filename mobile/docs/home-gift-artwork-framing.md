@@ -81,3 +81,21 @@ the approved composition, per-source frames, shared fallback, atomic provider,
 settings/cache/ETag and authoring boundaries without running tests or changing
 files. This is source-level acceptance only; physical visual/runtime gates above
 and the other active-goal units remain open.
+
+## Native composition correction — 6 October 2026
+
+The actual signed version 63 first-guest capture (`65-first-guest-settled.png`)
+confirmed the approved coin-stack asset and live dashboard amount (20). It also
+showed the physical close control on the wrong side under native RTL and extra
+vertical spacing. The local correction restores the preview's gift 44px top
+inset, 304px minimum, 16/25 title, 13px action radius, 11px action insets and
+0.56 backdrop. Explicit numeric line height avoids inheriting Cairo's taller
+default line box. Logical end/start place close/course badge correctly and map
+asymmetric physical safe areas without double mirroring.
+
+The existing Cairo family and Rokn primary blue remain intentional native brand
+adaptations; native touch controls retain at least 48dp. Shared artwork priority,
+dashboard amount/copy, campaign course identity, single presentation ownership
+and callbacks are unchanged. New renderer assertions are authored, not executed.
+The first-guest evidence belongs to the old binary, not the corrected source.
+Visual acceptance of both corrected cards remains deferred to the final build.

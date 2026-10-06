@@ -17,7 +17,6 @@ import {Fonts} from '../../constants/styleConstants';
 import {
   Accessibility,
   Palette,
-  Radius,
   Spacing,
   Type,
   textDirection,
@@ -75,8 +74,8 @@ export const HomeOverlays = ({
             {
               paddingTop: Math.max(insets.top + 16, 24),
               paddingBottom: Math.max(insets.bottom + 16, 24),
-              paddingLeft: Math.max(insets.left + 16, 20),
-              paddingRight: Math.max(insets.right + 16, 20),
+              paddingStart: insets.right + 15,
+              paddingEnd: insets.left + 15,
             },
           ]}>
           <View
@@ -165,7 +164,7 @@ export const HomeOverlays = ({
   );
 };
 const styles = StyleSheet.create({
-  overlay: {flex: 1, backgroundColor: Palette.overlay},
+  overlay: {flex: 1, backgroundColor: 'rgba(3,8,16,0.56)'},
   overlayContent: {flexGrow: 1, alignItems: 'center', justifyContent: 'center'},
   card: {
     width: '100%',
@@ -178,17 +177,17 @@ const styles = StyleSheet.create({
     borderColor: '#2C3A50',
     borderWidth: 1,
   },
-  giftCard: {minHeight: 320, alignItems: 'center'},
+  giftCard: {minHeight: 304, paddingTop: 44, alignItems: 'center'},
   close: {
     position: 'absolute',
     top: 3,
-    left: 5,
+    end: 5,
     width: Accessibility.minTouchTarget,
     height: Accessibility.minTouchTarget,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeText: {fontSize: 28, color: '#B4C0D2'},
+  closeText: {fontSize: 23, lineHeight: 23, color: '#B4C0D2'},
   giftVisual: {
     height: 104,
     width: '100%',
@@ -210,29 +209,41 @@ const styles = StyleSheet.create({
   badge: {
     position: 'absolute',
     top: 10,
-    right: 10,
+    start: 10,
     borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 4,
     backgroundColor: Palette.primary,
   },
-  badgeText: {...Type.caption, color: '#FFFFFF'},
-  title: {
-    ...Type.bodyStrong,
-    ...textDirection,
-    fontSize: 18,
-    color: Palette.text,
-    textAlign: 'right',
-    marginTop: 14,
+  badgeText: {
+    fontFamily: Fonts.bold,
+    fontSize: 11,
+    lineHeight: 18,
+    color: '#FFFFFF',
   },
-  giftTitle: {textAlign: 'center', marginTop: 0},
+  title: {
+    fontFamily: Fonts.bold,
+    fontSize: 16,
+    lineHeight: 25,
+    ...textDirection,
+    color: Palette.text,
+    marginTop: 14,
+    marginBottom: 12,
+  },
+  giftTitle: {textAlign: 'center', marginTop: 1, marginBottom: 2},
   amount: {
     alignSelf: 'center',
     justifyContent: 'center',
     marginTop: 4,
     marginBottom: 12,
   },
-  amountText: {fontFamily: Fonts.extraBold, fontSize: 34, color: '#FFFFFF'},
+  amountText: {
+    fontFamily: Fonts.extraBold,
+    fontSize: 34,
+    lineHeight: 41,
+    includeFontPadding: false,
+    color: '#FFFFFF',
+  },
   description: {
     ...Type.caption,
     ...textDirection,
@@ -242,27 +253,33 @@ const styles = StyleSheet.create({
   actionButton: {
     width: '100%',
     minHeight: 48,
-    marginTop: 8,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.md,
+    paddingHorizontal: 11,
+    paddingVertical: 11,
+    borderRadius: 13,
     backgroundColor: Palette.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionText: {
-    ...Type.bodyStrong,
+    fontFamily: Fonts.black,
+    fontSize: 12,
+    lineHeight: 20,
     ...textDirection,
     color: '#FFFFFF',
     textAlign: 'center',
   },
   secondaryButton: {
-    minHeight: 44,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  secondaryText: {...Type.caption, color: '#B4C0D2'},
+  secondaryText: {
+    fontFamily: Fonts.regular,
+    fontSize: 12,
+    lineHeight: 20,
+    color: '#B4C0D2',
+  },
   pressed: {opacity: 0.75},
 });

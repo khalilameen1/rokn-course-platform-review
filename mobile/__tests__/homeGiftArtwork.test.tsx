@@ -1,5 +1,5 @@
 import React from 'react';
-import {Image, StyleSheet} from 'react-native';
+import {Image, Modal, ScrollView, StyleSheet, Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import {
   AppArtwork,
@@ -8,9 +8,12 @@ import {
 } from '../src/components/ui/AppArtwork';
 import {HomeOverlays} from '../src/screens/home/HomeOverlays';
 import type {EngagementMessage} from '../src/services/api/engagement';
+import {Fonts} from '../src/constants/styleConstants';
+
+let mockInsets = {top: 0, bottom: 0, left: 0, right: 0};
 
 jest.mock('react-native-safe-area-context', () => ({
-  useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
+  useSafeAreaInsets: () => mockInsets,
 }));
 jest.mock('../src/hooks/useReducedMotion', () => ({
   useReducedMotion: () => true,
@@ -25,7 +28,7 @@ const prompt: EngagementMessage = {
   key: 'guest_registration_prompt',
   title: 'حصلت على هدية ترحيبية',
   description: '',
-  actionLabel: 'سجل الدخول لاستلام الهدية',
+  actionLabel: 'تسجيل الدخول',
   secondaryActionLabel: 'تابع كزائر',
   coins: 60,
   dismissible: true,
@@ -35,7 +38,10 @@ const prompt: EngagementMessage = {
 
 describe('Home gift artwork framing and shared source ownership', () => {
   let renderer: TestRenderer.ReactTestRenderer;
-  afterEach(() => act(() => renderer?.unmount()));
+  afterEach(() => {
+    act(() => renderer?.unmount());
+    mockInsets = {top: 0, bottom: 0, left: 0, right: 0};
+  });
   const tree = (state: AppArtworkState, uri?: string) => (
     <ArtworkContext.Provider value={state}>
       <HomeOverlays
@@ -72,6 +78,102 @@ describe('Home gift artwork framing and shared source ownership', () => {
   };
   const fail = () =>
     act(() => image().props.onError({nativeEvent: {error: 'offline'}}));
+
+  it('preserves the approved gift spacing and logical close position', () => {
+    render({urls: {}});
+    const card = renderer.root.findByProps({testID: 'home-announcement-card'});
+    expect(StyleSheet.flatten(card.props.style)).toMatchObject({
+      minHeight: 304,
+      paddingTop: 44,
+      paddingHorizontal: 20,
+      borderRadius: 24,
+    });
+    const close = renderer.root.findByProps({accessibilityLabel: 'إغلاق'});
+    const closeStyle = StyleSheet.flatten(close.props.style);
+    expect(closeStyle.end).toBe(5);
+    expect(closeStyle.left).toBeUndefined();
+    expect(closeStyle.right).toBeUndefined();
+    const title = renderer.root.findByProps({accessibilityRole: 'header'});
+    expect(StyleSheet.flatten(title.props.style)).toMatchObject({
+      fontFamily: Fonts.bold,
+      fontSize: 16,
+      lineHeight: 25,
+      textAlign: 'center',
+    });
+    const amount = renderer.root
+      .findAllByType(Text)
+      .find(node => StyleSheet.flatten(node.props.style)?.fontSize === 34)!;
+    expect(StyleSheet.flatten(amount.props.style)).toMatchObject({
+      lineHeight: 41,
+      includeFontPadding: false,
+    });
+  });
+
+  it('keeps asymmetric safe areas on their physical sides in the RTL modal', () => {
+    mockInsets = {top: 24, bottom: 16, left: 34, right: 0};
+    render({urls: {}});
+    expect(
+      StyleSheet.flatten(
+        renderer.root.findByType(ScrollView).props.contentContainerStyle,
+      ),
+    ).toMatchObject({paddingStart: 15, paddingEnd: 49});
+  });
+
+  it('retains the course-owned cover, top-right badge and existing actions', () => {
+    const dismiss = jest.fn();
+    const courseImage = {uri: 'https://rokn.test/current-course.png'};
+    act(() => {
+      renderer = TestRenderer.create(
+        <HomeOverlays
+          campaign={{
+            id: '71',
+            courseId: '3',
+            title: 'عنوان الكورس الحالي',
+            description: '',
+            image: courseImage,
+            actionLabel: 'ابدأ الكورس',
+            badge: 'جديد',
+          }}
+          campaignImageFailed={false}
+          onCampaignImageError={jest.fn()}
+          onDismissCampaign={dismiss}
+          guestPrompt={null}
+          onDismissGuestPrompt={jest.fn()}
+          onOpenGuestPrompt={jest.fn()}
+        />,
+      );
+    });
+    const card = renderer.root.findByProps({testID: 'home-announcement-card'});
+    expect(StyleSheet.flatten(card.props.style).paddingTop).toBe(52);
+    expect(renderer.root.findByType(Image).props.source).toBe(courseImage);
+    const badge = renderer.root
+      .findAllByType(Text)
+      .find(node => node.props.children === 'جديد')!;
+    expect(StyleSheet.flatten(badge.parent!.props.style)).toMatchObject({
+      start: 10,
+      top: 10,
+    });
+    const actionText = renderer.root
+      .findAllByType(Text)
+      .find(node => node.props.children === 'ابدأ الكورس')!;
+    expect(StyleSheet.flatten(actionText.props.style)).toMatchObject({
+      fontFamily: Fonts.black,
+      fontSize: 12,
+      lineHeight: 20,
+    });
+    const action = renderer.root.find(
+      node =>
+        node.props.accessibilityRole === 'button' &&
+        typeof node.props.onPress === 'function' &&
+        node
+          .findAllByType(Text)
+          .some(text => text.props.children === 'ابدأ الكورس'),
+    );
+    act(() => action.props.onPress());
+    expect(dismiss).toHaveBeenCalledWith(true);
+    act(() => renderer.root.findByType(Modal).props.onRequestClose());
+    expect(dismiss).toHaveBeenLastCalledWith(false);
+  });
 
   it('contains a template upload and global upload, then restores approved offline framing', () => {
     render({urls: {coin_stack: globalStack}}, template);
