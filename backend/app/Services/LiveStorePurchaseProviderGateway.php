@@ -16,6 +16,7 @@ use Google\Service\AndroidPublisher\ProductOfferDetails;
 use Google\Service\AndroidPublisher\ProductPurchaseV2;
 use Google\Service\AndroidPublisher\PurchaseStateContext;
 use GuzzleHttp\Client as HttpClient;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
@@ -199,30 +200,44 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
             throw new StorePurchaseVerificationException('apple_transaction_id_required');
         }
 
-        $authToken = $this->appleServerToken();
-        $response = $this->appleRequest(
-            'https://api.storekit.itunes.apple.com',
-            $transactionId,
-            $authToken
+        // expo-iap supplies StoreKit 2's Apple-signed transaction JWS. Verify
+        // that evidence before using its environment, never a client flag or
+        // an HTTP error. An unreleased app can return production HTTP 401 even
+        // while its Sandbox purchases are valid.
+        $deviceClaims = $this->verifiedAppleClaims(trim($purchaseToken));
+        $environment = strtolower((string) ($deviceClaims['environment'] ?? ''));
+        if (!in_array($environment, ['production', 'sandbox'], true)) {
+            throw new StorePurchaseVerificationException('store_purchase_environment_invalid');
+        }
+        $this->assertApplePurchaseClaims(
+            $deviceClaims, $productId, $transactionId, $expectedAccountBinding, $environment
         );
-        $environment = 'production';
-        if ((int) $response->json('errorCode') === 4040010) {
-            $environment = 'sandbox';
+
+        $authToken = $this->appleServerToken();
+        try {
             $response = $this->appleRequest(
-                'https://api.storekit-sandbox.itunes.apple.com',
+                $environment === 'sandbox'
+                    ? 'https://api.storekit-sandbox.itunes.apple.com'
+                    : 'https://api.storekit.itunes.apple.com',
                 $transactionId,
                 $authToken
             );
+        } catch (ConnectionException) {
+            throw new StorePurchaseVerificationException(
+                'apple_verification_unavailable',
+                'تعذّر التحقق من عملية الشراء الآن',
+                503
+            );
         }
         if (!$response->successful()) {
+            // A provider authentication/configuration or connectivity failure
+            // is retryable, not evidence that the learner has not paid.
+            $notFound = $response->status() === 404
+                && (int) $response->json('errorCode') === 4040010;
             throw new StorePurchaseVerificationException(
-                $response->serverError()
-                    ? 'apple_verification_unavailable'
-                    : 'store_purchase_not_found',
-                $response->serverError()
-                    ? 'تعذّر التحقق من عملية الشراء الآن'
-                    : 'لم تكتمل عملية الشراء',
-                $response->serverError() ? 503 : 422
+                $notFound ? 'store_purchase_not_found' : 'apple_verification_unavailable',
+                $notFound ? 'لم تكتمل عملية الشراء' : 'تعذّر التحقق من عملية الشراء الآن',
+                $notFound ? 422 : 503
             );
         }
 
@@ -231,7 +246,41 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
             throw new StorePurchaseVerificationException('apple_signed_transaction_missing');
         }
         $claims = $this->verifiedAppleClaims($signedTransaction);
+        $this->assertApplePurchaseClaims(
+            $claims, $productId, $transactionId, $expectedAccountBinding, $environment
+        );
 
+        $currency = strtoupper((string) ($claims['currency'] ?? ''));
+        $price = isset($claims['price']) && is_numeric($claims['price'])
+            ? ((float) $claims['price']) / 1000
+            : null;
+
+        return new VerifiedStorePurchase(
+            provider: StorePurchase::PROVIDER_APPLE,
+            productId: $productId,
+            externalTransactionId: $transactionId,
+            environment: $environment,
+            currency: preg_match('/^[A-Z]{3}$/', $currency) ? $currency : null,
+            grossAmount: $price,
+            auditPayload: [
+                'original_transaction_id' => $claims['originalTransactionId'] ?? null,
+                'purchase_date' => $claims['purchaseDate'] ?? null,
+                'storefront' => $claims['storefront'] ?? null,
+                'quantity' => $claims['quantity'] ?? 1,
+            ],
+            quantity: (int) ($claims['quantity'] ?? 1),
+            accountBinding: (string) $claims['appAccountToken']
+        );
+    }
+
+    /** @param array<string, mixed> $claims */
+    private function assertApplePurchaseClaims(
+        array $claims,
+        string $productId,
+        string $transactionId,
+        string $expectedAccountBinding,
+        string $environment
+    ): void {
         if (
             !hash_equals((string) config('store_billing.apple.bundle_id'), (string) ($claims['bundleId'] ?? ''))
             || !hash_equals($productId, (string) ($claims['productId'] ?? ''))
@@ -254,28 +303,6 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
         if (strtolower((string) ($claims['environment'] ?? '')) !== $environment) {
             throw new StorePurchaseVerificationException('store_purchase_environment_invalid');
         }
-
-        $currency = strtoupper((string) ($claims['currency'] ?? ''));
-        $price = isset($claims['price']) && is_numeric($claims['price'])
-            ? ((float) $claims['price']) / 1000
-            : null;
-
-        return new VerifiedStorePurchase(
-            provider: StorePurchase::PROVIDER_APPLE,
-            productId: $productId,
-            externalTransactionId: $transactionId,
-            environment: strtolower((string) ($claims['environment'] ?? $environment)),
-            currency: preg_match('/^[A-Z]{3}$/', $currency) ? $currency : null,
-            grossAmount: $price,
-            auditPayload: [
-                'original_transaction_id' => $claims['originalTransactionId'] ?? null,
-                'purchase_date' => $claims['purchaseDate'] ?? null,
-                'storefront' => $claims['storefront'] ?? null,
-                'quantity' => $claims['quantity'] ?? 1,
-            ],
-            quantity: (int) ($claims['quantity'] ?? 1),
-            accountBinding: (string) $claims['appAccountToken']
-        );
     }
 
     /** @return array<string, mixed> */

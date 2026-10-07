@@ -1,0 +1,12 @@
+[ req ]
+distinguished_name = req_distinguished_name
+
+[ req_distinguished_name ]
+
+[ root_ext ]
+basicConstraints = critical, CA:true
+keyUsage = critical, keyCertSign, cRLSign
+
+[ leaf_ext ]
+basicConstraints = critical, CA:false
+keyUsage = critical, digitalSignature
