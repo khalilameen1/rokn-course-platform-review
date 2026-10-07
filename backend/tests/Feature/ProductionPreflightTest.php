@@ -293,10 +293,64 @@ class ProductionPreflightTest extends TestCase
         $response = Http::get('https://rokn.test/.well-known/assetlinks.json');
 
         $method = new \ReflectionMethod(ProductionPreflight::class, 'validAndroidAssociation');
-        self::assertTrue($method->invoke(app(ProductionPreflight::class), $response, 'release-id'));
+        self::assertTrue($method->invoke(app(ProductionPreflight::class), $response));
 
         $response = Http::get('https://rokn.test/.well-known/assetlinks.json');
-        self::assertFalse($method->invoke(app(ProductionPreflight::class), $response, 'release-id'));
+        self::assertFalse($method->invoke(app(ProductionPreflight::class), $response));
+    }
+
+    public function test_android_association_remains_valid_when_apple_identity_changes_during_deployment(): void
+    {
+        $fingerprint = implode(':', array_fill(0, 32, 'AB'));
+        config([
+            'app_links.android_package' => 'com.rokn',
+            'app_links.android_sha256_fingerprints' => [$fingerprint],
+            'app_links.apple_app_ids' => [],
+        ]);
+        $liveIdentity = app(\App\Services\AppReleasePolicyService::class)->publicContractIdentity();
+        $statement = $this->get('/.well-known/assetlinks.json')->assertOk()->json();
+
+        config(['app_links.apple_app_ids' => ['VMHVLW746S.com.rokn']]);
+        self::assertNotSame(
+            $liveIdentity,
+            app(\App\Services\AppReleasePolicyService::class)->publicContractIdentity()
+        );
+        Http::fakeSequence()->push($statement, 200, ['X-Rokn-App-Identity' => $liveIdentity]);
+        $response = Http::get('https://rokn.test/.well-known/assetlinks.json');
+        $method = new \ReflectionMethod(ProductionPreflight::class, 'validAndroidAssociation');
+        self::assertTrue($method->invoke(app(ProductionPreflight::class), $response));
+    }
+
+    public function test_android_association_requires_matching_package_certificate_and_link_permission_regardless_of_metadata(): void
+    {
+        $fingerprint = implode(':', array_fill(0, 32, 'AB'));
+        config([
+            'app_links.android_package' => 'com.rokn',
+            'app_links.android_sha256_fingerprints' => [$fingerprint],
+        ]);
+        $statement = $this->get('/.well-known/assetlinks.json')->assertOk()->json();
+        $method = new \ReflectionMethod(ProductionPreflight::class, 'validAndroidAssociation');
+        $metadata = [
+            'X-Rokn-App-Identity' => app(\App\Services\AppReleasePolicyService::class)->publicContractIdentity(),
+        ];
+
+        $mismatches = ['package', 'certificate', 'missing_relation', 'wrong_relation', 'namespace'];
+        $sequence = Http::fakeSequence();
+        foreach ($mismatches as $mismatch) {
+            $invalid = $statement;
+            match ($mismatch) {
+                'package' => $invalid[0]['target']['package_name'] = 'com.other',
+                'certificate' => $invalid[0]['target']['sha256_cert_fingerprints'] = [implode(':', array_fill(0, 32, 'CD'))],
+                'missing_relation' => $invalid[0]['relation'] = [],
+                'wrong_relation' => $invalid[0]['relation'] = ['delegate_permission/common.get_login_creds'],
+                'namespace' => $invalid[0]['target']['namespace'] = 'web',
+            };
+            $sequence->push($invalid, 200, $metadata);
+        }
+        foreach ($mismatches as $mismatch) {
+            $response = Http::get('https://rokn.test/.well-known/assetlinks.json');
+            self::assertFalse($method->invoke(app(ProductionPreflight::class), $response), $mismatch);
+        }
     }
 
     public function test_preflight_fails_closed_for_unsafe_social_auth_and_host_configuration(): void

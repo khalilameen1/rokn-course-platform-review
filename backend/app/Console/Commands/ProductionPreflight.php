@@ -1191,7 +1191,6 @@ class ProductionPreflight extends Command
         // deploying an API-only revision while no Android release is active.
         // Once either Android channel is active, keep the strict host check.
         if ($androidAssociationRequired) {
-            $expectedIdentity = $releasePolicy->publicContractIdentity();
             try {
                 $association = Http::acceptJson()
                     ->connectTimeout(3)
@@ -1211,11 +1210,11 @@ class ProductionPreflight extends Command
                             ->timeout(6)
                             ->withoutRedirecting()
                             ->get($redirectUrl);
-                        if (!$this->validAndroidAssociation($association, $expectedIdentity)) {
+                        if (!$this->validAndroidAssociation($association)) {
                             $failures[] = 'The branded app-link redirect does not terminate on the configured Android contract.';
                         }
                     }
-                } elseif (!$this->validAndroidAssociation($association, $expectedIdentity)) {
+                } elseif (!$this->validAndroidAssociation($association)) {
                     $failures[] = 'The branded public host does not serve the configured Android app-link contract.';
                 }
             } catch (Throwable) {
@@ -1631,17 +1630,15 @@ class ProductionPreflight extends Command
         return preg_match('/\A(?:[0-9A-F]{2}:){31}[0-9A-F]{2}\z/', $fingerprint) === 1;
     }
 
-    private function validAndroidAssociation(Response $response, string $expectedIdentity): bool
+    private function validAndroidAssociation(Response $response): bool
     {
         if (!$response->successful()) {
             return false;
         }
 
-        $identity = trim((string) $response->header('X-Rokn-App-Identity'));
-        if ($identity !== '' && !hash_equals($expectedIdentity, $identity)) {
-            return false;
-        }
-
+        // Android verifies the DAL statement, not our cross-platform release
+        // metadata. Apple app IDs can change during a rollout while the live
+        // Android package and signing certificate remain exactly the same.
         $expectedPackage = trim((string) config('app_links.android_package'));
         $expectedFingerprints = array_values(array_unique(array_map(
             static fn ($value): string => strtoupper(trim((string) $value)),
@@ -1649,9 +1646,15 @@ class ProductionPreflight extends Command
         )));
         sort($expectedFingerprints);
 
+        if (!$this->validAndroidPackage($expectedPackage) || $expectedFingerprints === []) {
+            return false;
+        }
+
         foreach ((array) $response->json() as $statement) {
             $target = is_array($statement) ? ($statement['target'] ?? null) : null;
             if (!is_array($target)
+                || !is_array($statement['relation'] ?? null)
+                || !in_array('delegate_permission/common.handle_all_urls', $statement['relation'], true)
                 || ($target['namespace'] ?? null) !== 'android_app'
                 || !hash_equals($expectedPackage, trim((string) ($target['package_name'] ?? '')))) {
                 continue;
