@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
 const {execFileSync, spawnSync} = require('node:child_process');
 
 const repositoryRoot = path.resolve(__dirname, '..');
@@ -453,11 +454,13 @@ function scanFiles(root, relativePaths) {
   );
 }
 
-function gitOutput(root, args) {
+function gitOutput(root, args, options = {}) {
   try {
     return execFileSync('git', ['-C', root, ...args], {
       encoding: 'buffer',
       stdio: ['ignore', 'pipe', 'pipe'],
+      maxBuffer: maxGitBlobBytes,
+      ...options,
     });
   } catch {
     throw new Error('Repository secret scan could not enumerate Git files.');
@@ -466,98 +469,208 @@ function gitOutput(root, args) {
 
 function historyContentIssues(root, commits) {
   const issues = [];
-  const gitPathPrefix = gitOutput(root, ['rev-parse', '--show-prefix'])
-    .toString('utf8')
-    .trim();
-
-  for (const [rule, pattern] of historyContentPatterns) {
-    for (let offset = 0; offset < commits.length; offset += 50) {
-      const commitChunk = commits.slice(offset, offset + 50);
-      const result = spawnSync(
-        'git',
-        // git-grep's documented worker limit avoids parallel blob expansion
-        // exhausting hosted macOS resources. Coverage stays identical: all
-        // revisions and files (including binary files) remain in the query.
-        ['-C', root, 'grep', '--threads=1', '-l', '-E', '-e', pattern, ...commitChunk, '--'],
-        {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']},
+  const blobs = new Map();
+  // ls-tree is scoped to the caller's directory. Preserve every historical
+  // path for each object: a public-client exception must never follow a blob
+  // copied to another path. Repeated unchanged objects are inspected once.
+  for (const commit of commits) {
+    const records = gitOutput(root, [
+      'ls-tree',
+      '-r',
+      '-l',
+      '-z',
+      commit,
+      '--',
+      '.',
+    ])
+      .toString('utf8')
+      .split('\0')
+      .filter(Boolean);
+    for (const record of records) {
+      const entry = record.match(
+        /^[0-7]{6} (blob|commit) ([0-9a-f]{40}) +([0-9]+|-)\t([\s\S]+)$/,
       );
-
-      if (result.status === 1) continue;
-      if (result.error || result.status !== 0) {
+      if (!entry)
         throw new Error(
-          'Repository secret history scan could not inspect Git blobs ' +
-            `(${rule}; status=${result.status}; signal=${result.signal}; ` +
-            `error=${result.error?.code || 'none'}).` +
-            // git grep -l reports names, not content. Do not expose any raw
-            // subprocess output in public logs, even when the query fails.
-            (/invalid|regular expression|repetition|bracket|range/i.test(result.stderr || '')
-              ? ' Git reported a regular-expression diagnostic.' : ''),
+          'Repository secret history scan returned an invalid tree entry.',
+        );
+      const [, type, oid, sizeText, relativePath] = entry;
+      const pathRule = sensitivePathRule(relativePath);
+      if (pathRule)
+        issues.push({path: 'history:' + relativePath, rule: pathRule});
+      if (type === 'commit') continue; // Gitlink content belongs to its own repository.
+      const size = Number(sizeText);
+      if (!Number.isSafeInteger(size) || size < 0 || size > maxGitBlobBytes) {
+        throw new Error(
+          'Repository secret history scan cannot inspect an oversized Git blob.',
         );
       }
-
-      for (const match of result.stdout.split(/\r?\n/).filter(Boolean)) {
-        const parsed = match.match(/^([0-9a-f]{40}):(.*)$/);
-        if (!parsed) {
-          throw new Error(
-            'Repository secret history scan returned an invalid blob path.',
-          );
-        }
-        const [, commit, matchedPath] = parsed;
-        if (
-          rule === 'named_secret_assignment' ||
-          rule === 'secret_like_assignment' ||
-          rule === 'bracket_named_secret_assignment' ||
-          rule === 'bracket_secret_like_assignment'
-        ) {
-          const contents = execFileSync(
-            'git',
-            [
-              '-C',
-              root,
-              'cat-file',
-              'blob',
-              commit + ':' + gitPathPrefix + matchedPath,
-            ],
-            {
-              encoding: 'buffer',
-              stdio: ['ignore', 'pipe', 'pipe'],
-              maxBuffer: maxGitBlobBytes,
-            },
-          ).toString('utf8');
-          const detected =
-            rule === 'named_secret_assignment' ||
-            rule === 'bracket_named_secret_assignment'
-              ? scanContents(matchedPath, contents).includes(
-                  'non_placeholder_secret_assignment',
-                )
-              : unclassifiedSecretAssignmentNames(contents).length > 0;
-          if (detected) {
-            issues.push({
-              path: 'history:' + matchedPath,
-              rule:
-                rule === 'named_secret_assignment' ||
-                rule === 'bracket_named_secret_assignment'
-                  ? 'non_placeholder_secret_assignment'
-                  : 'unclassified_secret_name',
-            });
-          }
-          continue;
-        }
-        if (
-          rule === 'google_api_key' &&
-          auditedPublicClientConfigs.has(matchedPath)
-        ) {
-          continue;
-        }
-        issues.push({
-          path: 'history:' + matchedPath,
-          rule,
-        });
-      }
+      if (!blobs.has(oid)) blobs.set(oid, {size, paths: new Set()});
+      const blob = blobs.get(oid);
+      if (blob.size !== size)
+        throw new Error(
+          'Repository secret history scan found inconsistent blob metadata.',
+        );
+      blob.paths.add(relativePath);
     }
   }
 
-  return issues;
+  const temporaryRoot = fs.realpathSync(os.tmpdir());
+  const directory = fs.mkdtempSync(
+    path.join(temporaryRoot, 'rokn-secret-history-'),
+  );
+  // Only this newly-created owned directory may be recursively removed.
+  if (path.dirname(fs.realpathSync(directory)) !== temporaryRoot) {
+    throw new Error(
+      'Repository secret history scan could not create its private workspace.',
+    );
+  }
+  try {
+    const ids = [...blobs.keys()];
+    for (let offset = 0; offset < ids.length; ) {
+      const batch = [];
+      let bytes = 0;
+      while (offset < ids.length && batch.length < 50) {
+        const oid = ids[offset];
+        const size = blobs.get(oid).size;
+        if (batch.length > 0 && bytes + size > 32 * 1024 * 1024) break;
+        batch.push(oid);
+        bytes += size;
+        offset += 1;
+      }
+      // Git's batch protocol supplies byte lengths, so embedded NUL/newline
+      // bytes are preserved. Bound each ordinary batch to 32 MiB / 50 objects.
+      const output = gitOutput(root, ['cat-file', '--batch'], {
+        input: Buffer.from(batch.join('\n') + '\n'),
+        stdio: ['pipe', 'pipe', 'pipe'],
+        maxBuffer: bytes + batch.length * 100 + 1,
+      });
+      let cursor = 0;
+      for (const oid of batch) {
+        const newline = output.indexOf(10, cursor);
+        const size = blobs.get(oid).size;
+        if (
+          newline < 0 ||
+          output.subarray(cursor, newline).toString('ascii') !==
+            `${oid} blob ${size}`
+        ) {
+          throw new Error(
+            'Repository secret history scan returned an invalid blob header.',
+          );
+        }
+        cursor = newline + 1;
+        if (output.length <= cursor + size || output[cursor + size] !== 10) {
+          throw new Error(
+            'Repository secret history scan returned an incomplete Git blob.',
+          );
+        }
+        fs.writeFileSync(
+          path.join(directory, oid),
+          output.subarray(cursor, cursor + size),
+          {mode: 0o600},
+        );
+        cursor += size + 1;
+      }
+      if (cursor !== output.length)
+        throw new Error(
+          'Repository secret history scan returned unexpected blob data.',
+        );
+    }
+
+    for (const [rule, pattern] of historyContentPatterns) {
+      for (let offset = 0; offset < ids.length; offset += 50) {
+        const blobChunk = ids.slice(offset, offset + 50);
+        const result = spawnSync(
+          'git',
+          // Keep the existing POSIX expressions and locale. --text includes
+          // binary bytes; --no-index inspects the exact materialized Git blobs.
+          [
+            '-C',
+            directory,
+            'grep',
+            '--no-index',
+            '--threads=1',
+            '-a',
+            '-l',
+            '-E',
+            '-e',
+            pattern,
+            '--',
+            ...blobChunk,
+          ],
+          {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']},
+        );
+
+        if (result.status === 1) continue;
+        if (result.error || result.status !== 0) {
+          throw new Error(
+            'Repository secret history scan could not inspect Git blobs ' +
+              `(${rule}; status=${result.status}; signal=${result.signal}; ` +
+              `error=${result.error?.code || 'none'}).` +
+              // git grep -l reports names, not content. Do not expose any raw
+              // subprocess output in public logs, even when the query fails.
+              (/invalid|regular expression|repetition|bracket|range/i.test(
+                result.stderr || '',
+              )
+                ? ' Git reported a regular-expression diagnostic.'
+                : ''),
+          );
+        }
+
+        for (const match of result.stdout.split(/\r?\n/).filter(Boolean)) {
+          if (!blobChunk.includes(match)) {
+            throw new Error(
+              'Repository secret history scan returned an invalid blob path.',
+            );
+          }
+          const contents = rule.endsWith('_assignment')
+            ? fs.readFileSync(path.join(directory, match), 'utf8')
+            : null;
+          for (const matchedPath of blobs.get(match).paths) {
+            if (
+              rule === 'named_secret_assignment' ||
+              rule === 'secret_like_assignment' ||
+              rule === 'bracket_named_secret_assignment' ||
+              rule === 'bracket_secret_like_assignment'
+            ) {
+              const detected =
+                rule === 'named_secret_assignment' ||
+                rule === 'bracket_named_secret_assignment'
+                  ? scanContents(matchedPath, contents).includes(
+                      'non_placeholder_secret_assignment',
+                    )
+                  : unclassifiedSecretAssignmentNames(contents).length > 0;
+              if (detected) {
+                issues.push({
+                  path: 'history:' + matchedPath,
+                  rule:
+                    rule === 'named_secret_assignment' ||
+                    rule === 'bracket_named_secret_assignment'
+                      ? 'non_placeholder_secret_assignment'
+                      : 'unclassified_secret_name',
+                });
+              }
+              continue;
+            }
+            if (
+              rule === 'google_api_key' &&
+              auditedPublicClientConfigs.has(matchedPath)
+            ) {
+              continue;
+            }
+            issues.push({
+              path: 'history:' + matchedPath,
+              rule,
+            });
+          }
+        }
+      }
+    }
+
+    return issues;
+  } finally {
+    fs.rmSync(directory, {recursive: true, force: true});
+  }
 }
 
 function verify({root = repositoryRoot, includeHistory = false} = {}) {
@@ -593,33 +706,6 @@ function verify({root = repositoryRoot, includeHistory = false} = {}) {
   }
 
   if (includeHistory) {
-    const gitPathPrefix = gitOutput(root, ['rev-parse', '--show-prefix'])
-      .toString('utf8')
-      .trim();
-    const historyPaths = gitOutput(root, [
-      'log',
-      '--all',
-      '--format=',
-      '--name-only',
-      '--',
-      '.',
-    ])
-      .toString('utf8')
-      .split(/\r?\n/)
-      .map(value => value.trim())
-      .map(value =>
-        gitPathPrefix !== '' && value.startsWith(gitPathPrefix)
-          ? value.slice(gitPathPrefix.length)
-          : value,
-      )
-      .filter(Boolean);
-    issues.push(
-      ...scanPathNames(historyPaths).map(issue => ({
-        path: 'history:' + issue.path,
-        rule: issue.rule,
-      })),
-    );
-
     const commits = gitOutput(root, ['rev-list', '--all'])
       .toString('utf8')
       .split(/\r?\n/)

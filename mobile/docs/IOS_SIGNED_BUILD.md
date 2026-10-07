@@ -36,6 +36,25 @@ limiting its workers did not resolve that failure. The audit is not waived,
 replaced with a tree-only check, or repeated on macOS. No signing secrets are
 available to the source-audit job. A failed audit prevents signing from starting.
 
+The first Ubuntu attempt (`37560558518`) also terminated before signing: GitHub
+reported the source job exceeding its 35-minute limit. This is an actual terminal
+CI failure, not a local observation timeout. Repeating every unchanged blob for
+each revision has now been replaced with mobile-scoped `git ls-tree` inventories,
+deduplicated blob IDs, bounded `git cat-file --batch` reads and the same POSIX
+`git grep` expressions over those exact blobs (`--no-index --text --threads=1`).
+Every reachable commit and every original path remain represented; a public
+Firebase exception is still evaluated by its original path. Binary bytes and the
+existing locale are preserved. This is actual reuse of Git's object/grep engines,
+not a new scanner dependency or a claimed competitor implementation.
+
+The 19 focused scanner checks passed, including deleted binary material,
+monorepo scope, branch-only copies of identical public-client blobs, redacted
+errors and owned-workspace cleanup. The full real local repository history passed
+in 109.6 seconds. Independent review by `/root/ios_signing_review` found no
+practical blocker. Hosted completion and signed IPA generation remain separate
+requirements. The next build must also include the later CourseDetails safe-area
+source correction; Android 65 is unchanged and does not contain that correction.
+
 The already-approved repository secrets are:
 
 - `ROKN_IOS_DISTRIBUTION_P12_BASE64`

@@ -23,32 +23,108 @@ function withDirectory(run) {
   }
 }
 
-test('history queries limit Git workers without omitting revisions or binary files', () => {
-  const source = fs.readFileSync(path.join(__dirname, '../verify-repository-secrets.js'), 'utf8');
+test('history queries inspect shared blobs once without omitting revisions or binary files', () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, '../verify-repository-secrets.js'),
+    'utf8',
+  );
   const calls = [];
-  const context = {module: {exports: {}}, __dirname: path.resolve(__dirname, '..')};
-  context.require = Object.assign(name => name === 'node:child_process' ? {
-    execFileSync: () => Buffer.from(''),
-    spawnSync: (command, args) => {
-      calls.push({command, args});
-      return {status: 1, stdout: '', stderr: ''};
-    },
-  } : require(name), {main: {}});
+  const treeQueries = [];
+  const blobQueries = [];
+  const oid = 'a'.repeat(40);
+  const context = {
+    module: {exports: {}},
+    Buffer,
+    __dirname: path.resolve(__dirname, '..'),
+  };
+  context.require = Object.assign(
+    name =>
+      name === 'node:child_process'
+        ? {
+            execFileSync: (command, args, options) => {
+              if (args.includes('ls-tree')) {
+                treeQueries.push(args[6]);
+                return Buffer.from(`100644 blob ${oid}       5\tshared.txt\0`);
+              }
+              blobQueries.push(options.input.toString());
+              return Buffer.from(`${oid} blob 5\nplain\n`);
+            },
+            spawnSync: (command, args, options) => {
+              calls.push({command, args, options});
+              return {status: 1, stdout: '', stderr: ''};
+            },
+          }
+        : require(name),
+    {main: {}},
+  );
   vm.runInNewContext(source, context);
   const subject = context.module.exports;
-  const commits = Array.from({length: 101}, (_, index) => index.toString(16).padStart(40, '0'));
+  const commits = Array.from({length: 101}, (_, index) =>
+    index.toString(16).padStart(40, '0'),
+  );
   assert.equal(subject.historyContentIssues('/fixture', commits).length, 0);
-  assert.equal(calls.length, subject.historyContentPatterns.length * 3);
+  assert.deepEqual(treeQueries, commits);
+  assert.deepEqual(blobQueries, [oid + '\n']);
+  assert.equal(calls.length, subject.historyContentPatterns.length);
+  assert.ok(!fs.existsSync(calls[0].args[1]));
   for (const [, pattern] of subject.historyContentPatterns) {
     const queries = calls.filter(call => call.args.includes(pattern));
-    assert.deepEqual(queries.flatMap(call => [...call.args].filter(arg => commits.includes(arg))), commits);
-    for (const {command, args} of queries) {
+    assert.deepEqual(
+      queries.flatMap(call => [...call.args].filter(arg => arg === oid)),
+      [oid],
+    );
+    for (const {command, args, options} of queries) {
       assert.equal(command, 'git');
       assert.ok(args.includes('--threads=1'));
       assert.ok(args.includes('-l'));
+      assert.ok(args.includes('--no-index'));
+      assert.ok(args.includes('-a'));
       assert.ok(!args.includes('-I'));
+      assert.equal(options.env, undefined);
     }
   }
+});
+
+test('history inspection fails closed and cleans its own workspace on Git failure', () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, '../verify-repository-secrets.js'),
+    'utf8',
+  );
+  const oid = 'a'.repeat(40);
+  let workspace;
+  const context = {
+    module: {exports: {}},
+    Buffer,
+    __dirname: path.resolve(__dirname, '..'),
+  };
+  context.require = Object.assign(
+    name =>
+      name === 'node:child_process'
+        ? {
+            execFileSync: (command, args) =>
+              Buffer.from(
+                args.includes('ls-tree')
+                  ? `100644 blob ${oid}       5\tshared.txt\0`
+                  : `${oid} blob 5\nplain\n`,
+              ),
+            spawnSync: (command, args) => {
+              workspace = args[1];
+              return {status: 2, stderr: 'private contents must not be logged'};
+            },
+          }
+        : require(name),
+    {main: {}},
+  );
+  vm.runInNewContext(source, context);
+  assert.throws(
+    () =>
+      context.module.exports.historyContentIssues('/fixture', ['b'.repeat(40)]),
+    error =>
+      /could not inspect Git blobs/.test(error.message) &&
+      !error.message.includes('private contents'),
+  );
+  assert.ok(workspace);
+  assert.equal(fs.existsSync(workspace), false);
 });
 
 test('reports private material without returning its value', () => {
@@ -294,9 +370,15 @@ test('detects secret content that was deleted from the current tree', () => {
     git('config', 'user.name', 'Rokn Security Test');
     fs.writeFileSync(
       path.join(directory, 'old-credentials.txt'),
-      Buffer.concat([Buffer.from([0, 255, 254]), Buffer.from('سياق عربي\n' + '-----BEGIN' +
-        ' PRIVATE KEY-----\nnot-a-real-key\n-----END' +
-        ' PRIVATE KEY-----')]),
+      Buffer.concat([
+        Buffer.from([0, 255, 254]),
+        Buffer.from(
+          'سياق عربي\n' +
+            '-----BEGIN' +
+            ' PRIVATE KEY-----\nnot-a-real-key\n-----END' +
+            ' PRIVATE KEY-----',
+        ),
+      ]),
     );
     fs.writeFileSync(
       path.join(directory, 'old-config.txt'),
@@ -382,5 +464,51 @@ test('allows an audited Firebase client config in repository history', () => {
     const result = scanner.verify({root: directory, includeHistory: true});
 
     assert.deepEqual(result.issues, []);
+  });
+});
+
+test('historical public-config exceptions do not follow identical blobs copied on another branch', () => {
+  withDirectory(directory => {
+    const git = (...args) =>
+      execFileSync('git', args, {cwd: directory, stdio: 'ignore'});
+    git('init', '--quiet');
+    git('config', 'user.email', 'security-test@rokn.invalid');
+    git('config', 'user.name', 'Rokn Security Test');
+    fs.mkdirSync(path.join(directory, 'mobile', 'android', 'app'), {
+      recursive: true,
+    });
+    fs.mkdirSync(path.join(directory, 'backend'));
+    const contents = JSON.stringify({key: 'AIza' + 'A'.repeat(35)});
+    fs.writeFileSync(
+      path.join(directory, 'mobile', 'android', 'app', 'google-services.json'),
+      contents,
+    );
+    // The scanner must retain mobile scope, not inspect backend history.
+    fs.writeFileSync(path.join(directory, 'backend', 'config.txt'), contents);
+    git('add', '.');
+    git('commit', '--quiet', '-m', 'public client config');
+    git('branch', 'clean-head');
+    git('checkout', '--quiet', '-b', 'historical-copy');
+    fs.writeFileSync(
+      path.join(directory, 'mobile', 'copied إعدادات.txt'),
+      contents,
+    );
+    fs.writeFileSync(
+      path.join(directory, 'mobile', 'archived signing.key'),
+      'plain',
+    );
+    git('add', '.');
+    git('commit', '--quiet', '-m', 'copy fixture on another branch');
+    git('checkout', '--quiet', 'clean-head');
+    assert.deepEqual(
+      scanner.verify({
+        root: path.join(directory, 'mobile'),
+        includeHistory: true,
+      }).issues,
+      [
+        {path: 'history:archived signing.key', rule: 'private_key_file'},
+        {path: 'history:copied إعدادات.txt', rule: 'google_api_key'},
+      ],
+    );
   });
 });

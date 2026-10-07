@@ -1,5 +1,21 @@
 # Store release status — 2026-09-14
 
+## Signed iOS history-audit repair — 2026-10-07
+
+Run `37560558518` ended cancelled because its Ubuntu source-audit job exceeded
+35 minutes. The macOS signing job was skipped; no signed IPA was produced and no
+Apple upload occurred. The scanner now inventories every reachable commit while
+checking each distinct mobile blob once with Git's existing POSIX grep engine.
+All original paths, binary bytes, locale and per-path public-client exceptions
+are retained. Bounded Git batch reads replace repeated blob decompression.
+
+19 focused checks and targeted lint passed. The complete real local history
+audit passed in 109.6 seconds. `/root/ios_signing_review` accepted this limited
+implementation correction; that is not proof of hosted build/runtime acceptance.
+The next exact-commit signed build includes the CourseDetails correction below.
+No version change, main/server deployment or Google Play upload is part of this
+build-infrastructure repair. Android 65 remains the immutable older artifact.
+
 ## Native course viewport correction — 2026-10-07
 
 Actual Android 65 acceptance found a normal reading defect after returning from
