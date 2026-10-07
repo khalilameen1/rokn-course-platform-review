@@ -1,5 +1,31 @@
 # Store release status — 2026-09-14
 
+## Native course viewport correction — 2026-10-07
+
+Actual Android 65 acceptance found a normal reading defect after returning from
+the Blender project and scrolling CourseDetails: the title drew behind the
+system status icons. Evidence is retained outside Git at
+`E:/RoknBuild/release65-evidence-20261007/derived-739c7251/journey/continuation-project-return.*`,
+bound to installed APK SHA-256
+`8ada27b125f1cef971c3e2ed3487def0220a598c9e11d0c64e47a11f7f83f11d`.
+
+The existing `react-native-safe-area-context` inset is now owned by the existing
+fixed screen View instead of the scrolling CourseHero. This reuses the installed
+library used by React Navigation; it does not copy competitor code, add a header,
+change typography/artwork sizing, reset scrolling or restore deprecated Android
+window-color APIs. The original starting vertical position and action-bar bottom
+inset are preserved. Independent source review by `/root/native_icon_review`
+accepted this limited correction. The viewport/density/preview suites passed
+7 checks; targeted lint and complete TypeScript checking passed.
+
+These are source checks, not native acceptance of the correction. Android 65's
+immutable binary is still the pre-fix source `739c7251`; it has not been uploaded
+to Google Play. Rebuild the next candidate and repeat the scrolled return before
+claiming this defect resolved on a device. Main/server and Play production 60
+have not changed. The concurrent signed-iOS infrastructure run `37560558518`
+is bound to older source `95e88283`, not this fix; any resulting IPA is not final
+release acceptance of the newer course source.
+
 ## Candidate 64 preparation — 2026-10-06
 
 The source-fidelity corrections below are now prepared as Android version code

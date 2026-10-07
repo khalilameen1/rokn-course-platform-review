@@ -162,7 +162,6 @@ type CourseHeroProps = {
   maxContentWidth: number;
   onBack: () => void;
   remoteCourse: CourseDetailsDto | null;
-  topInset: number;
 };
 
 export const CourseHero = ({
@@ -172,9 +171,8 @@ export const CourseHero = ({
   maxContentWidth,
   onBack,
   remoteCourse,
-  topInset,
 }: CourseHeroProps) => (
-  <View style={[styles.hero, {paddingTop: topInset}]}>
+  <View style={styles.hero}>
     <View
       style={[
         styles.heroFrame,

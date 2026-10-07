@@ -183,7 +183,7 @@ export default function CourseDetails() {
   );
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, {paddingTop: insets.top}]}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -195,7 +195,6 @@ export default function CourseDetails() {
           maxContentWidth={layout.maxContentWidth}
           onBack={() => goBackOrHome(navigation)}
           remoteCourse={course.value}
-          topInset={insets.top}
         />
 
         <View
