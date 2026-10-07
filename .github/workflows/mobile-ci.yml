@@ -193,7 +193,34 @@ jobs:
           -destination 'generic/platform=iOS'
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
 
+  ios-signing-source:
+    # Reuse the existing Ubuntu source audit before a signed macOS build. The
+    # macOS git-grep process was SIGKILLed; never bypass the full-history gate.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.ios_only && inputs.build_signed_ios }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+      - name: Audit the exact signed source with the existing full-history gate
+        env:
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+        run: |
+          [[ "$EXPECTED_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
+          node scripts/verify-repository-secrets.js --history
+
   ios-appstore:
+    needs: ios-signing-source
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.ios_only && inputs.build_signed_ios }}
     runs-on: macos-26
     timeout-minutes: 60
@@ -234,7 +261,6 @@ jobs:
         run: |
           npm install --global npm@10.9.3
           test "$(npm --version)" = "10.9.3"
-          node scripts/verify-repository-secrets.js --history
           npm ci --include=dev
           gem install bundler --version 4.0.20 --no-document
           bundle _4.0.20_ install

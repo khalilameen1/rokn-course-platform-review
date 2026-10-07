@@ -294,9 +294,9 @@ test('detects secret content that was deleted from the current tree', () => {
     git('config', 'user.name', 'Rokn Security Test');
     fs.writeFileSync(
       path.join(directory, 'old-credentials.txt'),
-      '-----BEGIN' +
+      Buffer.concat([Buffer.from([0, 255, 254]), Buffer.from('سياق عربي\n' + '-----BEGIN' +
         ' PRIVATE KEY-----\nnot-a-real-key\n-----END' +
-        ' PRIVATE KEY-----',
+        ' PRIVATE KEY-----')]),
     );
     fs.writeFileSync(
       path.join(directory, 'old-config.txt'),

@@ -21,8 +21,24 @@ test('signing is explicit manual iOS-only mode and never changes ordinary CI sel
   }
   assert.deepEqual(selected('workflow_dispatch', {build_signed_ios: true}), baseline);
   assert.deepEqual(selected('workflow_dispatch', {ios_only: true}), ['ios-native']);
-  assert.deepEqual(selected('workflow_dispatch', {ios_only: true, build_signed_ios: true}), ['ios-appstore']);
+  assert.deepEqual(selected('workflow_dispatch', {ios_only: true, build_signed_ios: true}),
+    ['ios-signing-source', 'ios-appstore']);
   assert.equal(workflow.on.workflow_dispatch.inputs.build_signed_ios.default, false);
+});
+
+test('signed macOS build cannot start until the exact-source full history audit succeeds on Ubuntu', () => {
+  const audit = workflow.jobs['ios-signing-source'];
+  const build = workflow.jobs['ios-appstore'];
+  assert.equal(build.needs, 'ios-signing-source');
+  assert.equal(audit['runs-on'], workflow.jobs.javascript['runs-on']);
+  assert.equal(audit.steps[0].with['fetch-depth'], 0);
+  assert.equal(audit.steps[1].with['node-version'], '24.19.0');
+  const commands = audit.steps.map(step => step.run || '').join('\n');
+  assert.match(commands, /git rev-parse HEAD\).*EXPECTED_COMMIT/);
+  assert.match(commands, /git rev-parse HEAD\).*GITHUB_SHA/);
+  assert.match(commands, /node scripts\/verify-repository-secrets\.js --history/);
+  assert.doesNotMatch(JSON.stringify(audit), /\$\{\{\s*secrets\.|continue-on-error|always\(\)|verify:release|npm ci/);
+  assert.doesNotMatch(build.if, /always\(\)/);
 });
 
 test('signed build uses existing exact-source gate, no Apple account key or distribution command', () => {

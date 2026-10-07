@@ -662,8 +662,8 @@ test('workflow uses the package-manager and registry pinned by the source tree',
     fs.readFileSync(path.join(root, '.node-version'), 'utf8').trim(),
     '24.19.0',
   );
-  assert.equal([...workflow.matchAll(/node-version: 24\.19\.0/g)].length, 5);
-  assert.equal([...workflow.matchAll(/runs-on: ubuntu-24\.04/g)].length, 3);
+  assert.equal([...workflow.matchAll(/node-version: 24\.19\.0/g)].length, 6);
+  assert.equal([...workflow.matchAll(/runs-on: ubuntu-24\.04/g)].length, 4);
   assert.equal(
     [...workflow.matchAll(/java-version: ["']17\.0\.20\+8["']/g)].length,
     2,

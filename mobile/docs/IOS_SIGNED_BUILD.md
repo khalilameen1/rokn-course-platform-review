@@ -28,6 +28,14 @@ intended release branch. Set `ios_only=true`, `build_signed_ios=true`, and
 before importing signing secrets. Signed execution has separate, non-cancelling
 concurrency from ordinary checks and unsigned iOS validation.
 
+The existing full-history source audit runs on Ubuntu before the macOS job can
+start, against the same required commit. This reuses the normal JavaScript
+quality gate's scanner and hosted platform (successful run `34903448286`). Two
+diagnostic attempts observed macOS `git grep` being SIGKILLed at its first signature;
+limiting its workers did not resolve that failure. The audit is not waived,
+replaced with a tree-only check, or repeated on macOS. No signing secrets are
+available to the source-audit job. A failed audit prevents signing from starting.
+
 The already-approved repository secrets are:
 
 - `ROKN_IOS_DISTRIBUTION_P12_BASE64`
