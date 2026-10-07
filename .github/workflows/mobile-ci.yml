@@ -20,6 +20,15 @@ on:
         required: false
         default: false
         type: boolean
+      build_signed_ios:
+        description: "With ios_only: build an App Store signed IPA, without upload or release"
+        required: false
+        default: false
+        type: boolean
+      expected_commit:
+        description: "Required for signed iOS: exact 40-character source commit"
+        required: false
+        type: string
       run_staging_smoke:
         description: "Run the protected Android staging smoke gate"
         required: false
@@ -36,9 +45,9 @@ on:
 
 concurrency:
   # Keep manual iOS checks and protected smoke leases out of normal CI cancellation.
-  group: mobile-${{ github.ref }}${{ github.event_name == 'workflow_dispatch' && (inputs.ios_only && '-ios-only' || inputs.run_staging_smoke && '-staging-smoke') || '' }}
+  group: mobile-${{ github.ref }}${{ github.event_name == 'workflow_dispatch' && (inputs.ios_only && inputs.build_signed_ios && '-ios-signed' || inputs.ios_only && '-ios-only' || inputs.run_staging_smoke && '-staging-smoke') || '' }}
   # Smoke teardown must finish; smoke jobs also serialize across branches below.
-  cancel-in-progress: ${{ !(github.event_name == 'workflow_dispatch' && inputs.run_staging_smoke && !inputs.ios_only) }}
+  cancel-in-progress: ${{ !(github.event_name == 'workflow_dispatch' && ((inputs.run_staging_smoke && !inputs.ios_only) || (inputs.ios_only && inputs.build_signed_ios))) }}
 
 jobs:
   javascript:
@@ -127,6 +136,7 @@ jobs:
           -PUPLOAD_KEY_PASSWORD=ci-password
 
   ios-native:
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.ios_only && inputs.build_signed_ios) }}
     runs-on: macos-26
     timeout-minutes: 60
     defaults:
@@ -182,6 +192,114 @@ jobs:
           -configuration Release -sdk iphoneos
           -destination 'generic/platform=iOS'
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+
+  ios-appstore:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.ios_only && inputs.build_signed_ios }}
+    runs-on: macos-26
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      EXPO_PUBLIC_API_URL: https://rokn.app/api/v1/
+      EXPO_PUBLIC_SENTRY_DSN: https://8e943a4df919328a657323a1e94a0a1c@o4512022507356160.ingest.de.sentry.io/4512022513582160
+      EXPO_PUBLIC_SENTRY_ENVIRONMENT: production
+      EXPO_PUBLIC_DISTRIBUTION_CHANNEL: appstore
+      EXPO_PUBLIC_BUILD_PROFILE: production
+      EXPO_PUBLIC_REQUIRE_FEATURE_FLAGS: "1"
+      BUNDLE_FROZEN: "true"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Bind the requested signed build to its exact source
+        env:
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+        run: |
+          [[ "$EXPECTED_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
+          xcodebuild -version
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+          registry-url: https://registry.npmjs.org
+      - uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.280.0
+        with:
+          ruby-version: 3.3.6
+      - name: Install the existing pinned build dependencies
+        run: |
+          npm install --global npm@10.9.3
+          test "$(npm --version)" = "10.9.3"
+          node scripts/verify-repository-secrets.js --history
+          npm ci --include=dev
+          gem install bundler --version 4.0.20 --no-document
+          bundle _4.0.20_ install
+      - name: Resolve the committed native dependency lock
+        working-directory: mobile/ios
+        run: bundle _4.0.20_ exec pod install --deployment
+      - name: Verify the installed production configuration and native provenance
+        run: |
+          npm run verify:config
+          npm run verify:ios-lock
+          git diff --exit-code -- ios/Podfile.lock Gemfile.lock
+          npm run licenses:native:check
+      # Adapted from GitHub's sign-xcode-applications example. Existing locked
+      # xcodeproj handles only the app target; provisioning never leaks to Pods.
+      - name: Import the approved signing certificate into an ephemeral keychain
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.ROKN_IOS_DISTRIBUTION_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.ROKN_IOS_DISTRIBUTION_P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.ROKN_IOS_APPSTORE_PROFILE_BASE64 }}
+        run: |
+          umask 077
+          test -n "$BUILD_CERTIFICATE_BASE64"
+          test -n "$P12_PASSWORD"
+          test -n "$BUILD_PROVISION_PROFILE_BASE64"
+          KEYCHAIN_PATH="$RUNNER_TEMP/rokn-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$P12_PASSWORD"
+          printf '%s' "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$RUNNER_TEMP/rokn-signing.p12"
+          printf '%s' "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/rokn.mobileprovision"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/rokn-signing.p12" -P "$P12_PASSWORD" -T /usr/bin/codesign -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" "$HOME/Library/Keychains/login.keychain-db"
+          security cms -D -i "$RUNNER_TEMP/rokn.mobileprovision" > "$RUNNER_TEMP/rokn-profile.plist"
+          node scripts/prepare-ios-appstore-signing.js "$RUNNER_TEMP"
+          bundle _4.0.20_ exec ruby scripts/configure-ios-appstore-target.rb "$RUNNER_TEMP"
+      - name: Archive and export the signed production app
+        env:
+          NODE_ENV: production
+        run: |
+          mkdir -p "$RUNNER_TEMP/rokn-ios-export"
+          xcodebuild -workspace ios/Rokn.xcworkspace -scheme Rokn \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Rokn.xcarchive" archive
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Rokn.xcarchive" \
+            -exportPath "$RUNNER_TEMP/rokn-ios-export" \
+            -exportOptionsPlist "$RUNNER_TEMP/rokn-export-options.plist"
+          node scripts/prepare-ios-appstore-signing.js "$RUNNER_TEMP" verify
+          cp -R "$RUNNER_TEMP/Rokn.xcarchive/dSYMs" "$RUNNER_TEMP/rokn-ios-export/dSYMs"
+      - name: Preserve the verified IPA and release evidence only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: Rokn-iOS-AppStore-${{ github.sha }}
+          path: ${{ runner.temp }}/rokn-ios-export/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove signing material from the disposable runner
+        if: ${{ always() }}
+        run: |
+          if test -f "$RUNNER_TEMP/rokn-signing.keychain-db"; then
+            security delete-keychain "$RUNNER_TEMP/rokn-signing.keychain-db"
+          fi
+          rm -f "$RUNNER_TEMP/rokn-signing.p12" "$RUNNER_TEMP/rokn.mobileprovision" "$RUNNER_TEMP/rokn-profile.plist"
+          node scripts/prepare-ios-appstore-signing.js "$RUNNER_TEMP" cleanup
 
   android-staging-smoke:
     # This is intentionally a dispatched, protected-environment gate. It must

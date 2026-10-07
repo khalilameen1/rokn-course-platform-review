@@ -662,7 +662,7 @@ test('workflow uses the package-manager and registry pinned by the source tree',
     fs.readFileSync(path.join(root, '.node-version'), 'utf8').trim(),
     '24.19.0',
   );
-  assert.equal([...workflow.matchAll(/node-version: 24\.19\.0/g)].length, 4);
+  assert.equal([...workflow.matchAll(/node-version: 24\.19\.0/g)].length, 5);
   assert.equal([...workflow.matchAll(/runs-on: ubuntu-24\.04/g)].length, 3);
   assert.equal(
     [...workflow.matchAll(/java-version: ["']17\.0\.20\+8["']/g)].length,
@@ -672,19 +672,19 @@ test('workflow uses the package-manager and registry pinned by the source tree',
   assert.equal(
     [...workflow.matchAll(/registry-url: https:\/\/registry\.npmjs\.org/g)]
       .length,
-    4,
+    5,
   );
   assert.equal(
     [...workflow.matchAll(/npm install --global npm@10\.9\.3/g)].length,
-    4,
+    5,
   );
   assert.equal(
     [...workflow.matchAll(/test "\$\(npm --version\)" = "10\.9\.3"/g)].length,
-    4,
+    5,
   );
   assert.equal(
     [...workflow.matchAll(/npm ci --include=dev/g)].length,
-    4,
+    5,
     'production-mode CI must retain the locked build and verification toolchain',
   );
   assert.ok(
@@ -846,7 +846,7 @@ test('workflow is discoverable from the monorepo root and preserves native check
   );
   assert.match(workflow, /git diff --exit-code -- ios\/Podfile\.lock/);
   assert.match(workflow, /name: generated-ios-podfile-lock/);
-  assert.equal([...workflow.matchAll(/NODE_ENV: production/g)].length, 3);
+  assert.equal([...workflow.matchAll(/NODE_ENV: production/g)].length, 4);
   assert.match(workflow, /npm run licenses:native:check/);
   assert.match(
     packageJson.scripts['verify:release'],
