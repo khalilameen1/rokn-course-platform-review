@@ -7,7 +7,6 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const {execFileSync} = require('node:child_process');
-const plist = require('plist');
 
 const team = 'VMHVLW746S';
 const bundleId = 'com.rokn';
@@ -17,7 +16,7 @@ const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const requireCondition = (condition, message) => {
   if (!condition) throw new Error(message);
 };
-const readPlist = file => plist.parse(fs.readFileSync(file, 'utf8'));
+const readPlist = file => require('plist').parse(fs.readFileSync(file, 'utf8'));
 const validateProfile = (profile, now = new Date()) => {
   const entitlements = profile.Entitlements || {};
   requireCondition(/^[0-9a-f-]{36}$/i.test(profile.UUID || ''), 'Invalid profile UUID');
@@ -42,8 +41,8 @@ const validateProfile = (profile, now = new Date()) => {
     certificateSha256, certificateSha1: certificate.fingerprint.replaceAll(':', '')};
 };
 
-const run = (directory, mode = 'prepare') => {
-  requireCondition(process.platform === 'darwin', 'Signed iOS builds require macOS');
+const run = (directory, mode = 'prepare', platform = process.platform) => {
+  requireCondition(platform === 'darwin', 'Signed iOS builds require macOS');
   directory = fs.realpathSync(directory);
   const metadataPath = path.join(directory, 'rokn-signing-public.json');
   const profileDirectories = [
@@ -59,6 +58,7 @@ const run = (directory, mode = 'prepare') => {
     }
     return;
   }
+  const plist = require('plist');
   const profile = readPlist(path.join(directory, 'rokn-profile.plist'));
   const metadata = validateProfile(profile);
   requireCondition(process.env.EXPO_PUBLIC_API_URL === apiBase &&
@@ -127,4 +127,4 @@ const run = (directory, mode = 'prepare') => {
 };
 
 if (require.main === module) run(process.argv[2], process.argv[3]);
-module.exports = {validateProfile};
+module.exports = {validateProfile, run};

@@ -482,7 +482,13 @@ function historyContentIssues(root, commits) {
       if (result.status === 1) continue;
       if (result.error || result.status !== 0) {
         throw new Error(
-          'Repository secret history scan could not inspect Git blobs.',
+          'Repository secret history scan could not inspect Git blobs ' +
+            `(${rule}; status=${result.status}; signal=${result.signal}; ` +
+            `error=${result.error?.code || 'none'}).` +
+            // git grep -l reports names, not content. Do not expose any raw
+            // subprocess output in public logs, even when the query fails.
+            (/invalid|regular expression|repetition|bracket|range/i.test(result.stderr || '')
+              ? ' Git reported a regular-expression diagnostic.' : ''),
         );
       }
 

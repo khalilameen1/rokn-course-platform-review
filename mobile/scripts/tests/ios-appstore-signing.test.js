@@ -56,6 +56,19 @@ test('new signing secret names remain classified and reject literal credentials'
   }
 });
 
+test('cleanup before dependency installation needs no plist module', () => {
+  const source = fs.readFileSync(path.join(root, 'scripts/prepare-ios-appstore-signing.js'), 'utf8');
+  let plistRequested = false;
+  const context = {module: {exports: {}}, process, __dirname: path.join(root, 'scripts')};
+  context.require = Object.assign(name => {
+    if (name === 'plist') { plistRequested = true; throw new Error('not installed'); }
+    return require(name);
+  }, {main: {}});
+  vm.runInNewContext(source, context);
+  context.module.exports.run(root, 'cleanup', 'darwin');
+  assert.equal(plistRequested, false);
+});
+
 const profile = () => ({
   UUID: '00000000-0000-0000-0000-000000000001',
   TeamIdentifier: ['VMHVLW746S'],
