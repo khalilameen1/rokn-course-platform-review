@@ -1,0 +1,114 @@
+name: Upload verified iOS artifact
+
+on:
+  workflow_dispatch:
+    inputs:
+      signed_run_id:
+        description: Successful Mobile quality gates run containing the signed IPA
+        required: true
+        type: string
+      source_commit:
+        description: Exact source commit of that signed build
+        required: true
+        type: string
+      ipa_sha256:
+        description: Exact SHA-256 of the approved IPA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: rokn-apple-upload
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      SIGNED_RUN_ID: ${{ inputs.signed_run_id }}
+      SOURCE_COMMIT: ${{ inputs.source_commit }}
+      IPA_SHA256: ${{ inputs.ipa_sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Retrieve the successful signed build without rebuilding
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SIGNED_RUN_ID" =~ ^[0-9]+$ ]]
+          [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$IPA_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SIGNED_RUN_ID" | jq -e \
+            --arg sha "$SOURCE_COMMIT" \
+            '.status == "completed" and .conclusion == "success" and .head_sha == $sha and .path == ".github/workflows/mobile-ci.yml"'
+          git diff --quiet "$SOURCE_COMMIT" "$GITHUB_SHA" -- mobile
+          artifact="Rokn-iOS-AppStore-$SOURCE_COMMIT"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SIGNED_RUN_ID/artifacts" | jq -e \
+            --arg name "$artifact" \
+            '[.artifacts[] | select(.name == $name and .expired == false)] | length == 1'
+          directory="$(mktemp -d "$RUNNER_TEMP/rokn-ios-upload.XXXXXX")"
+          printf 'ROKN_UPLOAD_DIR=%s\n' "$directory" >> "$GITHUB_ENV"
+          gh run download "$SIGNED_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$artifact" --dir "$directory"
+          test "$(find "$directory" -name '*.ipa' -type f | wc -l | tr -d ' ')" = 1
+          test -f "$directory/Rokn.ipa"
+          test "$(shasum -a 256 "$directory/Rokn.ipa" | cut -d ' ' -f 1)" = "$IPA_SHA256"
+          jq -e --arg sha "$IPA_SHA256" --arg source "$SOURCE_COMMIT" \
+            '.sha256 == $sha and .gitCommit == $source and .bundleId == "com.rokn" and .team == "VMHVLW746S" and .profile == "production"' \
+            "$directory/release-evidence.json"
+          unzip -q "$directory/Rokn.ipa" -d "$directory/extracted"
+          apps=("$directory"/extracted/Payload/*.app)
+          test "${#apps[@]}" = 1
+          /usr/bin/codesign --verify --deep --strict "${apps[0]}"
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "${apps[0]}/Info.plist")" = com.rokn
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "${apps[0]}/Info.plist")" = "$(jq -r .version "$directory/release-evidence.json")"
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "${apps[0]}/Info.plist")" = "$(jq -r .buildNumber "$directory/release-evidence.json")"
+      - name: Validate and upload with Apple's existing Xcode altool
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.ROKN_APPSTORE_CONNECT_API_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.ROKN_APPSTORE_CONNECT_API_ISSUER_ID }}
+          APPSTORE_PRIVATE_KEY: ${{ secrets.ROKN_APPSTORE_CONNECT_API_KEY_P8 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$APPSTORE_KEY_ID" =~ ^[A-Z0-9]{10}$ ]]
+          [[ "$APPSTORE_ISSUER_ID" =~ ^[0-9a-f-]{36}$ ]]
+          test -n "$APPSTORE_PRIVATE_KEY"
+          export API_PRIVATE_KEYS_DIR="$ROKN_UPLOAD_DIR/private_keys"
+          mkdir -m 700 "$API_PRIVATE_KEYS_DIR"
+          key_file="$API_PRIVATE_KEYS_DIR/AuthKey_$APPSTORE_KEY_ID.p8"
+          trap 'rm -f -- "$key_file"' EXIT
+          umask 077
+          printf '%s\n' "$APPSTORE_PRIVATE_KEY" > "$key_file"
+          unset APPSTORE_PRIVATE_KEY
+          /usr/bin/openssl pkey -in "$key_file" -noout
+          xcrun altool --validate-app --file "$ROKN_UPLOAD_DIR/Rokn.ipa" --type ios \
+            --apiKey "$APPSTORE_KEY_ID" --apiIssuer "$APPSTORE_ISSUER_ID" --output-format json \
+            > "$ROKN_UPLOAD_DIR/apple-validation.json"
+          cat "$ROKN_UPLOAD_DIR/apple-validation.json"
+          # Xcode 26 has returned exit 0 on actual errors; require Apple's positive response.
+          jq -e '((.["product-errors"] // []) | length) == 0 and
+            (.["success-message"] | type == "string" and length > 0)' \
+            "$ROKN_UPLOAD_DIR/apple-validation.json"
+          xcrun altool --upload-app --file "$ROKN_UPLOAD_DIR/Rokn.ipa" --type ios \
+            --apiKey "$APPSTORE_KEY_ID" --apiIssuer "$APPSTORE_ISSUER_ID" --output-format json \
+            > "$ROKN_UPLOAD_DIR/apple-upload.json"
+          cat "$ROKN_UPLOAD_DIR/apple-upload.json"
+          jq -e '((.["product-errors"] // []) | length) == 0 and
+            (.["success-message"] | type == "string" and length > 0)' \
+            "$ROKN_UPLOAD_DIR/apple-upload.json"
+          printf '%s\n' 'Apple accepted the upload command. Processing and TestFlight availability must be checked in App Store Connect.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Remove temporary API private key even after failure
+        if: always()
+        shell: bash
+        run: |
+          if [[ -n "${ROKN_UPLOAD_DIR:-}" && "$ROKN_UPLOAD_DIR" == "$RUNNER_TEMP"/rokn-ios-upload.* ]]; then
+            find "$ROKN_UPLOAD_DIR/private_keys" -type f -name 'AuthKey_*.p8' -delete 2>/dev/null || true
+          fi
