@@ -401,6 +401,7 @@ final class AccountDeletionOutboxTest extends TestCase
         config([
             'services.apple.client_id' => 'com.rokn', 'services.apple.team_id' => 'TESTTEAM01',
             'services.apple.key_id' => 'TESTKEY001', 'services.apple.key_file' => $keyPath,
+            'services.apple.private_key_base64' => null,
         ]);
     }
 }

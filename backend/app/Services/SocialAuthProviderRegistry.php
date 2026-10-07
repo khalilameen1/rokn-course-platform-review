@@ -109,7 +109,7 @@ final class SocialAuthProviderRegistry
             'google' => 'GOOGLE_CLIENT_ID أو GOOGLE_CLIENT_SECRET ناقص',
             'facebook' => 'FACEBOOK_CLIENT_ID أو FACEBOOK_CLIENT_SECRET أو FACEBOOK_GRAPH_VERSION ناقص أو غير صالح',
             'tiktok' => 'TIKTOK_CLIENT_KEY أو TIKTOK_CLIENT_SECRET أو TIKTOK_USER_INFO_URL ناقص أو غير صالح',
-            'apple' => 'APPLE_CLIENT_ID أو APPLE_TEAM_ID أو APPLE_KEY_ID أو APPLE_KEY_FILE ناقص أو غير صالح',
+            'apple' => 'إعدادات Apple ناقصة أو مفتاح التوقيع غير صالح راجع APPLE_CLIENT_ID وAPPLE_TEAM_ID وAPPLE_KEY_ID ومفتاح APPLE_PRIVATE_KEY_BASE64 أو APPLE_KEY_FILE',
             default => 'مزوّد غير مدعوم',
         };
     }

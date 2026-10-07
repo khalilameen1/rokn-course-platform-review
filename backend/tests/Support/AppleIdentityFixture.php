@@ -58,6 +58,7 @@ trait AppleIdentityFixture
                 'services.apple.team_id' => 'TESTTEAM01',
                 'services.apple.key_id' => 'TESTKEY001',
                 'services.apple.key_file' => $this->clientKeyFile,
+                'services.apple.private_key_base64' => null,
             ]);
         } finally {
             unlink($openSslConfig);

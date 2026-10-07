@@ -25,6 +25,7 @@ final class RepositorySecretScanner
         'FACEBOOK_CLIENT_SECRET',
         'TIKTOK_CLIENT_SECRET',
         'APPLE_CLIENT_SECRET',
+        'APPLE_PRIVATE_KEY_BASE64',
         'PUSHER_APP_SECRET',
         'KASHIER_API_KEY',
         'KASHIER_SECRET_KEY',

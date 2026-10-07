@@ -58,5 +58,6 @@ return [
         'team_id' => env('APPLE_TEAM_ID'),
         'key_id' => env('APPLE_KEY_ID'),
         'key_file' => env('APPLE_KEY_FILE'),
+        'private_key_base64' => env('APPLE_PRIVATE_KEY_BASE64'),
     ],
 ];

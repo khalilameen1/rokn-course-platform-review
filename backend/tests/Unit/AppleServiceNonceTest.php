@@ -95,6 +95,36 @@ final class AppleServiceNonceTest extends TestCase
         self::assertFalse($registry->isReady('apple'));
     }
 
+    public function test_cloud_secret_is_used_for_exchange_without_a_local_key_file(): void
+    {
+        $pem = file_get_contents($this->clientKeyFile);
+        config([
+            'services.apple.private_key_base64' => base64_encode($pem),
+            'services.apple.key_file' => storage_path('missing-apple-key.p8'),
+        ]);
+        self::assertTrue(app(\App\Services\SocialAuthProviderRegistry::class)->isReady('apple'));
+        $nonce = str_repeat('9', 64);
+        $token = $this->identityToken(hash('sha256', $nonce));
+        Http::fake(['https://appleid.apple.com/auth/token' => Http::response([
+            'id_token' => $token, 'refresh_token' => 'cloud-refresh-token',
+        ])]);
+        (new AppleService())->exchange($token, $nonce, 'cloud-code');
+        $request = Http::recorded(fn ($request) => $request->url() === 'https://appleid.apple.com/auth/token')->first()[0];
+        $key = openssl_pkey_get_private($pem);
+        $publicPem = openssl_pkey_get_details($key)['key'];
+        $claims = \Firebase\JWT\JWT::decode($request['client_secret'], new \Firebase\JWT\Key($publicPem, 'ES256'));
+        self::assertSame('com.rokn.app', $claims->sub);
+        self::assertSame('TESTTEAM01', $claims->iss);
+    }
+
+    public function test_invalid_cloud_secret_cannot_advertise_apple_or_fall_back_to_an_old_file(): void
+    {
+        foreach (['not-base64!', base64_encode('not-a-key'), base64_encode($this->privateKey)] as $secret) {
+            config(['services.apple.private_key_base64' => $secret]);
+            self::assertFalse(app(\App\Services\SocialAuthProviderRegistry::class)->isReady('apple'));
+        }
+    }
+
     public function test_correct_raw_nonce_is_bound_to_the_signed_hash_claim(): void
     {
         $rawNonce = str_repeat('1', 64);

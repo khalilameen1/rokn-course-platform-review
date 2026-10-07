@@ -310,6 +310,16 @@ final class RepositorySecretScannerTest extends TestCase
         self::assertStringNotContainsString('ordinaryProductionPassword123!', $output);
     }
 
+    public function test_cloud_apple_signin_key_is_classified_as_secret_not_public_config(): void
+    {
+        $scanner = new RepositorySecretScanner();
+        self::assertSame(
+            ['non_placeholder_secret_assignment'],
+            $scanner->scanContents('APPLE_PRIVATE_'.'KEY_BASE64=ordinaryProductionPassword123!')
+        );
+        self::assertSame([], $scanner->scanContents('APPLE_PRIVATE_'.'KEY_BASE64='));
+    }
+
     public static function reviewedUrlHistoryCases(): array
     {
         $path = 'tests/Feature/RestoreDrillConnectionIsolationTest.php';

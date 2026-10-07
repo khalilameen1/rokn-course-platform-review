@@ -265,7 +265,8 @@ final class ProductionCapabilityTest extends TestCase
             'services.apple.client_id' => 'com.rokn',
             'services.apple.team_id' => 'APPLE-TEST-TEAM',
             'services.apple.key_id' => 'APPLE-TEST-KEY',
-            'services.apple.key_file' => __FILE__, // Readiness fixture; no real credential is used.
+            'services.apple.key_file' => null,
+            'services.apple.private_key_base64' => \Tests\Support\AppleClientSigningFixture::base64(),
             'social_auth.providers' => ['google', 'facebook', 'tiktok', 'apple'],
             'social_auth.public_api_url' => 'https://api.rokn.test/api/v1',
             'social_auth.return_urls' => ['rokn://auth'],

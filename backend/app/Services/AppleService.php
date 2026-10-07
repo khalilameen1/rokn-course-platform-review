@@ -210,10 +210,42 @@ final class AppleService
 
     public function revocationConfigured(): bool
     {
-        $keyFile = (string) config('services.apple.key_file');
-        return trim((string) config('services.apple.team_id')) !== ''
-            && trim((string) config('services.apple.key_id')) !== ''
-            && $keyFile !== '' && is_file($keyFile) && is_readable($keyFile);
+        if (trim((string) config('services.apple.team_id')) === ''
+            || trim((string) config('services.apple.key_id')) === '') {
+            return false;
+        }
+
+        try {
+            $this->privateKey();
+            return true;
+        } catch (SocialProviderUnavailableException) {
+            return false;
+        }
+    }
+
+    private function privateKey(): string
+    {
+        // Same secret-env/file transport used by the existing Apple purchase
+        // verifier, but a separate credential for authentication and revocation.
+        $encoded = trim((string) config('services.apple.private_key_base64'));
+        if ($encoded !== '') {
+            $pem = base64_decode($encoded, true);
+        } else {
+            $file = trim((string) config('services.apple.key_file'));
+            $pem = $file !== '' && is_file($file) && is_readable($file)
+                ? @file_get_contents($file) : false;
+        }
+
+        // Discovery must not advertise a provider with an invalid or wrong-curve
+        // key. An explicitly configured malformed secret must not fall back.
+        $key = is_string($pem) ? @openssl_pkey_get_private($pem) : false;
+        $details = $key !== false ? openssl_pkey_get_details($key) : false;
+        if (!is_array($details) || ($details['type'] ?? null) !== OPENSSL_KEYTYPE_EC
+            || ($details['ec']['curve_name'] ?? null) !== 'prime256v1') {
+            throw new SocialProviderUnavailableException('Apple signing key is not configured correctly.');
+        }
+
+        return $pem;
     }
 
     private function clientSecret(string $clientId): string
@@ -229,7 +261,7 @@ final class AppleService
                 'exp' => time() + 300,
                 'aud' => self::ISSUER,
                 'sub' => $clientId,
-            ], file_get_contents((string) config('services.apple.key_file')), 'ES256', (string) config('services.apple.key_id'));
+            ], $this->privateKey(), 'ES256', (string) config('services.apple.key_id'));
         } catch (\Throwable) {
             throw new SocialProviderUnavailableException('Apple client secret could not be generated.');
         }
