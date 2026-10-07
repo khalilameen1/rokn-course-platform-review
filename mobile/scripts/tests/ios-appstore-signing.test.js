@@ -85,6 +85,17 @@ test('cleanup before dependency installation needs no plist module', () => {
   assert.equal(plistRequested, false);
 });
 
+test('certificate extraction binds the optional codesign prefix to its option', () => {
+  const source = fs.readFileSync(path.join(root, 'scripts/prepare-ios-appstore-signing.js'), 'utf8');
+  const invocation = source.match(/command\('\/usr\/bin\/codesign', (\['-d', `--extract-certificates=[^\n]+\])/);
+  assert.ok(invocation, 'Extraction must not treat the prefix as another bundle');
+  const certificatePrefix = '/runner temp/ipa verification/distribution-certificate';
+  const appPath = '/runner temp/ipa verification/Payload/Rokn.app';
+  const args = vm.runInNewContext(invocation[1], {certificatePrefix, appPath});
+  assert.deepEqual(Array.from(args), ['-d', `--extract-certificates=${certificatePrefix}`, appPath]);
+  assert.match(source, /sha256\(fs\.readFileSync\(`\$\{certificatePrefix\}0`\)\) === certificateSha256/);
+});
+
 const profile = () => ({
   UUID: '00000000-0000-0000-0000-000000000001',
   TeamIdentifier: ['VMHVLW746S'],

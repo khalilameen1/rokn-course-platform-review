@@ -110,7 +110,9 @@ const run = (directory, mode = 'prepare', platform = process.platform) => {
     entitlements['com.apple.developer.associated-domains']?.includes('applinks:rokn.app'),
   'Exported app entitlements mismatch');
   const certificatePrefix = path.join(extracted, 'distribution-certificate');
-  command('/usr/bin/codesign', ['-d', '--extract-certificates', certificatePrefix, appPath]);
+  // codesign uses an optional argument: bind the prefix with '=' so it is not
+  // interpreted as a second bundle path (Apple codesign/getopt_long contract).
+  command('/usr/bin/codesign', ['-d', `--extract-certificates=${certificatePrefix}`, appPath]);
   requireCondition(sha256(fs.readFileSync(`${certificatePrefix}0`)) === certificateSha256,
     'Exported app has a different signing certificate');
   requireCondition(fs.readFileSync(path.join(appPath, 'main.jsbundle')).includes(Buffer.from(apiBase)),
