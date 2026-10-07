@@ -475,7 +475,10 @@ function historyContentIssues(root, commits) {
       const commitChunk = commits.slice(offset, offset + 50);
       const result = spawnSync(
         'git',
-        ['-C', root, 'grep', '-l', '-E', '-e', pattern, ...commitChunk, '--'],
+        // git-grep's documented worker limit avoids parallel blob expansion
+        // exhausting hosted macOS resources. Coverage stays identical: all
+        // revisions and files (including binary files) remain in the query.
+        ['-C', root, 'grep', '--threads=1', '-l', '-E', '-e', pattern, ...commitChunk, '--'],
         {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']},
       );
 

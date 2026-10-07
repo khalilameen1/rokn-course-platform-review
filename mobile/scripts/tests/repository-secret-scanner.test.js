@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
+const vm = require('node:vm');
 
 const scanner = require('../verify-repository-secrets');
 const dbPasswordName = ['DB', 'PASSWORD'].join('_');
@@ -21,6 +22,34 @@ function withDirectory(run) {
     fs.rmSync(directory, {recursive: true, force: true});
   }
 }
+
+test('history queries limit Git workers without omitting revisions or binary files', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../verify-repository-secrets.js'), 'utf8');
+  const calls = [];
+  const context = {module: {exports: {}}, __dirname: path.resolve(__dirname, '..')};
+  context.require = Object.assign(name => name === 'node:child_process' ? {
+    execFileSync: () => Buffer.from(''),
+    spawnSync: (command, args) => {
+      calls.push({command, args});
+      return {status: 1, stdout: '', stderr: ''};
+    },
+  } : require(name), {main: {}});
+  vm.runInNewContext(source, context);
+  const subject = context.module.exports;
+  const commits = Array.from({length: 101}, (_, index) => index.toString(16).padStart(40, '0'));
+  assert.equal(subject.historyContentIssues('/fixture', commits).length, 0);
+  assert.equal(calls.length, subject.historyContentPatterns.length * 3);
+  for (const [, pattern] of subject.historyContentPatterns) {
+    const queries = calls.filter(call => call.args.includes(pattern));
+    assert.deepEqual(queries.flatMap(call => [...call.args].filter(arg => commits.includes(arg))), commits);
+    for (const {command, args} of queries) {
+      assert.equal(command, 'git');
+      assert.ok(args.includes('--threads=1'));
+      assert.ok(args.includes('-l'));
+      assert.ok(!args.includes('-I'));
+    }
+  }
+});
 
 test('reports private material without returning its value', () => {
   withDirectory(directory => {
