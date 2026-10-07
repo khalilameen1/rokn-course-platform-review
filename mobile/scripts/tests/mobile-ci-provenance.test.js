@@ -79,6 +79,30 @@ test('iOS privacy declares account-linked crash and nonfatal diagnostics', () =>
   }
 });
 
+test('iOS privacy declares retained account-linked playback performance', () => {
+  const manifest = readPrivacyManifest();
+  const sender = fs.readFileSync(path.join(root,
+    'src/components/VideoPlayer/courseLearning/playbackSession.ts'), 'utf8');
+  const receiver = fs.readFileSync(path.join(root,
+    '../backend/app/Services/PlaybackSessionService.php'), 'utf8');
+  const model = fs.readFileSync(path.join(root,
+    '../backend/app/Models/PlaybackSession.php'), 'utf8');
+  // These timings are retained against the authenticated playback session,
+  // not just processed on-device or stripped of identity before collection.
+  for (const metric of ['startup_latency_ms', 'buffer_duration_ms']) {
+    assert.ok(sender.includes(metric), `mobile sends ${metric}`);
+    assert.ok(receiver.includes(metric), `backend retains ${metric}`);
+    assert.ok(model.includes(metric), `session persists ${metric}`);
+  }
+  assert.match(receiver, /\$session->user_id\s*!==\s*\(int\)\s*\$user->id/);
+  const entry = privacyEntry(manifest, 'PerformanceData');
+  assert.equal(entry.NSPrivacyCollectedDataTypeLinked, true);
+  assert.equal(entry.NSPrivacyCollectedDataTypeTracking, false);
+  assert.deepEqual(entry.NSPrivacyCollectedDataTypePurposes, [
+    'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+  ]);
+});
+
 test('iOS privacy separates retained product analytics and first-party campaign purposes', () => {
   const manifest = readPrivacyManifest();
   // ProductEventService retains user_id/actor_key; ProductAnalyticsService uses
@@ -87,7 +111,7 @@ test('iOS privacy separates retained product analytics and first-party campaign 
   // selected accounts' device tokens (SendStudentNotification/SendUserPushNotification).
   const expected = {
     UserID: ['AppFunctionality', 'Analytics', 'DeveloperAdvertising'],
-    ProductInteraction: ['AppFunctionality', 'Analytics'],
+    ProductInteraction: ['AppFunctionality', 'Analytics', 'DeveloperAdvertising'],
     DeviceID: ['AppFunctionality', 'DeveloperAdvertising'],
     PurchaseHistory: ['AppFunctionality', 'Analytics', 'DeveloperAdvertising'],
   };
@@ -100,6 +124,13 @@ test('iOS privacy separates retained product analytics and first-party campaign 
       type,
     );
   }
+  const campaignInteraction = fs.readFileSync(path.join(root,
+    'src/screens/home/useHomeEngagement.ts'), 'utf8');
+  const campaignAttribution = fs.readFileSync(path.join(root,
+    '../backend/app/Services/ProductAnalyticsService.php'), 'utf8');
+  assert.match(campaignInteraction, /event_name: 'notification_opened'/);
+  assert.match(campaignInteraction, /campaign_key: selected\.id/);
+  assert.match(campaignAttribution, /COALESCE\(campaign_key,/);
 });
 
 test('iOS privacy retains specific uploads and support disclosures without inventing tracking', () => {
@@ -365,7 +396,7 @@ test('selected manual modes isolate concurrency and preserve active staging leas
   const workflow = mobileWorkflow();
   const groupFor = (eventName, inputs, ref = 'refs/heads/main') =>
     workflow.concurrency.group.replace(/\$\{\{([\s\S]*?)\}\}/g, (_, expression) => {
-      assert.match(expression, /^[\w\s.'"!=&|()\-]+$/);
+      assert.match(expression, /^[\w\s.'"!=&|()-]+$/);
       return String(vm.runInNewContext(expression, {
         github: {event_name: eventName, ref},
         inputs,

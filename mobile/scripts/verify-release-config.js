@@ -418,6 +418,7 @@ assert(
       'NSPrivacyCollectedDataTypeProductInteraction',
       'NSPrivacyCollectedDataTypeDeviceID',
       'NSPrivacyCollectedDataTypeCrashData',
+      'NSPrivacyCollectedDataTypePerformanceData',
       'NSPrivacyCollectedDataTypeOtherDiagnosticData',
     ].every(dataType => iosPrivacyManifest.includes(dataType)) &&
     iosPrivacyManifest.includes('<key>NSPrivacyTracking</key>') &&
