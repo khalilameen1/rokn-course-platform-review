@@ -110,12 +110,134 @@ describe('retrying an unavailable saved review', () => {
     const screen = mount();
     try {
       await act(async () => screen.current.retryReview());
-      expect(mockConsent).toHaveBeenCalledWith({scope: 'user-a', epoch: 1});
+      expect(mockConsent).toHaveBeenCalledWith(
+        {scope: 'user-a', epoch: 1},
+        expect.any(Function),
+      );
       expect(mockPost).not.toHaveBeenCalled();
       expect(mockGet).not.toHaveBeenCalled();
       expect(screen.current.reviewRetrying).toBe(false);
       expect(screen.current.status).toBe('review_unavailable');
-    } finally { screen.close(); }
+    } finally {
+      screen.close();
+    }
+  });
+
+  it('retires old preparation across close and reopen without letting its finally clear a newer request', async () => {
+    let approveOld!: (value: boolean) => void;
+    let acknowledgeNew!: (value: unknown) => void;
+    mockConsent.mockReturnValueOnce(
+      new Promise<boolean>(resolve => {
+        approveOld = resolve;
+      }),
+    );
+    mockPost.mockReturnValueOnce(
+      new Promise(resolve => {
+        acknowledgeNew = resolve;
+      }),
+    );
+    let current!: ReturnType<typeof useProjectResolution>;
+    const Harness = ({away = false}) => {
+      current = useProjectResolution({
+        active: !away,
+        appIsActive: true,
+        project,
+      });
+      return null;
+    };
+    let renderer!: TestRenderer.ReactTestRenderer;
+    let oldRequest!: Promise<void>;
+    let newRequest!: Promise<void>;
+    try {
+      await act(async () => {
+        renderer = TestRenderer.create(<Harness />);
+      });
+      await act(async () => {
+        oldRequest = current.retryReview();
+      });
+      const retiredOwner = mockConsent.mock.calls[0][1] as () => boolean;
+      await act(async () => {
+        renderer.update(<Harness away />);
+      });
+      await act(async () => {
+        renderer.update(<Harness />);
+      });
+      expect(retiredOwner()).toBe(false);
+      expect(current.reviewRetrying).toBe(false);
+      await act(async () => {
+        newRequest = current.retryReview();
+      });
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        approveOld(true);
+        await oldRequest;
+      });
+      expect(current.reviewRetrying).toBe(true);
+      await act(async () => {
+        await current.retryReview();
+      });
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        acknowledgeNew(response(submission()));
+        await newRequest;
+      });
+      expect(current.status).toBe('evaluating');
+      expect(current.reviewRetrying).toBe(false);
+    } finally {
+      approveOld?.(false);
+      acknowledgeNew?.(response(submission()));
+      if (renderer) await act(async () => renderer.unmount());
+    }
+  });
+
+  it('keeps ownership of an already-dispatched retry across departure without sending twice', async () => {
+    let acknowledge!: (value: unknown) => void;
+    mockPost.mockReturnValueOnce(
+      new Promise(resolve => {
+        acknowledge = resolve;
+      }),
+    );
+    let current!: ReturnType<typeof useProjectResolution>;
+    const onResolution = jest.fn();
+    const Harness = ({away = false}) => {
+      current = useProjectResolution({
+        active: !away,
+        appIsActive: true,
+        project,
+        onReviewResolution: onResolution,
+      });
+      return null;
+    };
+    let renderer!: TestRenderer.ReactTestRenderer;
+    let request!: Promise<void>;
+    try {
+      await act(async () => {
+        renderer = TestRenderer.create(<Harness />);
+      });
+      await act(async () => {
+        request = current.retryReview();
+      });
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        renderer.update(<Harness away />);
+      });
+      expect(current.reviewRetrying).toBe(true);
+      await act(async () => {
+        renderer.update(<Harness />);
+        await current.retryReview();
+      });
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        acknowledge(response(submission()));
+        await request;
+      });
+      expect(current.status).toBe('evaluating');
+      expect(onResolution).toHaveBeenCalledTimes(1);
+      expect(current.reviewRetrying).toBe(false);
+    } finally {
+      acknowledge?.(response(submission()));
+      if (renderer) await act(async () => renderer.unmount());
+    }
   });
 
   it('maps the distinct state and action into the course without exposing rejection feedback', () => {

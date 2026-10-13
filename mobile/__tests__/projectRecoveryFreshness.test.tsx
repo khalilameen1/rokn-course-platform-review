@@ -10,6 +10,14 @@ let recoveryListener:
 
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   applyLocalLearningState: jest.fn(async course => course),
+  getLocalLearningState: jest.fn(async () => ({
+    positions: {},
+    lastWatchedAt: {},
+    completedSections: [],
+    savedLessons: [],
+    savedFolderLessons: {},
+    activityDays: [],
+  })),
   loadCourseLearningData: (...args: unknown[]) =>
     mockLoadCourseLearningData(...args),
 }));
@@ -30,6 +38,7 @@ jest.mock('../src/constants/helpers', () => ({
     epoch: 1,
     scope: 'user-a',
   })),
+  assertAccountSessionBoundary: jest.fn(),
 }));
 jest.mock('../src/hooks/useAppActiveState', () => ({
   useAppForegroundState: jest.fn(() => true),

@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {publicRequest, type RoknRequestConfig} from '../constants/api';
 import {roknApiUrl} from '../constants/apiBaseUrl';
 import {serverNowMs} from '../utils/serverClock';
+import {settleWithin} from '../utils/settleWithin';
+import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
 
 export type ProductFeatureKey =
   | 'checkout'
@@ -58,7 +60,13 @@ const DEVELOPMENT_DEFAULTS: Record<ProductFeatureKey, boolean> = {
 };
 
 let memorySnapshot: ProductFeatureSnapshot | null = null;
+let cacheReadFlight: Promise<ProductFeatureSnapshot | null> | null = null;
 let refreshFlight: Promise<ProductFeatureSnapshot | null> | null = null;
+let runtimeGeneration = 0;
+const persistSnapshot = createKeyedAsyncQueue();
+
+const isFreshSnapshot = (snapshot: ProductFeatureSnapshot | null): boolean =>
+  snapshot !== null && snapshot.expiresAt > serverNowMs();
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -96,9 +104,18 @@ const parsePersistedSnapshot = (value: string | null) => {
 
 const loadSnapshot = async () => {
   if (memorySnapshot) return memorySnapshot;
-  const stored = await AsyncStorage.getItem(SNAPSHOT_KEY).catch(() => null);
-  memorySnapshot = parsePersistedSnapshot(stored);
-  return memorySnapshot;
+  if (!cacheReadFlight) {
+    const generation = runtimeGeneration;
+    const read = (async () => {
+      const stored = await AsyncStorage.getItem(SNAPSHOT_KEY).catch(() => null);
+      if (generation !== runtimeGeneration) return null;
+      // A late disk read must never replace flags already received remotely.
+      if (!memorySnapshot) memorySnapshot = parsePersistedSnapshot(stored);
+      return memorySnapshot;
+    })();
+    cacheReadFlight = settleWithin(read, null);
+  }
+  return cacheReadFlight;
 };
 
 const normalizeRemoteSnapshot = (
@@ -135,7 +152,8 @@ const normalizeRemoteSnapshot = (
 export const refreshProductFeatures =
   async (): Promise<ProductFeatureSnapshot | null> => {
     if (refreshFlight) return refreshFlight;
-    refreshFlight = (async () => {
+    const generation = runtimeGeneration;
+    const flight = (async () => {
       try {
         const response = await publicRequest.get<unknown>('product-features', {
           // Rollout uses the installation header, not an authenticated account.
@@ -145,35 +163,47 @@ export const refreshProductFeatures =
         const envelope = isRecord(response.data) ? response.data : {};
         const raw = envelope.data || envelope;
         const snapshot = normalizeRemoteSnapshot(raw);
-        if (!snapshot) return null;
+        if (!snapshot || generation !== runtimeGeneration) return null;
         memorySnapshot = snapshot;
-        await AsyncStorage.setItem(
-          SNAPSHOT_KEY,
-          JSON.stringify(snapshot),
-        ).catch(() => undefined);
+        // Delivery owns the validated in-memory snapshot, not its optional
+        // disk copy. Keep raw writes serialized after callers have continued.
+        void persistSnapshot(SNAPSHOT_KEY, async () => {
+          if (generation !== runtimeGeneration || !memorySnapshot) return;
+          await AsyncStorage.setItem(
+            SNAPSHOT_KEY,
+            JSON.stringify(memorySnapshot),
+          );
+        }).catch(() => undefined);
         return snapshot;
       } catch {
         return null;
       }
     })();
+    refreshFlight = flight;
     try {
-      return await refreshFlight;
+      return await flight;
     } finally {
-      refreshFlight = null;
+      if (refreshFlight === flight) refreshFlight = null;
     }
   };
 
 export const isProductFeatureEnabled = async (
   feature: ProductFeatureKey,
 ): Promise<boolean> => {
-  const cached = await loadSnapshot();
-  if (cached && cached.expiresAt > serverNowMs()) {
-    return cached.flags[feature];
+  if (memorySnapshot && isFreshSnapshot(memorySnapshot)) {
+    return memorySnapshot.flags[feature];
   }
 
-  const refreshed = await refreshProductFeatures();
-  if (refreshed && refreshed.expiresAt > serverNowMs()) {
-    return refreshed.flags[feature];
+  // Cold starts hydrate disk and network concurrently. Either fresh result
+  // can answer; a cache miss must not end the pending remote permission read.
+  const cached = loadSnapshot();
+  const refreshed = refreshProductFeatures();
+  await Promise.race([cached, refreshed]);
+  if (!isFreshSnapshot(memorySnapshot)) {
+    await Promise.all([cached, refreshed]);
+  }
+  if (memorySnapshot && isFreshSnapshot(memorySnapshot)) {
+    return memorySnapshot.flags[feature];
   }
 
   return (REQUIRE_REMOTE_FLAGS ? SAFE_DEFAULTS : DEVELOPMENT_DEFAULTS)[feature];
@@ -186,7 +216,7 @@ export const requireProductFeature = async (feature: ProductFeatureKey) => {
 };
 
 export const bootstrapProductFeatures = async () => {
-  await loadSnapshot();
+  void loadSnapshot();
   await refreshProductFeatures();
 };
 
@@ -213,7 +243,9 @@ export const getProductFeatureDiagnosticsSnapshot = async () => {
 };
 
 export const resetProductFeaturesForTests = () => {
+  runtimeGeneration += 1;
   memorySnapshot = null;
+  cacheReadFlight = null;
   refreshFlight = null;
 };
 

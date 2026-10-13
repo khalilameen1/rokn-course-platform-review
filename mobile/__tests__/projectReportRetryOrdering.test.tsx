@@ -155,12 +155,17 @@ describe('report retry acknowledgement ordering', () => {
     const screen = mount();
     try {
       await act(async () => screen.current.retryReport());
-      expect(mockConsent).toHaveBeenCalledWith({scope: 'user-a', epoch: mockEpoch});
+      expect(mockConsent).toHaveBeenCalledWith(
+        {scope: 'user-a', epoch: mockEpoch},
+        expect.any(Function),
+      );
       expect(mockPost).not.toHaveBeenCalled();
       expect(mockGet).not.toHaveBeenCalled();
       expect(screen.current.reportRetrying).toBe(false);
       expect(screen.current.reportStatus).toBe('failed');
-    } finally { screen.close(); }
+    } finally {
+      screen.close();
+    }
   });
 
   it('waits for the retry ACK before polling and then observes ready without a second POST', async () => {

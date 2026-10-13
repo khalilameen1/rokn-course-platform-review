@@ -19,6 +19,10 @@ import {
   assertAccountSessionBoundary,
   type AccountSessionBoundary,
 } from '../../../constants/helpers';
+import {
+  usePreparationOwner,
+  type PreparedMutationFlight,
+} from '../../../hooks/usePreparationOwner';
 
 type ProjectResolution = Awaited<ReturnType<typeof loadProjectResolution>>;
 
@@ -122,13 +126,26 @@ export const useProjectResolution = ({
     state: ProjectResolutionState;
   } | null>(null);
   const [reportRetrying, setReportRetrying] = useState(false);
-  const retryFlightRef = useRef<symbol | null>(null);
-  const reviewFlightRef = useRef<symbol | null>(null);
+  const retryFlightRef = useRef<PreparedMutationFlight | null>(null);
+  const reviewFlightRef = useRef<PreparedMutationFlight | null>(null);
   const reviewReadOnlyRef = useRef(false);
   const [reviewRetrying, setReviewRetrying] = useState(false);
   const [reviewRecoveryRequired, setReviewRecoveryRequired] = useState(false);
   const [reviewRecoveryError, setReviewRecoveryError] = useState('');
   const pollJitterRef = useRef(0.82 + Math.random() * 0.3);
+  const ownsVisit = usePreparationOwner(project.id, active && appIsActive);
+  useEffect(() => {
+    const report = retryFlightRef.current;
+    if (report?.phase === 'preparing' && !report.ownsVisit()) {
+      retryFlightRef.current = null;
+      setReportRetrying(false);
+    }
+    const review = reviewFlightRef.current;
+    if (review?.phase === 'preparing' && !review.ownsVisit()) {
+      reviewFlightRef.current = null;
+      setReviewRetrying(false);
+    }
+  }, [ownsVisit]);
 
   const ownsProject = useCallback(
     (projectId: string) => activeProjectIdRef.current === projectId,
@@ -215,10 +232,7 @@ export const useProjectResolution = ({
     const ownsRead = () => !cancelled && ownsProject(projectId);
     const schedule = () => {
       attempts += 1;
-      timer = setTimeout(
-        () => void refresh(),
-        attempts < 6 ? 5000 : 30000,
-      );
+      timer = setTimeout(() => void refresh(), attempts < 6 ? 5000 : 30000);
     };
     const refresh = async () => {
       if (reviewFlightRef.current) {
@@ -378,22 +392,30 @@ export const useProjectResolution = ({
 
   const retryReport = useCallback(async () => {
     const {canRetryReport, reportRetryEndpoint} = resolution.contract;
-    if (!reportRetryEndpoint || !canRetryReport || retryFlightRef.current) {
+    if (
+      !ownsVisit() ||
+      !ownsProject(project.id) ||
+      !reportRetryEndpoint ||
+      !canRetryReport ||
+      retryFlightRef.current
+    ) {
       return;
     }
     const projectId = project.id;
-    const flight = Symbol('project-report-retry');
+    const flight: PreparedMutationFlight = {phase: 'preparing', ownsVisit};
     retryFlightRef.current = flight;
     const ownsFlight = () =>
       ownsProject(projectId) && retryFlightRef.current === flight;
+    const ownsPreparation = () => ownsFlight() && flight.ownsVisit();
     setReportRetrying(true);
     let boundary: AccountSessionBoundary | undefined;
     try {
       boundary = await captureAccountSessionBoundary();
-      if (!ownsFlight()) return;
-      if (!(await requestAiConsent(boundary))) return;
+      if (!ownsPreparation()) return;
+      if (!(await requestAiConsent(boundary, ownsPreparation))) return;
       assertAccountSessionBoundary(boundary);
-      if (!ownsFlight()) return;
+      if (!ownsPreparation()) return;
+      flight.phase = 'dispatched';
       const next = await retryProjectReport(reportRetryEndpoint);
       assertAccountSessionBoundary(boundary);
       // Only the committed retry response starts polling. Reading while the
@@ -401,7 +423,7 @@ export const useProjectResolution = ({
       if (ownsFlight()) applyResolution(next);
     } catch {
       try {
-        if (!boundary || !ownsFlight()) return;
+        if (!boundary || !ownsFlight() || flight.phase !== 'dispatched') return;
         assertAccountSessionBoundary(boundary);
         const next = await loadProjectResolution(projectId);
         assertAccountSessionBoundary(boundary);
@@ -416,13 +438,19 @@ export const useProjectResolution = ({
         setReportRetrying(false);
       }
     }
-  }, [applyResolution, ownsProject, project.id, resolution.contract]);
+  }, [
+    applyResolution,
+    ownsProject,
+    ownsVisit,
+    project.id,
+    resolution.contract,
+  ]);
 
   const retryReview = useCallback(async () => {
     const {canRetryReview, reviewRetryEndpoint} = resolution.contract;
     if (
-      !active ||
-      !appIsActive ||
+      !ownsVisit() ||
+      !ownsProject(project.id) ||
       reviewFlightRef.current ||
       (!reviewReadOnlyRef.current &&
         (!canRetryReview ||
@@ -431,10 +459,11 @@ export const useProjectResolution = ({
     )
       return;
     const projectId = project.id;
-    const flight = Symbol('project-review-retry');
+    const flight: PreparedMutationFlight = {phase: 'preparing', ownsVisit};
     reviewFlightRef.current = flight;
     const ownsFlight = () =>
       ownsProject(projectId) && reviewFlightRef.current === flight;
+    const ownsPreparation = () => ownsFlight() && flight.ownsVisit();
     setReviewRetrying(true);
     setReviewRecoveryError('');
     const apply = (next: ProjectResolution) => {
@@ -448,10 +477,15 @@ export const useProjectResolution = ({
     let boundary: AccountSessionBoundary | undefined;
     try {
       boundary = await captureAccountSessionBoundary();
-      if (!ownsFlight()) return;
-      if (!reviewReadOnlyRef.current && !(await requestAiConsent(boundary))) return;
+      if (!ownsPreparation()) return;
+      if (
+        !reviewReadOnlyRef.current &&
+        !(await requestAiConsent(boundary, ownsPreparation))
+      )
+        return;
       assertAccountSessionBoundary(boundary);
-      if (!ownsFlight()) return;
+      if (!ownsPreparation()) return;
+      flight.phase = 'dispatched';
       const next = reviewReadOnlyRef.current
         ? await loadProjectResolution(projectId)
         : await retryProjectReview(reviewRetryEndpoint!);
@@ -461,7 +495,7 @@ export const useProjectResolution = ({
       // A timed-out POST may already be queued. Read the existing submission;
       // never turn an uncertain retry into a second review request.
       try {
-        if (!boundary || !ownsFlight()) return;
+        if (!boundary || !ownsFlight() || flight.phase !== 'dispatched') return;
         assertAccountSessionBoundary(boundary);
         const next = await loadProjectResolution(projectId);
         assertAccountSessionBoundary(boundary);
@@ -480,11 +514,10 @@ export const useProjectResolution = ({
       }
     }
   }, [
-    active,
-    appIsActive,
     applyResolution,
     onReviewResolution,
     ownsProject,
+    ownsVisit,
     project.id,
     resolution.contract,
     resolution.status,

@@ -9,9 +9,12 @@ import {
 import {roknCalendarDay} from '../../../constants/roknCalendar';
 import {hasSession} from '../../../services/roknApi';
 import {updatePlayerStateForScope} from './persistence';
+import {createKeyedAsyncQueue} from '../../../utils/keyedAsyncQueue';
 
 const STORAGE_PREFIX = '@rokn/section-completion/v1';
 const flights = new Map<string, Promise<boolean>>();
+// Native journal mutations retain their key's actual order across resets.
+const mutateCompletionJournal = createKeyedAsyncQueue();
 let runtimeGeneration = 0;
 
 const assertOwner = (generation: number, boundary: AccountSessionBoundary) => {
@@ -91,17 +94,25 @@ const complete = async (
     } catch {
       return false;
     }
-    if (retryable(error)) {
-      await AsyncStorage.setItem(key, JSON.stringify({courseId, sectionId}));
+    const needsRetry = retryable(error);
+    await mutateCompletionJournal(key, async () => {
       try {
         assertOwner(generation, boundary);
       } catch {
-        await AsyncStorage.removeItem(key);
-        return false;
+        return;
       }
-    } else {
-      await AsyncStorage.removeItem(key);
-    }
+      if (needsRetry) {
+        // An unacknowledged completion still requires its durable retry record.
+        await AsyncStorage.setItem(key, JSON.stringify({courseId, sectionId}));
+        try {
+          assertOwner(generation, boundary);
+        } catch {
+          await AsyncStorage.removeItem(key);
+        }
+      } else {
+        await AsyncStorage.removeItem(key);
+      }
+    });
     return false;
   }
 
@@ -110,25 +121,26 @@ const complete = async (
   } catch {
     return false;
   }
-  try {
-    await updatePlayerStateForScope(
-      boundary.scope,
-      state => ({
-        ...state,
-        completedSections: Array.from(
-          new Set([...state.completedSections, sectionId]),
-        ),
-        activityDays: Array.from(
-          new Set([...state.activityDays, roknCalendarDay()]),
-        ).slice(-60),
-      }),
-      boundary,
-    );
+  // Only the acknowledged server result owns delivery. Optional player-cache
+  // repair and retirement of its retry record run independently in the same
+  // existing storage queues; neither delays the next learning step.
+  void updatePlayerStateForScope(
+    boundary.scope,
+    state => ({
+      ...state,
+      completedSections: Array.from(
+        new Set([...state.completedSections, sectionId]),
+      ),
+      activityDays: Array.from(
+        new Set([...state.activityDays, roknCalendarDay()]),
+      ).slice(-60),
+    }),
+    boundary,
+  ).catch(() => undefined);
+  void mutateCompletionJournal(key, async () => {
     assertOwner(generation, boundary);
     await AsyncStorage.removeItem(key);
-  } catch {
-    // The server decision is authoritative; local repair stays idempotent.
-  }
+  }).catch(() => undefined);
   return true;
 };
 
@@ -173,6 +185,10 @@ export const retryPendingSectionCompletions = async () => {
   );
   assertOwner(generation, boundary);
   if (!keys.length) return;
+  await Promise.all(
+    keys.map(key => mutateCompletionJournal.waitForPending(key)),
+  );
+  assertOwner(generation, boundary);
   const entries = await AsyncStorage.multiGet(keys);
   assertOwner(generation, boundary);
 
@@ -186,7 +202,12 @@ export const retryPendingSectionCompletions = async () => {
         throw new Error('INVALID_SECTION_COMPLETION');
       }
     } catch {
-      await AsyncStorage.removeItem(key);
+      await mutateCompletionJournal(key, async () => {
+        assertOwner(generation, boundary);
+        const current = await AsyncStorage.getItem(key);
+        assertOwner(generation, boundary);
+        if (current === value) await AsyncStorage.removeItem(key);
+      });
       continue;
     }
     try {

@@ -61,8 +61,8 @@ describe('daily read latency budget', () => {
     expect(portfolio).toContain(
       'settleWithin(getCachedPortfolio(boundary), [])',
     );
-    expect(certificates).toContain(
-      'settleWithin(\n          getCachedCertificates(boundary),',
+    expect(certificates).toMatch(
+      /settleWithin\(\s*getCachedCertificates\(boundary\),\s*\[\]/,
     );
   });
 });

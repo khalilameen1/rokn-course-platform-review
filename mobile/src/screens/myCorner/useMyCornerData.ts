@@ -40,10 +40,18 @@ export const useMyCornerData = (identityKey: string) => {
       if (!appIsActive) return () => undefined;
       let active = true;
       let loading = false;
+      let readGeneration = 0;
       const stillOwned = (
         boundary: Awaited<ReturnType<typeof captureAccountSessionBoundary>>,
+        generation: number,
       ) => {
-        if (!active || ownerRef.current !== identityKey) return false;
+        if (
+          !active ||
+          generation !== readGeneration ||
+          ownerRef.current !== identityKey
+        ) {
+          return false;
+        }
         try {
           assertAccountSessionBoundary(boundary);
           return true;
@@ -55,12 +63,12 @@ export const useMyCornerData = (identityKey: string) => {
         }
       };
 
-      const load = async () => {
+      const load = async (generation: number) => {
         const boundary = await captureAccountSessionBoundary().catch(
           () => null,
         );
         const sessionAvailable = await hasSession();
-        if (!active) return;
+        if (!active || generation !== readGeneration) return;
         if (!boundary) {
           setServerSession(sessionAvailable);
           setDashboardLoading(false);
@@ -70,7 +78,7 @@ export const useMyCornerData = (identityKey: string) => {
           }
           return;
         }
-        if (!stillOwned(boundary)) return;
+        if (!stillOwned(boundary, generation)) return;
         setServerSession(sessionAvailable);
         if (!sessionAvailable) {
           setDashboard(null);
@@ -81,27 +89,50 @@ export const useMyCornerData = (identityKey: string) => {
 
         // Start the authoritative network read before touching device storage.
         // A slow or damaged cache may improve first paint but never owns it.
-        const freshDashboardRequest = getLearningDashboard().then(
+        let coursesDelivered = false;
+        const freshDashboardRequest = getLearningDashboard({
+          onCoursesReady: courses => {
+            if (!stillOwned(boundary, generation)) return;
+            coursesDelivered = true;
+            setDashboard(current => ({
+              paths: [],
+              badges: [],
+              activityDays: [],
+              currentStreakDays: 0,
+              ...current,
+              courses,
+              partialError: undefined,
+            }));
+            setLearningOwnershipFresh(true);
+            setDashboardError('');
+            setDashboardLoading(false);
+            // A later explicit refresh may replace this read while secondary
+            // panels finish. Its generation owns both UI and cache delivery.
+            loading = false;
+          },
+        }).then(
           value => ({ok: true as const, value}),
           error => ({ok: false as const, error}),
         );
         const cached = await settleWithin(getCachedLearningDashboard(), null);
-        if (!stillOwned(boundary)) return;
+        if (!stillOwned(boundary, generation)) return;
         if (cached) setDashboard(current => current || cached);
         try {
           const result = await freshDashboardRequest;
           if (!result.ok) throw result.error;
           const fresh = result.value;
-          if (stillOwned(boundary)) {
+          if (stillOwned(boundary, generation)) {
             setDashboard(fresh);
             setLearningOwnershipFresh(true);
             setDashboardError(fresh.partialError || '');
           }
         } catch (error) {
-          if (stillOwned(boundary)) {
-            setLearningOwnershipFresh(false);
+          if (stillOwned(boundary, generation)) {
+            setLearningOwnershipFresh(coursesDelivered);
             setDashboardError(
-              cached
+              coursesDelivered
+                ? 'تعذّر تحديث بعض بيانات تقدمك\nكورساتك جاهزة للاستكمال'
+                : cached
                 ? 'نعرض آخر تقدم محفوظ\nسنحدّثه عند عودة الاتصال'
                 : `${friendlyNetworkMessage(error, 'كورساتك')}\nتقدمك محفوظ`,
             );
@@ -112,19 +143,21 @@ export const useMyCornerData = (identityKey: string) => {
       // Focus, foreground and explicit retry share one screen-owned read.
       const refresh = () => {
         if (!active || loading) return;
+        const generation = ++readGeneration;
         loading = true;
         setDashboardLoading(true);
         setDashboardError('');
         setLearningOwnershipFresh(false);
-        void load()
+        void load(generation)
           .catch(error => {
-            if (!active) return;
+            if (!active || generation !== readGeneration) return;
             setLearningOwnershipFresh(false);
             setDashboardError(
               `${friendlyNetworkMessage(error, 'كورساتك')}\nتقدمك محفوظ`,
             );
           })
           .finally(() => {
+            if (generation !== readGeneration) return;
             loading = false;
             if (active) setDashboardLoading(false);
           });

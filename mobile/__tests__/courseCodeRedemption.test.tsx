@@ -114,7 +114,7 @@ describe('course-code distribution boundary', () => {
   it.each<[DistributionChannel, boolean, boolean, boolean]>([
     ['direct', true, false, true],
     ['play', false, true, true],
-    ['appstore', false, true, false],
+    ['appstore', false, true, true],
   ])(
     'retains channel policy for %s',
     (

@@ -28,7 +28,7 @@ export function resolveCheckoutTransport(
   if (!['direct', 'play', 'appstore'].includes(distribution)) {
     throw new Error('CHECKOUT_DISTRIBUTION_INVALID');
   }
-  if (purpose === 'course' && platform === 'android') {
+  if (purpose === 'course' && ['android', 'ios'].includes(platform)) {
     return {
       kind: 'external',
       channel: 'direct',

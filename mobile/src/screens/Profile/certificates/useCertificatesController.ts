@@ -45,6 +45,7 @@ export function useCertificatesController(
   const displayName = resolvedDisplayName || user?.name || '';
   const identityKey = sessionIdentityKey(storedUser);
   const [loading, setLoading] = useState(true);
+  const [eligibilityLoading, setEligibilityLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [certificatePending, setCertificatePending] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -60,7 +61,8 @@ export function useCertificatesController(
   const issueFlight = useRef<CertificateMutationFlight | null>(null);
   const presentationGeneration = useRef(0);
   const canonicalReadReady = useRef(false);
-  const readSettled = useRef(false);
+  const eligibilityReadReady = useRef(false);
+  const certificateReadSettled = useRef(false);
   const pendingPollAttempts = useRef(0);
   const acceptedIssueCourseIds = useRef(new Set<string>());
   const identityOwnerRef = useRef(identityKey);
@@ -101,7 +103,8 @@ export function useCertificatesController(
       mountedRef.current = false;
       loadGeneration.current += 1;
       canonicalReadReady.current = false;
-      readSettled.current = false;
+      eligibilityReadReady.current = false;
+      certificateReadSettled.current = false;
       issueFlight.current = null;
     };
   }, []);
@@ -109,11 +112,13 @@ export function useCertificatesController(
   useEffect(() => {
     loadGeneration.current += 1;
     canonicalReadReady.current = false;
-    readSettled.current = false;
+    eligibilityReadReady.current = false;
+    certificateReadSettled.current = false;
     issueFlight.current = null;
     pendingPollAttempts.current = 0;
     acceptedIssueCourseIds.current.clear();
     setLoading(true);
+    setEligibilityLoading(true);
     setLoadError('');
     setCertificatePending(false);
     setSelectedId(null);
@@ -132,11 +137,14 @@ export function useCertificatesController(
     if (!ownsPresentation(identityKey)) return;
     const generation = ++loadGeneration.current;
     canonicalReadReady.current = false;
-    readSettled.current = false;
+    eligibilityReadReady.current = false;
+    certificateReadSettled.current = false;
     const isCurrent = () =>
       loadGeneration.current === generation && ownsPresentation(identityKey);
     setLoading(true);
+    setEligibilityLoading(true);
     setLoadError('');
+    let learningStarted = false;
     if (acceptedIssueCourseIds.current.size > 0) setCertificatePending(true);
     try {
       const boundary = await captureAccountSessionBoundary();
@@ -148,59 +156,115 @@ export function useCertificatesController(
       if (isCurrent()) setServerSession(sessionAvailable);
       if (sessionAvailable) {
         const certificatesFlight = getCertificates(boundary);
-        const learningFlight = getLearningCourses();
-        const remoteReads = Promise.allSettled([
-          certificatesFlight,
-          learningFlight,
-        ]);
-        const cachedCertificates = await settleWithin(
-          getCachedCertificates(boundary),
-          [],
-        );
-        assertAccountSessionBoundary(boundary);
-        const scopedCachedCertificates = cachedCertificates.filter(
-          item => !courseId || item.courseId === courseId,
-        );
-        if (isCurrent() && scopedCachedCertificates.length) {
-          setCertificates(
-            scopedCachedCertificates.filter(item => item.status !== 'revoked'),
+        let certificatesResult: PromiseSettledResult<CertificateDto[]> | null =
+          null;
+        let learningResult: PromiseSettledResult<CourseProgress[]> | null =
+          null;
+        let remoteCertificates: CertificateDto[] = [];
+        const publishReadError = () => {
+          if (!isCurrent()) return;
+          if (
+            certificatesResult?.status === 'rejected' &&
+            learningResult?.status === 'rejected'
+          ) {
+            setLoadError('تعذّر التحقق من شهاداتك الآن\nشهاداتك محفوظة');
+          } else if (
+            certificatesResult?.status === 'rejected' ||
+            learningResult?.status === 'rejected'
+          ) {
+            setLoadError('نعرض المتاح الآن وسنحدّث الباقي عند عودة الاتصال');
+          }
+        };
+        const publishEligibility = () => {
+          if (!isCurrent()) return;
+          eligibilityReadReady.current = learningResult?.status === 'fulfilled';
+          if (
+            certificatesResult?.status !== 'fulfilled' ||
+            learningResult?.status !== 'fulfilled'
+          ) {
+            if (
+              certificatesResult?.status === 'rejected' ||
+              learningResult?.status === 'rejected'
+            ) {
+              setReadyCourses([]);
+            }
+            return;
+          }
+          const certificateByCourse = new Map(
+            remoteCertificates.map(item => [item.courseId, item]),
           );
-          setCertificatePending(
-            acceptedIssueCourseIds.current.size > 0 ||
-              scopedCachedCertificates.some(item => item.status === 'pending'),
+          // A progress percentage is never an eligibility or issuance verdict.
+          setReadyCourses(
+            learningResult.value
+              .filter(course => !courseId || course.id === courseId)
+              .filter(course => course.certificateAvailable)
+              .filter(
+                course =>
+                  !certificateByCourse.has(course.id) &&
+                  !acceptedIssueCourseIds.current.has(course.id),
+              ),
           );
-        }
-        const [certificatesResult, learningResult] = await remoteReads;
+        };
+        const publishLearningResult = (
+          result: PromiseSettledResult<CourseProgress[]>,
+        ) => {
+          if (!isCurrent()) return;
+          assertAccountSessionBoundary(boundary);
+          learningResult = result;
+          setEligibilityLoading(false);
+          if (result.status === 'fulfilled') {
+            setGrantCourses(
+              result.value.filter(
+                course =>
+                  (!courseId || course.id === courseId) &&
+                  course.accessType === 'scholarship' &&
+                  !course.certificateAvailable &&
+                  (course.progress >= 100 ||
+                    (course.totalSections > 0 &&
+                      course.completedSections >= course.totalSections)),
+              ),
+            );
+          }
+          publishEligibility();
+          publishReadError();
+        };
+        learningStarted = true;
+        // Eligibility enriches this visit independently. Its late result cannot
+        // mutate a newer visit, while existing artifacts need only their read.
+        void getLearningCourses()
+          .then(
+            value => publishLearningResult({status: 'fulfilled', value}),
+            reason => publishLearningResult({status: 'rejected', reason}),
+          )
+          .catch(() => {
+            if (!isCurrent()) return;
+            eligibilityReadReady.current = false;
+            setEligibilityLoading(false);
+          });
+        void settleWithin(getCachedCertificates(boundary), [])
+          .then(cached => {
+            if (!isCurrent() || canonicalReadReady.current) return;
+            assertAccountSessionBoundary(boundary);
+            const scoped = cached.filter(
+              item => !courseId || item.courseId === courseId,
+            );
+            if (!scoped.length) return;
+            setCertificates(scoped.filter(item => item.status !== 'revoked'));
+            setCertificatePending(
+              acceptedIssueCourseIds.current.size > 0 ||
+                scoped.some(item => item.status === 'pending'),
+            );
+          })
+          .catch(() => undefined);
+        certificatesResult = await certificatesFlight.then(
+          value => ({status: 'fulfilled' as const, value}),
+          reason => ({status: 'rejected' as const, reason}),
+        );
         assertAccountSessionBoundary(boundary);
         if (!isCurrent()) return;
-        if (
-          certificatesResult.status === 'rejected' &&
-          learningResult.status === 'rejected'
-        ) {
-          throw certificatesResult.reason;
-        }
-        if (
-          certificatesResult.status === 'rejected' ||
-          learningResult.status === 'rejected'
-        ) {
-          setLoadError('نعرض المتاح الآن وسنحدّث الباقي عند عودة الاتصال');
-        }
-        if (learningResult.status === 'fulfilled' && isCurrent()) {
-          setGrantCourses(
-            learningResult.value.filter(
-              course =>
-                (!courseId || course.id === courseId) &&
-                course.accessType === 'scholarship' &&
-                !course.certificateAvailable &&
-                (course.progress >= 100 ||
-                  (course.totalSections > 0 &&
-                    course.completedSections >= course.totalSections)),
-            ),
-          );
-        }
         if (certificatesResult.status === 'fulfilled') {
           canonicalReadReady.current = true;
-          const remoteCertificates = certificatesResult.value.filter(
+          remoteCertificates = certificatesResult.value.filter(
             item => !courseId || item.courseId === courseId,
           );
           remoteCertificates.forEach(item => {
@@ -209,25 +273,6 @@ export function useCertificatesController(
           const hasPendingCertificate =
             acceptedIssueCourseIds.current.size > 0 ||
             remoteCertificates.some(item => item.status === 'pending');
-          if (learningResult.status === 'fulfilled') {
-            const certificateByCourse = new Map(
-              remoteCertificates.map(item => [item.courseId, item]),
-            );
-            if (isCurrent()) {
-              // certificate_available is the server-side eligibility verdict;
-              // progress alone does not include every project/evidence gate.
-              setReadyCourses(
-                learningResult.value
-                  .filter(course => !courseId || course.id === courseId)
-                  .filter(course => course.certificateAvailable)
-                  .filter(
-                    course =>
-                      !certificateByCourse.has(course.id) &&
-                      !acceptedIssueCourseIds.current.has(course.id),
-                  ),
-              );
-            }
-          }
           if (isCurrent()) {
             setCertificatePending(hasPendingCertificate);
             if (!hasPendingCertificate) pendingPollAttempts.current = 0;
@@ -235,9 +280,9 @@ export function useCertificatesController(
               remoteCertificates.filter(item => item.status !== 'revoked'),
             );
           }
-        } else if (isCurrent()) {
-          setReadyCourses([]);
         }
+        publishEligibility();
+        publishReadError();
         return;
       }
       if (isCurrent()) {
@@ -258,7 +303,8 @@ export function useCertificatesController(
       }
     } finally {
       if (isCurrent()) {
-        readSettled.current = true;
+        if (!learningStarted) setEligibilityLoading(false);
+        certificateReadSettled.current = true;
         setLoading(false);
       }
     }
@@ -294,7 +340,8 @@ export function useCertificatesController(
         loadGeneration.current += 1;
         presentationGeneration.current += 1;
         canonicalReadReady.current = false;
-        readSettled.current = false;
+        eligibilityReadReady.current = false;
+        certificateReadSettled.current = false;
       };
     }, [appIsActive, loadCertificates]),
   );
@@ -302,7 +349,7 @@ export function useCertificatesController(
   const recoverPendingCertificates = useCallback(async () => {
     if (
       issueFlight.current ||
-      !readSettled.current ||
+      !certificateReadSettled.current ||
       !ownsPresentation(identityKey)
     )
       return;
@@ -459,8 +506,9 @@ export function useCertificatesController(
   const openIssueCertificate = (course: CourseProgress) => {
     if (
       !ownsPresentation(identityKey) ||
-      !readSettled.current ||
+      !certificateReadSettled.current ||
       !canonicalReadReady.current ||
+      !eligibilityReadReady.current ||
       issuing ||
       issueFlight.current
     )
@@ -480,8 +528,9 @@ export function useCertificatesController(
       !issueCourse ||
       issuing ||
       issueFlight.current ||
-      !readSettled.current ||
+      !certificateReadSettled.current ||
       !canonicalReadReady.current ||
+      !eligibilityReadReady.current ||
       !ownsPresentation(identityKey)
     )
       return;
@@ -558,7 +607,7 @@ export function useCertificatesController(
   const retryPendingCertificate = async (certificate: CertificateDto) => {
     if (
       issueFlight.current ||
-      !readSettled.current ||
+      !certificateReadSettled.current ||
       !ownsPresentation(identityKey)
     )
       return;
@@ -604,18 +653,20 @@ export function useCertificatesController(
     activeCredential,
     issueReady:
       canonicalReadReady.current &&
-      readSettled.current &&
+      eligibilityReadReady.current &&
+      certificateReadSettled.current &&
       !loading &&
       !issuing &&
       !issueFlight.current &&
       ownsPresentation(identityKey),
     mutationReady:
-      readSettled.current &&
+      certificateReadSettled.current &&
       !loading &&
       !issuing &&
       !issueFlight.current &&
       ownsPresentation(identityKey),
     certificatePending,
+    eligibilityLoading,
     certificates,
     closeIssueCertificate,
     closeSelectedCertificate: () => setSelectedId(null),

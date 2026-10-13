@@ -76,6 +76,9 @@ const CourseCertificateJourney = ({courseId}: {courseId: string}) => {
     );
   } else if (
     controller.loading ||
+    (controller.eligibilityLoading &&
+      !controller.loadError &&
+      !controller.certificatePending) ||
     !controller.identityOwned ||
     (readyCourse && !controller.loadError)
   ) {

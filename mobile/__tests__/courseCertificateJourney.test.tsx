@@ -16,24 +16,33 @@ const mockGoBack = jest.fn();
 jest.mock('@react-navigation/native', () => ({
   useRoute: () => ({params: {courseId: mockCourseId}}),
   createNavigationContainerRef: () => ({}),
-  useNavigation: () => ({navigate: mockNavigate, canGoBack: () => true, goBack: mockGoBack}),
+  useNavigation: () => ({
+    navigate: mockNavigate,
+    canGoBack: () => true,
+    goBack: mockGoBack,
+  }),
   useIsFocused: () => mockFocused,
   useFocusEffect: (effect: () => void | (() => void)) => {
     const ReactModule = require('react') as typeof React;
-    ReactModule.useEffect(() => mockFocused ? effect() : undefined, [effect, mockFocused]);
+    ReactModule.useEffect(
+      () => (mockFocused ? effect() : undefined),
+      [effect, mockFocused],
+    );
   },
 }));
 jest.mock('react-redux', () => ({
-  useSelector: (selector: (state: unknown) => unknown) => selector({
-    auth: {userData: {user: {id: mockIdentity, name: 'طالب ركن'}}},
-  }),
+  useSelector: (selector: (state: unknown) => unknown) =>
+    selector({
+      auth: {userData: {user: {id: mockIdentity, name: 'طالب ركن'}}},
+    }),
 }));
 jest.mock('../src/constants/helpers', () => ({
   extractUserProfile: (session: {user: unknown}) => session.user,
   sessionIdentityKey: () => mockIdentity,
   captureAccountSessionBoundary: async () => ({scope: mockIdentity}),
   assertAccountSessionBoundary: (boundary: {scope: string}) => {
-    if (boundary.scope !== mockIdentity) throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
+    if (boundary.scope !== mockIdentity)
+      throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
   },
 }));
 jest.mock('../src/services/roknApi', () => ({
@@ -44,12 +53,19 @@ jest.mock('../src/services/roknApi', () => ({
   issueCertificate: (...args: unknown[]) => mockIssue(...args),
   recoverCertificate: (...args: unknown[]) => mockRecover(...args),
 }));
-jest.mock('../src/services/systemActions', () => ({openExternalUrlOnce: jest.fn(), shareOnce: jest.fn()}));
-jest.mock('../src/components/VideoPlayer/attachmentActions', () => ({openCourseAttachment: jest.fn()}));
+jest.mock('../src/services/systemActions', () => ({
+  openExternalUrlOnce: jest.fn(),
+  shareOnce: jest.fn(),
+}));
+jest.mock('../src/components/VideoPlayer/attachmentActions', () => ({
+  openCourseAttachment: jest.fn(),
+}));
 jest.mock('../src/components/VideoPlayer/attachmentDownloadNotice', () => ({
   useAttachmentDownloadCancellation: () => () => undefined,
 }));
-jest.mock('../src/hooks/useAppActiveState', () => ({useAppForegroundState: () => mockForeground}));
+jest.mock('../src/hooks/useAppActiveState', () => ({
+  useAppForegroundState: () => mockForeground,
+}));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({top: 0, right: 0, bottom: 0, left: 0}),
 }));
@@ -63,70 +79,131 @@ jest.mock('../src/components/containers/Containers', () => {
 });
 jest.mock('../src/components/view/HeaderWithBack', () => () => null);
 jest.mock('../src/components/FullTrackUpgradeSheet', () => () => null);
-jest.mock('../src/hooks/useReducedMotion', () => ({useReducedMotion: () => true}));
+jest.mock('../src/hooks/useReducedMotion', () => ({
+  useReducedMotion: () => true,
+}));
 jest.mock('../src/components/ui/PremiumUI', () => ({
   MetaPill: () => null,
   SectionHeading: () => null,
-  StatusView: ({title, actionLabel, onAction}: {title: string; actionLabel?: string; onAction?: () => void}) => {
+  StatusView: ({
+    title,
+    actionLabel,
+    onAction,
+  }: {
+    title: string;
+    actionLabel?: string;
+    onAction?: () => void;
+  }) => {
     const ReactModule = require('react') as typeof React;
     const {Text: NativeText, View} = require('react-native');
-    return ReactModule.createElement(View, null,
+    return ReactModule.createElement(
+      View,
+      null,
       ReactModule.createElement(NativeText, null, title),
-      onAction && ReactModule.createElement(View, {accessibilityLabel: actionLabel, onPress: onAction}),
+      onAction &&
+        ReactModule.createElement(View, {
+          accessibilityLabel: actionLabel,
+          onPress: onAction,
+        }),
     );
   },
 }));
 jest.mock('../src/components/touchables/Button', () => {
   const ReactModule = require('react') as typeof React;
   const {View} = require('react-native');
-  return ({title, disable, onPress}: {title: string; disable?: boolean; onPress: () => void}) =>
-    ReactModule.createElement(View, {accessibilityLabel: title, onPress: disable ? undefined : onPress});
+  return ({
+    title,
+    disable,
+    onPress,
+  }: {
+    title: string;
+    disable?: boolean;
+    onPress: () => void;
+  }) =>
+    ReactModule.createElement(View, {
+      accessibilityLabel: title,
+      onPress: disable ? undefined : onPress,
+    });
 });
 jest.mock('../src/components/ui/QRCode', () => () => null);
-jest.mock('../src/screens/Profile/certificates/CertificateArtifactPreview', () => ({
-  CertificateArtifactPreview: ({certificateUrl}: {certificateUrl?: string}) => {
-    const ReactModule = require('react') as typeof React;
-    const {View} = require('react-native');
-    return ReactModule.createElement(View, {testID: 'issued-artifact', certificateUrl});
-  },
-}));
+jest.mock(
+  '../src/screens/Profile/certificates/CertificateArtifactPreview',
+  () => ({
+    CertificateArtifactPreview: ({
+      certificateUrl,
+    }: {
+      certificateUrl?: string;
+    }) => {
+      const ReactModule = require('react') as typeof React;
+      const {View} = require('react-native');
+      return ReactModule.createElement(View, {
+        testID: 'issued-artifact',
+        certificateUrl,
+      });
+    },
+  }),
+);
 
 import CourseCertificate from '../src/screens/CourseCertificate';
 import Certificates from '../src/screens/Profile/Certificates';
 
 const course = (id = '52', certificateAvailable = true) => ({
-  id, title: `كورس ${id}`, certificateAvailable, progress: 100,
-  totalSections: 3, completedSections: 3, accessType: 'paid',
+  id,
+  title: `كورس ${id}`,
+  certificateAvailable,
+  progress: 100,
+  totalSections: 3,
+  completedSections: 3,
+  accessType: 'paid',
 });
 const credential = (courseId = '52', status = 'active') => ({
-  publicId: `credential-${courseId}`, courseId, status,
-  courseName: `كورس ${courseId}`, certificateUrl: `https://rokn.app/c/${courseId}/artifact`,
+  publicId: `credential-${courseId}`,
+  courseId,
+  status,
+  courseName: `كورس ${courseId}`,
+  certificateUrl: `https://rokn.app/c/${courseId}/artifact`,
   certificatePdfUrl: `https://rokn.app/c/${courseId}/download`,
-  verificationUrl: `https://rokn.app/c/${courseId}`, qrDestination: null,
+  verificationUrl: `https://rokn.app/c/${courseId}`,
+  qrDestination: null,
 });
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>(done => {resolve = done;});
+  const promise = new Promise<T>(done => {
+    resolve = done;
+  });
   return {promise, resolve};
 };
 let renderer: TestRenderer.ReactTestRenderer | undefined;
 const mount = async () => {
-  await act(async () => {renderer = TestRenderer.create(<CourseCertificate />);});
+  await act(async () => {
+    renderer = TestRenderer.create(<CourseCertificate />);
+  });
 };
 const press = async (label: string) => {
-  const action = renderer!.root.findAll(node =>
-    node.props.accessibilityLabel === label && typeof node.props.onPress === 'function',
+  const action = renderer!.root.findAll(
+    node =>
+      node.props.accessibilityLabel === label &&
+      typeof node.props.onPress === 'function',
   )[0];
   if (!action) throw new Error(`Missing action ${label}`);
-  await act(async () => {await action.props.onPress();});
+  await act(async () => {
+    await action.props.onPress();
+  });
 };
-const texts = () => renderer!.root.findAllByType(Text).map(node => node.props.children).join(' ');
+const texts = () =>
+  renderer!.root
+    .findAllByType(Text)
+    .map(node => node.props.children)
+    .join(' ');
 
 describe('Udemy-style exact-course certificate access with Rokn issuance rules', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
-    mockCourseId = '52'; mockIdentity = 'account-a'; mockFocused = true; mockForeground = true;
+    mockCourseId = '52';
+    mockIdentity = 'account-a';
+    mockFocused = true;
+    mockForeground = true;
     mockCertificates.mockReset().mockResolvedValue([]);
     mockLearning.mockReset().mockResolvedValue([course()]);
     mockIssue.mockReset().mockResolvedValue(credential());
@@ -139,10 +216,16 @@ describe('Udemy-style exact-course certificate access with Rokn issuance rules',
   });
 
   it('opens only this issued artifact, ignoring unrelated ready and pending courses', async () => {
-    mockCertificates.mockResolvedValue([credential('71', 'pending'), credential()]);
+    mockCertificates.mockResolvedValue([
+      credential('71', 'pending'),
+      credential(),
+    ]);
     mockLearning.mockResolvedValue([course(), course('71')]);
     await mount();
-    expect(renderer!.root.findByProps({testID: 'issued-artifact'}).props.certificateUrl).toBe(credential().certificateUrl);
+    expect(
+      renderer!.root.findByProps({testID: 'issued-artifact'}).props
+        .certificateUrl,
+    ).toBe(credential().certificateUrl);
     expect(texts()).toContain('كورس 52');
     expect(texts()).not.toContain('كورس 71');
     expect(renderer!.root.findAllByType(TextInput)).toHaveLength(0);
@@ -152,12 +235,41 @@ describe('Udemy-style exact-course certificate access with Rokn issuance rules',
     const learningReads = mockLearning.mock.calls.length;
     // Native controls can own unrelated timers. The contract is that this
     // issued course never polls or recovers another course's pending artifact.
-    await act(async () => {jest.advanceTimersByTime(60_000);});
+    await act(async () => {
+      jest.advanceTimersByTime(60_000);
+    });
     expect(mockCertificates).toHaveBeenCalledTimes(certificateReads);
     expect(mockLearning).toHaveBeenCalledTimes(learningReads);
     expect(mockIssue).not.toHaveBeenCalled();
     expect(mockRecover).not.toHaveBeenCalled();
-    expect(renderer!.root.findByProps({testID: 'issued-artifact'}).props.certificateUrl).toBe(credential().certificateUrl);
+    expect(
+      renderer!.root.findByProps({testID: 'issued-artifact'}).props
+        .certificateUrl,
+    ).toBe(credential().certificateUrl);
+  });
+
+  it('opens the issued artifact before the unrelated eligibility read finishes', async () => {
+    const learning = deferred<unknown[]>();
+    mockCertificates.mockResolvedValue([credential()]);
+    mockLearning.mockReturnValueOnce(learning.promise);
+    try {
+      await mount();
+      expect(
+        renderer!.root.findByProps({testID: 'issued-artifact'}).props
+          .certificateUrl,
+      ).toBe(credential().certificateUrl);
+      expect(renderer!.root.findAllByType(TextInput)).toHaveLength(0);
+      expect(mockIssue).not.toHaveBeenCalled();
+      expect(mockRecover).not.toHaveBeenCalled();
+      await act(async () => learning.resolve([course()]));
+      expect(
+        renderer!.root.findByProps({testID: 'issued-artifact'}).props
+          .certificateUrl,
+      ).toBe(credential().certificateUrl);
+      expect(mockIssue).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => learning.resolve([]));
+    }
   });
 
   it('confirms the frozen name before issuance then opens the canonical returned artifact', async () => {
@@ -167,8 +279,13 @@ describe('Udemy-style exact-course certificate access with Rokn issuance rules',
     expect(mockIssue).not.toHaveBeenCalled();
     await act(async () => name.props.onChangeText('خليل أمين'));
     await press('إصدار الشهادة');
-    expect(mockIssue).toHaveBeenCalledWith('52', 'خليل أمين', {scope: 'account-a'});
-    expect(renderer!.root.findByProps({testID: 'issued-artifact'}).props.certificateUrl).toBe(credential().certificateUrl);
+    expect(mockIssue).toHaveBeenCalledWith('52', 'خليل أمين', {
+      scope: 'account-a',
+    });
+    expect(
+      renderer!.root.findByProps({testID: 'issued-artifact'}).props
+        .certificateUrl,
+    ).toBe(credential().certificateUrl);
     expect(renderer!.root.findAllByType(TextInput)).toHaveLength(0);
     await press('مشاركة الشهادة');
     await press('حفظ الشهادة');
@@ -182,22 +299,38 @@ describe('Udemy-style exact-course certificate access with Rokn issuance rules',
     expect(renderer!.root.findAllByType(TextInput)).toHaveLength(0);
     expect(mockIssue).not.toHaveBeenCalled();
     await press('العودة للكورس');
-    expect(mockNavigate).toHaveBeenCalledWith('CourseDetails', {courseId: '52'});
+    expect(mockNavigate).toHaveBeenCalledWith('CourseDetails', {
+      courseId: '52',
+    });
   });
 
   it('reads pending status without mutating then opens the completed certificate automatically', async () => {
-    mockCertificates.mockResolvedValue([credential('52', 'pending'), credential('71', 'pending')]);
+    mockCertificates.mockResolvedValue([
+      credential('52', 'pending'),
+      credential('71', 'pending'),
+    ]);
     await mount();
     expect(texts()).toContain('شهادتك قيد التجهيز');
-    mockCertificates.mockResolvedValue([credential(), credential('71', 'pending')]);
-    await act(async () => {jest.advanceTimersByTime(3000);});
-    expect(renderer!.root.findByProps({testID: 'issued-artifact'}).props.certificateUrl).toBe(credential().certificateUrl);
+    mockCertificates.mockResolvedValue([
+      credential(),
+      credential('71', 'pending'),
+    ]);
+    await act(async () => {
+      jest.advanceTimersByTime(3000);
+    });
+    expect(
+      renderer!.root.findByProps({testID: 'issued-artifact'}).props
+        .certificateUrl,
+    ).toBe(credential().certificateUrl);
     expect(mockIssue).not.toHaveBeenCalled();
     expect(mockRecover).not.toHaveBeenCalled();
   });
 
   it('recovers only the requested pending credential after an explicit retry', async () => {
-    mockCertificates.mockResolvedValue([credential('52', 'pending'), credential('71', 'pending')]);
+    mockCertificates.mockResolvedValue([
+      credential('52', 'pending'),
+      credential('71', 'pending'),
+    ]);
     await mount();
     await press('إعادة المحاولة');
     expect(mockRecover).toHaveBeenCalledTimes(1);
@@ -232,7 +365,9 @@ describe('Udemy-style exact-course certificate access with Rokn issuance rules',
 
   it('offers a read retry after returning offline to the name form and preserves the edited name', async () => {
     await mount();
-    await act(async () => renderer!.root.findByType(TextInput).props.onChangeText('خليل أمين'));
+    await act(async () =>
+      renderer!.root.findByType(TextInput).props.onChangeText('خليل أمين'),
+    );
     mockCertificates.mockRejectedValue(new Error('offline'));
     mockLearning.mockRejectedValue(new Error('offline'));
     await act(async () => {
@@ -244,9 +379,13 @@ describe('Udemy-style exact-course certificate access with Rokn issuance rules',
       renderer!.update(<CourseCertificate />);
     });
     expect(mockIssue).not.toHaveBeenCalled();
-    expect(renderer!.root.findAll(node =>
-      node.props.accessibilityLabel === 'إصدار الشهادة' && typeof node.props.onPress === 'function',
-    )).toHaveLength(0);
+    expect(
+      renderer!.root.findAll(
+        node =>
+          node.props.accessibilityLabel === 'إصدار الشهادة' &&
+          typeof node.props.onPress === 'function',
+      ),
+    ).toHaveLength(0);
     mockCertificates.mockResolvedValue([]);
     mockLearning.mockResolvedValue([course()]);
     await press('إعادة المحاولة');
@@ -254,7 +393,9 @@ describe('Udemy-style exact-course certificate access with Rokn issuance rules',
     expect(mockIssue).not.toHaveBeenCalled();
     expect(mockRecover).not.toHaveBeenCalled();
     await press('إصدار الشهادة');
-    expect(mockIssue).toHaveBeenCalledWith('52', 'خليل أمين', {scope: 'account-a'});
+    expect(mockIssue).toHaveBeenCalledWith('52', 'خليل أمين', {
+      scope: 'account-a',
+    });
   });
 
   it('retries a failed pending-status read before requesting artifact regeneration', async () => {
@@ -275,12 +416,17 @@ describe('Udemy-style exact-course certificate access with Rokn issuance rules',
     await press('إعادة المحاولة');
     expect(mockRecover).not.toHaveBeenCalled();
     expect(mockIssue).not.toHaveBeenCalled();
-    expect(renderer!.root.findByProps({testID: 'issued-artifact'}).props.certificateUrl).toBe(credential().certificateUrl);
+    expect(
+      renderer!.root.findByProps({testID: 'issued-artifact'}).props
+        .certificateUrl,
+    ).toBe(credential().certificateUrl);
   });
 
   it('keeps Profile pending controls read-only after an offline refresh until a successful status read', async () => {
     mockCertificates.mockResolvedValue([credential('52', 'pending')]);
-    await act(async () => {renderer = TestRenderer.create(<Certificates />);});
+    await act(async () => {
+      renderer = TestRenderer.create(<Certificates />);
+    });
     mockCertificates.mockRejectedValue(new Error('offline'));
     mockLearning.mockRejectedValue(new Error('offline'));
     await act(async () => {
@@ -310,12 +456,17 @@ describe('Udemy-style exact-course certificate access with Rokn issuance rules',
 
   it('retires the old course owner instead of promoting a late credential on another course page', async () => {
     const old = deferred<unknown[]>();
-    mockCertificates.mockReturnValueOnce(old.promise).mockResolvedValue([credential('71')]);
+    mockCertificates
+      .mockReturnValueOnce(old.promise)
+      .mockResolvedValue([credential('71')]);
     await mount();
     mockCourseId = '71';
     await act(async () => renderer!.update(<CourseCertificate />));
     await act(async () => old.resolve([credential()]));
-    expect(renderer!.root.findByProps({testID: 'issued-artifact'}).props.certificateUrl).toBe(credential('71').certificateUrl);
+    expect(
+      renderer!.root.findByProps({testID: 'issued-artifact'}).props
+        .certificateUrl,
+    ).toBe(credential('71').certificateUrl);
     expect(texts()).not.toContain('كورس 52');
     expect(mockIssue).not.toHaveBeenCalled();
   });
@@ -326,21 +477,31 @@ describe('Udemy-style exact-course certificate access with Rokn issuance rules',
     await mount();
     // Keep the mutation in flight; do not await its promise before switching.
     act(() => {
-      const action = renderer!.root.findAll(node =>
-        node.props.accessibilityLabel === 'إصدار الشهادة' && typeof node.props.onPress === 'function',
+      const action = renderer!.root.findAll(
+        node =>
+          node.props.accessibilityLabel === 'إصدار الشهادة' &&
+          typeof node.props.onPress === 'function',
       )[0];
       action.props.onPress();
     });
-    await act(async () => {await Promise.resolve();});
+    await act(async () => {
+      await Promise.resolve();
+    });
     expect(mockIssue).toHaveBeenCalledTimes(1);
     mockIdentity = 'account-b';
-    mockCertificates.mockResolvedValue([{
-      ...credential(), publicId: 'account-b-credential',
-      certificateUrl: 'https://rokn.app/c/account-b/artifact',
-    }]);
+    mockCertificates.mockResolvedValue([
+      {
+        ...credential(),
+        publicId: 'account-b-credential',
+        certificateUrl: 'https://rokn.app/c/account-b/artifact',
+      },
+    ]);
     await act(async () => renderer!.update(<CourseCertificate />));
     await act(async () => oldIssue.resolve(credential()));
-    expect(renderer!.root.findByProps({testID: 'issued-artifact'}).props.certificateUrl).toBe('https://rokn.app/c/account-b/artifact');
+    expect(
+      renderer!.root.findByProps({testID: 'issued-artifact'}).props
+        .certificateUrl,
+    ).toBe('https://rokn.app/c/account-b/artifact');
     expect(mockIssue).toHaveBeenCalledTimes(1);
   });
 });

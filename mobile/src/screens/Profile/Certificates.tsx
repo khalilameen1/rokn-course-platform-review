@@ -38,6 +38,7 @@ export default function Certificates({
     certificates,
     closeIssueCertificate,
     closeSelectedCertificate,
+    eligibilityLoading,
     grantCourses,
     identityOwned,
     issueCourse,
@@ -61,7 +62,7 @@ export default function Certificates({
     <View style={styles.container}>
       <SectionHeading title="شهاداتي" />
 
-      {(loading || !identityOwned) &&
+      {(loading || (!loadError && eligibilityLoading) || !identityOwned) &&
       !certificates.length &&
       !readyCourses.length &&
       !grantCourses.length ? (

@@ -1,0 +1,156 @@
+Rokn release candidate 1.0.64
+Android versionCode 66 and iOS build 55
+Preparation record 2026-10-13
+
+SOURCE AND SCOPE
+Correct public repository: khalilameen1/rokn-course-platform-review (remote cloud).
+Local base and freshly fetched cloud/main both resolved to
+1b0c2cb5206f3033420aa935090ba4ca7d4a40de before these repairs were committed.
+Unrelated pre-existing landing-page edits are preserved, not included in the
+mobile release change set. No store review submission has been altered.
+
+SHARED OWNERSHIP
+The server remains the owner of permissions, financial settlement, purchased
+course entitlements, project results and certificate eligibility. Optional cache
+work cannot hold an acknowledged result. Preparation belongs to an active visit;
+already-dispatched work retains its account/domain owner and recovery identity.
+
+NINE AUDITED REPAIRS
+1 Product feature availability: concurrent bounded disk hydration and network
+  refresh; optional serialized persistence no longer owns delivery.
+2 Purchase entry: optional wallet/catalog reads do not own the paywall; direct
+  exact-funding quotes bind the canonical cheapest rounded package rate once.
+  Older unbound/native quote contracts still use explicit package authorization.
+3 MyCorner: canonical courses publish independently of optional profile,
+  streak and paths; account/read generations prevent older enrichment replacing
+  a newer library.
+4 Certificates: issued artifacts publish independently of new-issuance
+  eligibility; issuance still requires both current successful server reads.
+5 AI consent: server-confirmed consent is delivered independently of optional
+  local receipt persistence; account-scoped serialization preserves revocation.
+6 Section completion: confirmed completion is delivered before optional player
+  cache/journal cleanup; required watch evidence and unacknowledged retry
+  durability retain their original mandatory ordering.
+7 Project result refresh: the optional player overlay starts alongside the
+  server read and has a 250ms budget, matching the existing course loader.
+  Local cache never grants server-locked access or overwrites a newer map.
+8 Project actions: discussion, report retry and review retry use one shared
+  preparation lease. Departure retires preparation and late consent UI; a
+  dispatched request remains owned and cannot be replayed by reopening.
+9 Late native credit: pending course upgrade observes the existing verified
+  native and external credit buses and runs the same single-flight server
+  reconciliation, without new payment or event-based enrollment grants.
+
+REFERENCE BOUNDARIES
+Architecture references were inspected before their corresponding repairs.
+No closed-source competitor code, new payment SDK or copied vendor source was
+added. Concrete reuse is of installed libraries and established Rokn adapters,
+queues, consent owner callbacks and immutable financial contracts.
+
+Flags and bounded initialization: LaunchDarkly's public FlagStore and
+FlagPersistence architecture; Vodafone's published client SDK use is evidence
+of deployment, not a latency benchmark for Rokn.
+https://github.com/launchdarkly/js-core/tree/main/packages/shared/sdk-client/src/flag-manager
+https://go.launchdarkly.com/rs/850-KKH-319/images/feature-flag-journey-enables-vodafone-to-enhance-digital-experiences.pdf?version=0
+
+Independent daily reads, optional persistence and detached mutation observers:
+TanStack query-core queriesObserver/mutationObserver and query-persist-client
+persist. Bluesky publicly uses TanStack React Query and reports 41.41 million
+users at the end of 2025. This proves adoption, not individual-hook performance.
+https://github.com/TanStack/query/blob/main/packages/query-core/src/queriesObserver.ts
+https://github.com/TanStack/query/blob/main/packages/query-core/src/mutationObserver.ts
+https://github.com/TanStack/query/blob/main/packages/query-persist-client-core/src/persist.ts
+https://github.com/bluesky-social/social-app/blob/main/src/lib/react-query.tsx
+https://bsky.social/about/blog/01-29-2026-transparency-report-2025
+
+Purchase preparation: Shopify Hydrogen skeleton checkout architecture,
+publicly deployed by Allbirds and Shopify Supply. No Shopify protocol was added.
+https://shopify.engineering/how-we-built-hydrogen
+https://github.com/Shopify/hydrogen/blob/2026-04/templates/skeleton/app/components/CartSummary.tsx
+
+Verified credit observer lifecycle: RevenueCat's public React Native SDK and
+CustomerInfo listener architecture; RevenueCat reports serving 100K+ apps.
+No RevenueCat service, data model or SDK was installed.
+https://github.com/RevenueCat/react-native-purchases/blob/main/src/purchases.ts
+https://revenuecat.github.io/codelabs/guides/customer-info-update-listener-react-native.html
+https://www.revenuecat.com/blog/engineering/engineering-strategy
+
+CROSS-PLATFORM COURSE CHECKOUT
+Both supported mobile platforms now request channel=direct and
+funding_mode=exact_shortfall for a course purchase/upgrade. They use the same
+signed rokn.app/course-payment URL, server-bound cash quote, existing Kashier
+hosted page and receipt reconciliation. Android retains its Chrome-first native
+launcher with default-browser fallback. iOS reuses React Native Linking.openURL
+to hand HTTPS to the user's default browser; no auth session or WebView.
+Listeners are installed before browser launch, cleaned on completion and handle
+manual foreground return as reconciliation, not proof of cancellation/payment.
+The existing cold-start durable return path and server receipt checks remain.
+
+Grant-code entry is available on both platforms. Legacy native receipt recovery
+and distribution-specific wallet compatibility remain; native paid-coin
+settlement is not deleted just because new course intents use Kashier.
+Apple sign-in remains an OS-specific platform integration, not a checkout fork.
+
+Kashier's existing hosted integration is reused, not rewritten. Its published
+customer list and thousands-of-merchants claim are adoption evidence from the
+provider, not an independent uptime/performance audit.
+https://developers.kashier.io/docs/accept-payments/payment-sessions
+https://www.kashier.io/about
+
+STORE PUBLICATION CONSTRAINT
+As checked against official rules on 2026-10-13, an in-app button directing an
+Egypt-storefront user to external payment for digital course access is not
+automatically permitted. Apple 3.1.1(a) limits external-link exceptions by
+storefront/entitlement; Google Payments sections 4, 8 and 9 require an applicable
+exception/program. Grant-code unlocks also require accurate review disclosure.
+No qualifying Egypt exception or entitlement has been established here.
+These candidates implement the user-requested identical product; they are not
+represented as compliant/approved store releases. No reviewer-specific bypass,
+remote switch to conceal checkout, resubmission or publication is authorized
+by this build record. Store approval is not proven by successful compilation.
+https://developer.apple.com/app-store/review/guidelines/#business
+https://support.google.com/googleplay/android-developer/answer/9858738?hl=en
+
+VERIFICATION COMPLETED BEFORE BUILD
+One full mobile run: 367 suites, 3334 tests; 3332 passed and two old source-text
+assertions failed because ownership names/formatting changed. They were updated
+to assert the stronger visit+domain guard and whitespace-independent cache
+budget. Targeted recheck: 4 suites, 22 tests, all passed. No failing functional
+acceptance case remained in that run. Runtime warnings in existing playback
+tests are not treated as physical-device proof or crashes.
+Full TypeScript and release ESLint passed after the nine repairs.
+Backend CourseCheckoutServiceTest: 55 tests, 434 assertions, zero failures or
+errors, 3 PHPUnit deprecations; SQLite :memory: and isolated temporary storage.
+PHP's blocked fileinfo DLL was not loaded or bypassed. CLI memory=1G was used
+for tests only and no server memory setting was changed.
+
+After checkout parity: 9 affected suites, 110 tests passed; TypeScript and
+targeted ESLint passed. These are controlled mocked-I/O tests, not a live Kashier
+charge or evidence from a physical iPhone. iOS Info.plist already declares the
+rokn URL scheme and AppDelegate forwards incoming URLs to RCTLinkingManager.
+
+Additional preparation gates: release configuration consistent; 142 release
+tooling tests passed; existing legal inventory verified 733 JS packages,
+260 Maven coordinates and 137 CocoaPods roots; static accessibility check passed
+467 files; full-history/current repository secret scan passed 1220 current
+files. These are not native execution or payment acceptance evidence.
+
+DEPENDENCY RISK REMAINS
+The version bump changes only the lockfile's top-level/root-package release
+version. A deep equality comparison proved all other lock content unchanged.
+The live npm audit was evaluated against the original accepted lock and policy:
+43 entries exactly matched (40 high, 3 moderate, 0 critical). The existing
+acceptance was reviewed 2026-10-05 and expires 2026-10-19; neither dates, entries,
+advisories nor severity rules were changed. Only the hash was rebound to the
+version-only lock metadata. No dependency vulnerability was patched. This is
+continued use of the existing time-limited risk decision, not a clean security
+audit or a new waiver. A later build must recheck the live audit and expiration.
+
+STILL REQUIRED AT THE TIME THIS RECORD WAS WRITTEN
+Final release/native/config/dependency gates, compatible backend/dashboard
+integration verification, signed reproducible Android and iOS artifacts,
+artifact hashes/source provenance and device/runtime acceptance as available.
+No APK, AAB or IPA has yet been built for this candidate. No code has yet been
+pushed/deployed and current Google/Apple review state has not been changed.
+Record final artifacts and verification separately rather than treating this
+preparation record as successful delivery.

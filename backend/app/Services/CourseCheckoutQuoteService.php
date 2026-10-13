@@ -90,6 +90,16 @@ final readonly class CourseCheckoutQuoteService
             // when the catalogue disables future sales of that denomination.
             $selected = $selectPackage ? $eligible->firstWhere('id', (int) $packageId) : Package::query()->find($packageId);
             if (!$selected || ($selectPackage && $minimumDeficit === 0)) throw new \DomainException('checkout_package_unavailable');
+        } elseif ($exactFunding && $selectPackage && $minimumDeficit > 0) {
+            // Exact direct funding has no buyer-facing denomination choice.
+            // Bind the least cash amount in this same immutable quote instead
+            // of making the app create another intent merely to select a rate.
+            // Reuse dashboard pricing and its currency rounding, not a client
+            // conversion. Legacy/native quotes retain explicit package binding.
+            $selected = $eligible->sortBy(fn (Package $candidate): array => [
+                $this->pricing->courseFundingPayload($candidate, $minimumDeficit)['direct_price'],
+                (int) $candidate->id,
+            ])->first();
         }
         // The learner's discount is settled before choosing payment funding.
         // A denomination cannot silently remove an already-available benefit.

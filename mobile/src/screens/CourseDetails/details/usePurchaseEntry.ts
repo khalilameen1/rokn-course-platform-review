@@ -145,9 +145,6 @@ export function usePurchaseEntry({
         case 'price_unavailable':
           setNotice('سعر الكورس لم يُنشر بعد\nلم نبدأ أي عملية شراء');
           return;
-        case 'wallet_unavailable':
-          setNotice('تعذّر التحقق من رصيدك\nحاول بعد لحظات');
-          return;
         case 'checkout_unavailable':
           setNotice('الشراء غير متاح الآن');
           return;
@@ -222,11 +219,6 @@ export function usePurchaseEntry({
     setNotice('');
     if (primaryAction.kind === 'price_unavailable') {
       setNotice('سعر الكورس لم يُنشر بعد\nلم نبدأ أي عملية شراء');
-      consumeRouteIntent();
-      return;
-    }
-    if (primaryAction.kind === 'wallet_unavailable') {
-      setNotice('تعذّر التحقق من رصيدك\nحاول بعد لحظات');
       consumeRouteIntent();
       return;
     }

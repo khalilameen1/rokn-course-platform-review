@@ -366,26 +366,36 @@ export const getCachedLearningDashboard = async () => {
   return cached;
 };
 
-export const getLearningDashboard = async (): Promise<LearningDashboard> => {
+type LearningDashboardReadOptions = {
+  /** Courses own the learning entry; enrichment and cache never delay them. */
+  onCoursesReady?: (courses: LearningCourse[]) => void;
+};
+
+export const getLearningDashboard = async ({
+  onCoursesReady,
+}: LearningDashboardReadOptions = {}): Promise<LearningDashboard> => {
   const accountBoundary = await captureAccountSessionBoundary();
   const cacheRequest = ++dashboardCacheState(accountBoundary.scope).request;
-  const cachedDashboardRequest = getCachedLearningDashboard();
-  const dashboardRequest = Promise.allSettled([
+  const cachedDashboardRequest = getCachedLearningDashboard().catch(() => null);
+  const coursesRequest = getLearningCourses();
+  const secondaryRequest = Promise.allSettled([
     publicRequest.get('user/profile', {
       params: {include_learning: 0, include_badges: 1},
     }),
     publicRequest.get('streaks'),
-    getLearningCourses(),
     getLearningPaths(),
   ]);
+  // Publish the authoritative library (including an empty one) independently.
+  // Secondary failures are observed from the start, even if courses reject.
+  const courses = await coursesRequest;
+  assertAccountSessionBoundary(accountBoundary);
+  onCoursesReady?.(courses);
   const [cachedDashboard, dashboardResults] = await Promise.all([
     cachedDashboardRequest,
-    dashboardRequest,
+    secondaryRequest,
   ]);
-  const [profileResult, streakResult, learningResult, pathsResult] =
-    dashboardResults;
+  const [profileResult, streakResult, pathsResult] = dashboardResults;
   assertAccountSessionBoundary(accountBoundary);
-  if (learningResult.status === 'rejected') throw learningResult.reason;
   const partialFailure = [profileResult, streakResult, pathsResult].some(
     result => result.status === 'rejected',
   );
@@ -398,7 +408,7 @@ export const getLearningDashboard = async (): Promise<LearningDashboard> => {
       ? payload<StreakDto>(streakResult.value)
       : {};
   const dashboard: LearningDashboard = {
-    courses: learningResult.value,
+    courses,
     paths:
       pathsResult.status === 'fulfilled'
         ? pathsResult.value

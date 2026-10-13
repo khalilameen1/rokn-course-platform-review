@@ -105,6 +105,168 @@ describe('MyCorner authoritative courses with unavailable native cache', () => {
     jest.useRealTimers();
   });
 
+  it.each(['user/profile', 'streaks', 'user/paths'])(
+    'delivers owned courses before the unrelated %s read settles',
+    async routeToDelay => {
+      const secondary = deferred();
+      const normalGet = mockGet.getMockImplementation()!;
+      mockGet.mockImplementation(async (route: string) => {
+        const value = await normalGet(route);
+        if (route === routeToDelay) await secondary.promise;
+        return value;
+      });
+      let current!: ReturnType<typeof useMyCornerData>;
+      const Harness = () => {
+        current = useMyCornerData(mockBoundary.scope);
+        return null;
+      };
+      let renderer!: TestRenderer.ReactTestRenderer;
+      try {
+        await act(async () => {
+          renderer = TestRenderer.create(<Harness />);
+          await flush();
+        });
+        expect(current.dashboard?.courses[0].id).toBe('3');
+        expect(current.learningOwnershipFresh).toBe(true);
+        expect(current.dashboardLoading).toBe(false);
+        await act(async () => {
+          secondary.resolve();
+          await flush();
+        });
+        expect(current.dashboard?.courses[0].id).toBe('3');
+        expect(current.dashboardError).toBe('');
+      } finally {
+        await act(async () => {
+          renderer.unmount();
+          secondary.resolve();
+          await flush();
+        });
+      }
+    },
+  );
+
+  it('reports a failed authoritative library without waiting for secondary panels', async () => {
+    const secondary = deferred();
+    const normalGet = mockGet.getMockImplementation()!;
+    mockGet.mockImplementation(async (route: string) => {
+      if (route === 'learning/courses') throw new Error('library unavailable');
+      const value = await normalGet(route);
+      await secondary.promise;
+      return value;
+    });
+    let current!: ReturnType<typeof useMyCornerData>;
+    const Harness = () => {
+      current = useMyCornerData(mockBoundary.scope);
+      return null;
+    };
+    let renderer!: TestRenderer.ReactTestRenderer;
+    try {
+      await act(async () => {
+        renderer = TestRenderer.create(<Harness />);
+        await flush();
+      });
+      expect(current.dashboard).toBeNull();
+      expect(current.learningOwnershipFresh).toBe(false);
+      expect(current.dashboardLoading).toBe(false);
+      expect(current.dashboardError).not.toBe('');
+    } finally {
+      await act(async () => {
+        renderer.unmount();
+        secondary.resolve();
+        await flush();
+      });
+    }
+  });
+
+  it('delivers an authoritative empty library before enrichment finishes', async () => {
+    const secondary = deferred();
+    const normalGet = mockGet.getMockImplementation()!;
+    mockGet.mockImplementation(async (route: string) => {
+      const value = await normalGet(route);
+      if (route === 'learning/courses') value.data.data.items = [];
+      if (route === 'streaks') await secondary.promise;
+      return value;
+    });
+    let current!: ReturnType<typeof useMyCornerData>;
+    const Harness = () => {
+      current = useMyCornerData(mockBoundary.scope);
+      return null;
+    };
+    let renderer!: TestRenderer.ReactTestRenderer;
+    try {
+      await act(async () => {
+        renderer = TestRenderer.create(<Harness />);
+        await flush();
+      });
+      expect(current.dashboard?.courses).toEqual([]);
+      expect(current.learningOwnershipFresh).toBe(true);
+      expect(current.dashboardLoading).toBe(false);
+      expect(current.dashboardError).toBe('');
+    } finally {
+      await act(async () => {
+        renderer.unmount();
+        secondary.resolve();
+        await flush();
+      });
+    }
+  });
+
+  it('retires old enrichment after refreshing a delivered library and keeps one active primary read', async () => {
+    const oldStreak = deferred();
+    const normalGet = mockGet.getMockImplementation()!;
+    let delayFirstStreak = true;
+    mockGet.mockImplementation(async (route: string) => {
+      const value = await normalGet(route);
+      if (route === 'streaks' && delayFirstStreak) {
+        delayFirstStreak = false;
+        value.data.data.current_streak = 77;
+        await oldStreak.promise;
+      }
+      return value;
+    });
+    let current!: ReturnType<typeof useMyCornerData>;
+    const Harness = () => {
+      current = useMyCornerData(mockBoundary.scope);
+      return null;
+    };
+    let renderer!: TestRenderer.ReactTestRenderer;
+    try {
+      await act(async () => {
+        renderer = TestRenderer.create(<Harness />);
+        await flush();
+      });
+      expect(current.learningOwnershipFresh).toBe(true);
+      mockCourseTitle = 'الكورس بعد التحديث';
+      await act(async () => {
+        current.reload();
+        current.reload();
+        await flush();
+      });
+      expect(
+        mockGet.mock.calls.filter(([route]) => route === 'learning/courses'),
+      ).toHaveLength(2);
+      expect(current.dashboard?.courses[0].title).toBe(mockCourseTitle);
+      expect(current.learningOwnershipFresh).toBe(true);
+      await act(async () => {
+        oldStreak.resolve();
+        await flush();
+      });
+      expect(current.dashboard?.courses[0].title).toBe(mockCourseTitle);
+      expect(current.dashboard?.currentStreakDays).toBe(0);
+      expect(current.dashboardLoading).toBe(false);
+      await expect(getCachedLearningDashboard()).resolves.toMatchObject({
+        courses: [{title: mockCourseTitle}],
+        currentStreakDays: 0,
+      });
+    } finally {
+      await act(async () => {
+        renderer.unmount();
+        oldStreak.resolve();
+        await flush();
+      });
+    }
+  });
+
   it.each(['read', 'write', 'read-failed-network'] as const)(
     'keeps API ownership authoritative when cache %s never settles',
     async kind => {

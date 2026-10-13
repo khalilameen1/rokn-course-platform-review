@@ -605,8 +605,9 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame(300, $first['deficit']);
         self::assertSame(300, $first['recommended_packages'][0]['coins']);
         self::assertEquals(3.33, $first['recommended_packages'][0]['direct_price']);
-        $quote = $service->create($user, $input + ['package_id' => $package->id]);
-        self::assertSame($first['allocation'], $quote['allocation']);
+        self::assertSame((int) $package->id, $first['selected_package']['id']);
+        $quote = $first;
+        self::assertSame(1, CourseCheckout::query()->where('user_id', $user->id)->count());
         self::assertSame(0, $quote['remaining_purchased_balance']);
         $service->authorize($user, $quote['id']);
         $begun = app(\App\Services\KashierCheckoutOrderService::class)->beginCheckout(
@@ -639,6 +640,31 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertEquals(28.80, $quote['selected_package']['direct_price']);
         self::assertSame(80, $quote['allocation']['reward_coins']);
         self::assertSame(0, $quote['remaining_purchased_balance']);
+    }
+
+    public function test_exact_direct_quote_binds_the_cheapest_rounded_cash_rate_without_spending(): void
+    {
+        [$user, $course, $service] = $this->fixture(0, 200);
+        $small = $this->storePackage(100);
+        $small->forceFill(['direct_enabled' => true, 'price' => '10.00'])->save();
+        $best = $this->storePackage(1000);
+        $best->forceFill(['direct_enabled' => true, 'price' => '30.00'])->save();
+        $equalRate = $this->storePackage(1000);
+        $equalRate->forceFill(['direct_enabled' => true, 'price' => '30.00'])->save();
+        $quote = $service->create($user, array_replace($this->input($course), [
+            'channel' => 'direct', 'funding_mode' => 'exact_shortfall',
+        ]));
+        self::assertSame((int) $best->id, $quote['selected_package']['id']);
+        self::assertSame(320, $quote['selected_package']['coins']);
+        self::assertEquals(8.64, $quote['selected_package']['direct_price']);
+        self::assertSame(0, $quote['remaining_purchased_balance']);
+        self::assertSame('quoted', $quote['status']);
+        self::assertSame(0, Order::query()->count());
+        self::assertSame(0, CourseEnrollment::query()->count());
+        self::assertSame(0, (int) $user->fresh()->wallet_purchased_coins);
+        self::assertSame(200, (int) $user->fresh()->wallet_reward_coins);
+        self::assertSame('pending_payment', $service->authorize($user, $quote['id'])['status']);
+        self::assertSame(0, CourseEnrollment::query()->count());
     }
 
     public function test_exact_wallet_only_checkout_never_creates_a_funding_order(): void

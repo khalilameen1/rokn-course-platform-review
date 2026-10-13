@@ -1,7 +1,7 @@
 /**
  * Distribution-aware commerce guard.
  *
- * Wallet billing remains distribution-aware. Android course subscriptions use
+ * Wallet billing remains distribution-aware. Mobile course subscriptions use
  * their separate transport selected by checkoutRouting.
  */
 export type DistributionChannel = 'direct' | 'play' | 'appstore';
@@ -15,15 +15,15 @@ export type DistributionCapabilities = {
 /**
  * Keep access redemption independent from checkout.
  *
- * Play may redeem access already issued by an educational organization;
- * paid coin packages still use Google Play Billing.
- * App Store builds do not expose a generic code/key unlock because App Review
- * Guideline 3.1.1 requires digital-content unlocks to use in-app purchase.
+ * Course grant redemption is shared by both mobile platforms. Wallet/native
+ * receipt compatibility remains distribution-aware. These capabilities describe
+ * the implemented product, not proof of approval for an external-payment or
+ * grant-unlock flow in any store region; see the release parity notes.
  */
 export const getDistributionCapabilities = (
   channel: DistributionChannel,
 ): DistributionCapabilities => ({
-  canRedeemCourseAccessCode: channel !== 'appstore',
+  canRedeemCourseAccessCode: ['direct', 'play', 'appstore'].includes(channel),
   canStartExternalCheckout: channel === 'direct',
   canStartNativeCheckout: channel === 'play' || channel === 'appstore',
 });

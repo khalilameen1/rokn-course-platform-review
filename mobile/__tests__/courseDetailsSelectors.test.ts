@@ -84,7 +84,10 @@ describe('course details presentation contract', () => {
 
   it('uses purchase as the primary entry and keeps the sample separate for a paid guest course', () => {
     const guestSample = presentation({remoteSession: false});
-    expect(guestSample.primaryAction).toEqual({kind: 'login', label: 'اشترِ الآن'});
+    expect(guestSample.primaryAction).toEqual({
+      kind: 'login',
+      label: 'اشترِ الآن',
+    });
     expect(guestSample.showSecondaryPreview).toBe(true);
     expect(presentation({remoteSession: true}).showSecondaryPreview).toBe(true);
     expect(
@@ -109,17 +112,27 @@ describe('course details presentation contract', () => {
         remoteCourse: {...course, owned: true, started: false},
       }).primaryAction,
     ).toEqual({kind: 'start', label: 'ابدأ الكورس'});
-    expect(presentation().primaryAction).toEqual({kind: 'choose_plan', label: 'اشترِ الآن'});
+    expect(presentation().primaryAction).toEqual({
+      kind: 'choose_plan',
+      label: 'اشترِ الآن',
+    });
   });
 
   it('buys a single paid tier but does not relabel an entirely free course as a purchase', () => {
-    expect(presentation({remoteCourse: {...course, accessPlans: [plan('basic', 300)]}})
-      .primaryAction).toEqual({kind: 'purchase', label: 'اشترِ الآن'});
+    expect(
+      presentation({
+        remoteCourse: {...course, accessPlans: [plan('basic', 300)]},
+      }).primaryAction,
+    ).toEqual({kind: 'purchase', label: 'اشترِ الآن'});
     const freeCourse = {...course, price: 0, accessPlans: [plan('basic', 0)]};
-    expect(presentation({remoteCourse: freeCourse}).primaryAction)
-      .toEqual({kind: 'free', label: 'ابدأ التعلّم مجانًا'});
-    expect(presentation({remoteCourse: freeCourse, remoteSession: false}).primaryAction)
-      .toEqual({kind: 'preview', label: 'شاهد مجانًا'});
+    expect(presentation({remoteCourse: freeCourse}).primaryAction).toEqual({
+      kind: 'free',
+      label: 'ابدأ التعلّم مجانًا',
+    });
+    expect(
+      presentation({remoteCourse: freeCourse, remoteSession: false})
+        .primaryAction,
+    ).toEqual({kind: 'preview', label: 'شاهد مجانًا'});
   });
 
   it('derives ownership only from the course entitlement snapshot', () => {
@@ -180,14 +193,14 @@ describe('course details presentation contract', () => {
     });
   });
 
-  it('does not present a purchasable action while wallet ownership is unknown', () => {
+  it('opens plan selection before optional wallet hints are available', () => {
     expect(presentation({remoteBalance: null}).primaryAction.kind).toBe(
-      'wallet_unavailable',
+      'choose_plan',
     );
   });
 
   it.each(['basic', 'mentor'])(
-    'waits for the wallet when a free tier sits beside paid tiers (selected=%s)',
+    'opens free and paid tier choices without waiting for wallet hints (selected=%s)',
     selectedPlanCode => {
       const input = {
         remoteCourse: {
@@ -198,29 +211,33 @@ describe('course details presentation contract', () => {
         remoteBalance: null,
         selectedPlanCode,
       };
-      expect(presentation({...input, remoteCommerceLoading: true}).primaryAction.kind)
-        .toBe('disabled');
-      expect(presentation(input).primaryAction.kind).toBe('wallet_unavailable');
+      expect(
+        presentation({...input, remoteCommerceLoading: true}).primaryAction
+          .kind,
+      ).toBe('choose_plan');
+      expect(presentation(input).primaryAction.kind).toBe('choose_plan');
     },
   );
 
   it('does not require a wallet for an entirely free course', () => {
-    expect(presentation({
-      remoteCourse: {...course, price: 0, accessPlans: [plan('basic', 0)]},
-      remoteBalance: null,
-      selectedPlanCode: 'basic',
-    }).primaryAction.kind).toBe('free');
+    expect(
+      presentation({
+        remoteCourse: {...course, price: 0, accessPlans: [plan('basic', 0)]},
+        remoteBalance: null,
+        selectedPlanCode: 'basic',
+      }).primaryAction.kind,
+    ).toBe('free');
   });
 
-  it('keeps the definition visible but disables its single CTA while commerce is loading', () => {
+  it('keeps both the definition and plan entry available while optional commerce hints load', () => {
     const result = presentation({remoteCommerceLoading: true});
 
     expect(result.pageReady).toBe(true);
     expect(result.primaryAction).toEqual({
-      kind: 'disabled',
-      label: 'جارٍ تجهيز الشراء',
+      kind: 'choose_plan',
+      label: 'اشترِ الآن',
     });
-    expect(result.primaryActionDisabled).toBe(true);
+    expect(result.primaryActionDisabled).toBe(false);
   });
 
   it('sorts package choices without mutating API data', () => {

@@ -1,13 +1,21 @@
 import {useCallback, useEffect, useRef} from 'react';
 import type {Dispatch, MutableRefObject, SetStateAction} from 'react';
 import {
-  applyLocalLearningState,
+  getLocalLearningState,
   loadCourseLearningData,
 } from '../../components/VideoPlayer/courseLearningApi';
 import type {CourseLearningData} from '../../components/VideoPlayer/types';
 import {buildAccessibleFeed} from './presentation';
 import {useAppForegroundState} from '../../hooks/useAppActiveState';
-import {captureAccountSessionBoundary} from '../../constants/helpers';
+import {
+  assertAccountSessionBoundary,
+  captureAccountSessionBoundary,
+} from '../../constants/helpers';
+import {
+  emptyLocalLearningState,
+  overlayLocalLearningState,
+} from '../../components/VideoPlayer/courseLearning/persistence';
+import {settleWithin} from '../../utils/settleWithin';
 import {
   loadProjectResolution,
   retryPendingProjectSubmissions,
@@ -89,18 +97,38 @@ export const useProjectReview = ({
       if (!activeCourseId) return null;
       const refreshSequence = ++mapRefreshSequenceRef.current;
       try {
+        const boundary = await captureAccountSessionBoundary();
+        const isCurrent = () => {
+          if (
+            !refs.mounted.current ||
+            mapRefreshSequenceRef.current !== refreshSequence ||
+            refs.ownerGeneration.current !== ownerGeneration ||
+            refs.loadedCourse.current?.id !== activeCourseId
+          ) {
+            return false;
+          }
+          try {
+            assertAccountSessionBoundary(boundary);
+            return true;
+          } catch {
+            return false;
+          }
+        };
+        if (!isCurrent()) return null;
+        // Match course entry: one optional cache read, concurrent with the
+        // server map and bounded by the same short local-display budget.
+        const localStateFlight = settleWithin(
+          getLocalLearningState(undefined, boundary),
+          emptyLocalLearningState(),
+          250,
+        );
         const result = await loadCourseLearningData(activeCourseId, {
           reconcilePending: false,
         });
-        const refreshed = await applyLocalLearningState(result.course);
-        if (
-          !refs.mounted.current ||
-          mapRefreshSequenceRef.current !== refreshSequence ||
-          refs.ownerGeneration.current !== ownerGeneration ||
-          refs.loadedCourse.current?.id !== activeCourseId
-        ) {
-          return null;
-        }
+        if (!isCurrent()) return null;
+        const localState = await localStateFlight;
+        if (!isCurrent()) return null;
+        const refreshed = overlayLocalLearningState(result.course, localState);
         const project = refreshed.modules
           .flatMap(module => module.projects || [])
           .find(item => item?.id === projectId);

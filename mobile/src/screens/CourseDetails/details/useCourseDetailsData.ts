@@ -2,7 +2,6 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import type {Dispatch, SetStateAction} from 'react';
 import type {CoinPackage} from '../../../services/api/coinPackageMapper';
 import {
-  getCoinPackages,
   getCourseDetailsSnapshot,
   getWallet,
   hasSession,
@@ -281,28 +280,22 @@ export const useCourseDetailsData = ({
       if (needsCommerce) {
         setRemoteCommerceLoading(true);
         const walletWriteEpoch = walletWriteEpochRef.current;
-        const [walletResult, packagesResult] = await Promise.allSettled([
-          getWallet(),
-          getCoinPackages(),
-        ]);
-        if (!stillOwned()) return;
-        // A foreground read started before top-up/purchase confirmation must
-        // not overwrite that newer wallet. Later reads are authoritative again.
-        const walletReadIsCurrent =
-          walletWriteEpochRef.current === walletWriteEpoch;
-        if (walletReadIsCurrent && walletResult.status === 'fulfilled') {
-          setRemoteWallet(walletResult.value);
-        }
-        if (packagesResult.status === 'fulfilled') {
-          setRemotePackages(packagesResult.value);
-        }
-        if (
-          (walletReadIsCurrent && walletResult.status === 'rejected') ||
-          packagesResult.status === 'rejected'
-        ) {
-          setRemoteNotice(
-            'تعذّر تحديث بعض بيانات المحفظة\nحدّث الصفحة لعرض أحدثها',
-          );
+        // This read is an optional display hint. SubscriptionSheet owns the
+        // binding quote and loads only its actual payment provider when needed.
+        try {
+          const wallet = await getWallet();
+          if (!stillOwned()) return;
+          // A foreground read must not replace a newer acknowledged balance.
+          if (walletWriteEpochRef.current === walletWriteEpoch) {
+            setRemoteWallet(wallet);
+          }
+        } catch {
+          if (!stillOwned()) return;
+          if (walletWriteEpochRef.current === walletWriteEpoch) {
+            setRemoteNotice(
+              'تعذّر تحديث بعض بيانات المحفظة\nحدّث الصفحة لعرض أحدثها',
+            );
+          }
         }
       }
       if (stillOwned()) setRemoteCommerceLoading(false);

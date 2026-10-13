@@ -9,6 +9,7 @@ import {
   openCoinCheckout,
   subscribeCoinCheckoutCredits,
 } from '../services/coinCheckout';
+import {subscribeNativeStoreCredits} from '../services/nativeStoreCredits';
 import {
   asRecord,
   errorCode,
@@ -178,11 +179,27 @@ export function useCourseSubscriptionCheckout({
               (courseCheckoutTransport.kind === 'external' ||
                 Boolean(item.displayPrice)),
           );
-          const chosen = selectCheckoutPackage(eligiblePackages, next.deficit);
+          const chosen =
+            courseCheckoutTransport.kind === 'external' && next.selectedPackage
+              ? next.selectedPackage
+              : selectCheckoutPackage(eligiblePackages, next.deficit);
           if (chosen) {
-            next = await quoteCourseCheckout({...input, packageId: chosen.id});
-            assertAccountSessionBoundary(boundary);
-            if (!owns(token)) return;
+            if (!eligibleIds.has(chosen.id))
+              throw new Error('COURSE_CHECKOUT_PACKAGE_CHANGED');
+            // New exact-funding servers already bind the cash rate. Keep the
+            // second quote only for native/older unbound contracts; never drop
+            // their explicit server-side package authorization.
+            if (
+              courseCheckoutTransport.kind !== 'external' ||
+              !next.selectedPackage
+            ) {
+              next = await quoteCourseCheckout({
+                ...input,
+                packageId: chosen.id,
+              });
+              assertAccountSessionBoundary(boundary);
+              if (!owns(token)) return;
+            }
             if (
               courseRevision !== undefined &&
               next.courseRevision !== courseRevision
@@ -293,7 +310,11 @@ export function useCourseSubscriptionCheckout({
     flight.current = true;
     setBusy(true);
     try {
+      const boundary = await captureAccountSessionBoundary();
+      assertAccountSessionBoundary(boundary);
+      if (!owns(token)) return;
       const next = await resumeCourseCheckout(previous.id);
+      assertAccountSessionBoundary(boundary);
       if (!owns(token)) return;
       await acceptCompleted(next);
       if (next.status === 'reconfirm_required')
@@ -318,12 +339,17 @@ export function useCourseSubscriptionCheckout({
     const app = AppState.addEventListener('change', state => {
       if (state === 'active') void refreshPending();
     });
-    const credits = subscribeCoinCheckoutCredits(() => {
+    const refreshAfterCredit = () => {
       void refreshPending();
-    });
+    };
+    // Both providers signal an already-verified credit. They wake the same
+    // single-flight server reconciliation; neither event grants enrollment.
+    const credits = subscribeCoinCheckoutCredits(refreshAfterCredit);
+    const nativeCredits = subscribeNativeStoreCredits(refreshAfterCredit);
     return () => {
       app.remove();
       credits();
+      nativeCredits();
     };
   }, [refreshPending, visible]);
 

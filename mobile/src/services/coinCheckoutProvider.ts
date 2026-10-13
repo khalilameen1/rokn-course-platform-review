@@ -25,9 +25,18 @@ export const openCourseBrowserCheckoutSurface = (
 ): Promise<string> => {
   if (!isCoursePaymentUrl(url))
     return Promise.reject(new Error('PAYMENT_URL_INVALID'));
-  if (Platform.OS !== 'android' || !nativeCheckout?.openBrowser) {
+  if (
+    Platform.OS !== 'ios' &&
+    (Platform.OS !== 'android' || !nativeCheckout?.openBrowser)
+  ) {
     return Promise.reject(new Error('CHECKOUT_BROWSER_UNAVAILABLE'));
   }
+  // iOS hands HTTPS to the user's default browser. Keep Android's approved
+  // Chrome-first launcher; neither path presents a WebView or auth-session UI.
+  const launchBrowser = async () => {
+    if (Platform.OS === 'ios') await Linking.openURL(url);
+    else await nativeCheckout!.openBrowser!(url);
+  };
   return new Promise((resolve, reject) => {
     let backgrounded = false;
     let finished = false;
@@ -48,7 +57,7 @@ export const openCourseBrowserCheckoutSurface = (
       else if (backgrounded) finish('');
     });
     const timeout = setTimeout(() => finish(''), 30 * 60 * 1000);
-    void nativeCheckout.openBrowser!(url).catch(error => finish('', error));
+    void launchBrowser().catch(error => finish('', error));
   });
 };
 

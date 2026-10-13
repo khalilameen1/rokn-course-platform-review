@@ -57,7 +57,6 @@ type CourseDetailsPresentationInput = {
 
 export const selectCourseDetailsPresentation = ({
   remoteBalance,
-  remoteCommerceLoading,
   remoteCourse,
   remoteError,
   remoteLoading,
@@ -155,11 +154,9 @@ export const selectCourseDetailsPresentation = ({
     ? ({kind: 'preview', label: 'شاهد مجانًا'} as const)
     : !CAN_START_COIN_CHECKOUT
     ? ({kind: 'checkout_unavailable', label: 'الشراء غير متاح الآن'} as const)
-    : requiresWallet && remoteCommerceLoading
-    ? ({kind: 'disabled', label: 'جارٍ تجهيز الشراء'} as const)
-    : requiresWallet && remoteBalance === null
-    ? ({kind: 'wallet_unavailable', label: 'اشترِ الآن'} as const)
-    : accessPlans.length > 1
+    : // Opening plan choices is not a debit. The sheet obtains an authoritative
+    // quote before payment; unrelated wallet/store reads cannot block entry.
+    accessPlans.length > 1
     ? ({
         kind: 'choose_plan',
         label: requiresWallet ? 'اشترِ الآن' : 'اختر الاشتراك',

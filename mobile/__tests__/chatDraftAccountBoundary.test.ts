@@ -331,8 +331,9 @@ describe('chat draft account ownership', () => {
     );
     expect(project).toContain('activeProjectIdRef.current === projectId');
     expect(project).toContain('activeThreadIdRef.current === threadId');
+    expect(project).toContain('ownsContext() && flight.ownsVisit()');
     expect(project).toMatch(
-      /uploadProjectFeedbackAttachment[\s\S]*?if \(!ownsContext\(\)\) return;[\s\S]*?sendProjectFeedbackMessage/,
+      /uploadProjectFeedbackAttachment[\s\S]*?if \(!ownsPreparation\(\)\) return;[\s\S]*?sendProjectFeedbackMessage/,
     );
     expect(chat).toMatch(
       /catch \(error: unknown\)[\s\S]*?ACCOUNT_CHANGED_DURING_REQUEST/,

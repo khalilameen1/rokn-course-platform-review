@@ -27,6 +27,14 @@ jest.mock('../src/services/systemActions', () => ({
 }));
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   applyLocalLearningState: jest.fn(async course => course),
+  getLocalLearningState: jest.fn(async () => ({
+    positions: {},
+    lastWatchedAt: {},
+    completedSections: [],
+    savedLessons: [],
+    savedFolderLessons: {},
+    activityDays: [],
+  })),
   loadCourseLearningData: (...args: unknown[]) => mockLoadCourse(...args),
   subscribeCourseRevisionChanges: jest.requireActual(
     '../src/components/VideoPlayer/courseLearning/playbackRevision',

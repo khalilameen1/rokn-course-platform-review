@@ -5,6 +5,14 @@ const mockLoadCourseLearningData = jest.fn();
 
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   applyLocalLearningState: jest.fn(async course => course),
+  getLocalLearningState: jest.fn(async () => ({
+    positions: {},
+    lastWatchedAt: {},
+    completedSections: [],
+    savedLessons: [],
+    savedFolderLessons: {},
+    activityDays: [],
+  })),
   loadCourseLearningData: (...args: unknown[]) =>
     mockLoadCourseLearningData(...args),
 }));
@@ -15,7 +23,11 @@ jest.mock('../src/components/VideoPlayer/courseLearning/projects', () => ({
   watchProjectResolution: jest.fn(),
 }));
 jest.mock('../src/constants/helpers', () => ({
-  captureAccountSessionBoundary: jest.fn(),
+  captureAccountSessionBoundary: jest.fn(async () => ({
+    scope: 'user-a',
+    epoch: 1,
+  })),
+  assertAccountSessionBoundary: jest.fn(),
 }));
 jest.mock('../src/hooks/useAppActiveState', () => ({
   useAppForegroundState: jest.fn(() => true),
@@ -99,7 +111,12 @@ it('does not let an older project-map response replace a newer one', async () =>
     renderer = ReactTestRenderer.create(<Harness />);
   });
 
-  const olderRefresh = refreshProjectState('project-1');
+  let olderRefresh!: Promise<unknown>;
+  await ReactTestRenderer.act(async () => {
+    olderRefresh = refreshProjectState('project-1');
+    await Promise.resolve();
+    await Promise.resolve();
+  });
   const newerRefresh = refreshProjectState('project-1');
   await ReactTestRenderer.act(async () => {
     newer.resolve({course: passed});

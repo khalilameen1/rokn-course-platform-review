@@ -8,6 +8,7 @@ import {
   type AccountSessionBoundary,
 } from '../constants/helpers';
 import {privacyPolicyUrl} from './publicLinks';
+import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
 
 export const AI_CONSENT_VERSION = 'third-party-ai-v1';
 const STORAGE_KEY = '@rokn/ai-consent/v1';
@@ -16,6 +17,7 @@ type ConsentRequest = {
   result: Promise<boolean>;
 };
 const requests = new Map<string, ConsentRequest>();
+const receiptWrites = createKeyedAsyncQueue();
 
 const record = (value: unknown): Record<string, unknown> =>
   value !== null && typeof value === 'object'
@@ -34,21 +36,38 @@ export const isAiConsentRequired = (error: unknown) => {
 const readConsent = (response: unknown) => {
   const payload = record(record(response).data);
   const data = record(payload.data);
-  if (payload.success !== true || data.version !== AI_CONSENT_VERSION ||
-      typeof data.accepted !== 'boolean') {
+  if (
+    payload.success !== true ||
+    data.version !== AI_CONSENT_VERSION ||
+    typeof data.accepted !== 'boolean'
+  ) {
     throw new Error('AI_CONSENT_CONTRACT_INVALID');
   }
   return data;
 };
 
-const persist = async (data: Record<string, unknown>, boundary: AccountSessionBoundary) => {
-  assertAccountSessionBoundary(boundary);
-  const key = await accountScopedStorageKey(STORAGE_KEY, boundary);
+const persistReceipt = (
+  data: Record<string, unknown>,
+  boundary: AccountSessionBoundary,
+) => {
   assertAccountSessionBoundary(boundary);
   // Local storage is only a receipt, never authority to share data. Server
   // consent survives reinstall; a guest receipt cannot migrate to an account.
-  await AsyncStorage.setItem(key, JSON.stringify(data)).catch(() => undefined);
-  assertAccountSessionBoundary(boundary);
+  // Keep the raw write order without making delivery wait for storage or its
+  // key. Account changes retire queued work, not an already-started native write.
+  void receiptWrites(`${STORAGE_KEY}:${boundary.scope}`, async () => {
+    assertAccountSessionBoundary(boundary);
+    const key = await accountScopedStorageKey(STORAGE_KEY, boundary);
+    assertAccountSessionBoundary(boundary);
+    await AsyncStorage.setItem(key, JSON.stringify(data));
+    try {
+      assertAccountSessionBoundary(boundary);
+    } catch (error) {
+      // Retire a late old-session receipt before a new same-scope write starts.
+      await AsyncStorage.removeItem(key);
+      throw error;
+    }
+  }).catch(() => undefined);
 };
 
 export const hasAiConsent = async (boundary: AccountSessionBoundary) => {
@@ -57,26 +76,39 @@ export const hasAiConsent = async (boundary: AccountSessionBoundary) => {
   const response = await publicRequest.get('ai-consent', {timeout: 12000});
   assertAccountSessionBoundary(boundary);
   const data = readConsent(response);
-  await persist(data, boundary);
+  persistReceipt(data, boundary);
   return data.accepted === true;
 };
 
-const askPermission = (boundary: AccountSessionBoundary, canPresent: () => boolean) =>
+const askPermission = (
+  boundary: AccountSessionBoundary,
+  canPresent: () => boolean,
+) =>
   new Promise<boolean>(resolve => {
     Alert.alert(
       'الاستفسارات ومراجعة المشاريع',
       'تستخدم الاستفسارات ومراجعة المشاريع الذكاء الاصطناعي\nنرسل ما تكتبه ومرفقاتك وسياق الكورس والمحادثة إلى OpenRouter ومزودي النماذج للإجابة وتقييم مشروعك\nهل توافق؟',
       [
         {text: 'ليس الآن', style: 'cancel', onPress: () => resolve(false)},
-        {text: 'سياسة الخصوصية', onPress: () => {
-          resolve(false);
-          if (!canPresent()) return;
-          void Linking.openURL(privacyPolicyUrl).catch(() => undefined);
-        }},
-        {text: 'أوافق وأتابع', onPress: () => {
-          try { assertAccountSessionBoundary(boundary); resolve(canPresent()); }
-          catch { resolve(false); }
-        }},
+        {
+          text: 'سياسة الخصوصية',
+          onPress: () => {
+            resolve(false);
+            if (!canPresent()) return;
+            void Linking.openURL(privacyPolicyUrl).catch(() => undefined);
+          },
+        },
+        {
+          text: 'أوافق وأتابع',
+          onPress: () => {
+            try {
+              assertAccountSessionBoundary(boundary);
+              resolve(canPresent());
+            } catch {
+              resolve(false);
+            }
+          },
+        },
       ],
       {cancelable: true, onDismiss: () => resolve(false)},
     );
@@ -98,19 +130,29 @@ export const requestAiConsent = async (
     const flight = (async () => {
       try {
         if (await hasAiConsent(boundary)) return true;
-        if (!canPresent() || !(await askPermission(boundary, canPresent))) return false;
+        if (!canPresent() || !(await askPermission(boundary, canPresent)))
+          return false;
         assertAccountSessionBoundary(boundary);
-        const response = await publicRequest.put('ai-consent', {
-          version: AI_CONSENT_VERSION, accepted: true,
-        }, {timeout: 12000});
+        const response = await publicRequest.put(
+          'ai-consent',
+          {
+            version: AI_CONSENT_VERSION,
+            accepted: true,
+          },
+          {timeout: 12000},
+        );
         assertAccountSessionBoundary(boundary);
         const data = readConsent(response);
-        await persist(data, boundary);
+        persistReceipt(data, boundary);
         return data.accepted === true;
       } catch {
-        try { assertAccountSessionBoundary(boundary); }
-        catch { return false; }
-        if (canPresent()) Alert.alert('لم يكتمل التأكيد', 'تأكد من الاتصال وحاول مرة أخرى');
+        try {
+          assertAccountSessionBoundary(boundary);
+        } catch {
+          return false;
+        }
+        if (canPresent())
+          Alert.alert('لم يكتمل التأكيد', 'تأكد من الاتصال وحاول مرة أخرى');
         return false;
       }
     })().finally(() => {
@@ -125,8 +167,12 @@ export const requestAiConsent = async (
   request.owners.add(ownsPresentation);
   try {
     if (!(await request.result) || !isCurrent()) return false;
-    try { assertAccountSessionBoundary(boundary); return true; }
-    catch { return false; }
+    try {
+      assertAccountSessionBoundary(boundary);
+      return true;
+    } catch {
+      return false;
+    }
   } finally {
     request.owners.delete(ownsPresentation);
   }
@@ -136,7 +182,8 @@ export const requestAiConsent = async (
 export const requireAiConsent = async (boundary: AccountSessionBoundary) => {
   if (!(await hasAiConsent(boundary))) {
     throw Object.assign(new Error('AI_CONSENT_REQUIRED'), {
-      code: 'ai_consent_required', status: 403,
+      code: 'ai_consent_required',
+      status: 403,
     });
   }
 };
@@ -148,30 +195,51 @@ export const manageAiConsent = async () => {
       await requestAiConsent(boundary);
       return;
     }
-    Alert.alert('مشاركة البيانات للمراجعة والاستفسارات',
-      'المشاركة مفعّلة لحسابك\nيمكنك إيقاف إرسال أسئلة أو مشاريع جديدة للذكاء الاصطناعي دون حذف كورساتك أو ردودك المحفوظة', [
+    Alert.alert(
+      'مشاركة البيانات للمراجعة والاستفسارات',
+      'المشاركة مفعّلة لحسابك\nيمكنك إيقاف إرسال أسئلة أو مشاريع جديدة للذكاء الاصطناعي دون حذف كورساتك أو ردودك المحفوظة',
+      [
         {text: 'رجوع', style: 'cancel'},
-        {text: 'إيقاف المشاركة', onPress: () => {
-          void (async () => {
-            assertAccountSessionBoundary(boundary);
-            const response = await publicRequest.put('ai-consent', {
-              version: AI_CONSENT_VERSION, accepted: false,
-            }, {timeout: 12000});
-            assertAccountSessionBoundary(boundary);
-            const data = readConsent(response);
-            if (data.accepted !== false) throw new Error('AI_CONSENT_REVOKE_FAILED');
-            await persist(data, boundary);
-            Alert.alert('تم إيقاف المشاركة', 'لن نرسل طلبات جديدة\nقد يكتمل طلب بدأ قبل الإيقاف');
-          })().catch(() => {
-            try { assertAccountSessionBoundary(boundary); }
-            catch { return; }
-            Alert.alert('لم يتغير اختيارك', 'تأكد من الاتصال وحاول مرة أخرى');
-          });
-        }},
-      ]);
+        {
+          text: 'إيقاف المشاركة',
+          onPress: () => {
+            void (async () => {
+              assertAccountSessionBoundary(boundary);
+              const response = await publicRequest.put(
+                'ai-consent',
+                {
+                  version: AI_CONSENT_VERSION,
+                  accepted: false,
+                },
+                {timeout: 12000},
+              );
+              assertAccountSessionBoundary(boundary);
+              const data = readConsent(response);
+              if (data.accepted !== false)
+                throw new Error('AI_CONSENT_REVOKE_FAILED');
+              persistReceipt(data, boundary);
+              Alert.alert(
+                'تم إيقاف المشاركة',
+                'لن نرسل طلبات جديدة\nقد يكتمل طلب بدأ قبل الإيقاف',
+              );
+            })().catch(() => {
+              try {
+                assertAccountSessionBoundary(boundary);
+              } catch {
+                return;
+              }
+              Alert.alert('لم يتغير اختيارك', 'تأكد من الاتصال وحاول مرة أخرى');
+            });
+          },
+        },
+      ],
+    );
   } catch {
-    try { assertAccountSessionBoundary(boundary); }
-    catch { return; }
+    try {
+      assertAccountSessionBoundary(boundary);
+    } catch {
+      return;
+    }
     Alert.alert('تعذّر تحميل اختيارك', 'تأكد من الاتصال وحاول مرة أخرى');
   }
 };

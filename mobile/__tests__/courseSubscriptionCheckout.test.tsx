@@ -267,11 +267,46 @@ describe('same-sheet course checkout authorization', () => {
     for (const call of mockPayment.mock.calls) {
       expect(call[1].courseCheckoutId).toBe(base.id);
     }
-    expect(mockQuote).toHaveBeenCalledTimes(2); // initial quote + package binding, no new intent on return
+    expect(mockQuote).toHaveBeenCalledTimes(1); // already bound server quote, same intent on return
     expect(view.complete).toHaveBeenCalledTimes(1);
     await act(async () => {
       view.renderer.unmount();
     });
+  });
+
+  it('binds an older unbound direct quote before allowing authorization', async () => {
+    require('../src/services/checkoutRouting').courseCheckoutTransport = {
+      kind: 'external',
+      channel: 'direct',
+      apiChannel: 'direct',
+      surface: 'browser',
+    };
+    const directPackage = {...coinPackage, price: 18, displayPrice: undefined};
+    const direct: CourseCheckout = {
+      ...base,
+      channel: 'direct',
+      fundingMode: 'exact_shortfall',
+      packages: [directPackage],
+      selectedPackageId: undefined,
+    };
+    mockQuote.mockResolvedValueOnce(direct).mockResolvedValueOnce({
+      ...direct,
+      selectedPackageId: directPackage.id,
+      selectedPackage: directPackage,
+    });
+    const view = await mount();
+    try {
+      expect(mockPackages).not.toHaveBeenCalled();
+      expect(mockQuote).toHaveBeenCalledTimes(2);
+      expect(mockQuote).toHaveBeenLastCalledWith(
+        expect.objectContaining({packageId: directPackage.id}),
+      );
+      expect(view.current().coinPackage).toEqual(directPackage);
+      expect(mockAuthorize).not.toHaveBeenCalled();
+      expect(mockPayment).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => view.renderer.unmount());
+    }
   });
 
   it('authorizes once then pays and fulfills under that same consent without a second purchase tap', async () => {

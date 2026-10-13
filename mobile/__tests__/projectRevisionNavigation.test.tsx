@@ -7,6 +7,10 @@ jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   getLocalLearningState: jest.fn(async () => ({
     positions: {},
     savedLessons: [],
+    lastWatchedAt: {},
+    completedSections: [],
+    savedFolderLessons: {},
+    activityDays: [],
   })),
   loadCourseLearningData: (...args: unknown[]) => mockLoadCourse(...args),
   reconcileServerSavedLessons: jest.fn(async () => []),

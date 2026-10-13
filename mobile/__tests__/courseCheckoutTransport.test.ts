@@ -25,7 +25,11 @@ describe('course checkout transport', () => {
       });
       expect(
         transport.resolveCheckoutTransport('course', 'ios', 'appstore'),
-      ).toMatchObject({kind: 'native', apiChannel: 'apple'});
+      ).toMatchObject({
+        kind: 'external',
+        apiChannel: 'direct',
+        surface: 'browser',
+      });
       expect(
         transport.resolveCheckoutTransport('wallet', 'android', 'direct'),
       ).toMatchObject({kind: 'external', surface: 'in_app'});
@@ -38,16 +42,44 @@ describe('course checkout transport', () => {
     });
   });
 
-  it('keeps non-Android checkout on its configured channel', () => {
+  it('uses the same external course transport on iOS without changing the configured wallet channel', () => {
     jest.isolateModules(() => {
       jest.doMock('react-native', () => ({Platform: {OS: 'ios'}}));
       const transport = require('../src/services/checkoutRouting');
       expect(transport.courseCheckoutTransport).toMatchObject({
+        kind: 'external',
+        channel: 'direct',
+        apiChannel: 'direct',
+        surface: 'browser',
+      });
+      expect(transport.walletCheckoutTransport).toMatchObject({
         kind: 'native',
         channel: 'play',
       });
     });
   });
+
+  it.each(['android', 'ios'] as const)(
+    'shares the course provider on %s for every distribution channel',
+    platform => {
+      const {
+        resolveCheckoutTransport,
+      } = require('../src/services/checkoutRouting');
+      for (const channel of ['direct', 'play', 'appstore'] as const) {
+        expect(resolveCheckoutTransport('course', platform, channel)).toEqual({
+          kind: 'external',
+          channel: 'direct',
+          apiChannel: 'direct',
+          surface: 'browser',
+        });
+      }
+      expect(resolveCheckoutTransport('wallet', platform, 'appstore')).toEqual({
+        kind: 'native',
+        channel: 'appstore',
+        apiChannel: 'apple',
+      });
+    },
+  );
 
   it('accepts only a signed course URL on the configured Rokn origin', () => {
     const {isCoursePaymentUrl} = require('../src/services/coursePaymentUrl');

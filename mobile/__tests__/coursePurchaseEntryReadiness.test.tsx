@@ -39,7 +39,7 @@ function setup(overrides: Partial<EntryParams> = {}) {
     navigation: {setParams: consume} as unknown as EntryParams['navigation'],
     owned: false,
     pageReady: true,
-    primaryAction: {kind: 'disabled', label: 'جارٍ تجهيز الشراء'},
+    primaryAction: {kind: 'disabled', label: 'جارٍ تجهيز الكورس'},
     purchasePrice: 700,
     remoteSession: true,
     routeParams: {courseId: '52', openPurchase: true},
@@ -68,42 +68,50 @@ function setup(overrides: Partial<EntryParams> = {}) {
 }
 
 describe('purchase return readiness', () => {
-  it.each([false, true])('routes buy now to login or plan selection, never preview (session=%s)', async remoteSession => {
-    jest.mocked(openGuestLogin).mockClear();
-    const fixture = setup({
-      remoteSession,
-      routeParams: {courseId: '52'},
-      primaryAction: remoteSession
-        ? {kind: 'choose_plan', label: 'اشترِ الآن'}
-        : {kind: 'login', label: 'اشترِ الآن'},
-    });
-    const onPreview = jest.fn();
-    const onStart = jest.fn();
-    let renderer!: TestRenderer.ReactTestRenderer;
-    try {
-      await act(async () => {
-        renderer = TestRenderer.create(<fixture.Harness ready={false} />);
+  it.each([false, true])(
+    'routes buy now to login or plan selection, never preview (session=%s)',
+    async remoteSession => {
+      jest.mocked(openGuestLogin).mockClear();
+      const fixture = setup({
+        remoteSession,
+        routeParams: {courseId: '52'},
+        primaryAction: remoteSession
+          ? {kind: 'choose_plan', label: 'اشترِ الآن'}
+          : {kind: 'login', label: 'اشترِ الآن'},
       });
-      await act(async () => fixture.entry().runPrimaryAction({onPreview, onStart}));
-      expect(onPreview).not.toHaveBeenCalled();
-      expect(onStart).not.toHaveBeenCalled();
-      if (remoteSession) {
-        expect(openGuestLogin).not.toHaveBeenCalled();
-        expect(fixture.openForTerms).toHaveBeenCalledWith({
-          forcePlanSelection: true, purchasePrice: 700, spendableBalance: 0,
+      const onPreview = jest.fn();
+      const onStart = jest.fn();
+      let renderer!: TestRenderer.ReactTestRenderer;
+      try {
+        await act(async () => {
+          renderer = TestRenderer.create(<fixture.Harness ready={false} />);
         });
-      } else {
-        expect(fixture.openForTerms).not.toHaveBeenCalled();
-        expect(openGuestLogin).toHaveBeenCalledWith(expect.anything(), {
-          name: 'CourseDetails', params: {courseId: '52', openPurchase: true},
-        });
+        await act(async () =>
+          fixture.entry().runPrimaryAction({onPreview, onStart}),
+        );
+        expect(onPreview).not.toHaveBeenCalled();
+        expect(onStart).not.toHaveBeenCalled();
+        if (remoteSession) {
+          expect(openGuestLogin).not.toHaveBeenCalled();
+          expect(fixture.openForTerms).toHaveBeenCalledWith({
+            forcePlanSelection: true,
+            purchasePrice: 700,
+            spendableBalance: 0,
+          });
+        } else {
+          expect(fixture.openForTerms).not.toHaveBeenCalled();
+          expect(openGuestLogin).toHaveBeenCalledWith(expect.anything(), {
+            name: 'CourseDetails',
+            params: {courseId: '52', openPurchase: true},
+          });
+        }
+      } finally {
+        if (renderer) await act(async () => renderer.unmount());
       }
-    } finally {
-      if (renderer) await act(async () => renderer.unmount());
-    }
-  });
+    },
+  );
   it.each([undefined, 'mentor'])(
-    'keeps the login return intent until commerce is ready (plan=%s)',
+    'keeps the login return intent until course and session are ready (plan=%s)',
     async purchasePlanCode => {
       const {consume, openForTerms, setNotice, Harness} = setup({
         routeParams: {courseId: '52', openPurchase: true, purchasePlanCode},
@@ -131,19 +139,21 @@ describe('purchase return readiness', () => {
     },
   );
 
-  it('reports a completed wallet failure instead of waiting forever', async () => {
+  it('opens the sheet with no wallet hints so its server quote can determine payment', async () => {
     const {consume, openForTerms, setNotice, Harness} = setup({
-      primaryAction: {kind: 'wallet_unavailable', label: 'اشترِ الآن'},
+      primaryAction: {kind: 'choose_plan', label: 'اشترِ الآن'},
     });
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
       renderer = TestRenderer.create(<Harness ready={false} />);
     });
     expect(consume).toHaveBeenCalledTimes(1);
-    expect(openForTerms).not.toHaveBeenCalled();
-    expect(setNotice).toHaveBeenLastCalledWith(
-      'تعذّر التحقق من رصيدك\nحاول بعد لحظات',
-    );
+    expect(openForTerms).toHaveBeenCalledWith({
+      forcePlanSelection: true,
+      purchasePrice: 700,
+      spendableBalance: 0,
+    });
+    expect(setNotice).toHaveBeenLastCalledWith('');
     await act(async () => renderer.unmount());
   });
 });

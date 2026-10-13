@@ -9,7 +9,11 @@ import {
 import {removeLearnerDraftFile} from '../../../services/learnerDraftFiles';
 import {showMediaPickerFailure} from '../../../services/mediaPickerErrors';
 import {cacheProjectFeedbackFile} from '../../../services/projectFeedbackDraft';
-import {errorCode, errorStatus, learnerErrorMessage} from '../../../utils/errorPayload';
+import {
+  errorCode,
+  errorStatus,
+  learnerErrorMessage,
+} from '../../../utils/errorPayload';
 import {secureRandomUuid} from '../../../utils/secureRandom';
 import {cleanUnicodeText, truncateGraphemes} from '../../../utils/unicodeText';
 import {
@@ -26,6 +30,10 @@ import type {
 
 import {useProjectFeedbackThread} from './useProjectFeedbackThread';
 import {useProjectFeedbackDraftEditor} from './useProjectFeedbackDraftEditor';
+import {
+  usePreparationOwner,
+  type PreparedMutationFlight,
+} from '../../../hooks/usePreparationOwner';
 
 const draftFingerprint = (text: string, files: ChatAttachmentDraft[]) =>
   [
@@ -59,7 +67,7 @@ export const useProjectFeedback = ({
   activeProjectIdRef.current = projectId;
   const activeThreadIdRef = useRef<string | null>(seedThread?.id || null);
   const generationRef = useRef(0);
-  const sendFlightRef = useRef<symbol | null>(null);
+  const sendFlightRef = useRef<PreparedMutationFlight | null>(null);
   const pickerFlightRef = useRef<symbol | null>(null);
   const {
     thread,
@@ -100,6 +108,17 @@ export const useProjectFeedback = ({
   const [error, setError] = useState('');
 
   activeThreadIdRef.current = thread?.id || null;
+  const ownsVisit = usePreparationOwner(
+    `${projectId}:${thread?.id || ''}`,
+    active && appIsActive,
+  );
+  useEffect(() => {
+    const flight = sendFlightRef.current;
+    if (flight?.phase === 'preparing' && !flight.ownsVisit()) {
+      sendFlightRef.current = null;
+      setSending(false);
+    }
+  }, [ownsVisit]);
 
   const normalizedDraft = cleanUnicodeText(draft);
   const canReply =
@@ -155,6 +174,9 @@ export const useProjectFeedback = ({
       const value = cleanUnicodeText(text);
       const fingerprint = draftFingerprint(value, files);
       if (
+        !ownsVisit() ||
+        activeProjectIdRef.current !== projectId ||
+        activeThreadIdRef.current !== thread?.id ||
         !canReply ||
         (!value && files.length === 0) ||
         sending ||
@@ -164,7 +186,7 @@ export const useProjectFeedback = ({
       ) {
         return;
       }
-      const flight = Symbol('project-feedback-send');
+      const flight: PreparedMutationFlight = {phase: 'preparing', ownsVisit};
       const generation = generationRef.current;
       const threadId = thread.id;
       const ownsContext = () =>
@@ -172,6 +194,7 @@ export const useProjectFeedback = ({
         generationRef.current === generation &&
         activeProjectIdRef.current === projectId &&
         activeThreadIdRef.current === threadId;
+      const ownsPreparation = () => ownsContext() && flight.ownsVisit();
       sendFlightRef.current = flight;
       setSending(true);
       setError('');
@@ -193,9 +216,10 @@ export const useProjectFeedback = ({
         ) {
           throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
         }
-        if (!(await requestAiConsent(boundary))) return;
+        if (!ownsPreparation()) return;
+        if (!(await requestAiConsent(boundary, ownsPreparation))) return;
         assertAccountSessionBoundary(boundary);
-        if (!ownsContext()) return;
+        if (!ownsPreparation()) return;
         const uploaded = await Promise.all(
           files.map(async file => ({
             ...file,
@@ -205,7 +229,7 @@ export const useProjectFeedback = ({
           })),
         );
         assertAccountSessionBoundary(boundary);
-        if (!ownsContext()) return;
+        if (!ownsPreparation()) return;
         await draftSession.stage({
           text: value,
           attachments: uploaded,
@@ -213,7 +237,9 @@ export const useProjectFeedback = ({
           fingerprint: draftFingerprint(value, uploaded),
         });
         assertAccountSessionBoundary(boundary);
-        if (!ownsContext()) return;
+        if (!ownsPreparation()) return;
+        // The staged request now owns delivery/recovery, not this visit.
+        flight.phase = 'dispatched';
         let next: ProjectFeedbackThread;
         try {
           next = await sendProjectFeedbackMessage(
@@ -264,6 +290,7 @@ export const useProjectFeedback = ({
       } catch (caught: unknown) {
         if (
           !ownsContext() ||
+          (flight.phase === 'preparing' && !ownsPreparation()) ||
           (caught instanceof Error &&
             caught.message === 'ACCOUNT_CHANGED_DURING_REQUEST')
         ) {
@@ -291,6 +318,7 @@ export const useProjectFeedback = ({
       canReply,
       draft,
       draftSession,
+      ownsVisit,
       projectId,
       refreshRead,
       sending,

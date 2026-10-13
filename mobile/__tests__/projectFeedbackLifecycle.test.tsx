@@ -473,13 +473,80 @@ describe('project inquiry lost acknowledgement', () => {
     jest.useRealTimers();
   });
 
+  it('does not dispatch after departure while the mandatory request draft is being staged', async () => {
+    const staging = deferred<void>();
+    jest.mocked(saveProjectFeedbackDraft).mockReturnValueOnce(staging.promise);
+    await mount();
+    let request!: Promise<void>;
+    try {
+      await act(async () => {
+        request = current.send();
+      });
+      expect(saveProjectFeedbackDraft).toHaveBeenCalledWith(
+        'thread-7',
+        expect.objectContaining({requestId: 'request-7'}),
+        {scope: 'user:7', epoch: mockEpoch},
+      );
+      expect(sendProjectFeedbackMessage).not.toHaveBeenCalled();
+      await act(async () => renderer!.update(<Harness away />));
+      await act(async () => {
+        staging.resolve();
+        await request;
+      });
+      expect(sendProjectFeedbackMessage).not.toHaveBeenCalled();
+      expect(current.draft).toBe('هل التنفيذ مناسب');
+      expect(current.sending).toBe(false);
+      expect(clearProjectFeedbackDraft).not.toHaveBeenCalled();
+    } finally {
+      staging.resolve();
+    }
+  });
+
+  it('retains the acknowledgement of a discussion already sent before departure', async () => {
+    const acknowledgement = deferred<ProjectFeedbackThread>();
+    jest
+      .mocked(sendProjectFeedbackMessage)
+      .mockReturnValueOnce(acknowledgement.promise);
+    await mount();
+    let request!: Promise<void>;
+    try {
+      await act(async () => {
+        request = current.send();
+      });
+      expect(sendProjectFeedbackMessage).toHaveBeenCalledTimes(1);
+      await act(async () => renderer!.update(<Harness away />));
+      expect(current.sending).toBe(true);
+      await act(async () => {
+        await current.send();
+      });
+      expect(sendProjectFeedbackMessage).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        acknowledgement.resolve(accepted());
+        await request;
+      });
+      expect(current.thread?.messages).toEqual(accepted().messages);
+      expect(current.draft).toBe('');
+      expect(current.sending).toBe(false);
+      expect(clearProjectFeedbackDraft).toHaveBeenCalledWith('thread-7', [], {
+        scope: 'user:7',
+        epoch: mockEpoch,
+      });
+    } finally {
+      acknowledgement.resolve(accepted());
+    }
+  });
+
   it.each([0, 0.5, 0.999])(
     'keeps a loaded report and queued reply across a same-thread course summary and foreground return with jitter sample %s',
     async jitterSample => {
-      const randomness = jest.spyOn(Math, 'random').mockReturnValue(jitterSample);
+      const randomness = jest
+        .spyOn(Math, 'random')
+        .mockReturnValue(jitterSample);
       try {
         await mount();
-        jest.mocked(sendProjectFeedbackMessage).mockResolvedValueOnce(accepted());
+        jest
+          .mocked(sendProjectFeedbackMessage)
+          .mockResolvedValueOnce(accepted());
         await act(async () => current.send());
         const summary: ProjectFeedbackThread = {
           ...emptyThread,
@@ -489,13 +556,17 @@ describe('project inquiry lost acknowledgement', () => {
         await act(async () => renderer!.update(<Harness away />));
         const resumed = deferred<ProjectFeedbackThread>();
         mockLoadThread.mockReturnValueOnce(resumed.promise);
-        await act(async () => renderer!.update(<Harness seedThread={summary} />));
+        await act(async () =>
+          renderer!.update(<Harness seedThread={summary} />),
+        );
         expect(current.thread?.messages).toEqual(accepted().messages);
         expect(current.thread?.remainingMessages).toBe(4);
         expect(current.pending).toBe(true);
         expect(current.hydrating).toBe(true);
         expect(mockLoadThread).toHaveBeenCalledTimes(1);
-        await act(async () => {resumed.resolve(accepted());});
+        await act(async () => {
+          resumed.resolve(accepted());
+        });
         expect(current.hydrating).toBe(false);
         const complete = accepted('completed');
         mockLoadThread.mockResolvedValueOnce(complete);
@@ -703,12 +774,17 @@ describe('project inquiry lost acknowledgement', () => {
   it('refreshes a definitive quota race without consuming the rejected durable draft', async () => {
     await mount();
     jest.mocked(sendProjectFeedbackMessage).mockRejectedValueOnce({
-      status: 422, data: {code: 'project_discussion_limit_reached'},
+      status: 422,
+      data: {code: 'project_discussion_limit_reached'},
     });
     mockLoadThread.mockResolvedValueOnce({
-      ...loadedThread, remainingMessages: 0, replyLimitReached: true,
+      ...loadedThread,
+      remainingMessages: 0,
+      replyLimitReached: true,
     });
-    await act(async () => {await current.send();});
+    await act(async () => {
+      await current.send();
+    });
     expect(mockLoadThread).toHaveBeenCalledTimes(1);
     expect(current.draft).toBe('هل التنفيذ مناسب');
     expect(current.canReply).toBe(false);
@@ -720,12 +796,20 @@ describe('project inquiry lost acknowledgement', () => {
   it('does not send when token/cost capacity is exhausted despite a positive message count', async () => {
     await mount();
     await act(async () => {
-      renderer!.update(<Harness seedThread={{
-        ...loadedThread, remainingMessages: 3, replyLimitReached: true,
-      }} />);
+      renderer!.update(
+        <Harness
+          seedThread={{
+            ...loadedThread,
+            remainingMessages: 3,
+            replyLimitReached: true,
+          }}
+        />,
+      );
     });
     expect(current.canReply).toBe(false);
-    await act(async () => {await current.send();});
+    await act(async () => {
+      await current.send();
+    });
     expect(current.draft).toBe('هل التنفيذ مناسب');
     expect(sendProjectFeedbackMessage).not.toHaveBeenCalled();
     expect(clearProjectFeedbackDraft).not.toHaveBeenCalled();
