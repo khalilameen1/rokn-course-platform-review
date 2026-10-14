@@ -1,0 +1,49 @@
+Apple IAP resubmission candidate 2026-10-14
+
+Scope approved by the owner
+iOS App Store course checkout uses Apple IAP again. Keep the current approved
+course-plan UI and the nine launch repairs; do not revert to the old source.
+Android course/browser checkout is unchanged. Marketing version remains 1.0.64;
+iOS build increments from the unsubmitted 55 to 56. Android stays at code 66.
+
+Implementation
+One existing policy, checkoutRouting.ts, chooses native/apple for both course
+and wallet when Platform.OS is ios and distribution is appstore. No reviewer
+identity, remote concealment flag, alternate payment form or duplicate provider
+owner is introduced. Other distributions retain their approved routing.
+
+Actual reuse
+Reuse installed expo-iap 5.4.1 and its StoreKit adapter: fetchProducts localized
+price, requestPurchase with appAccountToken, purchaseUpdatedListener, verified
+server receipt credit and finishTransaction only after server acknowledgement.
+Existing account-scoped checkout binding and credit-recovery events remain.
+Backend and dashboard continue owning SKU rokn.coins.900, amount and entitlement.
+The public /api/v1/packages read on 2026-10-14 confirms active package 4, 900 coins,
+Apple channel enabled and Apple SKU rokn.coins.900. A direct catalogue price is
+not claimed as the actual Apple cash price; only Apple's localized product is.
+No new SDK or copied competitor code is added; installed MIT notices remain.
+
+References and evidence boundaries
+StoreKit is the platform-native purchase system, reused through expo-iap, not
+a new independent purchase implementation. OpenIAP's shipped-app showcase lists
+Folo and Ecency using expo-iap. Those listings establish real app use, not a
+verified large DAU count or proof of Rokn's integration. GitHub stars were not
+treated as usage. We retain the installed compatible version rather than
+copying the current SDK57 upgrade instructions into the SDK55 project.
+https://www.openiap.dev/docs/setup/expo
+https://www.openiap.dev/showcase
+https://github.com/hyodotdev/openiap/tree/main/libraries/expo-iap
+https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase
+
+Review submission
+Apple's 2026-10-13 16:12 response to version 1.0.63 build54 requests associated
+credits products to be submitted together with a new binary and an IAP review
+screenshot. Candidate build56 must actually appear in App Store Connect, and
+the first consumable must be in the same submission. Ready for Review alone
+is not proof it has been submitted. Do not claim a real StoreKit transaction
+from controlled tests or submit the old external-checkout build55 as native IAP.
+Record build/upload/processing, selected version+SKU and review state separately.
+
+Physical-device/sandbox purchase acceptance remains unperformed at preparation.
+Do not label an Android or generated image as an authentic iOS screenshot.
+Current screenshot metadata must be inspected before any replacement or claim.

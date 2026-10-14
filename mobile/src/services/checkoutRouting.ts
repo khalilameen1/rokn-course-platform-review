@@ -28,6 +28,11 @@ export function resolveCheckoutTransport(
   if (!['direct', 'play', 'appstore'].includes(distribution)) {
     throw new Error('CHECKOUT_DISTRIBUTION_INVALID');
   }
+  // App Store course access uses the existing StoreKit purchase/receipt owner.
+  // This is a distribution policy, not a reviewer-specific checkout switch.
+  if (platform === 'ios' && distribution === 'appstore') {
+    return {kind: 'native', channel: 'appstore', apiChannel: 'apple'};
+  }
   if (purpose === 'course' && ['android', 'ios'].includes(platform)) {
     return {
       kind: 'external',
