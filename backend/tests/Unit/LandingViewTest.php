@@ -126,7 +126,7 @@ final class LandingViewTest extends TestCase
 
         self::assertStringContainsString('<bdi dir="ltr">٣٧</bdi>', $html);
         self::assertStringContainsString('هدية لو لسه جديد', $html);
-        self::assertStringContainsString('تشتري بيها أول كورس', $html);
+        self::assertStringNotContainsString('تشتري بيها أول كورس', $html);
         self::assertSame(1, substr_count($html, 'class="welcome-gift"'));
         self::assertGreaterThan(strpos($html, 'images/landing/google-play.svg'), strpos($html, 'class="welcome-gift"'));
         self::assertStringContainsString('مفيش دقيقة حشو', $html);

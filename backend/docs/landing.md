@@ -21,10 +21,11 @@ it is not a browser course player or a duplicate student account system.
   `/recharge` remains available separately for targeted offers and returning students.
   The configured welcome gift remains visible as a number beside the existing
   coin artwork, without a second currency label or a hardcoded reward amount.
-  The requested welcome copy explains that it is for new users and their first
-  course. The offline preview proposes 600 coins; it does not update production
-  reward settings. Before launch, set the canonical `welcome_bonus` rule to 600
-  and check that an eligible first course is purchasable with that reward balance.
+  The final welcome copy is “هدية لو لسه جديد” next to 600 and the coin artwork.
+  The initial first-course purchase line was removed after live checks found that
+  published plans require a paid-coin contribution and rewards are capped per
+  course. The offer does not promise a free course. The canonical `welcome_bonus`
+  rule must match the amount shown; checkout and paid-coin conditions are retained.
 - `/contact` is an app link to the existing Feedback screen, without a case ID.
   The web fallback keeps configured contact channels and an explicit “Open in Rokn”
   action for browsers that retain same-domain links. Native association/configuration

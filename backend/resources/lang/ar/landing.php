@@ -5,7 +5,6 @@ return [
     // Landing page
     'hero_kicker' => 'كورسات هتكملها',
     'welcome_label' => 'هدية لو لسه جديد',
-    'welcome_use' => 'تشتري بيها أول كورس',
     'chat_open' => 'افتح استفسارات الكورس',
     'chat_title' => 'اسأل مدرب ركن',
     'chat_close' => 'إغلاق',

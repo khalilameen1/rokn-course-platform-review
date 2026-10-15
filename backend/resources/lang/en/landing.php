@@ -5,7 +5,6 @@ return [
     // Landing page
     'hero_kicker' => 'Courses you will finish',
     'welcome_label' => 'A gift for new learners',
-    'welcome_use' => 'Buy your first course with it',
     'chat_open' => 'Open course questions',
     'chat_title' => 'Ask your Rokn coach',
     'chat_close' => 'Close',

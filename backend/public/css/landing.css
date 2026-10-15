@@ -223,14 +223,6 @@ summary {
     font-size: 1.125rem;
     font-weight: 700;
 }
-.gift-copy {
-    display: grid;
-    text-align: start;
-}
-.gift-copy strong {
-    color: var(--rokn-text);
-    font-weight: 400;
-}
 .hero-visual {
     grid-area: 1 / 1;
     display: flex;
