@@ -16,8 +16,8 @@ if (! $app->environment(['local', 'testing'])) {
     exit(1);
 }
 
-// Public offer snapshot checked against /api/v1/auth-methods on 2026-09-11.
-// Production resolves this value through the same rule as actual crediting.
+// Proposed 600-coin welcome offer requested on 2026-10-15; this fixture does
+// not change the production reward. The live page reads the actual grant rule.
 // No accounts or payment services are contacted by this preview renderer.
 URL::forceRootUrl('http://127.0.0.1:4178');
 URL::forceScheme('http');
@@ -30,10 +30,8 @@ foreach (['ar', 'en'] as $locale) {
         'setting' => null,
         'designSetting' => new DesignSetting(['name_ar' => 'ركن', 'name_en' => 'Rokn']),
         'locale' => $locale,
-        // Loopback-only download of the owner's existing internal test build.
-        'downloadChannels' => ['direct' => 'http://127.0.0.1:4178/downloads/rokn-internal-test.apk'],
-        'welcomeCoins' => 20,
-        'directDiscountPercent' => 10,
+        'downloadChannels' => ['play' => 'https://play.google.com/store/apps/details?id=com.rokn'],
+        'welcomeCoins' => 600,
         'howPlatformWorksVideoUrl' => null,
     ];
 

@@ -493,7 +493,7 @@
     },
     {
       "path": "public/css/landing.css",
-      "sha256": "a150feb3db55f63b2d1f926b2ae5a702a0108da7ba1a42efe4dfb29386cbf7ce",
+      "sha256": "894a5add97620ff31e45bcf5983d5cc5051a84aeeaff4460c24f4962a9064b59",
       "classification": "first_party"
     },
     {
@@ -557,6 +557,16 @@
       "sha256": "a26fc5b38380272c92e9019a2eb8b45542a66814b3e2b203772db8904b9fb99f",
       "classification": "third_party",
       "family": "store-marketing-badges"
+    },
+    {
+      "path": "public/images/landing/brand-design-photoshop.webp",
+      "sha256": "dfc7786659ecca01d85cff04f3f013c09356f55fda9ccdaeecd825d140e646d0",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/images/landing/brand-design-skincare.webp",
+      "sha256": "abc1a1e68272e0e4f7154399648fba26e9009888754800e42900150c97ec9a6a",
+      "classification": "first_party"
     },
     {
       "path": "public/images/landing/design.webp",
@@ -638,7 +648,7 @@
     },
     {
       "path": "public/js/landing.js",
-      "sha256": "247431524b9c5b3f88aad3c33a73d03e34be580233835305c4c32fa0a2f8c76c",
+      "sha256": "d5681e57158e5d501e4178ce8d439daf3815cdf4983b7f7bf54577cb184e67de",
       "classification": "first_party"
     },
     {
@@ -717,7 +727,7 @@
     },
     {
       "path": "public/THIRD_PARTY_NOTICES.frontend.md",
-      "sha256": "5933fc3811e35237b99c7c17bb26c24e444c05d4ad20197697f0aecac3f82f2b",
+      "sha256": "6c45adc2b39744a7f3ad27ba39e5e3359eb58b9c5a28227a3fe5924ec7aab073",
       "classification": "generated"
     },
     {

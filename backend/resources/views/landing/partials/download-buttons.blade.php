@@ -1,30 +1,16 @@
 @php
-    $channels = array_filter($downloadChannels ?? []);
-    $discountLabel = rtrim(rtrim(number_format((float) ($directDiscountPercent ?? 0), 2, '.', ''), '0'), '.');
+    $channels = array_filter(array_intersect_key($downloadChannels ?? [], array_flip(['play', 'appstore'])));
+    $giftAmount = number_format((int) ($welcomeCoins ?? 0));
+    if (app()->getLocale() === 'ar') {
+        $giftAmount = strtr($giftAmount, ['0' => '٠', '1' => '١', '2' => '٢', '3' => '٣', '4' => '٤', '5' => '٥', '6' => '٦', '7' => '٧', '8' => '٨', '9' => '٩', ',' => '٬']);
+    }
     $stores = [
-        'appstore' => ['name' => 'App Store', 'image' => 'app-store.svg', 'width' => 120, 'height' => 40],
         'play' => ['name' => 'Google Play', 'image' => 'google-play.svg', 'width' => 135, 'height' => 40],
+        'appstore' => ['name' => 'App Store', 'image' => 'app-store.svg', 'width' => 120, 'height' => 40],
     ];
 @endphp
 
 <div class="download-options{{ ($vertical ?? false) ? ' download-options--vertical' : '' }}" data-download-options>
-    <div class="direct-download-option{{ ($directDiscountPercent ?? 0) > 0 ? ' direct-download-option--offer' : '' }}">
-        @if(($directDiscountPercent ?? 0) > 0)
-            <span class="direct-saving">{{ __('landing.direct_saving', ['discount' => $discountLabel]) }}</span>
-        @endif
-    @if($channels['direct'] ?? null)
-        <a href="{{ $channels['direct'] }}" class="store-btn store-btn--direct" data-channel="direct">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 17v4h14v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>{{ __('landing.direct_download') }} <bdi>APK</bdi></span>
-        </a>
-        @if($directDownloadIsPreview ?? false)
-            <p class="direct-caption">{{ __('landing.preview_download') }}</p>
-        @endif
-    @else
-        <span class="store-btn store-btn--direct" aria-disabled="true">{{ __('landing.direct_download') }} <bdi>APK</bdi></span>
-        <p class="direct-caption">{{ __('landing.direct_pending') }}</p>
-    @endif
-    </div>
     <div class="store-buttons">
         @foreach($stores as $channel => $store)
             @if($channels[$channel] ?? null)
@@ -38,6 +24,7 @@
                     <img src="{{ asset('images/landing/'.$store['image']) }}"
                          width="{{ $store['width'] }}" height="{{ $store['height'] }}"
                          alt="{{ __('landing.store_pending', ['store' => $store['name']]) }}">
+                    <span class="store-availability">{{ __('landing.store_soon') }}</span>
                 </span>
             @endif
         @endforeach
@@ -49,8 +36,8 @@
 
     @if(($welcomeCoins ?? 0) > 0)
         <p class="welcome-gift">
-            <img src="{{ asset('images/rokn-coin-minted.png') }}" width="24" height="24" alt="">
-            <strong>{{ __('landing.welcome_title', ['coins' => number_format($welcomeCoins)]) }}</strong>
+            <span class="gift-value"><bdi dir="ltr">{{ $giftAmount }}</bdi><img src="{{ asset('images/rokn-coin-minted.png') }}" width="24" height="24" alt="{{ __('landing.coin_label') }}"></span>
+            <span class="gift-copy"><strong>{{ __('landing.welcome_label') }}</strong><span>{{ __('landing.welcome_use') }}</span></span>
         </p>
     @endif
 </div>

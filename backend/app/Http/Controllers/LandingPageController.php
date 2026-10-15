@@ -7,7 +7,6 @@ namespace App\Http\Controllers;
 use App\Models\DesignSetting;
 use App\Models\Setting;
 use App\Services\AppReleaseChannelService;
-use App\Services\PackageChannelPricingService;
 use App\Services\PublicAppSettingsService;
 use App\Services\WelcomeRewardOfferService;
 use Illuminate\Http\Request;
@@ -17,7 +16,6 @@ class LandingPageController extends Controller
 {
     public function index(
         Request $request,
-        PackageChannelPricingService $pricing,
         AppReleaseChannelService $releases,
         PublicAppSettingsService $publicSettings,
         WelcomeRewardOfferService $welcomeOffer
@@ -34,13 +32,9 @@ class LandingPageController extends Controller
 
         $setting = Setting::first();
         $designSetting = DesignSetting::getDefaultSettings();
-        $downloadChannels = $releases->urls($setting);
-        $directDownloadIsPreview = !$downloadChannels['direct']
-            && filled(config('app_downloads.android_preview_path'));
-        if ($directDownloadIsPreview) {
-            $downloadChannels['direct'] = route('app-download.preview');
-        }
-        $directDiscountPercent = $pricing->directDiscountPercent();
+        // This public page promotes store distribution only. Direct release
+        // records and their API/download routes remain available independently.
+        $downloadChannels = array_intersect_key($releases->urls($setting), array_flip(['play', 'appstore']));
         $welcomeCoins = $welcomeOffer->amountForProvider();
         $howPlatformWorksVideoUrl = $publicSettings->embedVideoUrl(
             $designSetting->how_platform_works_video_link
@@ -51,8 +45,6 @@ class LandingPageController extends Controller
             'designSetting',
             'locale',
             'downloadChannels',
-            'directDownloadIsPreview',
-            'directDiscountPercent',
             'welcomeCoins',
             'howPlatformWorksVideoUrl'
         ));

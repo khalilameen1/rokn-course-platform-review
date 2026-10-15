@@ -60,7 +60,7 @@ function renderLocalFamily(family) {
         '',
         `License: ${family.license}`,
         `Pinned source: ${family.source}`,
-        `Distributed artifacts: ${family.artifacts.join(', ')}`,
+        `Distributed artifacts: ${[...family.artifacts, ...(family.inlineArtifacts ?? [])].join(', ')}`,
         `Modifications/provenance: ${family.modifications}`,
         family.id === 'sufee' ? 'Public corresponding source: `/legal/source/sufee-1.0.0-rokn/README.txt` (the manifest binds it to the served CSS SHA-256).' : '',
         '',
