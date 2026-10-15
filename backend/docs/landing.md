@@ -27,6 +27,12 @@ it is not a browser course player or a duplicate student account system.
   “منها”, not “بيها”. Published plans retain their paid-coin contribution and
   per-course reward cap. No free-course entitlement is introduced. The canonical
   `welcome_bonus` rule must match the amount shown.
+  The gift follows the established Locket-derived download hierarchy: a compact
+  two-row treatment below the official badges, with no additional card or CTA.
+  Existing Cairo Bold sets the amount at 26px and “هدية” at 16px; Cairo Regular
+  keeps the complete approved description at 14px. The original 26px coin sits
+  beside the isolated number. Mobile centers the group; desktop aligns it with
+  the download actions. No new typeface, illustration or reference code is added.
 - `/contact` is an app link to the existing Feedback screen, without a case ID.
   The web fallback keeps configured contact channels and an explicit “Open in Rokn”
   action for browsers that retain same-domain links. Native association/configuration
