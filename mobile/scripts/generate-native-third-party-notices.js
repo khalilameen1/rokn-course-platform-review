@@ -2498,6 +2498,9 @@ const main = async () => {
     const podInventory = parsePodLock(fs.readFileSync(POD_LOCK_PATH, 'utf8'));
     const pods = JSON.parse(fs.readFileSync(PODS_SNAPSHOT_PATH, 'utf8'));
     validatePodsSnapshot(podInventory, pods, {verifyLocal: false});
+    const iosMarkdown = renderPlatformMarkdown(pods, 'iOS', bundledFont);
+    writeOrCheck(IOS_MARKDOWN_PATH, iosMarkdown, true);
+    writeOrCheck(IOS_NOTICE_PATH, iosMarkdown, true);
     console.log(
       `Installed CocoaPods source provenance passed for ${pods.installedSourceCount} third-party roots.`,
     );

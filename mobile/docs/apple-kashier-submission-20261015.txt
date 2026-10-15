@@ -29,3 +29,11 @@ https://developers.kashier.io/
 https://developer.apple.com/app-store/review/guidelines/
 
 Build and submission results will be recorded outside the immutable source.
+
+Build pipeline correction after attempt38775863996
+The combined native notice check timed out resolving Android dependencies on
+the macOS iOS-only worker; no IPA was produced or uploaded. Reuse the existing
+--ios-sources-check mode in the iOS jobs. It still verifies installed CocoaPods
+source bindings, checksums and legal texts, and now also compares both iOS
+notice files to the retained snapshot. Android checks stay in their existing
+full/mobile gates. No application dependency, lockfile or payment code changes.

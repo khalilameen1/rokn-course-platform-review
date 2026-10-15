@@ -185,7 +185,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
       - name: Verify installed native legal provenance
-        run: npm run licenses:native:check
+        run: npm run licenses:native:check -- --ios-sources-check
       - name: Build the unsigned Release target for an iOS device
         run: >-
           xcodebuild -workspace ios/Rokn.xcworkspace -scheme Rokn
@@ -272,7 +272,7 @@ jobs:
           npm run verify:config
           npm run verify:ios-lock
           git diff --exit-code -- ios/Podfile.lock Gemfile.lock
-          npm run licenses:native:check
+          npm run licenses:native:check -- --ios-sources-check
       # Adapted from GitHub's sign-xcode-applications example. Existing locked
       # xcodeproj handles only the app target; provisioning never leaks to Pods.
       - name: Import the approved signing certificate into an ephemeral keychain

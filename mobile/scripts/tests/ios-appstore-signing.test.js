@@ -49,6 +49,7 @@ test('signed build uses existing exact-source gate, no Apple account key or dist
   assert.match(commands, /pod install --deployment/);
   assert.match(commands, /npm run verify:ios-lock/);
   assert.match(commands, /npm run licenses:native:check/);
+  assert.match(commands, /npm run licenses:native:check -- --ios-sources-check/);
   assert.match(commands, /-archivePath.*archive/);
   assert.match(commands, /-exportArchive/);
   assert.doesNotMatch(commands, /CODE_SIGNING_ALLOWED=NO|-allowProvisioningUpdates|altool|notarytool/);

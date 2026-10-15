@@ -22,6 +22,7 @@ const {
   normalizeLicense,
   parsePodLock,
   parsePomLicenses,
+  renderPlatformMarkdown,
   resolveInstalledPodBindings,
   validateAndroidSnapshot,
   upstreamLegalDocument,
@@ -886,4 +887,18 @@ test('iOS release keeps native notices bundled and verified at build time', () =
   );
   assert.match(project, /--ios-sources-check/);
   assert.match(project, /Pods\/Manifest\.lock/);
+});
+
+test('iOS source checks also bind both bundled notices without resolving Android', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'scripts/generate-native-third-party-notices.js'), 'utf8');
+  const iosCheck = source.slice(source.indexOf('if (iosSourcesCheck) {'), source.indexOf('if (!androidOnly) verifyIosLock();'));
+  assert.match(iosCheck, /validatePodsSnapshot\(podInventory, pods, \{verifyLocal: false\}\)/);
+  assert.match(iosCheck, /writeOrCheck\(IOS_MARKDOWN_PATH, iosMarkdown, true\)/);
+  assert.match(iosCheck, /writeOrCheck\(IOS_NOTICE_PATH, iosMarkdown, true\)/);
+  assert.doesNotMatch(iosCheck, /resolveAndroidInputs|verifyInstalled: false/);
+  const pods = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/licenses/ios-pods-notices.generated.json'), 'utf8'));
+  const expected = renderPlatformMarkdown(pods, 'iOS').replace(/\r\n?/g, '\n').trim();
+  for (const relative of ['IOS_THIRD_PARTY_NOTICES.md', 'ios/Rokn/NATIVE_THIRD_PARTY_NOTICES.md']) {
+    assert.equal(fs.readFileSync(path.join(ROOT, relative), 'utf8').replace(/\r\n?/g, '\n').trim(), expected);
+  }
 });
