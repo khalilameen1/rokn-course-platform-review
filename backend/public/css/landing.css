@@ -703,11 +703,6 @@ body.chat-demo-open {
     color: var(--rokn-text-muted);
     font-size: 0.875rem;
 }
-.learning-access {
-    margin-block-start: 2rem;
-    color: var(--rokn-text-muted);
-    font-size: 0.75rem;
-}
 .learning-points svg[viewBox="0 0 39 39"] {
     stroke-width: 2.6;
 }
@@ -1047,9 +1042,6 @@ body.chat-demo-open {
     }
     .learning-copy p {
         font-size: 1rem;
-    }
-    .learning-access {
-        max-inline-size: 1040px;
     }
     .footer-columns,
     .contact-grid,

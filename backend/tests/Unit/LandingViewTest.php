@@ -137,7 +137,7 @@ final class LandingViewTest extends TestCase
         self::assertStringContainsString('بورتفوليو مش مجرد شهادة', $html);
         self::assertStringNotContainsString('خصم 12.5%', $html);
         self::assertStringContainsString('شهادة فيها QR لملف أعمالك', $html);
-        self::assertStringContainsString('المشاريع في الكورسات العملية', $html);
+        self::assertStringNotContainsString('المشاريع في الكورسات العملية', $html);
         self::assertStringNotContainsString('على الشحن', $html);
         self::assertStringNotContainsString('اشحن بخصم', $html);
         self::assertStringContainsString('سكرول', $html);

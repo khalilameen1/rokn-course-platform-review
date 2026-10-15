@@ -60,7 +60,6 @@ return [
         'feedback' => 'Know what to improve in your work',
         'portfolio' => 'A certificate with a QR link to your portfolio',
     ],
-    'learning_access' => 'Projects apply to practical courses and features depend on your selected plan',
     'download_rokn' => 'Get Rokn',
     'download_on' => 'Download on',
     'direct_download' => 'Direct download',

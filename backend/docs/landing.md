@@ -18,6 +18,7 @@ it is not a browser course player or a duplicate student account system.
   Download links and the entire page remain usable without JavaScript.
 - The optional dashboard-controlled explainer video and legal routes remain available.
 - The download landing does not display recharge or account entry points.
+  The owner removed the plan-condition footnote below the four benefits in both locales.
   `/recharge` remains available separately for targeted offers and returning students.
   The configured welcome gift remains visible as a number beside the existing
   coin artwork, without a second currency label or a hardcoded reward amount.

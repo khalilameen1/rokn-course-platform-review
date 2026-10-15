@@ -61,7 +61,6 @@
                 </li>
             @endforeach
         </ul>
-        <p class="learning-access landing-container">{{ __('landing.learning_access') }}</p>
     </section>
 
     @if($designSetting->show_how_platform_works && $howPlatformWorksVideoUrl)
