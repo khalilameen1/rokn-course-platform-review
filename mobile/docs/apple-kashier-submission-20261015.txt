@@ -1,0 +1,31 @@
+iOS hosted course checkout candidate - 2026-10-15
+
+Owner explicitly requests the latest Android course purchase behavior on iOS:
+select a course plan, then continue to the account-bound Rokn hosted payment
+page in the external browser and pay through Kashier. Submit this binary for
+review rather than releasing the approved native-IAP build56 as if it were it.
+
+Source is b2772558 plus the shared routing-policy change and iOS build57.
+Android remains versionCode66. Marketing version remains 1.0.64.
+All nine launch repairs and the approved design remain. Unrelated local landing
+changes are excluded from this commit and from the signed source snapshot.
+
+Actual reuse: the already integrated Kashier hosted checkout, signed Rokn
+course-payment URL, server-issued exact_shortfall quote, account-scoped payment
+ownership, browser opener and server verification/reconciliation. No new SDK,
+card form, iframe, competitor source code or alternate settlement owner.
+Wallet transport and any previous Apple transaction recovery remain native;
+the course purchase entry point uses external/direct/browser on iOS and Android.
+No identity-specific review routing or post-review concealed switch is used.
+
+App Review Notes must describe Kashier and the external browser course path
+and must not retain build56's statement that course checkout uses Apple IAP.
+An approval of build56 does not approve build57. Upload success, processing,
+review submission and public release are separate states and require evidence.
+No physical iPhone Kashier payment is claimed from routing/contract tests.
+
+References for the reused integration and submission:
+https://developers.kashier.io/
+https://developer.apple.com/app-store/review/guidelines/
+
+Build and submission results will be recorded outside the immutable source.
