@@ -200,10 +200,7 @@ summary {
     justify-content: center;
 }
 .welcome-gift {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 0.65rem;
+    display: block;
     inline-size: fit-content;
     max-inline-size: 100%;
     margin: 1.25rem auto 0;
@@ -222,6 +219,8 @@ summary {
     color: #e9c66f;
     font-size: 1.125rem;
     font-weight: 700;
+    vertical-align: middle;
+    white-space: nowrap;
 }
 .hero-visual {
     grid-area: 1 / 1;

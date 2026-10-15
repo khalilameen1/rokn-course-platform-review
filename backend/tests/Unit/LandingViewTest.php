@@ -125,7 +125,7 @@ final class LandingViewTest extends TestCase
         $html = view('landing.index', $data)->render();
 
         self::assertStringContainsString('<bdi dir="ltr">٣٧</bdi>', $html);
-        self::assertStringContainsString('هدية لو لسه جديد', $html);
+        self::assertStringContainsString('تشتري منها أول كورس لو انت مستخدم جديد', $html);
         self::assertStringNotContainsString('تشتري بيها أول كورس', $html);
         self::assertSame(1, substr_count($html, 'class="welcome-gift"'));
         self::assertGreaterThan(strpos($html, 'images/landing/google-play.svg'), strpos($html, 'class="welcome-gift"'));
@@ -148,7 +148,7 @@ final class LandingViewTest extends TestCase
         $data['welcomeCoins'] = 7890;
         $html = view('landing.index', $data)->render();
         self::assertStringContainsString('<bdi dir="ltr">7,890</bdi>', $html);
-        self::assertStringContainsString('A gift for new learners', $html);
+        self::assertStringContainsString('toward your first course if you’re new to Rokn', $html);
 
         $data['welcomeCoins'] = 0;
         $data['directDiscountPercent'] = 0;

@@ -36,6 +36,7 @@
 
     @if(($welcomeCoins ?? 0) > 0)
         <p class="welcome-gift">
+            {{ __('landing.welcome_prefix') }}
             <span class="gift-value"><bdi dir="ltr">{{ $giftAmount }}</bdi><img src="{{ asset('images/rokn-coin-minted.png') }}" width="24" height="24" alt="{{ __('landing.coin_label') }}"></span>
             <span>{{ __('landing.welcome_label') }}</span>
         </p>
