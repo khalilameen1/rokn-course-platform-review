@@ -81,7 +81,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.rokn",
-      "buildNumber": "57",
+      "buildNumber": "58",
       "googleServicesFile": "./ios/GoogleService-Info.plist",
       "supportsTablet": true,
       "usesAppleSignIn": true,

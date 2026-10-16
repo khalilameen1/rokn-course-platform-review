@@ -1,0 +1,39 @@
+Apple StoreKit repair after review of 1.0.64(57) - 2026-10-16
+
+Owner authorized the fix and resubmission after Apple's Guideline2.1(b) report:
+course purchase in57 opened Safari. Restore native Apple course checkout for
+ios/appstore for every account, while keeping Android course checkout Kashier.
+
+Actual reuse: restore the exact routing implementation shipped in b2772558 /56
+and reuse the existing expo-iap/StoreKit purchase, account binding, server receipt
+verification and recovery owners. No new SDK, UI, entitlement owner, hidden
+reviewer switch or backend policy. Keep all nine launch repairs and designs.
+Existing iOS-only CI provenance correction remains; no dependencies change.
+
+Next available source build number is58; never rebuild/reupload immutable56/57.
+Before spending another macOS build, compare the complete executable mobile
+source, native targets, assets, config and dependency locks against the signed
+56 source b2772558. If identical except release counters and non-executable
+tooling/tests/docs, reuse the original already-uploaded signed56 for review.
+Its original release-evidence, source commit and SHA256 must remain unchanged;
+do not label it a new58 build. If parity is not established, build/sign58.
+
+Agreement observed in App Store Connect: Paid Apps Agreement is Active
+(New Agreement Available), not expired. A new agreement is a separate binding
+acceptance and must not be accepted merely because an older one was approved.
+No real iPhone/sandbox purchase is claimed by mocked regression tests.
+
+Verification result
+48 targeted purchase/routing/recovery tests, full TypeScript, targeted ESLint
+and release configuration passed. Runtime parity against signed56 source
+b2772558 passed: all mobile runtime/native/assets/dependency inputs identical
+except the next source build counter58. Differences are only documentation,
+tests and the iOS notice-verification tooling already reviewed on2026-10-15.
+Original56 IPA SHA256 remains
+df8f3ac432af0c2d809540ed71844b13e2629abcc620aef8420662ae04bab902.
+Reuse that original already-uploaded build56; do not claim a newly-built58.
+The live public API confirms package4/900 coins/AppleSKUrokn.coins.900 active.
+No real Apple sandbox payment was executed in this repair task.
+
+Reuse references and existing implementation provenance are retained in
+docs/apple-iap-resubmission-20261014.txt.

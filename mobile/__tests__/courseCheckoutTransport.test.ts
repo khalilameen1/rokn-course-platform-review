@@ -26,10 +26,9 @@ describe('course checkout transport', () => {
       expect(
         transport.resolveCheckoutTransport('course', 'ios', 'appstore'),
       ).toMatchObject({
-        kind: 'external',
-        channel: 'direct',
-        apiChannel: 'direct',
-        surface: 'browser',
+        kind: 'native',
+        channel: 'appstore',
+        apiChannel: 'apple',
       });
       expect(
         transport.resolveCheckoutTransport('wallet', 'android', 'direct'),
@@ -67,12 +66,16 @@ describe('course checkout transport', () => {
         resolveCheckoutTransport,
       } = require('../src/services/checkoutRouting');
       for (const channel of ['direct', 'play', 'appstore'] as const) {
-        expect(resolveCheckoutTransport('course', platform, channel)).toEqual({
-          kind: 'external',
-          channel: 'direct',
-          apiChannel: 'direct',
-          surface: 'browser',
-        });
+        expect(resolveCheckoutTransport('course', platform, channel)).toEqual(
+          platform === 'ios' && channel === 'appstore'
+            ? {kind: 'native', channel: 'appstore', apiChannel: 'apple'}
+            : {
+                kind: 'external',
+                channel: 'direct',
+                apiChannel: 'direct',
+                surface: 'browser',
+              },
+        );
       }
       expect(resolveCheckoutTransport('wallet', platform, 'appstore')).toEqual({
         kind: 'native',
@@ -82,7 +85,7 @@ describe('course checkout transport', () => {
     },
   );
 
-  it('binds App Store course checkout to the browser while preserving native wallet recovery', () => {
+  it('binds the App Store configuration to native Apple purchase and recovery', () => {
     jest.resetModules();
     jest.isolateModules(() => {
       jest.doMock('react-native', () => ({Platform: {OS: 'ios'}}));
@@ -95,17 +98,14 @@ describe('course checkout transport', () => {
       ).toBe('appstore');
       const transport = require('../src/services/checkoutRouting');
       expect(transport.courseCheckoutTransport).toEqual({
-        kind: 'external',
-        channel: 'direct',
-        apiChannel: 'direct',
-        surface: 'browser',
-      });
-      expect(transport.walletCheckoutTransport).toEqual({
         kind: 'native',
         channel: 'appstore',
         apiChannel: 'apple',
       });
-      expect(transport.canRecoverExternalCheckout).toBe(true);
+      expect(transport.walletCheckoutTransport).toEqual(
+        transport.courseCheckoutTransport,
+      );
+      expect(transport.canRecoverExternalCheckout).toBe(false);
     });
   });
 
