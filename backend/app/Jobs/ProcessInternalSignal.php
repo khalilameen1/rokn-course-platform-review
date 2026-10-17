@@ -37,7 +37,8 @@ final class ProcessInternalSignal implements ShouldQueue
             'ai_usage.settled',
             'ai_usage.threshold',
             'ai_usage.threshold_admin' => (string) config('queue.channels.operations', 'operations'),
-            'course.attachments.grant' => (string) config('queue.channels.operations', 'operations'),
+            'course.attachments.grant',
+            'course.watch_history.canonicalize' => (string) config('queue.channels.operations', 'operations'),
             default => (string) config('queue.connections.redis.queue', 'default'),
         };
     }

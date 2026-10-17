@@ -30,7 +30,8 @@ final readonly class InternalSignalHandler
         private InternalSignalService $internalSignals,
         private CurriculumCompletionService $curriculumCompletion,
         private CourseRevisionResolver $revisionResolver,
-        private readonly StudentNotificationService $notifications
+        private readonly StudentNotificationService $notifications,
+        private WatchHistoryCanonicalizationService $watchHistory
     ) {
     }
 
@@ -80,6 +81,9 @@ final readonly class InternalSignalHandler
                 return;
             case 'course.attachments.grant':
                 $this->grantCourseAttachments($payload);
+                return;
+            case 'course.watch_history.canonicalize':
+                $this->canonicalizeWatchHistory($payload);
                 return;
             default:
                 throw new \UnexpectedValueException(
@@ -169,6 +173,28 @@ final readonly class InternalSignalHandler
             (bool) ($payload['chat'] ?? false),
             (bool) ($payload['project'] ?? false)
         );
+    }
+
+    /** Bounded step; the next step is its own durable signal, keyed by cursor. */
+    private function canonicalizeWatchHistory(array $payload): void
+    {
+        $courseId = (int) ($payload['course_id'] ?? 0);
+        $revision = max(0, (int) ($payload['published_revision'] ?? 0));
+        $after = max(0, (int) ($payload['after_user_id'] ?? 0));
+        if ($courseId <= 0 || $revision === 0) {
+            return;
+        }
+
+        $next = $this->watchHistory->afterPublish($courseId, $after);
+        if ($next !== null) {
+            $this->internalSignals->record(
+                'course.watch_history.canonicalize',
+                "course:{$courseId}:revision:{$revision}:after:{$next}",
+                ['course_id' => $courseId, 'published_revision' => $revision, 'after_user_id' => $next],
+                Course::class,
+                $courseId
+            );
+        }
     }
 
     private function projectPassedReward(array $payload): void

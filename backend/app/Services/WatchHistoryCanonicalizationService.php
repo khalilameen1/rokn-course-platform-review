@@ -14,9 +14,10 @@ use Throwable;
 
 /**
  * Moves resume rows written against a superseded course revision onto the
- * current lesson. The merge itself runs lazily, outside the course publish
- * lock, but only once per learner and published lineage: a history read
- * after that is a pure read.
+ * current lesson. Publishing records a durable signal that merges every
+ * affected learner in bounded batches (afterPublish), outside the course
+ * publish lock. The history read keeps ensureCanonical as a fallback for a
+ * learner the job has not reached yet; once merged, a read is a pure read.
  */
 final class WatchHistoryCanonicalizationService
 {
@@ -24,7 +25,7 @@ final class WatchHistoryCanonicalizationService
 
     public function __construct(private readonly CourseRevisionResolver $revisionResolver) {}
 
-    public function ensureCanonical(int $userId): void
+    public function ensureCanonical(int $userId, int $maxBatches = 1): void
     {
         $fingerprint = $this->fingerprint($userId);
         if ($fingerprint === null) return;
@@ -35,9 +36,43 @@ final class WatchHistoryCanonicalizationService
         // row that commits while it runs changes the next fingerprint, so the
         // following read repeats the (idempotent) check instead of trusting a
         // marker that predates it.
-        if ($this->materialize($userId)) {
-            $this->remember($key, $fingerprint);
+        for ($batch = 0; $batch < max(1, $maxBatches); $batch++) {
+            if ($this->materialize($userId)) {
+                $this->remember($key, $fingerprint);
+                return;
+            }
         }
+    }
+
+    /**
+     * One bounded step of the post-publish merge: learners with watch rows
+     * on this course's lineage, in user-id order after $afterUserId.
+     *
+     * @return int|null the cursor for the next step, or null when done
+     */
+    public function afterPublish(int $canonicalCourseId, int $afterUserId, int $learners = 50): ?int
+    {
+        $courseIds = DB::table('course_authoring_revisions')
+            ->where('canonical_course_id', $canonicalCourseId)
+            ->where('status', CourseAuthoringRevision::ARCHIVED)
+            ->pluck('revision_course_id')
+            ->map(static fn ($id): int => (int) $id)
+            ->push($canonicalCourseId)
+            ->unique()
+            ->values();
+        $userIds = DB::table('watching_logs')
+            ->whereIn('course_id', $courseIds)
+            ->where('user_id', '>', $afterUserId)
+            ->distinct()
+            ->orderBy('user_id')
+            ->limit($learners)
+            ->pluck('user_id')
+            ->map(static fn ($id): int => (int) $id);
+        foreach ($userIds as $userId) {
+            $this->ensureCanonical($userId, 20);
+        }
+
+        return $userIds->count() < $learners ? null : (int) $userIds->last();
     }
 
     /**

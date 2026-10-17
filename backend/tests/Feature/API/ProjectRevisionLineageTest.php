@@ -6,6 +6,10 @@ namespace Tests\Feature\API;
 
 use App\Http\Middleware\AppFrontNameSpace;
 use App\Http\Middleware\WebsiteVisitorCount;
+use App\Jobs\EvaluateProjectSubmission;
+use App\Jobs\GenerateProjectFeedback;
+use App\Jobs\GenerateProjectFeedbackReply;
+use App\Jobs\ProcessInternalSignal;
 use App\Models\AiUsageEvent;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
@@ -373,7 +377,14 @@ final class ProjectRevisionLineageTest extends TestCase
     {
         self::assertSame(0, ProjectSubmission::query()->count());
         self::assertSame(0, AiUsageEvent::query()->count());
-        Bus::assertNothingDispatched();
+        // Publishing itself queues the watch-history merge; nothing else may run.
+        foreach ([EvaluateProjectSubmission::class, GenerateProjectFeedback::class, GenerateProjectFeedbackReply::class] as $job) {
+            Bus::assertNotDispatched($job);
+        }
+        Bus::assertNotDispatched(
+            ProcessInternalSignal::class,
+            fn (ProcessInternalSignal $job): bool => $job->signalType !== 'course.watch_history.canonicalize'
+        );
         Http::assertNothingSent();
     }
 

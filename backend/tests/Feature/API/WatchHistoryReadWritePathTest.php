@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\API;
 
 use App\Models\CourseAuthoringRevision;
+use App\Models\InternalSignal;
 use App\Models\Lesson;
 use App\Models\PlaybackSession;
+use App\Services\InternalSignalHandler;
+use App\Services\WatchHistoryCanonicalizationService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
@@ -62,6 +65,41 @@ final class WatchHistoryReadWritePathTest extends ApiTestCase
             ->assertJsonPath('data.items.0.lesson_id', 10));
         self::assertNotSame([], $this->matching($afterPublish, 'distinct "lesson_id"'));
         self::assertSame([], $this->writes($afterPublish));
+    }
+
+    public function test_the_publish_signal_merges_history_so_the_first_read_writes_nothing(): void
+    {
+        $archiveCourseId = $this->archivePublishedLesson(oldLessonId: 20, currentLessonId: 10);
+        DB::table('watching_logs')->insert($this->logRow(20, $archiveCourseId, [
+            'position_seconds' => 42,
+            'duration_seconds' => 120,
+            'watched_at' => now()->subHour(),
+        ]));
+
+        $signal = new InternalSignal([
+            'type' => 'course.watch_history.canonicalize',
+            'payload' => ['course_id' => $this->courseId, 'published_revision' => 2, 'after_user_id' => 0],
+        ]);
+        app(InternalSignalHandler::class)->handle($signal);
+        $this->assertDatabaseMissing('watching_logs', ['user_id' => $this->user->id, 'lesson_id' => 20]);
+        // One learner, fewer than a batch: no continuation signal.
+        self::assertSame(0, InternalSignal::query()->where('type', 'course.watch_history.canonicalize')->count());
+
+        $first = $this->recordQueries(fn () => $this->history()->assertOk()
+            ->assertJsonPath('data.items.0.lesson_id', 10)
+            ->assertJsonPath('data.items.0.position_seconds', 42));
+        self::assertSame([], $this->writes($first));
+    }
+
+    public function test_the_publish_merge_continues_with_a_cursor_when_a_batch_is_full(): void
+    {
+        $archiveCourseId = $this->archivePublishedLesson(oldLessonId: 20, currentLessonId: 10);
+        DB::table('watching_logs')->insert($this->logRow(20, $archiveCourseId));
+
+        $service = app(WatchHistoryCanonicalizationService::class);
+        self::assertSame((int) $this->user->id, $service->afterPublish($this->courseId, 0, 1));
+        self::assertNull($service->afterPublish($this->courseId, (int) $this->user->id, 1));
+        $this->assertDatabaseMissing('watching_logs', ['user_id' => $this->user->id, 'lesson_id' => 20]);
     }
 
     public function test_history_orders_by_watched_at_then_id_without_a_count(): void

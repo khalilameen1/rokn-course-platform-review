@@ -235,6 +235,16 @@ final class CourseStagedAuthoringService
             );
 
             $canonicalId = (int) $canonical->id;
+            // Learners' resume rows still point at the superseded lessons.
+            // Merge them in the background now instead of on each learner's
+            // first history read after this publish.
+            $this->signals->record(
+                'course.watch_history.canonicalize',
+                "course:{$canonicalId}:revision:{$publishedRevision}:after:0",
+                ['course_id' => $canonicalId, 'published_revision' => $publishedRevision, 'after_user_id' => 0],
+                Course::class,
+                $canonicalId
+            );
             if ($grantChatAttachments || $grantProjectAttachments) {
                 $this->signals->record(
                     'course.attachments.grant',
