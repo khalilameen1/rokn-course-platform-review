@@ -84,6 +84,7 @@ for (const screen of [
   'EditAccount',
   'Feedback',
   'DeviceSessions',
+  'SavedLibrary',
 ]) {
   jest.doMock(`../src/screens/${screen}`, () => () => null);
 }

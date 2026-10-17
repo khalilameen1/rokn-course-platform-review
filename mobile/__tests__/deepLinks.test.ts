@@ -2,6 +2,7 @@ import {
   isExternalWebLink,
   parseRoknDestination,
   resolveInitialUrlWithinDeadline,
+  roknDestinationKey,
 } from '../src/navigation/deepLinks';
 
 describe('Rokn deep links', () => {
@@ -83,6 +84,28 @@ describe('Rokn deep links', () => {
       params: {tab: 'certificates'},
     });
     expect(parseRoknDestination('rokn://profile/unknown')).toBeNull();
+  });
+
+  it.each([
+    'rokn://profile/saved',
+    'rokn://profile/saved/',
+    'https://rokn.app/profile/saved',
+    'https://www.rokn.app/PROFILE/SAVED',
+    'rokn://saved',
+    'https://rokn.app/saved',
+  ])('opens the saved library for old and new saved links: %s', url => {
+    expect(parseRoknDestination(url)).toEqual({name: 'SavedLibrary'});
+  });
+
+  it('keeps the saved library out of the أنا tabs and rejects lookalikes', () => {
+    expect(roknDestinationKey({name: 'SavedLibrary'})).toBe('SavedLibrary');
+    expect(parseRoknDestination('rokn://profile/portfolio')).toEqual({
+      name: 'Profile',
+      params: {tab: 'portfolio'},
+    });
+    expect(parseRoknDestination('rokn://saved/7')).toBeNull();
+    expect(parseRoknDestination('rokn://profile/saved/7')).toBeNull();
+    expect(parseRoknDestination('rokn://my/saved')).toBeNull();
   });
 
   it('rejects incomplete internal links instead of navigating silently', () => {

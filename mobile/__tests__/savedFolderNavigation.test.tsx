@@ -1,7 +1,7 @@
 import React from 'react';
 import {Pressable, Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
-import type {useSavedLibrary} from '../src/screens/Profile/saved/useSavedLibrary';
+import type {useSavedLibrary} from '../src/screens/savedLibrary/useSavedLibrary';
 import type {SavedLesson} from '../src/services/roknApi';
 
 let mockLibrary: ReturnType<typeof useSavedLibrary>;
@@ -25,11 +25,12 @@ jest.mock('../src/components/ui/Skeleton', () => ({
 jest.mock('../src/navigation/journeyNavigation', () => ({
   openGuestLogin: jest.fn(),
 }));
-jest.mock('../src/screens/Profile/saved/useSavedLibrary', () => ({
+jest.mock('../src/screens/savedLibrary/useSavedLibrary', () => ({
   useSavedLibrary: () => mockLibrary,
 }));
 
-import SavedVideos from '../src/screens/Profile/SavedVideos';
+import SavedVideos from '../src/screens/savedLibrary/SavedVideos';
+import {openGuestLogin} from '../src/navigation/journeyNavigation';
 
 describe('saved folder navigation during scoped reads', () => {
   beforeEach(() => {
@@ -197,6 +198,25 @@ describe('saved folder navigation during scoped reads', () => {
       expect(status.props.state).toBe('error');
       act(() => status.props.onAction());
       expect(mockLibrary.retry).toHaveBeenCalledTimes(1);
+    } finally {
+      await act(async () => renderer.unmount());
+    }
+  });
+
+  it('returns a signed-out learner to the saved library screen after login', async () => {
+    mockLibrary.serverSession = false;
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<SavedVideos />);
+    });
+    try {
+      const status = renderer.root.findAll(
+        item => item.type === ('StatusView' as unknown),
+      )[0];
+      act(() => status.props.onAction());
+      expect(openGuestLogin).toHaveBeenLastCalledWith(expect.anything(), {
+        name: 'SavedLibrary',
+      });
     } finally {
       await act(async () => renderer.unmount());
     }

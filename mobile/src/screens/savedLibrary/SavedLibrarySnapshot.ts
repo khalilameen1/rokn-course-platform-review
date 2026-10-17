@@ -1,5 +1,5 @@
-import type {SavedFolderOption} from '../../../components/VideoPlayer/courseLearning/savedFolderIndex';
-import type {SavedLesson} from '../../../services/roknApi';
+import type {SavedFolderOption} from '../../components/VideoPlayer/courseLearning/savedFolderIndex';
+import type {SavedLesson} from '../../services/roknApi';
 
 type LibrarySnapshot = {
   saved: SavedLesson[];

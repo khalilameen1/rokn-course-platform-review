@@ -144,6 +144,59 @@ describe('safeLoginReturnToFromRoute', () => {
   );
 });
 
+describe('saved library return', () => {
+  it('returns to the saved library screen instead of the removed أنا tab', () => {
+    expect(
+      safeLoginReturnToFromRoute({name: 'SavedLibrary', params: {x: 1}}),
+    ).toEqual({name: 'SavedLibrary'});
+    expect(
+      safeLoginReturnToFromRoute({name: 'Profile', params: {tab: 'saved'}}),
+    ).toEqual({name: 'SavedLibrary'});
+    expect(
+      resolveLoginReturnDestination(
+        {name: 'Profile', params: {tab: 'saved'}},
+        'authenticated',
+      ),
+    ).toEqual({name: 'SavedLibrary'});
+    expect(
+      resolveLoginReturnDestination({name: 'SavedLibrary'}, 'guest'),
+    ).toEqual({name: 'Home'});
+    expect(
+      resolveLoginReturnDestination(
+        {name: 'Profile', params: {tab: 'certificates'}},
+        'authenticated',
+      ),
+    ).toEqual({name: 'Profile', params: {tab: 'certificates'}});
+    expect(
+      resolveLoginReturnDestination(
+        {name: 'Profile', params: {tab: 'unknown'}},
+        'authenticated',
+      ),
+    ).toEqual({name: 'Home'});
+  });
+
+  it('reads a return persisted before the move as the saved library', async () => {
+    await savePendingLoginReturnTo({name: 'Wallet'});
+    const key = '@rokn/pending-login-return/v1';
+    const envelope = JSON.parse((await AsyncStorage.getItem(key)) || '{}');
+    // The exact envelope an older build wrote for the أنا saved tab.
+    await AsyncStorage.setItem(
+      key,
+      JSON.stringify({
+        ...envelope,
+        returnTo: {name: 'Profile', params: {tab: 'saved'}},
+      }),
+    );
+
+    const claim = await claimPendingLoginReturnTo();
+    expect(claim?.returnTo).toEqual({name: 'SavedLibrary'});
+    expect(loginReturnResetState(claim?.returnTo, 'authenticated')).toEqual({
+      index: 1,
+      routes: [{name: 'Home'}, {name: 'SavedLibrary'}],
+    });
+  });
+});
+
 describe('login return navigation policy', () => {
   it('preserves a visible journey only while a guest session becomes authenticated', () => {
     expect(
@@ -208,6 +261,7 @@ describe('login return navigation policy', () => {
     'EditAccount',
     'DeviceSessions',
     'Notifications',
+    'SavedLibrary',
   ] as const)('does not return a guest to protected route %s', name => {
     expect(resolveLoginReturnDestination({name}, 'guest')).toEqual({
       name: 'Home',

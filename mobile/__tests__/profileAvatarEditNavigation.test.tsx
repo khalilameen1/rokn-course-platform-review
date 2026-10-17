@@ -50,7 +50,6 @@ jest.mock('../src/components/view/HeaderWithBack', () => () => null);
 jest.mock('../src/components/TabBar', () => () => null);
 jest.mock('../src/screens/Profile/Gallery', () => () => null);
 jest.mock('../src/screens/Profile/Certificates', () => () => null);
-jest.mock('../src/screens/Profile/SavedVideos', () => () => null);
 jest.mock('../src/components/ui/QRCode', () => () => null);
 jest.mock('../src/assets/SVG', () => ({
   SettingsIcon: () => null,

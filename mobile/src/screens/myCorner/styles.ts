@@ -24,6 +24,23 @@ export const styles = StyleSheet.create({
     backgroundColor: Palette.surface,
     alignItems: 'stretch',
   },
+  // Same surface, radius and inset as courseCard so saved lessons read as
+  // one more ركني card, not as the flat full-library list.
+  savedCard: {
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.lg,
+    backgroundColor: Palette.surface,
+    overflow: 'hidden',
+  },
+  savedRow: {backgroundColor: 'transparent', minHeight: 96, paddingVertical: Spacing.sm},
+  savedHint: {
+    ...Type.caption,
+    ...textDirection,
+    color: Palette.textMuted,
+    paddingVertical: Spacing.md,
+  },
   courseDetails: {
     flex: 1,
     alignItems: 'stretch',

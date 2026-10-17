@@ -14,14 +14,14 @@ import {
   getSavedFolderOptions,
   removeLessonFromSavedFolder,
   type SavedFolderOption,
-} from '../../../components/VideoPlayer/courseLearningApi';
+} from '../../components/VideoPlayer/courseLearningApi';
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
   sessionIdentityKey,
-} from '../../../constants/helpers';
-import type {SavedLesson} from '../../../services/roknApi';
-import type {RootState} from '../../../store/store';
+} from '../../constants/helpers';
+import type {SavedLesson} from '../../services/roknApi';
+import type {RootState} from '../../store/store';
 import {SavedLibrarySnapshot} from './SavedLibrarySnapshot';
 import {useSavedLibraryRead} from './useSavedLibraryRead';
 

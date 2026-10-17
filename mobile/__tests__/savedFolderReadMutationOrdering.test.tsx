@@ -67,7 +67,7 @@ import {
   saveLessonToFolder,
   toggleWatchLater,
 } from '../src/components/VideoPlayer/courseLearning/savedCollections';
-import {useSavedLibrary} from '../src/screens/Profile/saved/useSavedLibrary';
+import {useSavedLibrary} from '../src/screens/savedLibrary/useSavedLibrary';
 
 const api = jest.mocked(publicRequest);
 const folder = {id: '7', name: 'قائمتي', lessons_count: 1};

@@ -5,7 +5,7 @@ jest.mock('../src/services/roknApi', () => {
   throw new Error('View snapshots must not load persistence');
 });
 import type {SavedLesson} from '../src/services/roknApi';
-import {SavedLibrarySnapshot} from '../src/screens/Profile/saved/SavedLibrarySnapshot';
+import {SavedLibrarySnapshot} from '../src/screens/savedLibrary/SavedLibrarySnapshot';
 
 const lesson = (id: string, folderId = '7'): SavedLesson => ({
   id,

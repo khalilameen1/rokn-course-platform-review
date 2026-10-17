@@ -15,11 +15,14 @@ import {useResponsiveLayout} from '../constants/designSystem';
 import {sessionIdentityKey} from '../constants/helpers';
 import {openGuestLogin} from '../navigation/journeyNavigation';
 import type {RootNavigation} from '../navigation/types';
+import type {SavedLesson} from '../services/roknApi';
 import type {RootState} from '../store/store';
 import {CourseShelf} from './myCorner/CourseShelf';
 import {buildMyCornerModel, type LearningResumeTarget} from './myCorner/model';
 import {ProfessionalProgress} from './myCorner/ProfessionalProgress';
+import {SavedPreview} from './myCorner/SavedPreview';
 import {useMyCornerData} from './myCorner/useMyCornerData';
+import {useSavedPreview} from './myCorner/useSavedPreview';
 import {WeeklyRhythm} from './myCorner/WeeklyRhythm';
 
 export default function MyCorner() {
@@ -28,6 +31,7 @@ export default function MyCorner() {
   const storedUser = useSelector((state: RootState) => state.auth.userData);
   const identityKey = sessionIdentityKey(storedUser);
   const data = useMyCornerData(identityKey);
+  const saved = useSavedPreview(identityKey, data.serverSession === true);
   const [selectedPathId, setSelectedPathId] = useState<string | null>(null);
 
   useEffect(() => setSelectedPathId(null), [identityKey]);
@@ -58,6 +62,24 @@ export default function MyCorner() {
     (target: LearningResumeTarget) => navigation.navigate('Reels', target),
     [navigation],
   );
+  const openSavedLesson = useCallback(
+    (lesson: SavedLesson) =>
+      navigation.navigate('Reels', {
+        courseId: lesson.courseId,
+        lessonId: lesson.id,
+      }),
+    [navigation],
+  );
+  const openSavedLibrary = useCallback(
+    () => navigation.navigate('SavedLibrary'),
+    [navigation],
+  );
+  const {reload: reloadDashboard} = data;
+  const {reload: reloadSaved} = saved;
+  const refresh = useCallback(() => {
+    reloadDashboard();
+    reloadSaved();
+  }, [reloadDashboard, reloadSaved]);
 
   if (!data.owned) {
     return (
@@ -87,7 +109,7 @@ export default function MyCorner() {
           data.serverSession === true ? (
             <RefreshControl
               refreshing={data.dashboardLoading}
-              onRefresh={data.reload}
+              onRefresh={refresh}
             />
           ) : undefined
         }>
@@ -145,6 +167,16 @@ export default function MyCorner() {
               onResume={resumeCourse}
               onRetry={data.reload}
               orderedCourses={model.orderedCourses}
+            />
+          )}
+
+          {data.serverSession === true && (
+            <SavedPreview
+              hasCourses={!empty}
+              lessons={saved.lessons}
+              onOpenAll={openSavedLibrary}
+              onOpenLesson={openSavedLesson}
+              status={saved.status}
             />
           )}
 

@@ -17,7 +17,9 @@ const sameLinkableDestination = (
   if (!navigationRef.isReady()) return false;
   const current = navigationRef.getCurrentRoute();
   if (current?.name !== name) return false;
-  if (name === 'Home' || name === 'Wallet') return true;
+  if (name === 'Home' || name === 'Wallet' || name === 'SavedLibrary') {
+    return true;
+  }
   if (name === 'Profile') {
     const currentParams = (current.params || {}) as Record<string, unknown>;
     return String(currentParams.tab || '') === String(params?.tab || '');

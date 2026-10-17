@@ -1,9 +1,12 @@
+import type {ProfileTab} from './types';
+
 export type RoknDestination =
   | {name: 'Home'}
   | {
       name: 'Profile';
-      params?: {tab: 'portfolio' | 'certificates' | 'saved'};
+      params?: {tab: ProfileTab};
     }
+  | {name: 'SavedLibrary'}
   | {name: 'Wallet'}
   | {name: 'Feedback'; params?: {caseId: string}}
   | {name: 'CourseDetails'; params: {courseId: string}}
@@ -148,15 +151,12 @@ export const parseRoknDestination = (
   }
 
   if (/^home\/?$/i.test(path)) return {name: 'Home'};
-  const profile = path.match(
-    /^profile(?:\/(portfolio|certificates|saved))?\/?$/i,
-  );
+  // `profile/saved` predates the saved library leaving the أنا tabs. Old
+  // notifications and shared links keep opening the library itself.
+  if (/^(?:profile\/)?saved\/?$/i.test(path)) return {name: 'SavedLibrary'};
+  const profile = path.match(/^profile(?:\/(portfolio|certificates))?\/?$/i);
   if (profile) {
-    const tab = profile[1]?.toLowerCase() as
-      | 'portfolio'
-      | 'certificates'
-      | 'saved'
-      | undefined;
+    const tab = profile[1]?.toLowerCase() as ProfileTab | undefined;
     return tab ? {name: 'Profile', params: {tab}} : {name: 'Profile'};
   }
   if (/^wallet\/?$/i.test(path)) return {name: 'Wallet'};

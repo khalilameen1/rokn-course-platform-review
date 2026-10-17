@@ -8,18 +8,18 @@ describe('production daily surfaces', () => {
   it('does not substitute local fixtures for account-owned data', () => {
     for (const file of [
       'src/screens/MyCorner.tsx',
-      'src/screens/Profile/SavedVideos.tsx',
+      'src/screens/savedLibrary/SavedVideos.tsx',
       'src/screens/Wallet.tsx',
     ]) {
       expect(source(file)).not.toMatch(
         /LOCAL_DEMO_ENABLED|demoExperience|createDemoCourse|DEMO_/,
       );
     }
-    const saved = source('src/screens/Profile/saved/useSavedLibrary.ts');
+    const saved = source('src/screens/savedLibrary/useSavedLibrary.ts');
     expect(saved).toContain('captureAccountSessionBoundary()');
     expect(saved).toContain('assertAccountSessionBoundary(boundary)');
     const savedRead = source(
-      'src/screens/Profile/saved/useSavedLibraryRead.ts',
+      'src/screens/savedLibrary/useSavedLibraryRead.ts',
     );
     expect(savedRead).toContain('captureAccountSessionBoundary()');
     expect(savedRead).toContain('assertAccountSessionBoundary(boundary)');

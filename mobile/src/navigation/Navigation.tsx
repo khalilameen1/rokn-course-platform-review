@@ -23,6 +23,7 @@ import Notifications from '../screens/Notifications';
 import EditAccount from '../screens/EditAccount';
 import Feedback from '../screens/Feedback';
 import DeviceSessions from '../screens/DeviceSessions';
+import SavedLibrary from '../screens/SavedLibrary';
 import type {RootStackParamList} from './types';
 import {
   flushPendingNotificationNavigation,
@@ -115,6 +116,7 @@ const Stacks = ({sessionReady}: {sessionReady: boolean}) => {
         <Stack.Screen name="CourseCertificate" component={CourseCertificate} />
         <Stack.Screen name="Notifications" component={Notifications} />
         <Stack.Screen name="DeviceSessions" component={DeviceSessions} />
+        <Stack.Screen name="SavedLibrary" component={SavedLibrary} />
       </Stack.Group>
     </Stack.Navigator>
   );

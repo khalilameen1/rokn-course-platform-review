@@ -53,7 +53,6 @@ jest.mock('../src/components/view/HeaderWithBack', () => () => null);
 jest.mock('../src/components/TabBar', () => () => null);
 jest.mock('../src/screens/Profile/Gallery', () => () => null);
 jest.mock('../src/screens/Profile/Certificates', () => () => null);
-jest.mock('../src/screens/Profile/SavedVideos', () => () => null);
 jest.mock('../src/components/ui/QRCode', () => () => null);
 jest.mock('../src/assets/SVG', () => ({
   SettingsIcon: () => null,
@@ -111,7 +110,25 @@ describe('profile portfolio share visibility', () => {
     await act(async () => renderer.unmount());
   });
 
-  it.each([1, 2])(
+  it('shows only the portfolio and certificates tabs', async () => {
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<Profile />);
+    });
+    const labels = renderer.root
+      .findAllByProps({accessibilityRole: 'tab'})
+      .filter(node => typeof node.props.onPress === 'function')
+      .map(node => node.props.accessibilityLabel);
+    expect(labels).toEqual(['أعمالي', 'الشهادات']);
+    expect(
+      renderer.root
+        .findAllByType(Text)
+        .some(node => node.props.children === 'المحفوظات'),
+    ).toBe(false);
+    await act(async () => renderer.unmount());
+  });
+
+  it.each([1])(
     'keeps sharing and QR out of profile tab %s',
     async tabIndex => {
       let renderer!: TestRenderer.ReactTestRenderer;

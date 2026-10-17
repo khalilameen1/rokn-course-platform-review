@@ -2,6 +2,7 @@ import {
   LOGIN_RETURN_TO_PARAMLESS_ROUTES,
   type LoginReturnTo,
   type LoginReturnToParamlessRoute,
+  type ProfileTab,
 } from './types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {serverNowMs} from '../utils/serverClock';
@@ -60,6 +61,15 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
     ? (value as Record<string, unknown>)
     : null;
 
+const isProfileTab = (tab: unknown): tab is ProfileTab =>
+  tab === 'portfolio' || tab === 'certificates';
+
+/**
+ * The saved library moved from a أنا tab to its own screen. Returns persisted
+ * or created before that move still name `{Profile, tab: 'saved'}`.
+ */
+const isLegacySavedTab = (tab: unknown) => tab === 'saved';
+
 /**
  * Accept only the small route grammar the app itself can create. This is used
  * both for live navigation and for the one durable hand-off that survives an
@@ -78,9 +88,8 @@ export const safeLoginReturnTo = (
     const params = asRecord(candidate?.params);
     if (candidate?.params === undefined) return {name};
     const tab = params?.tab;
-    return tab === 'portfolio' || tab === 'certificates' || tab === 'saved'
-      ? {name, params: {tab}}
-      : undefined;
+    if (isLegacySavedTab(tab)) return {name: 'SavedLibrary'};
+    return isProfileTab(tab) ? {name, params: {tab}} : undefined;
   }
   if (
     LOGIN_RETURN_TO_PARAMLESS_ROUTES.includes(
@@ -144,7 +153,8 @@ export const safeLoginReturnToFromRoute = (
   if (route?.name === 'Profile') {
     const params = asRecord(route.params);
     const tab = params?.tab;
-    return tab === 'portfolio' || tab === 'certificates' || tab === 'saved'
+    if (isLegacySavedTab(tab)) return {name: 'SavedLibrary'};
+    return isProfileTab(tab)
       ? {name: 'Profile', params: {tab}}
       : {name: 'Profile'};
   }
@@ -233,7 +243,8 @@ export const resolveLoginReturnDestination = (
     returnTo.name === 'CourseCertificate' ||
     returnTo.name === 'EditAccount' ||
     returnTo.name === 'DeviceSessions' ||
-    returnTo.name === 'Notifications'
+    returnTo.name === 'Notifications' ||
+    returnTo.name === 'SavedLibrary'
   ) {
     return {name: 'Home'};
   }

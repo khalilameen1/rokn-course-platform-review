@@ -44,7 +44,7 @@ jest.mock('../src/services/networkExperience', () => ({
 }));
 
 import {publicRequest} from '../src/constants/api';
-import {useSavedLibrary} from '../src/screens/Profile/saved/useSavedLibrary';
+import {useSavedLibrary} from '../src/screens/savedLibrary/useSavedLibrary';
 import {getSavedLessonsPage} from '../src/services/api/savedLessons';
 import {
   deleteSavedFolderOption,

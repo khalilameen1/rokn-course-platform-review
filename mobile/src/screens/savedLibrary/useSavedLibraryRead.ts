@@ -1,16 +1,16 @@
 import {useFocusEffect} from '@react-navigation/native';
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {getSavedFolderOptions} from '../../../components/VideoPlayer/courseLearningApi';
+import {getSavedFolderOptions} from '../../components/VideoPlayer/courseLearningApi';
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
-} from '../../../constants/helpers';
-import {friendlyNetworkMessage} from '../../../services/networkExperience';
+} from '../../constants/helpers';
+import {friendlyNetworkMessage} from '../../services/networkExperience';
 import {
   getSavedFolderLessonsPage,
   getSavedLessonsPage,
   hasSession,
-} from '../../../services/roknApi';
+} from '../../services/roknApi';
 import type {SavedLibrarySnapshot} from './SavedLibrarySnapshot';
 
 /** A command can finish on the same account after leaving its original page. */

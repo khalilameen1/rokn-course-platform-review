@@ -1,5 +1,9 @@
 import {useNavigation, useRoute} from '@react-navigation/native';
-import type {RootNavigation, RootRoute} from '../../navigation/types';
+import type {
+  ProfileTab,
+  RootNavigation,
+  RootRoute,
+} from '../../navigation/types';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {Modal, Pressable, ScrollView, Text, View} from 'react-native';
 import {RasterImage as Image} from '../../components/ui/RasterImage';
@@ -14,7 +18,6 @@ import {
 import HeaderWithBack from '../../components/view/HeaderWithBack';
 import Certificates from './Certificates';
 import Gallery from './Gallery';
-import SavedVideos from './SavedVideos';
 import QRCode from '../../components/ui/QRCode';
 import {QRIcon} from '../../components/ui/QRIcon';
 import {DefaultAvatar} from '../../components/ui/DefaultAvatar';
@@ -22,12 +25,9 @@ import {profileStyles as styles} from './styles';
 import {useProfileOverview} from './useProfileOverview';
 import {openGuestLogin} from '../../navigation/journeyNavigation';
 
-type ProfileTab = 'portfolio' | 'certificates' | 'saved';
-
 const tabs: {key: ProfileTab; label: string}[] = [
   {key: 'portfolio', label: 'أعمالي'},
   {key: 'certificates', label: 'الشهادات'},
-  {key: 'saved', label: 'المحفوظات'},
 ];
 
 export default function Profile() {
@@ -69,7 +69,12 @@ export default function Profile() {
   }, [showPortfolioActions]);
 
   useEffect(() => {
-    if (route.params?.tab) setActiveTab(route.params.tab);
+    const requestedTab = route.params?.tab;
+    // A stale route from before المحفوظات moved to ركني may still carry
+    // another tab; only the two أنا tabs are selectable.
+    if (requestedTab === 'portfolio' || requestedTab === 'certificates') {
+      setActiveTab(requestedTab);
+    }
   }, [route.params?.tab]);
 
   // One-shot request from a passed project; consumed by the gallery.
@@ -294,9 +299,6 @@ export default function Profile() {
               key={`certificates:${identityKey}`}
               displayName={certificateHolderName}
             />
-          )}
-          {activeTab === 'saved' && (
-            <SavedVideos key={`saved:${identityKey}`} />
           )}
         </ResponsiveFrame>
       </Content>

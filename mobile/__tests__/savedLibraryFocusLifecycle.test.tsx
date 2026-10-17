@@ -67,7 +67,7 @@ jest.mock('../src/services/roknApi', () => ({
   hasSession: (...args: unknown[]) => mockHasSession(...args),
 }));
 
-import {useSavedLibrary} from '../src/screens/Profile/saved/useSavedLibrary';
+import {useSavedLibrary} from '../src/screens/savedLibrary/useSavedLibrary';
 
 const page = (pageNumber: number, hasMore = false) => ({
   fromCache: false,

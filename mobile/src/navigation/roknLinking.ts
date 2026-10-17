@@ -113,6 +113,8 @@ export const roknLinking: LinkingOptions<RootStackParamList> = {
           }`
         : destination.name === 'Wallet'
         ? 'wallet'
+        : destination.name === 'SavedLibrary'
+        ? 'saved'
         : destination.name === 'CourseDetails'
         ? `course/${destination.params.courseId}`
         : destination.params.projectId
@@ -139,6 +141,7 @@ export const roknLinking: LinkingOptions<RootStackParamList> = {
       Reels: 'course/:courseId/watch/:reelId?',
       Profile: 'profile/:tab?',
       Wallet: 'wallet',
+      SavedLibrary: 'saved',
       Feedback: 'support/:caseId',
     },
   },

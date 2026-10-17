@@ -7,7 +7,7 @@ import {
   Type,
   rtlRowStyle,
   textDirection,
-} from '../../../constants/designSystem';
+} from '../../constants/designSystem';
 
 export const savedLibraryStyles = StyleSheet.create({
   container: {paddingBottom: Spacing.xl},

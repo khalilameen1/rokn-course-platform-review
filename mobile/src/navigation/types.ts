@@ -27,6 +27,8 @@ export type ReelsRouteParams = {
   openCourseChatUpgrade?: boolean;
 };
 
+export type ProfileTab = 'portfolio' | 'certificates';
+
 export const LOGIN_RETURN_TO_PARAMLESS_ROUTES = [
   'Wallet',
   'MyCorner',
@@ -34,6 +36,7 @@ export const LOGIN_RETURN_TO_PARAMLESS_ROUTES = [
   'EditAccount',
   'DeviceSessions',
   'Notifications',
+  'SavedLibrary',
 ] as const;
 
 export type LoginReturnToParamlessRoute =
@@ -59,7 +62,7 @@ export type LoginReturnTo =
     }
   | {
       name: 'Profile';
-      params?: {tab: 'portfolio' | 'certificates' | 'saved'};
+      params?: {tab: ProfileTab};
     }
   | {
       name: LoginReturnToParamlessRoute;
@@ -82,7 +85,7 @@ export type RootStackParamList = {
   Wallet: {returnTo?: LoginReturnTo} | undefined;
   Profile:
     | {
-        tab?: 'portfolio' | 'certificates' | 'saved';
+        tab?: ProfileTab;
         /** Passed course project to add to the portfolio (one-shot). */
         addPortfolioProjectId?: string;
       }
@@ -94,6 +97,7 @@ export type RootStackParamList = {
   Notifications: undefined;
   Settings: undefined;
   DeviceSessions: undefined;
+  SavedLibrary: undefined;
 };
 
 export type RootNavigation = NativeStackNavigationProp<RootStackParamList>;

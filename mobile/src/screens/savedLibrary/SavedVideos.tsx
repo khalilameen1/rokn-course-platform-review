@@ -1,21 +1,20 @@
 import {useNavigation} from '@react-navigation/native';
 import React from 'react';
 import {Pressable, ScrollView, Text, TextInput, View} from 'react-native';
-import {RasterImage as Image} from '../../components/ui/RasterImage';
 import {Swipeable} from 'react-native-gesture-handler';
-import {CloseChat, PlayInSavedVideosIcon} from '../../assets/SVG';
+import {CloseChat} from '../../assets/SVG';
 import {StatusView, SectionHeading} from '../../components/ui/PremiumUI';
 import {SavedLibrarySkeleton} from '../../components/ui/Skeleton';
 import {
   formatAuthoredDisplayText,
   formatArabicNumber,
-  toArabicDigits,
 } from '../../constants/arabicFormatting';
 import {Palette} from '../../constants/designSystem';
 import {openGuestLogin} from '../../navigation/journeyNavigation';
 import type {RootNavigation} from '../../navigation/types';
-import {savedLibraryStyles as styles} from './saved/styles';
-import {useSavedLibrary} from './saved/useSavedLibrary';
+import {SavedLessonRow} from './SavedLessonRow';
+import {savedLibraryStyles as styles} from './styles';
+import {useSavedLibrary} from './useSavedLibrary';
 
 export default function SavedVideos() {
   const navigation = useNavigation<RootNavigation>();
@@ -84,10 +83,7 @@ export default function SavedVideos() {
         actionLabel="تسجيل الدخول"
         description="سجّل الدخول لعرض محفوظاتك على أي جهاز"
         onAction={() =>
-          openGuestLogin(navigation, {
-            name: 'Profile',
-            params: {tab: 'saved'},
-          })
+          openGuestLogin(navigation, {name: 'SavedLibrary'})
         }
         state="empty"
         title="محفوظاتك مرتبطة بحسابك"
@@ -108,7 +104,7 @@ export default function SavedVideos() {
       <SectionHeading
         actionLabel={showCreateFolder ? 'إلغاء' : 'قائمة جديدة'}
         onAction={toggleCreateFolder}
-        title="محفوظاتك"
+        title="قوائمك"
       />
       {partialReadError ? (
         <Pressable
@@ -294,70 +290,41 @@ export default function SavedVideos() {
                         <Text style={styles.swipeDeleteText}>إزالة</Text>
                       </Pressable>
                     )}>
-                    <Pressable
-                      accessibilityLabel={`تشغيل ${item.title}`}
-                      accessibilityRole="button"
+                    <SavedLessonRow
+                      item={item}
                       onPress={() =>
                         navigation.navigate('Reels', {
                           courseId: item.courseId,
                           lessonId: item.id,
                         })
                       }
-                      style={({pressed}) => [
-                        styles.row,
-                        pressed && styles.pressed,
-                      ]}>
-                      <View style={styles.thumbWrap}>
-                        <Image
-                          progressiveRenderingEnabled
-                          resizeMethod="resize"
-                          source={
-                            item.imageUrl
-                              ? {uri: item.imageUrl}
-                              : require('../../assets/images/courseSliderBackground.jpg')
+                      trailing={
+                        <Pressable
+                          accessibilityLabel={
+                            removalPending
+                              ? 'جارٍ الإزالة'
+                              : 'إزالة من هذه القائمة'
                           }
-                          style={styles.thumb}
-                        />
-                        <View style={styles.playMark}>
-                          <PlayInSavedVideosIcon width={28} height={28} />
-                        </View>
-                      </View>
-                      <View style={styles.copy}>
-                        <Text style={styles.title}>
-                          {formatAuthoredDisplayText(item.title)}
-                        </Text>
-                        <Text numberOfLines={1} style={styles.course}>
-                          {formatAuthoredDisplayText(item.courseTitle)}
-                        </Text>
-                        <Text style={styles.duration}>
-                          {toArabicDigits(item.duration)}
-                        </Text>
-                      </View>
-                      <Pressable
-                        accessibilityLabel={
-                          removalPending
-                            ? 'جارٍ الإزالة'
-                            : 'إزالة من هذه القائمة'
-                        }
-                        accessibilityRole="button"
-                        accessibilityState={{
-                          busy: removalPending,
-                          disabled: removalPending,
-                        }}
-                        disabled={removalPending}
-                        hitSlop={8}
-                        onPress={event => {
-                          event.stopPropagation();
-                          void removeSaved(item);
-                        }}
-                        style={styles.removeButton}>
-                        {removalPending ? (
-                          <Text style={styles.removeText}>…</Text>
-                        ) : (
-                          <CloseChat width={14} height={14} />
-                        )}
-                      </Pressable>
-                    </Pressable>
+                          accessibilityRole="button"
+                          accessibilityState={{
+                            busy: removalPending,
+                            disabled: removalPending,
+                          }}
+                          disabled={removalPending}
+                          hitSlop={8}
+                          onPress={event => {
+                            event.stopPropagation();
+                            void removeSaved(item);
+                          }}
+                          style={styles.removeButton}>
+                          {removalPending ? (
+                            <Text style={styles.removeText}>…</Text>
+                          ) : (
+                            <CloseChat width={14} height={14} />
+                          )}
+                        </Pressable>
+                      }
+                    />
                   </Swipeable>
                   {index < group.items.length - 1 && (
                     <View style={styles.divider} />
