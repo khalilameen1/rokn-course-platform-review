@@ -16,9 +16,12 @@ use App\Services\LearningEvidenceService;
 use App\Services\LearningRewardService;
 use App\Services\PlaybackCapabilityService;
 use App\Services\PlaybackSessionService;
+use App\Services\WatchHistoryCanonicalizationService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 final class WatchHistoryController extends Controller
 {
@@ -26,7 +29,8 @@ final class WatchHistoryController extends Controller
         private readonly LearningEvidenceService $learningEvidence,
         private readonly CourseEntitlementService $courseAccess,
         private readonly CourseRevisionResolver $revisionResolver,
-        private readonly BunnyDeliveryService $delivery
+        private readonly BunnyDeliveryService $delivery,
+        private readonly WatchHistoryCanonicalizationService $canonicalHistory
     ) {
     }
 
@@ -42,7 +46,7 @@ final class WatchHistoryController extends Controller
         ]);
 
         $user = auth('api')->user();
-        $this->materializeWatchHistory((int) $user->id);
+        $this->canonicalHistory->ensureCanonical((int) $user->id);
         $history = WatchingLog::query()
             ->where('user_id', $user->id)
             ->whereHas('course', function ($courses): void {
@@ -59,11 +63,19 @@ final class WatchHistoryController extends Controller
                 'lesson:id,list_id,title,title_ar,title_en,thumbnail_path,duration_minutes',
                 'lesson.mediaState:id,lesson_id,duration_seconds',
                 'course:id,name_ar,name_en,image',
+                // The image accessor reads the featured photo; load it once
+                // per page as LearningDashboardService does, not per row.
+                'course.photo',
                 'courseSection:id,course_id,module_id,sectionable_type,sectionable_id,order,title,title_ar,title_en',
             ])
-            ->orderByRaw('COALESCE(watched_at, updated_at) DESC')
+            // Every write path sets watched_at, so recency is an indexed
+            // column: (user_id[, course_id], watched_at) + the InnoDB primary
+            // key suffix serves this order and stops at the page boundary.
+            ->orderByDesc('watching_logs.watched_at')
             ->orderByDesc('watching_logs.id')
-            ->paginate($validated['per_page'] ?? 20);
+            // The app reads the first page only and never a total. A
+            // simple page avoids a COUNT over the nested visibility EXISTS.
+            ->simplePaginate((int) ($validated['per_page'] ?? 20));
 
         return response()->json([
             'status' => 200,
@@ -107,108 +119,11 @@ final class WatchHistoryController extends Controller
                 })->values(),
                 'pagination' => [
                     'current_page' => $history->currentPage(),
-                    'last_page' => $history->lastPage(),
                     'per_page' => $history->perPage(),
-                    'total' => $history->total(),
+                    'has_more_pages' => $history->hasMorePages(),
                 ],
             ],
         ]);
-    }
-
-    /** Canonicalize resume pointers lazily, outside the course publish lock. */
-    private function materializeWatchHistory(int $userId): void
-    {
-        $lessonIds = WatchingLog::query()
-            ->where('user_id', $userId)
-            ->select('lesson_id')
-            ->distinct()
-            ->pluck('lesson_id');
-        if ($lessonIds->isEmpty()) return;
-        $current = $this->revisionResolver->currentLearnerEntityMap(
-            Lesson::class,
-            $lessonIds
-        );
-        $staleLessonIds = collect($current)
-            ->filter(fn ($target, $source): bool => (int) $target !== (int) $source)
-            ->keys();
-        if ($staleLessonIds->isEmpty()) return;
-        $logs = WatchingLog::query()
-            ->where('user_id', $userId)
-            ->whereIn('lesson_id', $staleLessonIds)
-            ->orderByDesc('id')
-            ->limit(50)
-            ->get(['id', 'lesson_id', 'course_id', 'course_section_id', 'position_seconds',
-                'duration_seconds', 'playback_session_id', 'playback_session_started_at',
-                'last_playback_sequence', 'watched_at', 'completed_at', 'created_at', 'updated_at']);
-        $currentSections = \App\Models\CourseSection::query()
-            ->where('sectionable_type', Lesson::class)
-            ->whereIn(
-                'sectionable_id',
-                $staleLessonIds->map(fn ($id): int => (int) $current[(int) $id])
-            )
-            ->get(['id', 'course_id', 'sectionable_id'])
-            ->keyBy('sectionable_id');
-        foreach ($logs as $source) {
-            $targetLessonId = (int) ($current[(int) $source->lesson_id] ?? $source->lesson_id);
-            $targetSection = $currentSections->get($targetLessonId);
-            if ($targetLessonId === (int) $source->lesson_id || !$targetSection) continue;
-            DB::transaction(function () use ($source, $targetLessonId, $targetSection, $userId): void {
-                $locked = WatchingLog::query()->whereKey($source->id)->lockForUpdate()->first();
-                if (!$locked) return;
-
-                // Another history request may have canonicalized this exact
-                // row while we waited. Never treat that now-current row as
-                // both source and target and delete it during the merge.
-                if ((int) $locked->lesson_id !== (int) $source->lesson_id) return;
-
-                DB::table('watching_logs')->insertOrIgnore([
-                    'user_id' => $userId,
-                    'lesson_id' => $targetLessonId,
-                    'lesson_name' => $locked->lesson_name,
-                    'course_id' => (int) $targetSection->course_id,
-                    'course_section_id' => (int) $targetSection->id,
-                    'course_name' => $locked->course_name,
-                    'position_seconds' => $locked->position_seconds,
-                    'duration_seconds' => $locked->duration_seconds,
-                    'playback_session_id' => $locked->playback_session_id,
-                    'playback_session_started_at' => $locked->playback_session_started_at,
-                    'last_playback_sequence' => $locked->last_playback_sequence,
-                    'watched_at' => $locked->watched_at,
-                    'completed_at' => $locked->completed_at,
-                    'created_at' => $locked->created_at,
-                    'updated_at' => $locked->updated_at,
-                ]);
-                $target = WatchingLog::query()->where('user_id', $userId)
-                    ->where('lesson_id', $targetLessonId)->lockForUpdate()->first();
-                if (!$target) throw new \RuntimeException('Canonical watch history row was not persisted.');
-                $sourceTime = $locked->watched_at ?? $locked->updated_at;
-                $targetTime = $target->watched_at ?? $target->updated_at;
-                if ($sourceTime && (!$targetTime || $sourceTime->gt($targetTime))) {
-                    $target->forceFill([
-                        'position_seconds' => $locked->position_seconds,
-                        'duration_seconds' => $locked->duration_seconds,
-                        'playback_session_id' => $locked->playback_session_id,
-                        'playback_session_started_at' => $locked->playback_session_started_at,
-                        'last_playback_sequence' => $locked->last_playback_sequence,
-                        'watched_at' => $locked->watched_at,
-                    ]);
-                }
-                $target->forceFill([
-                    'lesson_name' => (string) ($target->lesson_name ?: $locked->lesson_name),
-                    'course_id' => (int) $targetSection->course_id,
-                    'course_section_id' => (int) $targetSection->id,
-                    'course_name' => (string) ($target->course_name ?: $locked->course_name),
-                ]);
-                if (
-                    $locked->completed_at
-                    && (!$target->completed_at || $locked->completed_at->lt($target->completed_at))
-                ) {
-                    $target->completed_at = $locked->completed_at;
-                }
-                $target->save();
-                $locked->delete();
-            }, 3);
-        }
     }
 
     /** Record a verified playback sample and advance durable learning state. */
@@ -220,7 +135,9 @@ final class WatchHistoryController extends Controller
     ): JsonResponse
     {
         $validated = $request->validate([
-            'lesson_id' => 'required|integer|exists:lessons,id',
+            // Existence is answered by the lesson load below; a separate
+            // exists:lessons probe was a second read of the same row.
+            'lesson_id' => 'required|integer',
             'position_seconds' => 'nullable|integer|min:0|max:86400',
             'duration_seconds' => 'nullable|integer|min:1|max:86400',
             'is_completed' => 'nullable|boolean',
@@ -244,10 +161,21 @@ final class WatchHistoryController extends Controller
         $user = auth('api')->user();
 
         $lesson = Lesson::with([
-            'course:id,name_ar,name_en,is_coming_soon',
+            // sections_count lets isPublishedForLearning() answer from this
+            // row instead of issuing its own EXISTS query.
+            'course' => fn ($courses) => $courses
+                ->select(['id', 'name_ar', 'name_en', 'is_coming_soon'])
+                ->withCount('sections'),
             'courseSection',
             'mediaState:id,lesson_id,duration_seconds',
-        ])->findOrFail($validated['lesson_id']);
+        ])->find($validated['lesson_id']);
+        if (!$lesson) {
+            // The same 422 payload the exists rule produced, now evaluated
+            // only on this failure path. Should the row appear meanwhile,
+            // answer exactly as findOrFail did.
+            Validator::make($validated, ['lesson_id' => 'exists:lessons,id'])->validate();
+            throw (new ModelNotFoundException())->setModel(Lesson::class, [$validated['lesson_id']]);
+        }
         $courseId = (int) $lesson->list_id;
         $course = $lesson->course;
         $section = $lesson->courseSection;
@@ -493,7 +421,6 @@ final class WatchHistoryController extends Controller
         $incomingSequence = $duplicate && $acceptedSession
             ? (int) $acceptedSession->last_sequence
             : (int) $validated['sequence'];
-        $resumeRecorded = true;
         $resumeLesson = $currentLesson ?? $lesson;
         $courseName = (string) (
             ($archiveContinuation['canonical_course'] ?? $lesson->course)?->name_ar
@@ -501,7 +428,7 @@ final class WatchHistoryController extends Controller
             ?? ''
         );
 
-        $log = DB::transaction(function () use (
+        [$log, $resumeRecorded] = DB::transaction(function () use (
             $user,
             $resumeLesson,
             $courseId,
@@ -512,29 +439,41 @@ final class WatchHistoryController extends Controller
             $incomingSessionStartedAt,
             $incomingObservedAt,
             $incomingSequence,
-            $evidence,
-            &$resumeRecorded
-        ): WatchingLog {
-            // The unique pair plus insert-or-ignore closes the first-watch race
-            // without holding a coarse lock on every action from this user.
-            $created = DB::table('watching_logs')->insertOrIgnore([
-                'user_id' => $user->id,
-                'lesson_id' => $resumeLesson->id,
-                'lesson_name' => (string) $resumeLesson->title,
-                'course_id' => $courseId,
-                'course_section_id' => $resumeLesson->courseSection?->id,
-                'course_name' => $courseName,
-                'position_seconds' => 0,
-                'duration_seconds' => null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
+            $evidence
+        ): array {
+            $resumeRecorded = true;
+            // Steady-state heartbeats find their row on the unique
+            // (user_id, lesson_id) key, so the locking read takes a record
+            // lock and no insert is attempted. Only a learner's first sample
+            // for a lesson pays for insert-or-ignore, which still closes the
+            // first-watch race (same shape as LearningEvidenceService).
+            $created = false;
             $log = WatchingLog::query()
                 ->where('user_id', $user->id)
                 ->where('lesson_id', $resumeLesson->id)
                 ->lockForUpdate()
-                ->firstOrFail();
+                ->first();
+            if (!$log) {
+                $created = DB::table('watching_logs')->insertOrIgnore([
+                    'user_id' => $user->id,
+                    'lesson_id' => $resumeLesson->id,
+                    'lesson_name' => (string) $resumeLesson->title,
+                    'course_id' => $courseId,
+                    'course_section_id' => $resumeLesson->courseSection?->id,
+                    'course_name' => $courseName,
+                    'position_seconds' => 0,
+                    'duration_seconds' => null,
+                    'watched_at' => $incomingObservedAt ?? now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]) > 0;
+
+                $log = WatchingLog::query()
+                    ->where('user_id', $user->id)
+                    ->where('lesson_id', $resumeLesson->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+            }
 
             $storedObservedAt = $log->watched_at ?? $log->updated_at;
             if (!$created && $incomingSessionId && $incomingObservedAt && $storedObservedAt) {
@@ -580,7 +519,25 @@ final class WatchHistoryController extends Controller
                         'last_playback_sequence' => $incomingSequence,
                     ];
                 }
+                $ownedBySameSession = !$created
+                    && $incomingSessionId
+                    && $log->watched_at !== null
+                    && (string) $log->playback_session_id === (string) $incomingSessionId;
                 $log->fill($resumeAttributes);
+
+                // A newer sample from the player that already owns this row,
+                // at the same position, only moves its clock and sequence.
+                // No other device wrote in between (the session would differ),
+                // so there is no resume state to persist. The playback session
+                // and learning evidence still advance their own clocks; this
+                // row is resume UX, not evidence.
+                $clockOnly = array_diff(
+                    array_keys($log->getDirty()),
+                    ['watched_at', 'last_playback_sequence']
+                ) === [];
+                if ($ownedBySameSession && $clockOnly) {
+                    $log->discardChanges();
+                }
             }
 
             if (
@@ -591,8 +548,8 @@ final class WatchHistoryController extends Controller
             }
 
             $log->save();
-            return $log;
-        });
+            return [$log, $resumeRecorded];
+        }, 3);
 
         // The response exposes the exact server-qualified evidence and reward
         // committed for this accepted sample, or the durable snapshot when
