@@ -24,7 +24,7 @@ final readonly class PortfolioReviewReadService
 {
     public const PROFILE_FIELDS = [
         'name', 'name_ar', 'name_en', 'profile_image', 'role', 'active',
-        'portfolio_slug', 'portfolio_headline', 'portfolio_location',
+        'portfolio_slug', 'portfolio_headline',
         'portfolio_skills', 'portfolio_links',
     ];
 

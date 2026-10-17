@@ -41,7 +41,7 @@ final class PortfolioProfileController extends Controller
     {
         /** @var User $user */
         $user = auth('api')->user();
-        foreach (['portfolio_headline', 'portfolio_location'] as $field) {
+        foreach (['portfolio_headline'] as $field) {
             if ($request->has($field) && is_string($request->input($field))) {
                 $request->merge([$field => UnicodeText::clean($request->input($field), false)]);
             }
@@ -72,7 +72,6 @@ final class PortfolioProfileController extends Controller
         }
         $validated = $request->validate([
             'portfolio_headline' => 'nullable|string|max:160',
-            'portfolio_location' => 'nullable|string|max:120',
             'portfolio_skills' => 'nullable|array|max:30',
             'portfolio_skills.*' => 'string|max:80',
             'portfolio_links' => 'nullable|array|max:10',
@@ -111,7 +110,6 @@ final class PortfolioProfileController extends Controller
             'share_mode' => 'unlisted',
             ...$sharing,
             'headline' => $user->portfolio_headline,
-            'location' => $user->portfolio_location,
             'skills' => $user->portfolio_skills ?? [],
             'links' => collect($user->portfolio_links ?? [])
                 ->map(function ($link): ?array {

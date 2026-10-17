@@ -15,7 +15,7 @@
 <header class="hero"><div class="wrap">
     <div class="identity">
         <img class="avatar" src="{{ $profile['image_url'] ?: asset('images/avatar/customer_blank.png') }}" onerror="this.onerror=null;this.src='{{ asset('images/avatar/customer_blank.png') }}'" alt="{{ $profile['name'] }}" width="112" height="112">
-        <div><h1>{{ $profile['name'] }}</h1><p class="headline">{{ $profile['headline'] ?: 'متعلم في ركن' }}</p>@if($profile['location'])<div class="muted">{{ $profile['location'] }}</div>@endif</div>
+        <div><h1>{{ $profile['name'] }}</h1><p class="headline">{{ $profile['headline'] ?: 'متعلم في ركن' }}</p></div>
     </div>
     @if(!empty($profile['skills']))<div class="chips">@foreach($profile['skills'] as $skill)<span class="chip">{{ $skill }}</span>@endforeach</div>@endif
 </div></header>

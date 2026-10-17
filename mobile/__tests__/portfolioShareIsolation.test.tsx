@@ -48,7 +48,6 @@ describe('portfolio share isolation', () => {
     mockGetPortfolioProfile.mockReset().mockResolvedValue({
       slug: 'rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
       headline: '',
-      location: '',
       skills: [],
       publicUrl: 'https://rokn.app/@rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
       shareMode: 'unlisted',

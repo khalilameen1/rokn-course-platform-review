@@ -141,7 +141,6 @@ export const getPortfolioProfile = async (
 /** Only fields present in the patch are sent (PortfolioProfileController). */
 export type PortfolioProfilePatch = {
   headline?: string;
-  location?: string;
   skills?: string[];
 };
 
@@ -153,7 +152,6 @@ export const updatePortfolioProfile = async (
   assertAccountSessionBoundary(boundary);
   const body: Record<string, unknown> = {};
   if (patch.headline !== undefined) body.portfolio_headline = patch.headline;
-  if (patch.location !== undefined) body.portfolio_location = patch.location;
   if (patch.skills !== undefined) {
     body.portfolio_skills = normalizePortfolioChips(
       patch.skills,

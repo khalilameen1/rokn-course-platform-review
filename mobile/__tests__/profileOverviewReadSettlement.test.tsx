@@ -79,7 +79,6 @@ const portfolio = (
 ): PortfolioProfile => ({
   slug: 'rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
   headline: '',
-  location: '',
   skills: [],
   published: status === 'approved',
   publishedAt: '',

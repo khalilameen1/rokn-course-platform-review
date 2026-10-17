@@ -30,7 +30,6 @@ export type EligibleProjectDto = ApiRecord & {
 export type PortfolioProfile = {
   slug: string;
   headline: string;
-  location: string;
   skills: string[];
   /** Live public link; present whenever an approved version is published. */
   publicUrl: string;
@@ -138,7 +137,6 @@ export const mapPortfolioProfile = (
   return {
     slug: String(value.slug || fallback.slug || ''),
     headline: String(value.headline || fallback.headline || ''),
-    location: String(value.location || ''),
     skills: stringList(value.skills),
     publicUrl: published ? publicUrl : '',
     published,

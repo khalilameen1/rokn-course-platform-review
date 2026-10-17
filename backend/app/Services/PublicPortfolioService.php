@@ -204,7 +204,6 @@ final class PublicPortfolioService
             'profile' => [
                 'name' => $profile->name,
                 'headline' => $profile->portfolio_headline,
-                'location' => $profile->portfolio_location,
                 'image_url' => $adminPreview || $sameAvatar ? $profileImageUrl : null,
                 'skills' => array_values(array_filter((array) ($profile->portfolio_skills ?? []), 'is_string')),
                 'slug' => $slug,
