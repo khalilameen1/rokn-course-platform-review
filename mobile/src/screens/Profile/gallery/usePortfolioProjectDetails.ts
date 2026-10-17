@@ -403,7 +403,7 @@ export const usePortfolioProjectDetails = ({
       if (!isPortfolioAccountChangedError(error) && mountedRef.current) {
         Alert.alert(
           'تعذّر حفظ التعديل',
-          learnerErrorMessage(error, 'مشروعك لم يتغير\nحاول مرة أخرى'),
+          learnerErrorMessage(error, 'مشروعك متغيرش\nجرب تاني'),
         );
       }
     } finally {

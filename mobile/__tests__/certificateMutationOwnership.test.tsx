@@ -529,4 +529,45 @@ describe('certificate issue and recovery presentation ownership', () => {
       expect(mockGetItem).not.toHaveBeenCalled();
     },
   );
+
+  it.each(['open', 'share'] as const)(
+    'reports a failed certificate %s only while the certificate screen owns it',
+    async action => {
+      const systemActions = jest.requireMock(
+        '../src/services/systemActions',
+      ) as {openExternalUrlOnce: jest.Mock; shareOnce: jest.Mock};
+      const native =
+        action === 'open'
+          ? systemActions.openExternalUrlOnce
+          : systemActions.shareOnce;
+      const expectedAlert =
+        action === 'open'
+          ? ['تعذّر فتح الشهادة', 'حاول مرة أخرى']
+          : ['تعذّرت المشاركة', 'جرب تاني'];
+      const run = () =>
+        action === 'open'
+          ? controller.openCertificate()
+          : controller.shareCertificate();
+
+      await mount(true);
+      await act(async () => controller.selectCertificate(credential));
+      native.mockRejectedValueOnce(new Error('SYSTEM_ACTION_FAILED'));
+      await act(async () => run());
+      expect(Alert.alert).toHaveBeenCalledWith(...expectedAlert);
+
+      (Alert.alert as jest.Mock).mockClear();
+      const late = deferred<void>();
+      native.mockReturnValueOnce(late.promise);
+      let pending!: Promise<void>;
+      await act(async () => {
+        pending = run();
+      });
+      await depart('unmount');
+      await act(async () => {
+        late.reject(new Error('SYSTEM_ACTION_FAILED'));
+        await pending;
+      });
+      expect(Alert.alert).not.toHaveBeenCalled();
+    },
+  );
 });

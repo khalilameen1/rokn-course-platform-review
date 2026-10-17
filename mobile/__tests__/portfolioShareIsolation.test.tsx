@@ -1,4 +1,5 @@
 import React from 'react';
+import {Alert} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 
 const mockShareOnce = jest.fn();
@@ -385,4 +386,34 @@ describe('portfolio share isolation', () => {
     expect(overview.portfolioSharingNotice).toContain('قيد المراجعة');
     await act(async () => renderer.unmount());
   });
+
+  it.each(['status read', 'share sheet'] as const)(
+    'reports a failed %s with the portfolio share copy',
+    async failure => {
+      const alertSpy = jest
+        .spyOn(Alert, 'alert')
+        .mockImplementation(() => undefined);
+      let overview!: ReturnType<typeof useProfileOverview>;
+      const Harness = () => {
+        overview = useProfileOverview();
+        return null;
+      };
+      let renderer!: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        renderer = TestRenderer.create(<Harness />);
+      });
+      await act(async () => {
+        overview.setHasShareablePortfolio(true);
+      });
+      if (failure === 'status read')
+        mockGetPortfolioProfile.mockRejectedValueOnce(new Error('offline'));
+      else mockShareOnce.mockRejectedValueOnce(new Error('share failed'));
+      await act(async () => {
+        await overview.sharePortfolio();
+      });
+      expect(alertSpy).toHaveBeenCalledWith('تعذّرت المشاركة', 'جرب تاني');
+      await act(async () => renderer.unmount());
+      alertSpy.mockRestore();
+    },
+  );
 });

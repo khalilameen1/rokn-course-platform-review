@@ -177,6 +177,19 @@ describe('portfolio project editor fields and presentation (Behance/Dribbble)', 
     );
   });
 
+  it('reports a failed edit save in the same words as other project changes', async () => {
+    await open('2');
+    await settle(() => owner.beginEdit());
+    await settle(() => owner.setEditRole('صممت الهوية'));
+    mockUpdate.mockRejectedValueOnce(new Error('Network Error'));
+    await settle(() => owner.saveProjectEdits());
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'تعذّر حفظ التعديل',
+      'مشروعك متغيرش\nجرب تاني',
+    );
+    expect(owner.editing).toBe(true);
+  });
+
   it('hides and shows one project without touching its text', async () => {
     await open('2');
     await settle(() => owner.toggleSelectedVisibility());

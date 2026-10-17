@@ -268,7 +268,7 @@ export function useProfileOverview() {
       if (!isCurrent()) return;
       setPortfolioProfile(null);
       setPortfolioReadError('تعذّر تحديث حالة المشاركة');
-      Alert.alert('تعذّرت المشاركة', 'حاول مرة أخرى');
+      Alert.alert('تعذّرت المشاركة', 'جرب تاني');
     } finally {
       if (shareCheckRef.current === flight) shareCheckRef.current = null;
     }
@@ -287,7 +287,7 @@ export function useProfileOverview() {
       });
     } catch {
       if (!mountedRef.current || owner !== shareOwnerRef.current) return;
-      Alert.alert('تعذّرت المشاركة', 'حاول مرة أخرى');
+      Alert.alert('تعذّرت المشاركة', 'جرب تاني');
     }
   }, [displayName, refreshPortfolioShareUrl]);
 

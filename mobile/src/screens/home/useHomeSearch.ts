@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
+import {Alert} from 'react-native';
 import {
   clearSearchHistory,
   getSearchHistory,
@@ -56,9 +57,19 @@ export const useHomeSearch = (identityKey: string) => {
   }, []);
 
   const clearHistory = useCallback(() => {
-    historyGenerationRef.current += 1;
+    const generation = ++historyGenerationRef.current;
     setHistory([]);
-    void clearSearchHistory().catch(() => undefined);
+    void clearSearchHistory().catch(() => {
+      // An unremoved history reappears on the next visit. Show the stored
+      // list again and say so, unless a newer search or account owns it.
+      if (generation !== historyGenerationRef.current) return;
+      Alert.alert('متمسحش', 'جرب تاني');
+      void getSearchHistory()
+        .then(items => {
+          if (generation === historyGenerationRef.current) setHistory(items);
+        })
+        .catch(() => undefined);
+    });
   }, []);
 
   const blur = useCallback(() => {

@@ -457,22 +457,26 @@ export function useCertificatesController(
     selectedCertificate?.qrDestination || null;
   const openCertificate = async () => {
     if (!selectedCertificate || !activeCertificateLink) return;
+    const owner = identityKey;
     try {
       await openExternalUrlOnce(activeCertificateLink);
     } catch {
+      if (!ownsIdentity(owner)) return;
       Alert.alert('تعذّر فتح الشهادة', 'حاول مرة أخرى');
     }
   };
 
   const shareCertificate = async () => {
     if (!selectedCertificate || !activeCertificateLink) return;
+    const owner = identityKey;
     try {
       await shareOnce(`certificate:${activeCredential}`, {
         message: `شهادتي على رُكن\n${activeCertificateLink}`,
         url: activeCertificateLink,
       });
     } catch {
-      Alert.alert('تعذّرت المشاركة', 'حاول مرة أخرى');
+      if (!ownsIdentity(owner)) return;
+      Alert.alert('تعذّرت المشاركة', 'جرب تاني');
     }
   };
 

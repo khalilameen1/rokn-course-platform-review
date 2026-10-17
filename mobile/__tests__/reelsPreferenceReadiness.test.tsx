@@ -1,4 +1,5 @@
 import React from 'react';
+import {Alert} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 
 const mockGetItem = jest.fn();
@@ -290,5 +291,76 @@ describe('bounded playback preference readiness', () => {
     expect(preferences.playbackSpeed).toBe(1.25);
     expect(stored.get('VIDEO_QUALITY:learner-7')).toBe('480p');
     expect(stored.get('VIDEO_PLAYBACK_SPEED:learner-7')).toBe(1.25);
+  });
+
+  describe('learner choice persistence failure', () => {
+    let alertSpy: jest.SpyInstance;
+    beforeEach(() => {
+      alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    });
+    afterEach(() => alertSpy.mockRestore());
+
+    it.each([
+      ['quality', 'معرفناش نحفظ جودة الفيديو\nجرب تاني'],
+      ['speed', 'معرفناش نحفظ سرعة التشغيل\nجرب تاني'],
+    ] as const)(
+      'tells the learner a %s choice was not saved but keeps it playing',
+      async (field, message) => {
+        await mount();
+        mockSaveItem.mockResolvedValue(false);
+        await act(async () => {
+          if (field === 'quality') preferences.changeQuality('480p');
+          else preferences.changePlaybackSpeed(1.5);
+        });
+        expect(alertSpy).toHaveBeenCalledTimes(1);
+        expect(alertSpy).toHaveBeenCalledWith('متحفظش التغيير', message);
+        if (field === 'quality') expect(preferences.selectedQuality).toBe('480p');
+        else expect(preferences.playbackSpeed).toBe(1.5);
+      },
+    );
+
+    it('does not report a failed choice that a newer choice replaced', async () => {
+      await mount();
+      let finishFirst!: (stored: boolean) => void;
+      mockSaveItem
+        .mockImplementationOnce(
+          () =>
+            new Promise<boolean>(resolve => {
+              finishFirst = resolve;
+            }),
+        )
+        .mockResolvedValue(true);
+      await act(async () => {
+        preferences.changeQuality('480p');
+      });
+      await act(async () => {
+        preferences.changeQuality('720p');
+      });
+      await act(async () => {
+        finishFirst(false);
+      });
+      expect(alertSpy).not.toHaveBeenCalled();
+      expect(preferences.selectedQuality).toBe('720p');
+    });
+
+    it('does not alert after the player has left', async () => {
+      await mount();
+      let finishWrite!: (stored: boolean) => void;
+      mockSaveItem.mockImplementationOnce(
+        () =>
+          new Promise<boolean>(resolve => {
+            finishWrite = resolve;
+          }),
+      );
+      await act(async () => {
+        preferences.changePlaybackSpeed(2);
+      });
+      await act(async () => renderer?.unmount());
+      renderer = undefined;
+      await act(async () => {
+        finishWrite(false);
+      });
+      expect(alertSpy).not.toHaveBeenCalled();
+    });
   });
 });

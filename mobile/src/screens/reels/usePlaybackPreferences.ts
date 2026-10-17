@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
+import {Alert} from 'react-native';
 import type {VideoQuality} from '../../components/VideoPlayer/types';
 import {
   accountScopedStorageKey,
@@ -24,6 +25,7 @@ export const usePlaybackPreferences = (accountIdentity: string) => {
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const playbackSpeedRef = useRef(1);
   const preferenceWriteEpoch = useRef({quality: 0, speed: 0});
+  const mountedRef = useRef(true);
   const [selectedQuality, setSelectedQuality] = useState<VideoQuality>('auto');
   const [dataSaver, setDataSaver] = useState(false);
   const [playbackPreferencesReady, setPlaybackPreferencesReady] =
@@ -194,29 +196,64 @@ export const usePlaybackPreferences = (accountIdentity: string) => {
     };
   }, [accountIdentity]);
 
-  const changeQuality = useCallback((quality: VideoQuality) => {
-    preferenceWriteEpoch.current.quality += 1;
-    setDataSaver(false);
-    setSelectedQuality(quality);
-    void captureAccountSessionBoundary()
-      .then(boundary =>
-        savePlaybackPreferencePatch(
-          {videoQualityPreference: quality},
-          boundary,
-        ),
-      )
-      .catch(() => undefined);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
-  const changePlaybackSpeed = useCallback((speed: number) => {
-    preferenceWriteEpoch.current.speed += 1;
-    setPlaybackSpeed(speed);
-    void captureAccountSessionBoundary()
-      .then(boundary =>
-        savePlaybackPreferencePatch({playbackSpeed: speed}, boundary),
+  // The choice keeps playing in this visit, but a failed journal/cache write
+  // would silently revert it next time. Report it like Settings does, only
+  // for the latest choice of this field on a still-mounted player.
+  const reportUnsavedPreference = useCallback(
+    (field: 'quality' | 'speed', epoch: number) => (error: unknown) => {
+      if (
+        error instanceof Error &&
+        error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
       )
-      .catch(() => undefined);
-  }, []);
+        return;
+      if (!mountedRef.current || preferenceWriteEpoch.current[field] !== epoch)
+        return;
+      Alert.alert(
+        'متحفظش التغيير',
+        field === 'quality'
+          ? 'معرفناش نحفظ جودة الفيديو\nجرب تاني'
+          : 'معرفناش نحفظ سرعة التشغيل\nجرب تاني',
+      );
+    },
+    [],
+  );
+
+  const changeQuality = useCallback(
+    (quality: VideoQuality) => {
+      const epoch = ++preferenceWriteEpoch.current.quality;
+      setDataSaver(false);
+      setSelectedQuality(quality);
+      void captureAccountSessionBoundary()
+        .then(boundary =>
+          savePlaybackPreferencePatch(
+            {videoQualityPreference: quality},
+            boundary,
+          ),
+        )
+        .catch(reportUnsavedPreference('quality', epoch));
+    },
+    [reportUnsavedPreference],
+  );
+
+  const changePlaybackSpeed = useCallback(
+    (speed: number) => {
+      const epoch = ++preferenceWriteEpoch.current.speed;
+      setPlaybackSpeed(speed);
+      void captureAccountSessionBoundary()
+        .then(boundary =>
+          savePlaybackPreferencePatch({playbackSpeed: speed}, boundary),
+        )
+        .catch(reportUnsavedPreference('speed', epoch));
+    },
+    [reportUnsavedPreference],
+  );
 
   const getPlaybackSpeed = useCallback(() => playbackSpeedRef.current, []);
 
