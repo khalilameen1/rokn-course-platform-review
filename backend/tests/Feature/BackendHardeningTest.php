@@ -1554,19 +1554,19 @@ final class BackendHardeningTest extends TestCase
         ): bool {
             self::assertSame('system', $job->messages[0]['role']);
             self::assertStringContainsString(
-                'بالعامية المصرية الطبيعية الواضحة حتى لو كتب بالفصحى',
+                'بالعامية المصرية الطبيعية حتى لو الطالب كتب فصحى',
                 $job->messages[0]['content']
             );
             self::assertStringContainsString(
-                'لا تكتب الفاصلة أو النقطة',
+                'ما تكتبش فاصلة ولا نقطة',
                 $job->messages[count($job->messages) - 2]['content']
             );
             self::assertStringContainsString(
-                'الردود السابقة مرجع للمعلومات لا للطول أو الترقيم',
+                'الردود اللي فاتت مرجع للمعلومة مش للطول ولا للشكل',
                 $job->messages[count($job->messages) - 2]['content']
             );
             self::assertStringContainsString(
-                'حافظ على الكود والمصطلحات والروابط والمعادلات بعلاماتها الصحيحة',
+                'الكود والمصطلحات والروابط والمعادلات اكتبها بعلاماتها الصحيحة',
                 $job->messages[count($job->messages) - 2]['content']
             );
             self::assertStringContainsString(

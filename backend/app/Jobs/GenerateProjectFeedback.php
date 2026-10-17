@@ -24,6 +24,7 @@ use App\Services\OpenRouterRequestPolicy;
 use App\Services\PaidAiCallExecutionService;
 use App\Services\ProjectFeedbackThreadService;
 use App\Services\ProjectSubmissionFileRetentionService;
+use App\Support\CoachReplyText;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
 use App\Support\UnicodeText;
 use Illuminate\Bus\Queueable;
@@ -222,6 +223,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             (int) config('openrouter.max_tokens', 800),
             (int) (($evaluationTerms['max_output_tokens'] ?? null) ?: 320)
         ));
+        $reasoningEffort = (string) config('openrouter.project_report_reasoning_effort', 'medium');
         $requirements = UnicodeText::limit(
             UnicodeText::clean((string) ($projectPolicy['requirements_text'] ?? '')),
             6000
@@ -268,6 +270,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             if (!$hasKnownReport) {
                 $model = $requestPolicy->configuredModel('project_model');
                 $estimated = $maxTokens
+                    + OpenRouterRequestPolicy::reasoningHeadroom($reasoningEffort)
                     + (int) ceil((strlen($requirements) + strlen($text)) / 4)
                     + $attachments->estimatedInputTokens($ownedAttachments);
                 $reservation = $budget->reserve(
@@ -383,7 +386,9 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                             $reportMessage
                         ): void {
                             $streamCheckpoints->projectMessage($reportMessage, $partial);
-                        }
+                        },
+                        reasoningEffort: $reasoningEffort,
+                        formatReply: CoachReplyText::format(...)
                     );
                     $result['request_context'] = [
                         'course_id' => (int) $courseId,

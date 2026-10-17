@@ -38,7 +38,8 @@ final class OpenRouterRequestPolicy
         int $maxTokens,
         ?string $requestIdentity = null,
         bool $allowWebSearch = false,
-        bool $stream = false
+        bool $stream = false,
+        ?string $reasoningEffort = null
     ): array {
         $allowed = array_values(array_filter(config('openrouter.allowed_models', [])));
         if ($allowed === [] || !in_array($model, $allowed, true)) {
@@ -49,8 +50,9 @@ final class OpenRouterRequestPolicy
             );
         }
 
-        $reasoningEffort = $this->reasoningEffort($model);
-        $disableSonnetReasoning = $reasoningEffort === 'none' && $this->isSonnetFive($model);
+        $requestedEffort = $reasoningEffort;
+        $reasoningEffort = $this->reasoningEffort($model, $requestedEffort);
+        $disableSonnetReasoning = $reasoningEffort === 'none' && $this->isClaudeFive($model);
         $models = array_values(array_unique(array_filter([
             $model,
             ...array_values(array_filter(
@@ -66,7 +68,7 @@ final class OpenRouterRequestPolicy
             $models = array_values(array_filter(
                 $models,
                 fn (string $candidate): bool => $this->supportsNoReasoning($candidate)
-                    || ($disableSonnetReasoning && $this->isSonnetFive($candidate))
+                    || ($disableSonnetReasoning && $this->isClaudeFive($candidate))
             ));
         }
         $payload = [
@@ -76,7 +78,7 @@ final class OpenRouterRequestPolicy
             'max_tokens' => max(
                 80,
                 min((int) config('openrouter.max_tokens', 800), $maxTokens)
-            ),
+            ) + self::reasoningHeadroom($requestedEffort),
             'provider' => [
                 'require_parameters' => true,
                 'data_collection' => in_array(
@@ -180,9 +182,24 @@ final class OpenRouterRequestPolicy
         return false;
     }
 
-    private function reasoningEffort(string $model): ?string
+    /**
+     * Thinking tokens count against the provider output ceiling. A caller that
+     * asks for thinking gets explicit headroom so it cannot consume the
+     * learner-visible answer budget. The caller reserves the same headroom.
+     */
+    public static function reasoningHeadroom(?string $requested): int
     {
-        $effort = strtolower(trim((string) config('openrouter.reasoning_effort', 'none')));
+        $requested = strtolower(trim((string) $requested));
+        if ($requested === '' || $requested === 'none') {
+            return 0;
+        }
+
+        return max(0, (int) config('openrouter.project_report_reasoning_headroom_tokens', 2048));
+    }
+
+    private function reasoningEffort(string $model, ?string $override = null): ?string
+    {
+        $effort = strtolower(trim((string) ($override ?? config('openrouter.reasoning_effort', 'none'))));
         $effort = in_array(
             $effort,
             ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'],
@@ -199,7 +216,7 @@ final class OpenRouterRequestPolicy
             };
         }
 
-        if ($this->isSonnetFive($model)) {
+        if ($this->isClaudeFive($model)) {
             return $effort === 'minimal' ? 'low' : $effort;
         }
 
@@ -245,9 +262,14 @@ final class OpenRouterRequestPolicy
         ) === 1;
     }
 
-    private function isSonnetFive(string $model): bool
+    private function isClaudeFive(string $model): bool
     {
-        return strtolower(trim($model)) === 'anthropic/claude-sonnet-5';
+        // Claude 5.x models share one parameter contract on OpenRouter:
+        // optional thinking without a `none` effort, and no temperature.
+        return preg_match(
+            '/^anthropic\/claude-(?:sonnet|haiku)-5(?:\.\d+)?$/',
+            strtolower(trim($model))
+        ) === 1;
     }
 
     private function supportsTemperature(string $model): bool
@@ -255,7 +277,7 @@ final class OpenRouterRequestPolicy
         $normalized = strtolower(trim($model));
 
         return !str_starts_with($normalized, 'openai/gpt-5')
-            && !$this->isSonnetFive($normalized)
+            && !$this->isClaudeFive($normalized)
             && !$this->isGeminiThreeEightFlash($normalized)
             && !preg_match('/^openai\/(?:o1|o3|o4)(?:-|$)/', $normalized);
     }

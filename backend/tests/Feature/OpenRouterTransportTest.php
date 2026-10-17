@@ -411,6 +411,94 @@ final class OpenRouterTransportTest extends TestCase
         self::assertSame(1, substr_count($this->server->process->getOutput(), 'REQUEST'));
     }
 
+    public function test_moderation_rejection_fails_one_request_without_pausing_the_platform(): void
+    {
+        config([
+            'openrouter.api_key' => 'local-test-only',
+            'openrouter.endpoint' => 'https://openrouter.test/chat/completions',
+            'openrouter.allowed_models' => ['test/model'],
+        ]);
+        \Illuminate\Support\Facades\Cache::forget(OpenRouterService::CIRCUIT_KEY);
+        Http::fake(['openrouter.test/*' => Http::sequence()
+            ->push(['error' => [
+                'code' => 403,
+                'message' => 'Input was flagged',
+                'metadata' => ['reasons' => ['harassment'], 'flagged_input' => '...', 'provider_name' => 'test'],
+            ]], 403)
+            ->push([
+                'choices' => [['finish_reason' => 'stop', 'message' => ['content' => 'رد طالب تاني']]],
+                'usage' => ['total_tokens' => 30, 'cost' => .001],
+            ])]);
+        $provider = app(OpenRouterService::class);
+
+        try {
+            $provider->chat('test/model', [['role' => 'user', 'content' => 'مدخل متعلّم عليه']], .3, 100);
+            self::fail('A flagged input must reject its own request.');
+        } catch (AiProviderUnavailableException $exception) {
+            self::assertSame('input_flagged', $exception->providerCode);
+            self::assertFalse($exception->retrySafe);
+            self::assertFalse($exception->outcomeUnknown);
+            self::assertSame('ai_request_rejected', app(\App\Services\AiFailurePolicy::class)->providerCode($exception));
+        }
+        self::assertFalse(\Illuminate\Support\Facades\Cache::has(OpenRouterService::CIRCUIT_KEY));
+        self::assertSame(
+            'رد طالب تاني',
+            $provider->chat('test/model', [['role' => 'user', 'content' => 'سؤال عادي']], .3, 100)['message']
+        );
+    }
+
+    public function test_key_level_forbidden_still_pauses_every_caller(): void
+    {
+        config([
+            'openrouter.api_key' => 'local-test-only',
+            'openrouter.endpoint' => 'https://openrouter.test/chat/completions',
+            'openrouter.allowed_models' => ['test/model'],
+        ]);
+        \Illuminate\Support\Facades\Cache::forget(OpenRouterService::CIRCUIT_KEY);
+        Http::fake(['openrouter.test/*' => Http::response([
+            'error' => ['code' => 403, 'message' => 'Key limit exceeded'],
+        ], 403)]);
+
+        try {
+            app(OpenRouterService::class)->chat('test/model', [['role' => 'user', 'content' => 'سؤال']], .3, 100);
+            self::fail('A key-level rejection is not an answer.');
+        } catch (AiProviderUnavailableException $exception) {
+            self::assertSame(403, $exception->providerStatus);
+        }
+        self::assertTrue(\Illuminate\Support\Facades\Cache::has(OpenRouterService::CIRCUIT_KEY));
+        \Illuminate\Support\Facades\Cache::forget(OpenRouterService::CIRCUIT_KEY);
+    }
+
+    #[DataProvider('generationModes')]
+    public function test_connection_refused_before_sending_is_safe_to_retry(bool $streaming): void
+    {
+        self::assertTrue(extension_loaded('curl'), 'The production transport requires ext-curl.');
+        $socket = stream_socket_server('tcp://127.0.0.1:0');
+        self::assertNotFalse($socket);
+        $address = stream_socket_get_name($socket, false);
+        fclose($socket);
+        config([
+            'openrouter.api_key' => 'local-only-not-a-real-key',
+            // Nothing listens here any more, so the connect is refused.
+            'openrouter.endpoint' => 'http://'.$address,
+            'openrouter.allowed_models' => ['test/model'],
+            'openrouter.timeout_seconds' => 5,
+            'openrouter.connect_timeout_seconds' => 1,
+        ]);
+
+        try {
+            app(OpenRouterService::class)->chat(
+                'test/model', [['role' => 'user', 'content' => 'Local question']], .3, 100,
+                null, null, $streaming ? static function (string $text): void {} : null
+            );
+            self::fail('A refused connection is not an answer.');
+        } catch (AiProviderUnavailableException $exception) {
+            self::assertTrue($exception->retrySafe);
+            self::assertFalse($exception->outcomeUnknown);
+            self::assertSame('transport_not_sent', $exception->providerCode);
+        }
+    }
+
     private function startServer(string $scenario): void
     {
         self::assertTrue(extension_loaded('curl'), 'The production streaming transport requires ext-curl.');

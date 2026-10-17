@@ -3,10 +3,14 @@
 return [
     'api_key' => env('OPENROUTER_API_KEY'),
     'endpoint' => env('OPENROUTER_ENDPOINT', 'https://openrouter.ai/api/v1/chat/completions'),
-    // Course chat uses Gemini. Project review/report keep their independently
-    // configured model; provider failover never silently changes that choice.
-    'default_model' => env('OPENROUTER_DEFAULT_MODEL', 'google/gemini-3.8-flash'),
-    'project_model' => env('OPENROUTER_PROJECT_MODEL', 'anthropic/claude-sonnet-5'),
+    // Course chat and project review/report use the same frontier model so the
+    // learner meets one coach voice. Each stays independently configurable;
+    // provider failover never silently changes that choice.
+    'default_model' => env('OPENROUTER_DEFAULT_MODEL', 'anthropic/claude-sonnet-5.5'),
+    'project_model' => env('OPENROUTER_PROJECT_MODEL', 'anthropic/claude-sonnet-5.5'),
+    // The submission gate only stops blank or clearly unrelated uploads; it
+    // never grades. A small vision model is enough for that decision.
+    'project_gate_model' => env('OPENROUTER_PROJECT_GATE_MODEL', 'anthropic/claude-haiku-5.5'),
     'fallback_models' => array_values(array_filter(array_map(
         'trim',
         explode(',', (string) env('OPENROUTER_FALLBACK_MODELS', ''))
@@ -14,6 +18,11 @@ return [
     // Course chat is deliberately direct. The prompt controls brevity; this
     // ceiling only prevents a useful answer from being cut in the middle.
     'reasoning_effort' => env('OPENROUTER_REASONING_EFFORT', 'none'),
+    // The project report is asynchronous, so it can think before writing.
+    // Thinking shares the provider output ceiling; the headroom keeps it from
+    // consuming the learner-visible report and is reserved against the plan.
+    'project_report_reasoning_effort' => env('OPENROUTER_PROJECT_REPORT_REASONING_EFFORT', 'medium'),
+    'project_report_reasoning_headroom_tokens' => (int) env('OPENROUTER_PROJECT_REPORT_REASONING_HEADROOM_TOKENS', 2048),
     'max_tokens' => (int) env('OPENROUTER_MAX_TOKENS', 800),
     'temperature' => (float) env('OPENROUTER_TEMPERATURE', 0.35),
     'timeout_seconds' => (int) env('OPENROUTER_TIMEOUT_SECONDS', 45),
@@ -68,8 +77,9 @@ return [
     'allowed_models' => (static function (): array {
         $explicit = trim((string) env('OPENROUTER_ALLOWED_MODELS', ''));
         $source = $explicit !== '' ? $explicit : implode(',', [
-            (string) env('OPENROUTER_DEFAULT_MODEL', 'google/gemini-3.8-flash'),
-            (string) env('OPENROUTER_PROJECT_MODEL', 'anthropic/claude-sonnet-5'),
+            (string) env('OPENROUTER_DEFAULT_MODEL', 'anthropic/claude-sonnet-5.5'),
+            (string) env('OPENROUTER_PROJECT_MODEL', 'anthropic/claude-sonnet-5.5'),
+            (string) env('OPENROUTER_PROJECT_GATE_MODEL', 'anthropic/claude-haiku-5.5'),
             (string) env('OPENROUTER_FALLBACK_MODELS', ''),
         ]);
 

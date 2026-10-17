@@ -36,7 +36,9 @@ final class OpenRouterService
         ?string $requestIdentity = null,
         ?callable $landImmediately = null,
         ?callable $onPartial = null,
-        bool $allowWebSearch = false
+        bool $allowWebSearch = false,
+        ?string $reasoningEffort = null,
+        ?callable $formatReply = null
     ): array {
         $apiKey = (string) config('openrouter.api_key');
         if ($apiKey === '' || $model === '') {
@@ -49,8 +51,14 @@ final class OpenRouterService
 
         $payload = $this->requests->payload(
             $model, $messages, $temperature, $maxTokens,
-            $requestIdentity, $allowWebSearch, $onPartial !== null
+            $requestIdentity, $allowWebSearch, $onPartial !== null,
+            $reasoningEffort
         );
+        if ($formatReply !== null && $onPartial !== null) {
+            // Progress and the final answer pass through the same formatter,
+            // so a learner never sees text that later changes shape.
+            $onPartial = static fn (string $partial) => $onPartial($formatReply($partial));
+        }
 
         if ($this->circuitIsOpen()) {
             throw new AiProviderUnavailableException(
@@ -84,7 +92,9 @@ final class OpenRouterService
                                 : 0,
                             'http_code' => max(0, (int) ($handler['http_code'] ?? 0)),
                             'total_time' => max(0, (float) ($handler['total_time'] ?? 0)),
+                            'connect_time' => max(0, (float) ($handler['connect_time'] ?? 0)),
                             'starttransfer_time' => max(0, (float) ($handler['starttransfer_time'] ?? 0)),
+                            'size_upload' => max(0, (float) ($handler['size_upload'] ?? 0)),
                             'size_download' => max(0, (float) ($handler['size_download'] ?? 0)),
                         ];
                     },
@@ -120,6 +130,9 @@ final class OpenRouterService
                 $eventStream,
                 $transportStats
             );
+            if (self::failedBeforeSending($transportStats)) {
+                throw self::notSent($exception);
+            }
             // A timeout may happen after the provider accepted and billed the
             // request. Do not issue a blind second paid call.
             throw new AiProviderUnavailableException(
@@ -135,6 +148,13 @@ final class OpenRouterService
                 $eventStream,
                 $transportStats
             );
+            if (
+                $exception->outcomeUnknown
+                && !($eventStream?->receivedFragments() ?? false)
+                && self::failedBeforeSending($transportStats)
+            ) {
+                throw self::notSent($exception);
+            }
             throw $exception;
         } finally {
             $eventStream?->flush();
@@ -152,7 +172,14 @@ final class OpenRouterService
                 'provider_code' => $providerCode,
                 'model' => $model,
             ]);
-            if ($response->status() === 402) {
+            // OpenRouter also answers 403 when moderation flags one request's
+            // input. That rejects this learner's request only; key-level 403s
+            // (permissions, key budget) still pause every caller.
+            $inputFlagged = $response->status() === 403
+                && is_array($response->json('error.metadata.reasons'));
+            if ($inputFlagged) {
+                $providerCode = 'input_flagged';
+            } elseif ($response->status() === 402) {
                 $this->openCircuit(
                     'billing',
                     max(60, (int) config('openrouter.billing_circuit_open_seconds', 900))
@@ -208,6 +235,11 @@ final class OpenRouterService
             $response->header('X-OpenRouter-Cache-Status')
         );
         $this->recordSuccess();
+        if ($formatReply !== null) {
+            // Format before landing: every stored, settled and replayed copy
+            // of this paid result is the same learner-facing text.
+            $result['message'] = (string) $formatReply((string) $result['message']);
+        }
 
         // Land at the provider boundary before returning through formatting,
         // settlement and learner-facing layers. The caller repeats the same
@@ -283,6 +315,35 @@ final class OpenRouterService
                 }
             );
         };
+    }
+
+    /**
+     * cURL failed while resolving, connecting or negotiating TLS, before any
+     * request byte left this host, so no generation can exist to be billed.
+     * A refused connect can surface as a connect timeout (errno 28), so the
+     * missing TCP connection, not the error number, is the evidence.
+     *
+     * @param array<string,int|float> $transportStats
+     */
+    private static function failedBeforeSending(array $transportStats): bool
+    {
+        $errno = (int) ($transportStats['curl_errno'] ?? 0);
+        if ($errno === 0 || (float) ($transportStats['size_upload'] ?? 0) > 0) {
+            return false;
+        }
+
+        return (float) ($transportStats['connect_time'] ?? 0) <= 0
+            || $errno === CURLE_SSL_CONNECT_ERROR;
+    }
+
+    private static function notSent(Throwable $previous): AiProviderUnavailableException
+    {
+        return new AiProviderUnavailableException(
+            true,
+            previous: $previous,
+            outcomeUnknown: false,
+            providerCode: 'transport_not_sent'
+        );
     }
 
     /** @param array<string,mixed> $payload @param array<string,int|float> $transportStats */

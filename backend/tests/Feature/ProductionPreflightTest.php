@@ -473,6 +473,7 @@ class ProductionPreflightTest extends TestCase
                 'openrouter.api_key' => 'configured',
                 'openrouter.default_model' => 'configured',
                 'openrouter.project_model' => 'configured',
+                'openrouter.project_gate_model' => 'configured',
                 'openrouter.allowed_models' => ['configured'],
                 'openrouter.fallback_models' => [],
                 'openrouter.provider_sort' => 'latency',

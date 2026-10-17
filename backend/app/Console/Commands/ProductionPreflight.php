@@ -827,6 +827,14 @@ class ProductionPreflight extends Command
             ),
             'OPENROUTER_PROJECT_MODEL must be present in OPENROUTER_ALLOWED_MODELS.'
         );
+        $require(
+            in_array(
+                (string) config('openrouter.project_gate_model'),
+                $allowedOpenRouterModels,
+                true
+            ),
+            'OPENROUTER_PROJECT_GATE_MODEL must be present in OPENROUTER_ALLOWED_MODELS.'
+        );
         foreach ((array) config('openrouter.fallback_models', []) as $fallbackModel) {
             $require(
                 is_string($fallbackModel)

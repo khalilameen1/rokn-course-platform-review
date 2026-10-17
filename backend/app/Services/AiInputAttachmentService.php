@@ -494,9 +494,15 @@ final class AiInputAttachmentService
             if (!is_array($dimensions)) {
                 throw new UnexpectedValueException('AI image dimensions are unreadable.');
             }
-            $tiles = max(1, (int) ceil(((int) $dimensions[0]) / 512))
-                * max(1, (int) ceil(((int) $dimensions[1]) / 512));
-            return 100 + ($tiles * 220);
+            // Claude's published vision cost: about width x height / 750
+            // tokens after the provider scales the long edge to 2576px,
+            // capped near 4784 tokens per image. A 512px tile count (another
+            // vendor's scheme) priced one 12MP phone photo at 10,660 tokens
+            // and stopped Plus reports before any request was sent.
+            $width = max(1, (int) $dimensions[0]);
+            $height = max(1, (int) $dimensions[1]);
+            $scale = min(1, 2576 / max($width, $height));
+            return min(4784, max(1, (int) ceil(($width * $scale) * ($height * $scale) / 750)));
         }
         if ($mime === 'application/pdf') {
             preg_match_all('/\/Type\s*\/Page\b/', $bytes, $matches);

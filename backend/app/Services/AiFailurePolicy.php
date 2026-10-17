@@ -72,6 +72,9 @@ final class AiFailurePolicy
         if ($status === 429) {
             return 'ai_rate_limited';
         }
+        if ($exception->providerCode === 'input_flagged') {
+            return 'ai_request_rejected';
+        }
         if ($status !== null && in_array($status, [400, 401, 402, 403, 404, 422], true)) {
             return in_array($status, [401, 402, 403], true)
                 ? 'ai_configuration_unavailable'

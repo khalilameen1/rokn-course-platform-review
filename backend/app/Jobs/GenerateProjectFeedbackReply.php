@@ -22,6 +22,7 @@ use App\Services\CourseEntitlementService;
 use App\Services\OpenRouterService;
 use App\Services\OpenRouterRequestPolicy;
 use App\Services\PaidAiCallExecutionService;
+use App\Support\CoachReplyText;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
 use App\Support\UnicodeText;
 use App\Support\AiRequestTokenEstimate;
@@ -400,7 +401,8 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
                 },
                 function (string $partial) use ($streamCheckpoints, $reply): void {
                     $streamCheckpoints->projectMessage($reply, $partial);
-                }
+                },
+                formatReply: CoachReplyText::format(...)
             );
             $result['request_context'] = [
                 'course_id' => (int) $thread->course_id,

@@ -19,6 +19,7 @@ use App\Services\CourseChatTurnService;
 use App\Services\CourseEntitlementService;
 use App\Services\OpenRouterService;
 use App\Services\PaidAiCallExecutionService;
+use App\Support\CoachReplyText;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -283,7 +284,8 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
                 function (string $partial) use ($streamCheckpoints, $turn): void {
                     $streamCheckpoints->courseChat($turn, $partial);
                 },
-                true
+                true,
+                formatReply: CoachReplyText::format(...)
             );
             $result['request_context'] = $this->requestContext;
             $providerResultKnown = true;
