@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   noticeAction: {
     ...Type.caption,
     ...textDirection,
-    color: Palette.primary,
+    color: Palette.primaryText,
     marginTop: Spacing.xxs,
   },
   pressed: {opacity: 0.78},
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: Spacing.sm,
   },
-  moreText: {...Type.body, ...textDirection, color: Palette.primary},
+  moreText: {...Type.body, ...textDirection, color: Palette.primaryText},
   loadingMore: {alignItems: 'center', paddingVertical: Spacing.lg},
 });
 

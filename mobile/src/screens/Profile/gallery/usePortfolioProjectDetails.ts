@@ -14,6 +14,11 @@ import {
   type PortfolioItem,
   type PortfolioMedia,
 } from '../../../services/roknApi';
+import type {PortfolioItemPatch} from '../../../services/api/portfolio';
+import {
+  normalizePortfolioChips,
+  PORTFOLIO_TOOLS_MAX,
+} from '../../../services/api/portfolioContract';
 import {
   discardPortfolioMediaUploads,
   listPortfolioMediaUploads,
@@ -32,7 +37,12 @@ import {
 import {learnerErrorMessage} from '../../../utils/errorPayload';
 import {secureRandomUuid} from '../../../utils/secureRandom';
 import {portfolioAction, portfolioMediaSlots} from '../portfolioState';
-import {isPortfolioAccountChangedError, type Project} from './portfolioModel';
+import {
+  isPortfolioAccountChangedError,
+  PORTFOLIO_PICKER_IMAGE_OPTIONS,
+  sortPortfolioProjects,
+  type Project,
+} from './portfolioModel';
 import {usePortfolioPublication} from './usePortfolioPublication';
 import {usePortfolioProjectSelection} from './usePortfolioProjectSelection';
 import type {PortfolioUploadProgress} from '../../../services/portfolioUploadProgress';
@@ -41,6 +51,8 @@ import {usePortfolioUploadSession} from './usePortfolioUploadSession';
 type Options = {
   onSubscriptions?: PortfolioSubscriptionAction;
   cancelLibraryLoad: () => void;
+  /** Displayed library order, for move up/down. */
+  libraryProjects?: Project[];
   captureBoundary: () => Promise<AccountSessionBoundary>;
   isCreateBusy: () => boolean;
   mountedRef: React.MutableRefObject<boolean>;
@@ -48,10 +60,22 @@ type Options = {
   setMutationBlocked: (blocked: boolean) => void;
 };
 
+const EMPTY_PROJECTS: Project[] = [];
+const CHIP_SEPARATORS = /[,،\n]/;
+
+/** Behance/Dribbble editors accept a blank or a full https project link. */
+export const portfolioExternalUrlError = (value: string) => {
+  const url = value.trim();
+  return !url || /^https:\/\/[^\s/]+\.[^\s]+$/i.test(url)
+    ? ''
+    : 'الرابط لازم يبدأ بـ https://';
+};
+
 /** Owns the details → edit/media/finalize/delete half of Gallery. */
 export const usePortfolioProjectDetails = ({
   onSubscriptions,
   cancelLibraryLoad,
+  libraryProjects = EMPTY_PROJECTS,
   captureBoundary,
   isCreateBusy,
   mountedRef,
@@ -61,6 +85,12 @@ export const usePortfolioProjectDetails = ({
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editSummary, setEditSummary] = useState('');
+  const [editRole, setEditRole] = useState('');
+  const [editTools, setEditTools] = useState<string[]>([]);
+  const [editToolInput, setEditToolInput] = useState('');
+  const [editExternalUrl, setEditExternalUrl] = useState('');
+  const libraryProjectsRef = useRef(libraryProjects);
+  libraryProjectsRef.current = libraryProjects;
   const [saving, setSaving] = useState(false);
   const [uploadPreparing, setUploadPreparing] = useState(false);
   const uploadSession = usePortfolioUploadSession(mountedRef);
@@ -305,8 +335,26 @@ export const usePortfolioProjectDetails = ({
     if (!current || saving || mutationFlightRef.current) return;
     setEditTitle(current.title);
     setEditSummary(current.summary);
+    setEditRole(current.role || '');
+    setEditTools(current.tools);
+    setEditToolInput('');
+    setEditExternalUrl(current.externalUrl || '');
     setEditing(true);
   }, [saving, selectedRef]);
+
+  const addEditTool = useCallback(() => {
+    setEditTools(
+      normalizePortfolioChips(
+        [...editTools, ...editToolInput.split(CHIP_SEPARATORS)],
+        PORTFOLIO_TOOLS_MAX,
+      ),
+    );
+    setEditToolInput('');
+  }, [editToolInput, editTools]);
+
+  const removeEditTool = useCallback((tool: string) => {
+    setEditTools(current => current.filter(candidate => candidate !== tool));
+  }, []);
 
   const cancelEditing = useCallback(() => {
     if (!saving && !mutationFlightRef.current) setEditing(false);
@@ -316,6 +364,11 @@ export const usePortfolioProjectDetails = ({
     const current = selectedRef.current;
     if (!current || !editTitle.trim() || saving || mutationFlightRef.current)
       return;
+    const urlError = portfolioExternalUrlError(editExternalUrl);
+    if (urlError) {
+      Alert.alert('راجع رابط المشروع', urlError);
+      return;
+    }
     const flight = beginMutation();
     if (!flight) return;
     const projectId = current.id;
@@ -324,7 +377,17 @@ export const usePortfolioProjectDetails = ({
       const boundary = await captureBoundary();
       const item = await updatePortfolioItem(
         projectId,
-        {title: editTitle.trim(), summary: editSummary.trim()},
+        {
+          title: editTitle.trim(),
+          summary: editSummary.trim(),
+          role: editRole.trim(),
+          // A typed but not yet added chip is still the learner's intent.
+          tools: normalizePortfolioChips(
+            [...editTools, ...editToolInput.split(CHIP_SEPARATORS)],
+            PORTFOLIO_TOOLS_MAX,
+          ),
+          externalUrl: editExternalUrl.trim(),
+        },
         boundary,
       );
       assertAccountSessionBoundary(boundary);
@@ -351,13 +414,168 @@ export const usePortfolioProjectDetails = ({
     captureBoundary,
     commitRemoteProject,
     detailGenerationRef,
+    editExternalUrl,
+    editRole,
     editSummary,
     editTitle,
+    editToolInput,
+    editTools,
     finishMutation,
     mountedRef,
     saving,
     selectedRef,
   ]);
+
+  /**
+   * One presentation change of the open project (visibility, cover,
+   * featured). Shares the detail mutation guard with edit/delete/upload.
+   */
+  const patchSelectedProject = useCallback(
+    async (
+      patch: Pick<PortfolioItemPatch, 'visible' | 'coverMediaId' | 'featured'>,
+      failureTitle: string,
+    ) => {
+      const current = selectedRef.current;
+      if (!current || saving || mutationFlightRef.current) return;
+      const flight = beginMutation();
+      if (!flight) return;
+      const generation = detailGenerationRef.current;
+      try {
+        const boundary = await captureBoundary();
+        const item = await updatePortfolioItem(current.id, patch, boundary);
+        assertAccountSessionBoundary(boundary);
+        commitRemoteProject(item, generation);
+        if (patch.featured !== undefined && mountedRef.current)
+          setLibraryProjects(sortPortfolioProjects);
+      } catch (error: unknown) {
+        if (!isPortfolioAccountChangedError(error) && mountedRef.current) {
+          Alert.alert(
+            failureTitle,
+            learnerErrorMessage(error, 'مشروعك متغيرش\nجرب تاني'),
+          );
+        }
+      } finally {
+        finishMutation(flight);
+      }
+    },
+    [
+      beginMutation,
+      captureBoundary,
+      commitRemoteProject,
+      detailGenerationRef,
+      finishMutation,
+      mountedRef,
+      saving,
+      selectedRef,
+      setLibraryProjects,
+    ],
+  );
+
+  const toggleSelectedVisibility = useCallback(() => {
+    const current = selectedRef.current;
+    if (!current) return;
+    void patchSelectedProject(
+      {visible: Boolean(current.hidden)},
+      current.hidden ? 'تعذّر إظهار المشروع' : 'تعذّر إخفاء المشروع',
+    );
+  }, [patchSelectedProject, selectedRef]);
+
+  const toggleSelectedFeatured = useCallback(() => {
+    const current = selectedRef.current;
+    if (!current) return;
+    void patchSelectedProject(
+      {featured: !current.featured},
+      'تعذّر تثبيت المشروع',
+    );
+  }, [patchSelectedProject, selectedRef]);
+
+  const chooseSelectedCover = useCallback(
+    (media: PortfolioMedia) => {
+      const current = selectedRef.current;
+      if (
+        !current ||
+        media.type !== 'image' ||
+        current.coverMediaId === media.id
+      )
+        return;
+      void patchSelectedProject({coverMediaId: media.id}, 'تعذّر تغيير الغلاف');
+    },
+    [patchSelectedProject, selectedRef],
+  );
+
+  /** Neighbours within the same featured group, as the server orders them. */
+  const selectedOrderGroup = useCallback(
+    (current: Project | null = selectedRef.current) => {
+      if (!current) return null;
+      const group = sortPortfolioProjects(libraryProjectsRef.current).filter(
+        project => Boolean(project.featured) === Boolean(current.featured),
+      );
+      const index = group.findIndex(project => project.id === current.id);
+      return index < 0 ? null : {group, index};
+    },
+    [selectedRef],
+  );
+
+  const moveSelectedProject = useCallback(
+    async (direction: -1 | 1) => {
+      const placement = selectedOrderGroup();
+      if (!placement || saving || mutationFlightRef.current) return;
+      const {group, index} = placement;
+      const target = index + direction;
+      if (target < 0 || target >= group.length) return;
+      const reordered = [...group];
+      [reordered[index], reordered[target]] = [
+        reordered[target],
+        reordered[index],
+      ];
+      // Explicit positions: projects created with sort_order 0 tie otherwise.
+      const changes = reordered
+        .map((project, position) => ({project, position}))
+        .filter(({project, position}) => (project.sortOrder ?? 0) !== position);
+      const flight = beginMutation();
+      if (!flight) return;
+      const generation = detailGenerationRef.current;
+      try {
+        const boundary = await captureBoundary();
+        for (const {project, position} of changes) {
+          const item = await updatePortfolioItem(
+            project.id,
+            {sortOrder: position},
+            boundary,
+          );
+          assertAccountSessionBoundary(boundary);
+          commitRemoteProject(
+            item,
+            selectedRef.current?.id === item.id ? generation : undefined,
+          );
+        }
+      } catch (error: unknown) {
+        if (!isPortfolioAccountChangedError(error) && mountedRef.current) {
+          Alert.alert(
+            'تعذّر تغيير الترتيب',
+            learnerErrorMessage(error, 'جرب تاني'),
+          );
+        }
+      } finally {
+        if (mountedRef.current) setLibraryProjects(sortPortfolioProjects);
+        finishMutation(flight);
+      }
+    },
+    [
+      beginMutation,
+      captureBoundary,
+      commitRemoteProject,
+      detailGenerationRef,
+      finishMutation,
+      mountedRef,
+      saving,
+      selectedOrderGroup,
+      selectedRef,
+      setLibraryProjects,
+    ],
+  );
+
+  const selectedPlacement = selectedOrderGroup(selected);
 
   const finalizeSelectedProject = useCallback(async () => {
     const current = selectedRef.current;
@@ -559,7 +777,7 @@ export const usePortfolioProjectDetails = ({
       const result = await launchImageLibrary({
         mediaType: 'mixed' as MediaType,
         selectionLimit: Math.max(1, portfolioMediaSlots(current)),
-        quality: 0.8,
+        ...PORTFOLIO_PICKER_IMAGE_OPTIONS,
       });
       assertAccountSessionBoundary(boundary);
       if (!ownsSelectedUpload(projectId, generation, flight)) return;
@@ -742,23 +960,36 @@ export const usePortfolioProjectDetails = ({
   return {
     applyUploadedMedia,
     addSelectedMedia,
+    addEditTool,
     beginEdit,
+    canMoveSelectedDown: Boolean(
+      selectedPlacement &&
+        selectedPlacement.index < selectedPlacement.group.length - 1,
+    ),
+    canMoveSelectedUp: Boolean(selectedPlacement && selectedPlacement.index > 0),
     cancelEditing,
+    chooseSelectedCover,
     closeProject,
     confirmDeleteSelectedProject,
     detailLoading,
+    editExternalUrl,
+    editRole,
     editSummary,
     editTitle,
+    editToolInput,
+    editTools,
     editing,
     finalizeAfterUpload,
     finalizeSelectedProject,
     handleMediaDeliveryError,
     handleMediaDeliverySuccess,
     isMutationActive,
+    moveSelectedProject,
     openProject,
     previewMedia,
     reconcileProject,
     refreshOpenProject,
+    removeEditTool,
     removeSelectedMedia,
     saveProjectEdits,
     saving,
@@ -781,8 +1012,13 @@ export const usePortfolioProjectDetails = ({
     selectedMediaSlots: selected ? portfolioMediaSlots(selected) : 0,
     selectedAction: selected ? portfolioAction(selected) : null,
     selectedRef,
+    setEditExternalUrl,
+    setEditRole,
     setEditSummary,
     setEditTitle,
+    setEditToolInput,
     settleUploadedProjects,
+    toggleSelectedFeatured,
+    toggleSelectedVisibility,
   };
 };

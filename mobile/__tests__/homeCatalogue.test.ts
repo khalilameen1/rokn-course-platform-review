@@ -4,6 +4,7 @@ import {
   buildQuickSearches,
   searchHomeCatalogue,
   selectHeroCourses,
+  withoutHeroInFirstRail,
 } from '../src/screens/home/homeCatalogue';
 
 const course = (
@@ -117,5 +118,33 @@ describe('home catalogue presentation', () => {
         loadedSearchQuery: 'التسويق',
       }),
     ).toEqual([]);
+  });
+});
+
+describe('home first screen', () => {
+  const rail = (id: string, data: Course[]) => ({id, title: id, data});
+
+  test('does not repeat the hero course in the first rail', () => {
+    const hero = course('hero', {isMainCourse: true});
+    const blender = course('blender');
+    const sections = [rail('design', [blender, hero]), rail('more', [hero])];
+    expect(withoutHeroInFirstRail(sections, [hero])).toEqual([
+      rail('design', [blender]),
+      rail('more', [hero]),
+    ]);
+  });
+
+  test('skips a first rail that only repeated the hero and keeps rails without it', () => {
+    const hero = course('hero', {isMainCourse: true});
+    const other = course('other');
+    expect(
+      withoutHeroInFirstRail(
+        [rail('only-hero', [hero]), rail('next', [other, hero])],
+        [hero],
+      ),
+    ).toEqual([rail('next', [other])]);
+    const untouched = [rail('design', [other])];
+    expect(withoutHeroInFirstRail(untouched, [hero])).toBe(untouched);
+    expect(withoutHeroInFirstRail(untouched, [])).toBe(untouched);
   });
 });

@@ -133,5 +133,5 @@ const styles = StyleSheet.create({
     borderTopColor: Palette.line,
   },
   link: {minHeight: 48, justifyContent: 'center', paddingVertical: Spacing.sm},
-  linkText: {...Type.bodyStrong, ...textDirection, color: Palette.primary},
+  linkText: {...Type.bodyStrong, ...textDirection, color: Palette.primaryText},
 });

@@ -8,9 +8,17 @@ describe('daily read latency budget', () => {
   it('keeps automatic GET recovery below three seconds of backoff', () => {
     const api = source('src/constants/api.ts');
     const requestPolicy = source('src/constants/apiRequestPolicy.ts');
-    expect(api).toContain(
-      'READ_RECOVERY_DELAYS_MS = [300, 700, 1_500] as const',
-    );
+    expect(api).toContain('READ_RETRY_LIMIT = 2;');
+    expect(api).toContain('READ_RETRY_BASE_DELAY_MS = 300;');
+    // Full-jitter windows for the two retries: [0, 300) + [0, 600).
+    const {READ_RETRY_LIMIT, readRetryDelayMs} = jest.requireActual(
+      '../src/constants/api',
+    ) as typeof import('../src/constants/api');
+    let worstCase = 0;
+    for (let attempt = 0; attempt < READ_RETRY_LIMIT; attempt += 1) {
+      worstCase += readRetryDelayMs(attempt, () => 1);
+    }
+    expect(worstCase).toBeLessThan(3_000);
     expect(requestPolicy).toContain('DEFAULT_READ_RECOVERY_BUDGET_MS = 12_000');
     expect(api).not.toContain('4_500, 5_000');
   });

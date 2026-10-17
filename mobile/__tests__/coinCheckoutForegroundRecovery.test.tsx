@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import {AppState, type AppStateStatus} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 
@@ -76,7 +76,7 @@ jest.mock('../src/services/androidAuthSession', () => ({}));
 jest.mock('../src/services/guestAccountMigration', () => ({}));
 
 import {useAppRuntime} from '../src/screens/appInitializer/useAppRuntime';
-import {useWalletCheckout} from '../src/screens/wallet/useWalletCheckout';
+import {subscribeWalletSettlements} from '../src/services/walletSettlement';
 import {runCoinCheckoutSingleFlight} from '../src/services/coinCheckoutCoordinator';
 import type {CoinCheckoutResult} from '../src/services/coinCheckoutTypes';
 
@@ -104,15 +104,17 @@ describe('foreground checkout handoff to runtime recovery', () => {
     const previousAppState = AppState.currentState;
     AppState.currentState = 'active';
     const refreshAfterCurrent = jest.fn(async () => undefined);
-    const walletData = {
-      identityKey: 'foreground-learner',
-      invalidatePackages: jest.fn(async () => undefined),
-      ownsBoundary: (boundary: unknown) => boundary === mockBoundary,
-      refreshAfterCurrent,
-    };
+    // The production balance readers (Wallet, CourseDetails, the course
+    // sheet) all listen to this one settlement channel.
     const Harness = () => {
       useAppRuntime(runtimeInput);
-      useWalletCheckout(walletData);
+      useEffect(
+        () =>
+          subscribeWalletSettlements(boundary => {
+            if (boundary === mockBoundary) void refreshAfterCurrent();
+          }),
+        [],
+      );
       return null;
     };
     let renderer!: TestRenderer.ReactTestRenderer;

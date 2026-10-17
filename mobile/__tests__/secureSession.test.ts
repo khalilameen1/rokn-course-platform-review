@@ -5,7 +5,6 @@ import {
   assertSecureSessionStorageAvailable,
   deleteSecureSession,
   deleteSecureSessionIfToken,
-  clearSecureSessionStorage,
   loadSecureSession,
   peekSecureSession,
   resetSecureSessionForTests,
@@ -381,7 +380,31 @@ describe('secure mobile session persistence', () => {
     },
   );
 
-  it('keeps a failed full clear queued until pending journal deletion settles', async () => {
+  it('has no whole-database clear that could erase installation or payment recovery state', () => {
+    const sessionModule = jest.requireActual(
+      '../src/services/secureSession',
+    ) as Record<string, unknown>;
+    expect(sessionModule.clearSecureSessionStorage).toBeUndefined();
+    const source = require('fs').readFileSync(
+      require('path').resolve(__dirname, '../src/services/secureSession.ts'),
+      'utf8',
+    ) as string;
+    expect(source).not.toContain('AsyncStorage.clear(');
+  });
+
+  it('retires device reminder timers on account replacement without writing an opt-out', async () => {
+    const reminders = jest.requireMock('../src/services/smartReminders') as {
+      cancelLearningReminders: jest.Mock;
+      setSmartRemindersEnabled: jest.Mock;
+    };
+    await saveSecureSession({api_token: 'first-token', user: {id: 7}});
+    await saveSecureSession({api_token: 'second-token', user: {id: 8}});
+
+    expect(reminders.cancelLearningReminders).toHaveBeenCalledTimes(1);
+    expect(reminders.setSmartRemindersEnabled).not.toHaveBeenCalled();
+  });
+
+  it('keeps a failed session delete queued until pending journal deletion settles', async () => {
     await saveSecureSession({api_token: 'old-token', user: {id: 7}});
     await AsyncStorage.setItem('unrelated-preference', 'keep');
     let releaseJournal!: () => void;
@@ -401,7 +424,7 @@ describe('secure mobile session persistence', () => {
       }
       secureValues.delete(key);
     });
-    const clearing = clearSecureSessionStorage().catch(error => error);
+    const clearing = deleteSecureSession();
     await started;
     secureSet.mockClear();
     const replacement = saveSecureSession({
@@ -413,9 +436,7 @@ describe('secure mobile session persistence', () => {
     expect(secureSet).not.toHaveBeenCalled();
 
     releaseJournal();
-    expect(await clearing).toEqual(
-      new Error('SESSION_STORAGE_UNAVAILABLE_DELETE'),
-    );
+    expect(await clearing).toBe(false);
     await replacement;
     expect(await AsyncStorage.getItem('unrelated-preference')).toBe('keep');
     expect(peekSecureSession().session).toMatchObject({api_token: 'new-token'});

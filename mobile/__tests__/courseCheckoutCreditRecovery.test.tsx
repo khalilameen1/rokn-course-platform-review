@@ -31,9 +31,6 @@ jest.mock('../src/services/checkoutRouting', () => ({
 }));
 jest.mock('../src/services/coinCheckout', () => ({
   openCoinCheckout: (...args: unknown[]) => mockOpenPayment(...args),
-  subscribeCoinCheckoutCredits: jest.requireActual(
-    '../src/services/coinCheckoutCoordinator',
-  ).subscribeCoinCheckoutCredits,
 }));
 jest.mock('../src/services/roknApi', () => ({getCoinPackages: jest.fn()}));
 jest.mock('../src/services/productAnalytics', () => ({
@@ -136,7 +133,7 @@ describe('course checkout credit observers share authoritative reconciliation', 
     try {
       await act(async () => {
         await emitNative();
-        emitCoinCheckoutCreditOnce('user-7', {
+        emitCoinCheckoutCreditOnce({scope: 'user-7', epoch: 1}, {
           ...credit,
           orderRef: 'dual-credit-recovery',
         });

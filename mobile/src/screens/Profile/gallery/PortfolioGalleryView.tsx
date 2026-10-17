@@ -32,7 +32,10 @@ import {galleryStyles as styles} from './galleryStyles';
 import {PortfolioProjectGrid} from './PortfolioProjectGrid';
 import {PortfolioUploadStatus} from './PortfolioUploadStatus';
 import {PortfolioDraftMediaList} from './PortfolioDraftMediaList';
+import {PortfolioProfileEditorSheet} from './PortfolioProfileEditorSheet';
+import {PortfolioChipEditor} from './PortfolioChipEditor';
 import {MAX_PORTFOLIO_MEDIA_COUNT} from '../../../services/portfolioMediaPolicy';
+import {portfolioCoverMedia} from '../../../services/api/portfolioContract';
 
 type DetailActionsController = Pick<
   PortfolioGalleryController,
@@ -56,7 +59,46 @@ type DetailActionsController = Pick<
   | 'resumeSelectedUploads'
   | 'selectedAction'
   | 'selectedMediaSlots'
->;
+> &
+  Partial<
+    Pick<
+      PortfolioGalleryController,
+      | 'selected'
+      | 'shareSelectedProject'
+      | 'toggleSelectedVisibility'
+      | 'toggleSelectedFeatured'
+      | 'moveSelectedProject'
+      | 'canMoveSelectedUp'
+      | 'canMoveSelectedDown'
+    >
+  >;
+
+const SecondaryAction = ({
+  label,
+  onPress,
+  disabled,
+  stacked,
+}: {
+  label: string;
+  onPress: () => void;
+  disabled: boolean;
+  stacked: boolean;
+}) => (
+  <Pressable
+    accessibilityLabel={label}
+    accessibilityRole="button"
+    accessibilityState={{disabled}}
+    disabled={disabled}
+    onPress={onPress}
+    style={({pressed}) => [
+      styles.detailSecondaryAction,
+      stacked && styles.detailSecondaryActionStacked,
+      disabled && styles.detailActionDisabled,
+      pressed && styles.detailActionPressed,
+    ]}>
+    <Text style={styles.detailSecondaryLabel}>{label}</Text>
+  </Pressable>
+);
 
 export const PortfolioDetailActions = ({
   controller,
@@ -86,6 +128,13 @@ export const PortfolioDetailActions = ({
     resumeSelectedUploads,
     selectedAction,
     selectedMediaSlots,
+    selected,
+    shareSelectedProject,
+    toggleSelectedVisibility,
+    toggleSelectedFeatured,
+    moveSelectedProject,
+    canMoveSelectedUp,
+    canMoveSelectedDown,
   } = controller;
   const primaryAction = pendingUploadsError
     ? {label: 'إعادة المحاولة', onPress: retryPendingUploads}
@@ -187,7 +236,52 @@ export const PortfolioDetailActions = ({
           ]}>
           <Text style={styles.detailSecondaryLabel}>تعديل</Text>
         </Pressable>
+        {shareSelectedProject && (
+          <SecondaryAction
+            disabled={actionsBusy}
+            label="شارك المشروع"
+            onPress={() => void shareSelectedProject()}
+            stacked={fontScale >= 1.3}
+          />
+        )}
       </View>
+      {selected && toggleSelectedVisibility && toggleSelectedFeatured && (
+        <View style={styles.detailSecondaryActions}>
+          <SecondaryAction
+            disabled={actionsBusy}
+            label={selected.hidden ? 'اظهر المشروع' : 'اخفي المشروع'}
+            onPress={toggleSelectedVisibility}
+            stacked={fontScale >= 1.3}
+          />
+          <SecondaryAction
+            disabled={actionsBusy}
+            label={selected.featured ? 'شيل التثبيت' : 'ثبّته في الأول'}
+            onPress={toggleSelectedFeatured}
+            stacked={fontScale >= 1.3}
+          />
+          {moveSelectedProject && (canMoveSelectedUp || canMoveSelectedDown) && (
+            <>
+              <SecondaryAction
+                disabled={actionsBusy || !canMoveSelectedUp}
+                label="طلّعه لفوق"
+                onPress={() => void moveSelectedProject(-1)}
+                stacked={fontScale >= 1.3}
+              />
+              <SecondaryAction
+                disabled={actionsBusy || !canMoveSelectedDown}
+                label="نزّله لتحت"
+                onPress={() => void moveSelectedProject(1)}
+                stacked={fontScale >= 1.3}
+              />
+            </>
+          )}
+        </View>
+      )}
+      {selected?.hidden && (
+        <Text style={styles.detailSecondaryLabel}>
+          المشروع مخفي من رابط أعمالك
+        </Text>
+      )}
       <View style={styles.detailUtilityActions}>
         <Pressable
           accessibilityLabel="حذف المشروع"
@@ -236,10 +330,12 @@ export const PortfolioGalleryView = ({
   const reducedMotion = useReducedMotion();
   const {fontScale, gridGap} = useResponsiveLayout();
   const {
+    addEditTool,
     addProject,
     adding,
     appActive,
     cancelEditing,
+    chooseSelectedCover,
     chooseSourceProject,
     clearSelectedSourceProject,
     closeAddProject,
@@ -253,8 +349,12 @@ export const PortfolioGalleryView = ({
     draftSaveError,
     draftSummary,
     draftTitle,
+    editExternalUrl,
+    editRole,
     editSummary,
     editTitle,
+    editToolInput,
+    editTools,
     editing,
     eligibleLoading,
     eligibleProjects,
@@ -265,13 +365,16 @@ export const PortfolioGalleryView = ({
     loadError,
     loading,
     loadProjects,
+    markAddSheetShown,
     openAddProject,
+    openProfileEditor,
     openProject,
     pickDraftMedia,
     removeDraftMedia,
     pickingMedia,
     previewMedia,
     projects,
+    removeEditTool,
     removeSelectedMedia,
     retryDraftLoad,
     saveProjectEdits,
@@ -280,12 +383,18 @@ export const PortfolioGalleryView = ({
     selected,
     selectedSourceProject,
     serverSession,
+    setEditExternalUrl,
+    setEditRole,
     setEditSummary,
     setEditTitle,
+    setEditToolInput,
     updateDraftSummary,
     updateDraftTitle,
     uploadProgress,
   } = controller;
+  const selectedCoverId = selected
+    ? portfolioCoverMedia(selected.media, selected.coverMediaId)?.id
+    : undefined;
   return (
     <View style={styles.container}>
       <SectionHeading
@@ -295,6 +404,15 @@ export const PortfolioGalleryView = ({
         onAction={openAddProject}
         title="مشاريعي"
       />
+      {serverSession === true && !!openProfileEditor && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="مهاراتك وروابط التواصل"
+          onPress={openProfileEditor}
+          style={styles.manualEntryButton}>
+          <Text style={styles.manualEntryLabel}>مهاراتك وروابطك</Text>
+        </Pressable>
+      )}
       {loading && !projects.length ? (
         <StatusView state="loading" title="جارٍ تحميل مشروعاتك" />
       ) : loadError && !projects.length ? (
@@ -437,6 +555,24 @@ export const PortfolioGalleryView = ({
                               </View>
                             )}
                           </Pressable>
+                          {media.type === 'image' &&
+                            !!media.uri &&
+                            (selectedCoverId === media.id ? (
+                              <Text style={styles.mediaThumbLabel}>
+                                الغلاف
+                              </Text>
+                            ) : (
+                              <Pressable
+                                accessibilityLabel="خليها صورة الغلاف"
+                                accessibilityRole="button"
+                                disabled={saving}
+                                onPress={() => chooseSelectedCover(media)}
+                                style={styles.mediaDelete}>
+                                <Text style={styles.mediaThumbLabel}>
+                                  خليها الغلاف
+                                </Text>
+                              </Pressable>
+                            ))}
                           <Pressable
                             accessibilityLabel="حذف الملف"
                             accessibilityRole="button"
@@ -491,8 +627,45 @@ export const PortfolioGalleryView = ({
                           editable={!saving}
                           multiline
                           onChangeText={setEditSummary}
+                          placeholder="احكي عملت ايه وليه"
+                          placeholderTextColor={Palette.textFaint}
                           style={[styles.input, styles.multiline]}
                           value={editSummary}
+                        />
+                        <Text style={styles.fieldLabel}>دورك في المشروع</Text>
+                        <TextInput
+                          accessibilityLabel="دورك في المشروع"
+                          editable={!saving}
+                          maxLength={255}
+                          onChangeText={setEditRole}
+                          placeholder="صممت الهوية كاملة"
+                          placeholderTextColor={Palette.textFaint}
+                          style={styles.input}
+                          value={editRole}
+                        />
+                        <PortfolioChipEditor
+                          addLabel="ضيف أداة"
+                          chips={editTools}
+                          disabled={saving}
+                          input={editToolInput}
+                          label="الأدوات"
+                          onAdd={addEditTool}
+                          onChangeInput={setEditToolInput}
+                          onRemove={removeEditTool}
+                          placeholder="فوتوشوب"
+                        />
+                        <Text style={styles.fieldLabel}>رابط المشروع</Text>
+                        <TextInput
+                          accessibilityLabel="رابط المشروع"
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          editable={!saving}
+                          keyboardType="url"
+                          onChangeText={setEditExternalUrl}
+                          placeholder="https://"
+                          placeholderTextColor={Palette.textFaint}
+                          style={styles.input}
+                          value={editExternalUrl}
                         />
                       </>
                     ) : (
@@ -500,16 +673,28 @@ export const PortfolioGalleryView = ({
                         <Text style={styles.detailTitle}>
                           {formatAuthoredDisplayText(selected.title)}
                         </Text>
+                        {!!selected.role && (
+                          <Text style={styles.detailSummary}>
+                            {formatAuthoredDisplayText(selected.role)}
+                          </Text>
+                        )}
                         <Text style={styles.detailSummary}>
                           {formatAuthoredDisplayText(selected.summary)}
                         </Text>
+                        {!!selected.externalUrl && (
+                          <Text numberOfLines={1} style={styles.detailSummary}>
+                            {selected.externalUrl}
+                          </Text>
+                        )}
                       </>
                     )}
-                    <View style={styles.skillsRow}>
-                      {selected.skills.map(skill => (
-                        <MetaPill key={skill} label={skill} />
-                      ))}
-                    </View>
+                    {!editing && (
+                      <View style={styles.skillsRow}>
+                        {selected.tools.map(tool => (
+                          <MetaPill key={tool} label={tool} />
+                        ))}
+                      </View>
+                    )}
                     {editing ? (
                       <>
                         <Button
@@ -542,6 +727,7 @@ export const PortfolioGalleryView = ({
       <Modal
         animationType={reducedMotion ? 'none' : 'slide'}
         onRequestClose={closeAddProject}
+        onShow={markAddSheetShown}
         statusBarTranslucent
         transparent
         visible={adding}>
@@ -668,7 +854,7 @@ export const PortfolioGalleryView = ({
                   editable={!saving && draftReady}
                   multiline
                   onChangeText={updateDraftSummary}
-                  placeholder="المشكلة التي حللتها والنتيجة"
+                  placeholder="احكي عملت ايه وليه"
                   placeholderTextColor={Palette.textFaint}
                   style={[styles.input, styles.multiline]}
                   value={draftSummary}
@@ -750,6 +936,9 @@ export const PortfolioGalleryView = ({
           </View>
         </View>
       </Modal>
+      {!!controller.profileEditor && (
+        <PortfolioProfileEditorSheet controller={controller} />
+      )}
     </View>
   );
 };

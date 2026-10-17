@@ -14,6 +14,7 @@ import {
   requestCorrelationFor,
 } from './sentryTelemetry';
 import {extractApiToken, peekSecureSession} from './secureSession';
+import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
 
 const endpoint = `${roknApiUrl}client-events`;
 const TELEMETRY_OUTBOX_KEY = '@rokn/client-events-outbox/v1';
@@ -51,7 +52,7 @@ type ClientEventPayload = {
 
 let recentFingerprintSource = '';
 let recentAt = 0;
-let historyTail: Promise<void> = Promise.resolve();
+const historyWrites = createKeyedAsyncQueue();
 
 type DiagnosticHistoryEvent = {
   id: string;
@@ -108,12 +109,7 @@ const rememberDiagnostic = (payload: ClientEventPayload) => {
     ].slice(-MAX_DIAGNOSTIC_HISTORY);
     await AsyncStorage.setItem(TELEMETRY_HISTORY_KEY, JSON.stringify(next));
   };
-  const result = historyTail.then(operation, operation);
-  historyTail = result.then(
-    () => undefined,
-    () => undefined,
-  );
-  return result;
+  return historyWrites(TELEMETRY_HISTORY_KEY, operation);
 };
 
 const eventNameFor = (source: string) => {

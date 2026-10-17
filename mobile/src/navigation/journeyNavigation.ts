@@ -5,6 +5,40 @@ export type RootTabName = 'Home' | 'MyCorner' | 'Wallet' | 'Profile';
 
 let loginGateUntil = 0;
 
+/**
+ * Tab-bar switches are not forward navigation. Bottom navigation switches
+ * destinations in place without a push transition (Material 3 navigation bar,
+ * iOS tab bars, React Navigation bottom tabs). The app's roots live in one
+ * native stack, so a tab switch marks the route it creates and the navigator
+ * renders that route with `animation: 'none'` (its pop/replace too).
+ */
+const TAB_SWITCH_WINDOW_MS = 1_000;
+const MAX_TRACKED_ROUTES = 32;
+let pendingTabSwitch: {name: RootTabName; until: number} | null = null;
+const tabSwitchRoutes = new Map<string, boolean>();
+
+const markTabSwitch = (name: RootTabName) => {
+  pendingTabSwitch = {name, until: Date.now() + TAB_SWITCH_WINDOW_MS};
+};
+
+/** Whether this root route was entered from the tab bar (decided once per route). */
+export const isTabSwitchRoute = (route: {key: string; name: string}) => {
+  const known = tabSwitchRoutes.get(route.key);
+  if (known !== undefined) return known;
+  const pending = pendingTabSwitch;
+  const fromTabBar =
+    pending !== null &&
+    pending.name === route.name &&
+    Date.now() <= pending.until;
+  if (fromTabBar) pendingTabSwitch = null;
+  tabSwitchRoutes.set(route.key, fromTabBar);
+  if (tabSwitchRoutes.size > MAX_TRACKED_ROUTES) {
+    const oldest = tabSwitchRoutes.keys().next().value;
+    if (oldest !== undefined) tabSwitchRoutes.delete(oldest);
+  }
+  return fromTabBar;
+};
+
 type GuestLoginNavigation = Pick<RootNavigation, 'getState' | 'navigate'>;
 
 /**
@@ -33,6 +67,7 @@ export const selectRootTab = (
     return;
   }
 
+  markTabSwitch(target);
   if (current === 'Home') {
     navigation.navigate(target);
     return;

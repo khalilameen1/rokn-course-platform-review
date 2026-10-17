@@ -43,6 +43,9 @@ export const applyPlaybackManifest = (
         playbackRefreshAfter: update.manifest.refreshAfter,
         playbackManifestRevision: update.revision,
         mediaStatus: update.manifest.mediaStatus,
+        captionTracks: update.manifest.captionTracks?.length
+          ? update.manifest.captionTracks
+          : undefined,
       } satisfies CourseReel;
     }),
   }));

@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  labelSelected: {color: '#A9C9FF'},
+  labelSelected: {color: Palette.primaryTintSelected},
   radio: {
     width: 22,
     height: 22,

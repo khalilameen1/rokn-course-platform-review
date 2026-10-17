@@ -10,6 +10,7 @@ let mockDimensions = {width: 360, height: 800, scale: 2, fontScale: 1};
 const mockConfirm = jest.fn();
 const mockCancel = jest.fn();
 let mockBlocked = false;
+let mockCheckoutOverrides: Record<string, unknown> = {};
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
   __esModule: true,
   default: () => mockDimensions,
@@ -34,6 +35,7 @@ jest.mock('../src/hooks/useCourseSubscriptionCheckout', () => ({
     notice: '',
     confirm: mockConfirm,
     cancelPending: mockCancel,
+    ...mockCheckoutOverrides,
   }),
 }));
 
@@ -89,9 +91,59 @@ describe('horizontal subscription comparison on phones', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockBlocked = false;
+    mockCheckoutOverrides = {};
     mockDimensions = {width: 360, height: 800, scale: 2, fontScale: 1};
   });
   afterEach(() => act(() => renderer?.unmount()));
+
+  it('shows the bound cash price on the quoted plan card with one currency label', () => {
+    mockCheckoutOverrides = {
+      quote: {
+        status: 'quoted',
+        deficit: 250,
+        rewardCoins: 0,
+        planCode: 'basic',
+        channel: 'direct',
+        remainingPaidCoins: 0,
+      },
+      coinPackage: {id: '5', coins: 250, price: 37.5, label: 'رصيد'},
+    };
+    mount();
+    const cardText = choices().map(card =>
+      card.findAllByType(Text).map(node => node.props.children),
+    );
+    expect(cardText[0]).toContain('٣٧٫٥ جنيه');
+    expect(cardText[1].join(' ')).not.toContain('جنيه');
+    expect(choices()[0].props.accessibilityLabel).toContain('تدفع ٣٧٫٥ جنيه');
+    const text = renderer.root
+      .findAllByType(Text)
+      .map(node => String(node.props.children));
+    expect(text.filter(value => value === '٣٧٫٥ جنيه')).toHaveLength(2);
+    expect(text.join(' ')).not.toContain('ج م');
+  });
+
+  it('offers another way to pay after the learner left the hosted page unpaid', () => {
+    mockCheckoutOverrides = {
+      quote: {status: 'pending_payment', deficit: 250, rewardCoins: 0},
+      pending: true,
+      awaitingPayment: true,
+      canResumePayment: true,
+      notice: 'لسه ما دفعتش؟\nتقدر تكمل الدفع أو تختار طريقة تانية',
+    };
+    mount();
+    const text = renderer.root
+      .findAllByType(Text)
+      .map(node => node.props.children);
+    expect(text).toContain('متابعة الدفع');
+    expect(text).toContain('اختار طريقة تانية');
+    expect(text).not.toContain('إلغاء طلب الاشتراك');
+    act(() =>
+      renderer.root
+        .findByProps({accessibilityLabel: 'اختار طريقة تانية'})
+        .props.onPress(),
+    );
+    expect(mockCancel).toHaveBeenCalledTimes(1);
+  });
 
   it('offers explicit recovery and cancellation of the previous course payment', () => {
     mockBlocked = true;

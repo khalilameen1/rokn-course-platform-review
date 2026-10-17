@@ -164,7 +164,7 @@ describe('portfolio picker versus create submission', () => {
       id: '71',
       title: 'مشروعي',
       summary: '',
-      skills: [],
+      tools: [],
       media: [],
       publicationState: 'uploading',
     });

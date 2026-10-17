@@ -48,7 +48,10 @@ jest.mock('../src/components/VideoPlayer/courseChat/persistence', () => ({
 jest.mock('../src/components/VideoPlayer/attachmentActions', () => ({
   quiescePrivateAttachmentDownloads: jest.fn(),
 }));
-jest.mock('../src/utils/serverClock', () => ({observeServerTime: jest.fn()}));
+jest.mock('../src/utils/serverClock', () => ({
+  observeServerTime: jest.fn(),
+  serverNowMs: () => Date.now(),
+}));
 jest.mock('../src/utils/secureRandom', () => ({
   secureRandomUuid: () => mockSecureRandomUuid(),
 }));
@@ -60,13 +63,32 @@ jest.mock('../src/services/operationalTelemetry', () => ({
 }));
 
 import {
+  ApiError,
   DEFAULT_READ_RECOVERY_BUDGET_MS,
+  READ_RETRY_LIMIT,
   onFulfilledRequest,
   onRejectedResponse,
   publicRequest,
+  readRetryDelayMs,
   responseConfig,
   type RoknRequestConfig,
 } from '../src/constants/api';
+import {
+  cancelLearningReminders,
+  setSmartRemindersEnabled,
+} from '../src/services/smartReminders';
+
+// The interceptor used to reject with the raw AxiosResponse. It now rejects
+// with ApiError, which must still expose every field old callers probed.
+const expectApiErrorFor = (rejected: unknown, response: {status: number}) => {
+  expect(rejected).toBeInstanceOf(ApiError);
+  expect(rejected).toBeInstanceOf(Error);
+  expect(rejected).toMatchObject({
+    name: 'ApiError',
+    status: response.status,
+    response,
+  });
+};
 import {deleteSecureSessionIfToken} from '../src/services/secureSession';
 import {navigate} from '../src/navigation/RootNavigationHelper';
 import {rotateGuestStorageScope} from '../src/constants/helpers';
@@ -171,12 +193,16 @@ describe('public request session boundary', () => {
   it('does not read or clear a session for a bearer-less public 401', async () => {
     const response = {status: 401, data: {code: 'gateway_unauthorized'}};
 
-    await expect(
-      onRejectedResponse({
-        response,
-        config: {method: 'get', headers: new AxiosHeaders()},
-      }),
-    ).rejects.toBe(response);
+    const rejected = await onRejectedResponse({
+      response,
+      config: {method: 'get', headers: new AxiosHeaders()},
+    }).catch(error => error);
+    expectApiErrorFor(rejected, response);
+    expect(rejected).toMatchObject({
+      data: {code: 'gateway_unauthorized'},
+      code: 'gateway_unauthorized',
+      retryable: false,
+    });
     expect(mockGetItem).not.toHaveBeenCalledWith('USER_DATA');
   });
 
@@ -208,7 +234,10 @@ describe('public request session boundary', () => {
     );
     expect(navigate).not.toHaveBeenCalled();
     expect(store.dispatch).not.toHaveBeenCalled();
-    await expect(onRejectedResponse(failure)).rejects.toBe(response);
+    expectApiErrorFor(
+      await onRejectedResponse(failure).catch(error => error),
+      response,
+    );
 
     expect(deleteSecureSessionIfToken).toHaveBeenCalledTimes(2);
     expect(store.dispatch).toHaveBeenCalledTimes(1);
@@ -231,14 +260,15 @@ describe('public request session boundary', () => {
       return false;
     });
 
-    await expect(
-      onRejectedResponse({
+    expectApiErrorFor(
+      await onRejectedResponse({
         response,
         config: {
           headers: new AxiosHeaders({Authorization: 'Bearer superseded-token'}),
         },
-      }),
-    ).rejects.toBe(response);
+      }).catch(error => error),
+      response,
+    );
     expect(navigate).not.toHaveBeenCalled();
     expect(store.dispatch).not.toHaveBeenCalled();
     expect(rotateGuestStorageScope).not.toHaveBeenCalled();
@@ -617,4 +647,175 @@ describe('public request session boundary', () => {
       }
     },
   );
+
+  it('retires reminder timers on an expired bearer but keeps the stored opt-in', async () => {
+    const response = {status: 401};
+    mockPeekSession.mockReturnValue({
+      ready: true,
+      session: {api_token: 'expired-reminder-token'},
+      epoch: 90,
+    });
+    jest.mocked(deleteSecureSessionIfToken).mockImplementationOnce(async () => {
+      mockPeekSession.mockReturnValue({ready: true, session: null, epoch: 91});
+      return true;
+    });
+
+    await onRejectedResponse({
+      response,
+      config: {
+        headers: new AxiosHeaders({
+          Authorization: 'Bearer expired-reminder-token',
+        }),
+      },
+    }).catch(() => undefined);
+
+    expect(cancelLearningReminders).toHaveBeenCalledTimes(1);
+    expect(setSmartRemindersEnabled).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith('Login', undefined);
+  });
+
+  it('keeps transport failures as the original Axios error', async () => {
+    const failure = {code: 'ERR_BAD_OPTION', message: 'bad option'};
+    await expect(onRejectedResponse(failure)).rejects.toBe(failure);
+  });
+
+  it('wraps an Axios HTTP error without leaking Axios codes as server codes', async () => {
+    const response = {
+      status: 404,
+      statusText: 'Not Found',
+      data: {status: 404, message: 'غير موجود'},
+      headers: {'x-request-id': 'abc'},
+    };
+    const axiosError = Object.assign(
+      new Error('Request failed with status code 404'),
+      {code: 'ERR_BAD_REQUEST', response, config: {method: 'post'}},
+    );
+    const rejected = (await onRejectedResponse(axiosError).catch(
+      error => error,
+    )) as ApiError;
+
+    expectApiErrorFor(rejected, response);
+    expect(rejected.code).toBeUndefined();
+    expect(rejected.axiosCode).toBe('ERR_BAD_REQUEST');
+    expect(rejected.data).toBe(response.data);
+    expect(rejected.headers).toBe(response.headers);
+    expect(rejected.statusText).toBe('Not Found');
+    expect(rejected.cause).toBe(axiosError);
+    expect(rejected.message).toBe('Request failed with status code 404');
+  });
+
+  describe('read retry policy', () => {
+    const readFailure = (
+      status: number,
+      extra: Record<string, unknown> = {},
+      headers: Record<string, string> = {},
+    ) => ({
+      response: {status, data: {}, headers},
+      config: {
+        method: 'get',
+        url: 'wallet',
+        headers: new AxiosHeaders(),
+        roknSessionEpoch: 1,
+        roknNetworkRetryDeadlineAt: Date.now() + 10_000,
+        ...extra,
+      },
+    });
+
+    it('uses full-jitter exponential backoff bounded by the attempt window', () => {
+      expect(readRetryDelayMs(0, () => 0)).toBe(0);
+      expect(readRetryDelayMs(0, () => 0.999)).toBe(299);
+      expect(readRetryDelayMs(1, () => 0.5)).toBe(300);
+      expect(readRetryDelayMs(10, () => 1)).toBe(2_000);
+      expect(READ_RETRY_LIMIT).toBeLessThanOrEqual(2);
+    });
+
+    it('does not replay a maintenance 503 or a long Retry-After', async () => {
+      const request = jest.spyOn(publicRequest, 'request');
+      try {
+        await expect(
+          onRejectedResponse(readFailure(503, {}, {'retry-after': '300'})),
+        ).rejects.toMatchObject({status: 503, retryable: true});
+        await expect(onRejectedResponse(readFailure(503))).rejects.toMatchObject(
+          {status: 503},
+        );
+        await expect(
+          onRejectedResponse(readFailure(502, {}, {'retry-after': '120'})),
+        ).rejects.toMatchObject({status: 502});
+        expect(request).not.toHaveBeenCalled();
+      } finally {
+        request.mockRestore();
+      }
+    });
+
+    it.each([
+      ['delay-seconds', () => '1'],
+      ['HTTP-date', () => new Date(Date.now() + 1_000).toUTCString()],
+    ])(
+      'waits for a short %s Retry-After before replaying a 503 read',
+      async (_label, retryAfter) => {
+        jest.useFakeTimers({now: 1_700_000_000_000});
+        const random = jest.spyOn(Math, 'random').mockReturnValue(0);
+        const request = jest
+          .spyOn(publicRequest, 'request')
+          .mockResolvedValueOnce({data: {ok: true}} as never);
+        try {
+          const retried = onRejectedResponse(
+            readFailure(503, {}, {'retry-after': retryAfter()}),
+          );
+          await jest.advanceTimersByTimeAsync(500);
+          expect(request).not.toHaveBeenCalled();
+          await jest.advanceTimersByTimeAsync(1_000);
+          await expect(retried).resolves.toEqual({data: {ok: true}});
+          expect(request).toHaveBeenCalledTimes(1);
+        } finally {
+          request.mockRestore();
+          random.mockRestore();
+          jest.useRealTimers();
+        }
+      },
+    );
+
+    it.each([
+      ['retry: false', {retry: false}],
+      [
+        'the legacy exhausted counter',
+        {roknNetworkRetryCount: Number.MAX_SAFE_INTEGER},
+      ],
+      ['a spent attempt budget', {roknNetworkRetryCount: READ_RETRY_LIMIT}],
+    ])('does not retry a gateway failure with %s', async (_label, extra) => {
+      const request = jest.spyOn(publicRequest, 'request');
+      try {
+        await expect(
+          onRejectedResponse(readFailure(502, extra)),
+        ).rejects.toMatchObject({status: 502});
+        expect(request).not.toHaveBeenCalled();
+      } finally {
+        request.mockRestore();
+      }
+    });
+
+    it('replays a gateway 502 read after a jittered delay', async () => {
+      jest.useFakeTimers({now: 1_700_000_000_000});
+      const random = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+      const request = jest
+        .spyOn(publicRequest, 'request')
+        .mockResolvedValueOnce({data: {ok: true}} as never);
+      try {
+        const retried = onRejectedResponse(
+          readFailure(502, {roknNetworkRetryCount: 1}),
+        );
+        await jest.advanceTimersByTimeAsync(299);
+        expect(request).not.toHaveBeenCalled();
+        await jest.advanceTimersByTimeAsync(1);
+        await expect(retried).resolves.toEqual({data: {ok: true}});
+        expect(request.mock.calls[0][0]).toEqual(
+          expect.objectContaining({roknNetworkRetryCount: 2}),
+        );
+      } finally {
+        request.mockRestore();
+        random.mockRestore();
+        jest.useRealTimers();
+      }
+    });
+  });
 });

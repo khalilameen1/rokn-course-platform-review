@@ -15,6 +15,10 @@ jest.mock('../src/constants/helpers', () => ({
   },
 }));
 jest.mock('expo-document-picker', () => ({getDocumentAsync: jest.fn()}));
+jest.mock('react-native-image-picker', () => ({
+  launchCamera: jest.fn(),
+  launchImageLibrary: jest.fn(),
+}));
 jest.mock('../src/services/learnerDraftFiles', () => ({
   removeLearnerDraftFile: jest.fn(async () => undefined),
 }));

@@ -41,7 +41,7 @@ export const styles = StyleSheet.create({
     color: Palette.textMuted,
   },
   offlineRetry: {minHeight: 48, justifyContent: 'center'},
-  offlineRetryText: {...Type.caption, ...textDirection, color: Palette.primary},
+  offlineRetryText: {...Type.caption, ...textDirection, color: Palette.primaryText},
   courseCover: {
     width: '100%',
     height: undefined,

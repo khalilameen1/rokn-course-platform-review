@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {serverNowMs} from '../utils/serverClock';
+import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
 
 export type DurableOutboxItem<T> = {
   id: string;
@@ -38,22 +39,11 @@ type FlushOptions<T> = {
 
 const DEFAULT_MAX_ITEMS = 50;
 const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const locks = new Map<string, Promise<unknown>>();
+let locks = createKeyedAsyncQueue();
 const flushes = new Map<string, Promise<void>>();
 
-const withLock = <T>(storageKey: string, operation: () => Promise<T>) => {
-  const previous = locks.get(storageKey) || Promise.resolve();
-  const result = previous.then(operation, operation);
-  const tail = result.then(
-    () => undefined,
-    () => undefined,
-  );
-  locks.set(storageKey, tail);
-  void tail.finally(() => {
-    if (locks.get(storageKey) === tail) locks.delete(storageKey);
-  });
-  return result;
-};
+const withLock = <T>(storageKey: string, operation: () => Promise<T>) =>
+  locks(storageKey, operation);
 
 const validItem = <T>(value: unknown): value is DurableOutboxItem<T> => {
   if (!value || typeof value !== 'object') return false;
@@ -246,6 +236,6 @@ export const readDurableOutbox = async <T>(storageKey: string) => {
 };
 
 export const resetDurableOutboxForTests = () => {
-  locks.clear();
+  locks = createKeyedAsyncQueue();
   flushes.clear();
 };

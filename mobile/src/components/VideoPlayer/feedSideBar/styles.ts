@@ -162,7 +162,7 @@ export const feedSideBarStyles = StyleSheet.create({
   folderRetryText: {
     ...Type.bodyStrong,
     ...textDirection,
-    color: Palette.primary,
+    color: Palette.primaryText,
   },
   folderError: {
     ...textDirection,

@@ -56,7 +56,7 @@ export const styles = StyleSheet.create({
   },
   refreshCases: {
     ...Type.caption,
-    color: '#9ABFFF',
+    color: Palette.primaryTintSoftText,
   },
   caseMuted: {
     ...Type.caption,
@@ -85,7 +85,7 @@ export const styles = StyleSheet.create({
   caseStatus: {
     ...Type.caption,
     ...textDirection,
-    color: '#9ABFFF',
+    color: Palette.primaryTintSoftText,
     maxWidth: 120,
     flexShrink: 1,
   },
@@ -121,7 +121,7 @@ export const styles = StyleSheet.create({
   },
   timelineAttachmentLabel: {
     ...Type.caption,
-    color: '#9ABFFF',
+    color: Palette.primaryTintSoftText,
     marginTop: Spacing.xxs,
   },
   replyInput: {
@@ -187,7 +187,7 @@ export const styles = StyleSheet.create({
     color: Palette.textMuted,
     flexShrink: 1,
   },
-  categoryTextSelected: {color: '#9ABFFF'},
+  categoryTextSelected: {color: Palette.primaryTintSoftText},
   form: {marginTop: Spacing.md},
   input: {
     ...Type.body,
@@ -218,7 +218,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 0,
     paddingVertical: Spacing.sm,
   },
-  attachmentButtonText: {...Type.bodyStrong, color: '#9ABFFF'},
+  attachmentButtonText: {...Type.bodyStrong, color: Palette.primaryTintSoftText},
   attachmentRow: {
     ...rtlRowStyle,
     alignItems: 'center',

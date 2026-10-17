@@ -69,9 +69,7 @@ jest.mock('../src/screens/wallet/walletCache', () => ({
   readWalletCache: async () => null,
   saveWalletCache: async () => true,
 }));
-jest.mock('../src/services/coinCheckout', () => ({
-  subscribeCoinCheckoutCredits: () => () => undefined,
-}));
+jest.mock('../src/services/coinCheckout', () => ({}));
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   applyLocalLearningState: jest.fn(),
   mapCoursePayload: jest.fn(),

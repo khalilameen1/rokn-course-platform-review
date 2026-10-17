@@ -19,7 +19,6 @@ jest.mock('../src/constants/distribution', () => ({
   CAN_START_NATIVE_CHECKOUT: false,
 }));
 jest.mock('../src/services/coinCheckout', () => ({
-  subscribeCoinCheckoutCredits: () => () => undefined,
 }));
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   applyLocalLearningState: jest.fn(),

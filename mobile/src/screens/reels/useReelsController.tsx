@@ -552,7 +552,7 @@ export const useReelsController = () => {
     [refreshProjectState, setCourse, watchProjectUntilResolved],
   );
 
-  const renderItem = useReelsFeedRenderer({
+  const {feedState, renderItem} = useReelsFeedRenderer({
     refreshCourseEntitlements,
     bottomInset: insets.bottom,
     changePlaybackSpeed,
@@ -624,6 +624,7 @@ export const useReelsController = () => {
     currentReel,
     enableRemindersFromNudge,
     feedItems,
+    feedState,
     identityKey,
     insets,
     layout,

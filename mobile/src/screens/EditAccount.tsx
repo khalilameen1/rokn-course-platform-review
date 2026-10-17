@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: Spacing.md,
   },
-  changePhotoLabel: {...Type.bodyStrong, color: '#8BB5FF'},
+  changePhotoLabel: {...Type.bodyStrong, color: Palette.primaryTintText},
   form: {paddingBottom: Spacing.xl},
   sectionTitle: {
     ...Type.section,

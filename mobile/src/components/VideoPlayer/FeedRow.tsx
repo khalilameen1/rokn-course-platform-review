@@ -23,6 +23,8 @@ import type {
   PlaybackRuntimeMetrics,
 } from './playbackTelemetry';
 import {Fonts} from '../../constants/styleConstants';
+import {Palette} from '../../constants/designSystem';
+import type {VideoContentFrame} from './video/policy';
 
 export const SOURCE_PENDING_RETRY_DELAY_MS = 9_000;
 
@@ -108,6 +110,8 @@ const FeedRow = ({
   const sourceRefreshFlightRef = useRef<Promise<void> | null>(null);
   const sourceRefreshGenerationRef = useRef(0);
   const [sourceRetrying, setSourceRetrying] = useState(false);
+  const [videoContentFrame, setVideoContentFrame] =
+    useState<VideoContentFrame | null>(null);
   const localOverlayVisible = headerOverlayVisible || sidebarOverlayVisible;
   const attachmentCurrentTime =
     attachmentClockOwnerRef.current === item.key ? currentTime : 0;
@@ -264,6 +268,7 @@ const FeedRow = ({
             onRefreshSource={onRefreshVideo}
             onPlaybackEvent={onPlaybackEvent}
             onPlaybackMetrics={onPlaybackMetrics}
+            onContentFrameChange={setVideoContentFrame}
           />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.sourcePending]}>
@@ -329,6 +334,9 @@ const FeedRow = ({
               onOverlayVisibilityChange={setSidebarOverlayVisible}
               onSelectFeedItem={onSelectFeedItem}
               currentTime={attachmentCurrentTime}
+              videoContentBottom={
+                shouldMountVideo ? videoContentFrame?.bottom : undefined
+              }
             />
             <FeedFooter data={item.reel} bottomInset={bottomInset} />
           </>
@@ -375,7 +383,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 18,
-    backgroundColor: '#236FE8',
+    backgroundColor: Palette.primary,
     marginTop: 12,
   },
   sourceRetryButtonText: {

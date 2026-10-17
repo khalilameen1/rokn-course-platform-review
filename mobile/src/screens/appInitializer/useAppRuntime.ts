@@ -24,7 +24,7 @@ import {CAN_START_NATIVE_CHECKOUT} from '../../constants/distribution';
 import {reconcilePendingCoinCheckout} from '../../services/coinCheckout';
 import {flushProductEvents} from '../../services/productAnalytics';
 import {flushPendingAccountWrites} from '../../services/pendingAccountWrites';
-import {subscribeToPlaybackPreferenceRecovery} from '../../services/playbackPreferenceConnectivity';
+import {subscribeToConnectivityRecovery} from '../../services/playbackPreferenceConnectivity';
 import {flushOperationalTelemetry} from '../../services/operationalTelemetry';
 import {replayPendingPortfolioMediaUploads} from '../../services/portfolioMediaReplay';
 import {networkFailureKind} from '../../services/networkExperience';
@@ -48,11 +48,6 @@ export const useAppRuntime = ({
   resumePendingAuthentication,
 }: RuntimeInput) => {
   const hasSession = Boolean(extractApiToken(storedUser));
-
-  useEffect(() => {
-    if (!sessionReady) return;
-    return subscribeToPlaybackPreferenceRecovery();
-  }, [sessionReady]);
 
   useEffect(() => {
     void prepareNotificationChannels().catch(() => undefined);
@@ -199,6 +194,16 @@ export const useAppRuntime = ({
 
     reconcileLearning(true);
     reconcileStore();
+    // Offline intents also replay when the network returns while the app stays
+    // open, not only on the next foreground (TanStack Query onlineManager
+    // model; debounced inside the subscription). Each flush is single-flight.
+    const unsubscribeConnectivity = subscribeToConnectivityRecovery(() => {
+      if (!active) return;
+      reconcileLearning();
+      void flushPendingAccountWrites().catch(() => undefined);
+      void flushProductEvents().catch(() => undefined);
+      void flushOperationalTelemetry().catch(() => undefined);
+    });
     const appStateSubscription = AppState.addEventListener('change', state => {
       if (state !== 'active') {
         clearStoreTimer();
@@ -223,6 +228,7 @@ export const useAppRuntime = ({
       clearStoreTimer();
       authLinkSubscription?.remove();
       appStateSubscription.remove();
+      unsubscribeConnectivity();
     };
   }, [
     adoptAuthenticatedSession,

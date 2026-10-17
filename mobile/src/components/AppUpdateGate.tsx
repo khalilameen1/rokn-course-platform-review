@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   notes: {
     ...Type.caption,
     ...textDirection,
-    color: Palette.textFaint,
+    color: Palette.textFaintOnRaised,
     marginTop: Spacing.md,
   },
   error: {

@@ -501,6 +501,7 @@ export const useProjectSubmission = ({
       const {files, ownerBoundary} = await pickProjectFilesOwned(
         allowedMimeTypes,
         ownsPicker,
+        {limit: Math.max(1, maximumFiles - selectedFiles.length)},
       );
       assertAccountSessionBoundary(ownerBoundary);
       if (

@@ -209,25 +209,101 @@ const removeCache = () => {
     .catch(() => undefined);
 };
 
-export const getSocialAuthMethods = async (): Promise<SocialAuthMethods> => {
-  try {
-    const methodsResponse = await publicRequest.get<unknown>('auth-methods', {
-      skipAuthorization: true,
-      timeout: 8_000,
-      roknNetworkRetryDeadlineAt: Date.now() + READ_BUDGET_MS,
-    } as RoknRequestConfig);
-    const methods = fromResponse(methodsResponse.data);
-    writeCache(methods);
-    return methods;
-  } catch (error) {
-    if (transientReadFailureAllowsCache(error)) {
-      const cached = await readCacheWithinBudget();
-      if (cached) return cached;
-    } else if (networkFailureKind(error) === 'contract') {
-      // Invalid active contracts must not be concealed by old provider data,
-      // but local cleanup is still outside the current discovery result.
-      removeCache();
+export type SocialAuthMethodsRevalidation =
+  | {methods: SocialAuthMethods}
+  | {error: unknown};
+
+const revalidationListeners = new Set<
+  (update: SocialAuthMethodsRevalidation) => void
+>();
+
+/**
+ * Notified when a background revalidation disagrees with the cached methods
+ * a caller already rendered: new methods, or a contract failure that removed
+ * the cache. Transient outages keep the cached answer and do not notify.
+ */
+export const subscribeToSocialAuthMethods = (
+  listener: (update: SocialAuthMethodsRevalidation) => void,
+) => {
+  revalidationListeners.add(listener);
+  return () => {
+    revalidationListeners.delete(listener);
+  };
+};
+
+const notifyRevalidation = (update: SocialAuthMethodsRevalidation) => {
+  for (const listener of Array.from(revalidationListeners)) {
+    try {
+      listener(update);
+    } catch {
+      // One stale screen must not stop another from updating.
     }
-    throw error;
   }
+};
+
+let liveFlight: Promise<SocialAuthMethods> | null = null;
+
+/** One authoritative discovery read at a time, shared by every caller. */
+const fetchLiveMethods = () => {
+  if (liveFlight) return liveFlight;
+  const flight: Promise<SocialAuthMethods> = (async () => {
+    try {
+      const methodsResponse = await publicRequest.get<unknown>('auth-methods', {
+        skipAuthorization: true,
+        timeout: 8_000,
+        roknNetworkRetryDeadlineAt: Date.now() + READ_BUDGET_MS,
+      } as RoknRequestConfig);
+      const methods = fromResponse(methodsResponse.data);
+      writeCache(methods);
+      return methods;
+    } catch (error) {
+      if (networkFailureKind(error) === 'contract') {
+        // Invalid active contracts must not be concealed by old provider data
+        // on the next open, but local cleanup is outside this result.
+        removeCache();
+      }
+      throw error;
+    }
+  })().finally(() => {
+    if (liveFlight === flight) liveFlight = null;
+  });
+  liveFlight = flight;
+  return flight;
+};
+
+const sameMethods = (left: SocialAuthMethods, right: SocialAuthMethods) =>
+  JSON.stringify(left) === JSON.stringify(right);
+
+/**
+ * Stale-while-revalidate (RFC 5861 §3; the TanStack Query cache model): a
+ * fresh cached contract for this API host renders the login sheet at once,
+ * while the live discovery read starts in parallel and refreshes the cache.
+ * Cached start URLs were validated against the trusted API origin when they
+ * were stored, so serving them never widens the allowed hosts. Without a
+ * usable cache the live answer (or its failure) is returned as before.
+ */
+export const getSocialAuthMethods = async (): Promise<SocialAuthMethods> => {
+  const live = fetchLiveMethods();
+  void live.catch(() => undefined);
+  const cached = await readCacheWithinBudget();
+  if (!cached) return live;
+  void live.then(
+    methods => {
+      if (!sameMethods(methods, cached)) notifyRevalidation({methods});
+    },
+    error => {
+      if (
+        networkFailureKind(error) !== 'cancelled' &&
+        !transientReadFailureAllowsCache(error)
+      ) {
+        notifyRevalidation({error});
+      }
+    },
+  );
+  return cached;
+};
+
+export const resetSocialAuthMethodsForTests = () => {
+  liveFlight = null;
+  revalidationListeners.clear();
 };

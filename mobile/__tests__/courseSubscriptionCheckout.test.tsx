@@ -12,6 +12,7 @@ const mockCancel = jest.fn();
 const mockPayment = jest.fn();
 const mockPackages = jest.fn();
 const mockTrack = jest.fn();
+const mockRelease = jest.fn();
 jest.mock('../src/services/productAnalytics', () => ({
   trackProductEvent: (...args: unknown[]) => mockTrack(...args),
 }));
@@ -35,8 +36,9 @@ jest.mock('../src/services/roknApi', () => ({
 }));
 jest.mock('../src/services/coinCheckout', () => ({
   openCoinCheckout: (...args: unknown[]) => mockPayment(...args),
-  subscribeCoinCheckoutCredits: () => () => undefined,
+  releaseCoinCheckoutPackage: (...args: unknown[]) => mockRelease(...args),
 }));
+import {subscribeWalletSettlements} from '../src/services/walletSettlement';
 jest.mock('../src/services/api/courseCheckout', () => ({
   quoteCourseCheckout: (...args: unknown[]) => mockQuote(...args),
   authorizeCourseCheckout: (...args: unknown[]) => mockAuthorize(...args),
@@ -106,7 +108,9 @@ describe('same-sheet course checkout authorization', () => {
       mockGet,
       mockCancel,
       mockPayment,
+      mockRelease,
     ].forEach(mock => mock.mockReset());
+    mockRelease.mockResolvedValue(null);
     mockLatest.mockResolvedValue(null);
     mockQuote.mockResolvedValue(base);
     mockPackages.mockResolvedValue([coinPackage]);
@@ -272,6 +276,221 @@ describe('same-sheet course checkout authorization', () => {
     await act(async () => {
       view.renderer.unmount();
     });
+  });
+
+  describe('leaving the hosted payment page', () => {
+    const directPackage = {...coinPackage, price: 18, displayPrice: undefined};
+    const direct: CourseCheckout = {
+      ...base,
+      channel: 'direct',
+      canResumePayment: true,
+      packages: [directPackage],
+      fundingMode: 'exact_shortfall',
+      selectedPackage: directPackage,
+    };
+    const unpaid = {
+      success: false,
+      pending: true,
+      cancelled: false,
+      coinsAdded: 0,
+      paymentReported: false,
+    };
+    const conflictWithOlder = {
+      status: 409,
+      data: {
+        code: 'checkout_already_pending',
+        data: {active_checkout: {id: 'older-checkout', course_id: 8}},
+      },
+    };
+    const UNPAID = 'لسه ما دفعتش؟\nتقدر تكمل الدفع أو تختار طريقة تانية';
+    beforeEach(() => {
+      require('../src/services/checkoutRouting').courseCheckoutTransport = {
+        kind: 'external',
+        channel: 'direct',
+        apiChannel: 'direct',
+        surface: 'browser',
+      };
+      mockQuote.mockResolvedValue(direct);
+      mockAuthorize.mockResolvedValue({...direct, status: 'pending_payment'});
+      mockResume.mockResolvedValue({...direct, status: 'pending_payment'});
+    });
+
+    it('treats a return without a callback as not paid yet and offers resume', async () => {
+      mockPayment.mockResolvedValue(unpaid);
+      const view = await mount();
+      await act(async () => {
+        await view.current().confirm();
+      });
+      expect(view.current().awaitingPayment).toBe(true);
+      expect(view.current().canResumePayment).toBe(true);
+      expect(view.current().notice).toBe(UNPAID);
+      // One tap reopens the same open order; still nothing captured.
+      await act(async () => {
+        await view.current().confirm();
+      });
+      expect(mockPayment).toHaveBeenCalledTimes(2);
+      expect(view.current().notice).toBe(UNPAID);
+      expect(mockCancel).not.toHaveBeenCalled();
+      await act(async () => view.renderer.unmount());
+    });
+
+    it('releases the unpaid provider order before cancelling when the learner picks another way', async () => {
+      mockPayment.mockResolvedValue(unpaid);
+      const view = await mount();
+      await act(async () => {
+        await view.current().confirm();
+      });
+      mockRelease.mockResolvedValueOnce({
+        success: false,
+        pending: false,
+        cancelled: true,
+        coinsAdded: 0,
+      });
+      await act(async () => {
+        await view.current().cancelPending();
+      });
+      expect(mockRelease).toHaveBeenCalledWith(directPackage);
+      expect(mockCancel).toHaveBeenCalledWith(base.id);
+      expect(mockQuote).toHaveBeenCalledTimes(2);
+      expect(view.current().awaitingPayment).toBe(false);
+      await act(async () => view.renderer.unmount());
+    });
+
+    it('resumes instead of cancelling when the release finds a racing capture', async () => {
+      mockPayment.mockResolvedValue(unpaid);
+      const view = await mount();
+      await act(async () => {
+        await view.current().confirm();
+      });
+      mockRelease.mockResolvedValueOnce({
+        success: true,
+        pending: false,
+        cancelled: false,
+        coinsAdded: 400,
+        orderRef: 'PKG-RACE-1',
+      });
+      mockResume.mockResolvedValueOnce({...direct, status: 'completed'});
+      await act(async () => {
+        await view.current().cancelPending();
+      });
+      expect(mockCancel).not.toHaveBeenCalled();
+      expect(view.complete).toHaveBeenCalledTimes(1);
+      await act(async () => view.renderer.unmount());
+    });
+
+    it('keeps the confirmation notice only for a provider-reported payment', async () => {
+      mockPayment.mockResolvedValue({...unpaid, paymentReported: true});
+      const view = await mount();
+      await act(async () => {
+        await view.current().confirm();
+      });
+      expect(view.current().awaitingPayment).toBe(false);
+      expect(view.current().notice).toBe(
+        'الدفع قيد التأكيد\nسيُفعّل الاشتراك بعد التأكيد',
+      );
+      await act(async () => view.renderer.unmount());
+    });
+
+    it('shows the calm state when reopening an uncaptured hosted order', async () => {
+      mockLatest.mockResolvedValue({...direct, status: 'pending_payment'});
+      const view = await mount();
+      expect(view.current().pending).toBe(true);
+      expect(view.current().awaitingPayment).toBe(true);
+      expect(view.current().notice).toBe(UNPAID);
+      await act(async () => view.renderer.unmount());
+    });
+
+    it('releases an older unpaid order in the same tap instead of asking the learner to cancel it', async () => {
+      const older: CourseCheckout = {
+        ...direct,
+        id: 'older-checkout',
+        courseId: '8',
+        status: 'pending_payment',
+      };
+      mockAuthorize
+        .mockRejectedValueOnce(conflictWithOlder)
+        .mockResolvedValueOnce({...direct, status: 'pending_payment'});
+      mockResume
+        .mockResolvedValueOnce(older)
+        .mockResolvedValue({...direct, status: 'completed'});
+      mockCancel.mockResolvedValueOnce({...older, status: 'cancelled'});
+      mockPayment.mockResolvedValue({
+        success: true,
+        pending: false,
+        cancelled: false,
+        coinsAdded: 400,
+        paymentReported: true,
+      });
+      const view = await mount();
+      await act(async () => {
+        await view.current().confirm();
+      });
+      expect(mockRelease).toHaveBeenCalledWith(directPackage);
+      expect(mockCancel).toHaveBeenCalledWith('older-checkout');
+      expect(mockAuthorize).toHaveBeenCalledTimes(2);
+      expect(mockPayment).toHaveBeenCalledTimes(1);
+      expect(view.current().blockedByPreviousCheckout).toBe(false);
+      expect(view.complete).toHaveBeenCalledTimes(1);
+      await act(async () => view.renderer.unmount());
+    });
+
+    it('keeps a possibly captured older order blocking instead of releasing it', async () => {
+      mockAuthorize.mockRejectedValueOnce(conflictWithOlder);
+      mockResume.mockResolvedValueOnce({
+        ...direct,
+        id: 'older-checkout',
+        courseId: '8',
+        status: 'pending_payment',
+        canResumePayment: false,
+      });
+      const view = await mount();
+      await act(async () => {
+        await view.current().confirm();
+      });
+      expect(mockCancel).not.toHaveBeenCalled();
+      expect(mockRelease).not.toHaveBeenCalled();
+      expect(view.current().blockedByPreviousCheckout).toBe(true);
+      expect(mockPayment).not.toHaveBeenCalled();
+      await act(async () => view.renderer.unmount());
+    });
+  });
+
+  it('tells the learner a store charge will activate when the network returns', async () => {
+    mockPayment.mockResolvedValue({
+      success: false,
+      pending: true,
+      cancelled: false,
+      coinsAdded: 0,
+      paymentReported: true,
+      activationDeferred: true,
+    });
+    const view = await mount();
+    await act(async () => {
+      await view.current().confirm();
+    });
+    expect(mockResume).not.toHaveBeenCalled();
+    expect(view.current().notice).toBe(
+      'الدفع وصل وهنكمّل تفعيله أول ما النت يرجع',
+    );
+    expect(view.current().pending).toBe(true);
+    await act(async () => view.renderer.unmount());
+  });
+
+  it('announces a completed course purchase once on the wallet settlement channel', async () => {
+    const wallet = jest.fn();
+    const unsubscribe = subscribeWalletSettlements(wallet);
+    try {
+      const view = await mount();
+      await act(async () => {
+        await view.current().confirm();
+      });
+      expect(view.complete).toHaveBeenCalledTimes(1);
+      expect(wallet).toHaveBeenCalledTimes(1);
+      expect(wallet).toHaveBeenCalledWith({scope: 'user-1', epoch: 1});
+      await act(async () => view.renderer.unmount());
+    } finally {
+      unsubscribe();
+    }
   });
 
   it('binds an older unbound direct quote before allowing authorization', async () => {

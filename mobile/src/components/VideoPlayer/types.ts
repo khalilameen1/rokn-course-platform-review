@@ -26,6 +26,13 @@ export interface CourseAttachment {
   expiresAt?: string;
 }
 
+export type CaptionTrack = {
+  url: string;
+  /** ISO 639-1, for example "ar". */
+  language: string;
+  label: string;
+};
+
 export interface CourseReel {
   id: string;
   lessonId: string;
@@ -49,6 +56,8 @@ export interface CourseReel {
   /** Changes whenever a signed source is re-issued, even if its session is reused. */
   playbackManifestRevision?: number;
   mediaStatus?: 'ready' | 'processing' | 'failed' | 'unknown';
+  /** Optional WebVTT captions from the playback manifest (`caption_tracks`). */
+  captionTracks?: CaptionTrack[];
   isPreview: boolean;
   isLocked: boolean;
   /** Server-owned reason; purchase and progression gates are different states. */

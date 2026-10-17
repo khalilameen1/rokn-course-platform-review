@@ -1,4 +1,12 @@
-import {useCallback} from 'react';
+import React, {
+  createContext,
+  memo,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import type {Dispatch, MutableRefObject, SetStateAction} from 'react';
 import FeedRow from '../../components/VideoPlayer/FeedRow';
 import type {ProjectResolution} from '../../components/VideoPlayer/courseLearning/projectRemote';
@@ -23,6 +31,288 @@ import {openGuestLogin} from '../../navigation/journeyNavigation';
 import type {CourseReloadTarget} from './useReelsCourseLoader';
 
 export type ReelsNavigation = RootNavigation;
+
+/** Latest learner actions. Rows call through this ref instead of capturing them. */
+type ReelsFeedActions = {
+  applyReviewResolution?: (
+    projectId: string,
+    resolution: ProjectResolution,
+  ) => void;
+  changePlaybackSpeed: (speed: number) => void;
+  changeQuality: (quality: VideoQuality) => void;
+  completeAndAdvance: (reel: CourseReel) => void | Promise<void>;
+  courseId?: string;
+  handlePlaybackEvent: (reel: CourseReel, event: PlaybackPlayerEvent) => void;
+  handlePlaybackMetrics: (
+    reel: CourseReel,
+    metrics: PlaybackRuntimeMetrics,
+  ) => void;
+  load: (target?: CourseReloadTarget) => Promise<void>;
+  navigation: ReelsNavigation;
+  onContentOverlayVisibilityChange: (
+    scopeKey: string,
+    visible: boolean,
+  ) => void;
+  persistProgress: (
+    reel: CourseReel,
+    currentTime: number,
+    duration: number,
+  ) => void;
+  preview: boolean;
+  previewCount?: number;
+  refreshCourseEntitlements?: () => void | Promise<void>;
+  requestPlaybackManifest: (
+    reel: CourseReel,
+    expectedSessionId?: string,
+  ) => void | Promise<void>;
+  scheduleDelayedAction: (action: () => void, delayMs: number) => void;
+  scrollToIndex: (index: number) => void;
+  scrollToKey: (key: string) => void;
+  serverSession: boolean | null;
+  setChatVisible: Dispatch<SetStateAction<boolean>>;
+  submitProject: (
+    projectId: string,
+    files: SelectedProjectFile[],
+    note?: string,
+  ) => Promise<ProjectSubmissionOutcome>;
+  toggleSaved: (
+    reel: CourseReel,
+    folder?: SavedFolderOption | null,
+  ) => Promise<unknown>;
+};
+
+/**
+ * Feed-wide values that change while paging. Rows read them from context and
+ * pass only their own derived primitives to the memoized FeedRow, so a swipe
+ * re-renders the rows whose visibility or blocking actually changed.
+ */
+export type ReelsFeedState = {
+  actions: MutableRefObject<ReelsFeedActions>;
+  bottomInset: number;
+  course: CourseLearningData | null;
+  currentIndex: number;
+  feedLength: number;
+  frameWidth: number;
+  nativePreloadMode: boolean;
+  nativePreloadOwner?: string;
+  nativePreloadPending: boolean;
+  pageHeight: number;
+  pageWidth: number;
+  playbackBlocked: boolean;
+  playbackSpeed: number;
+  positions: MutableRefObject<Record<string, number>>;
+  preloadNext: boolean;
+  savedLessons: Set<string>;
+  savingLessons: Set<string>;
+  screenFocused: boolean;
+  selectedQuality: VideoQuality;
+  topInset: number;
+};
+
+export const ReelsFeedContext = createContext<ReelsFeedState | null>(null);
+
+const ReelsFeedRow = memo(
+  ({item, index}: {item: CourseFeedItem; index: number}) => {
+    const feed = useContext(ReelsFeedContext);
+    const actions = feed?.actions;
+    const reel = item.type === 'reel' ? item.reel : undefined;
+    const call = useCallback(
+      <T,>(run: (latest: ReelsFeedActions) => T) =>
+        actions ? run(actions.current) : undefined,
+      [actions],
+    );
+
+    // Stable per feed item: these callbacks read the latest controller
+    // actions at call time (React's "effect event" pattern) instead of
+    // capturing per-render closures that defeat FeedRow's memo.
+    const onToggleSave = useCallback(
+      (folder?: SavedFolderOption | null) =>
+        call(latest => {
+          if (reel) latest.toggleSaved(reel, folder).catch(() => undefined);
+        }),
+      [call, reel],
+    );
+    const onBeforeOpenSave = useCallback(
+      () =>
+        call(latest => {
+          if (latest.serverSession === true) return true;
+          if (!latest.courseId) return false;
+          openGuestLogin(latest.navigation, {
+            name: 'Reels',
+            params: {
+              courseId: latest.courseId,
+              reelId: reel?.id,
+              preview: latest.preview,
+              previewCount: latest.previewCount,
+            },
+          });
+          return false;
+        }) === true,
+      [call, reel],
+    );
+    const onOpenChat = useCallback(
+      () => call(latest => latest.setChatVisible(true)),
+      [call],
+    );
+    const onOverlayVisibilityChange = useCallback(
+      (scopeKey: string, visible: boolean) =>
+        call(latest =>
+          latest.onContentOverlayVisibilityChange(scopeKey, visible),
+        ),
+      [call],
+    );
+    const onSelectFeedItem = useCallback(
+      (key: string) => call(latest => latest.scrollToKey(key)),
+      [call],
+    );
+    const onPlaybackSpeedChange = useCallback(
+      (speed: number) => call(latest => latest.changePlaybackSpeed(speed)),
+      [call],
+    );
+    const onQualityChange = useCallback(
+      (quality: VideoQuality) => call(latest => latest.changeQuality(quality)),
+      [call],
+    );
+    const onProgress = useCallback(
+      (time: number, duration: number) =>
+        call(latest => reel && latest.persistProgress(reel, time, duration)),
+      [call, reel],
+    );
+    const onPlaybackEvent = useCallback(
+      (event: PlaybackPlayerEvent) =>
+        call(latest => reel && latest.handlePlaybackEvent(reel, event)),
+      [call, reel],
+    );
+    const onPlaybackMetrics = useCallback(
+      (metrics: PlaybackRuntimeMetrics) =>
+        call(latest => reel && latest.handlePlaybackMetrics(reel, metrics)),
+      [call, reel],
+    );
+    const onComplete = useCallback(
+      () => call(latest => reel && latest.completeAndAdvance(reel)),
+      [call, reel],
+    );
+    const onRefreshVideo = useCallback(
+      () =>
+        call(latest => {
+          if (reel && latest.serverSession) {
+            return latest.requestPlaybackManifest(reel, reel.playbackSessionId);
+          }
+          return latest.load({lessonId: reel?.lessonId});
+        }),
+      [call, reel],
+    );
+    const onSubmitProject = useCallback(
+      (files: SelectedProjectFile[], note?: string) =>
+        call(latest =>
+          item.type === 'project'
+            ? latest.submitProject(item.project.id, files, note)
+            : undefined,
+        ) ||
+        Promise.resolve({
+          submissionStatus: 'draft' as const,
+          accepted: false,
+          canContinue: false,
+        }),
+      [call, item],
+    );
+    const continueAfterProject = useCallback(
+      () =>
+        call(latest =>
+          latest.scheduleDelayedAction(
+            () => latest.scrollToIndex(index + 1),
+            80,
+          ),
+        ),
+      [call, index],
+    );
+    const onReviewResolution = useCallback(
+      (resolution: ProjectResolution) =>
+        call(latest => {
+          if (item.type === 'project')
+            latest.applyReviewResolution?.(item.project.id, resolution);
+        }),
+      [call, item],
+    );
+    const onEntitlementChanged = useCallback(
+      () => call(latest => latest.refreshCourseEntitlements?.()),
+      [call],
+    );
+
+    if (!feed?.course || !feed.pageHeight || !feed.frameWidth) return null;
+    const {
+      currentIndex,
+      nativePreloadMode,
+      nativePreloadPending,
+      preloadNext,
+      screenFocused,
+    } = feed;
+    const isActive = index === currentIndex;
+    const isVisible = isActive && screenFocused;
+    const signedSourceExpired =
+      Boolean(reel?.playbackSessionId) &&
+      manifestRefreshDelayMs(reel?.playbackExpiresAt) === 0;
+
+    return (
+      <FeedRow
+        onEntitlementChanged={onEntitlementChanged}
+        item={item}
+        course={feed.course}
+        pageWidth={feed.pageWidth}
+        pageHeight={feed.pageHeight}
+        frameWidth={feed.frameWidth}
+        isVisible={isVisible}
+        // A hidden row can never play. Keeping it blocked avoids re-rendering
+        // the paused neighbour on every drag start/settle.
+        playbackBlocked={isVisible ? feed.playbackBlocked : true}
+        nativePreloadOwner={feed.nativePreloadOwner}
+        shouldMountVideo={
+          screenFocused &&
+          !nativePreloadPending &&
+          Boolean(reel?.videoUrl.trim()) &&
+          !signedSourceExpired &&
+          (isActive ||
+            (preloadNext && !nativePreloadMode && index === currentIndex + 1))
+        }
+        playbackSpeed={feed.playbackSpeed}
+        selectedQuality={feed.selectedQuality}
+        saved={reel ? feed.savedLessons.has(reel.lessonId) : false}
+        savePending={reel ? feed.savingLessons.has(reel.lessonId) : false}
+        initialPosition={
+          reel ? feed.positions.current[`${feed.course.id}:${reel.id}`] || 0 : 0
+        }
+        topInset={feed.topInset}
+        bottomInset={feed.bottomInset}
+        onPlaybackSpeedChange={onPlaybackSpeedChange}
+        onQualityChange={onQualityChange}
+        onToggleSave={onToggleSave}
+        onBeforeOpenSave={onBeforeOpenSave}
+        onOpenChat={onOpenChat}
+        onOverlayVisibilityChange={onOverlayVisibilityChange}
+        onSelectFeedItem={onSelectFeedItem}
+        onProgress={onProgress}
+        onPlaybackEvent={onPlaybackEvent}
+        onPlaybackMetrics={onPlaybackMetrics}
+        onComplete={onComplete}
+        onRefreshVideo={onRefreshVideo}
+        onSubmitProject={onSubmitProject}
+        onContinueAfterProject={
+          index < feed.feedLength - 1 ? continueAfterProject : undefined
+        }
+        onReviewResolution={onReviewResolution}
+      />
+    );
+  },
+);
+ReelsFeedRow.displayName = 'ReelsFeedRow';
+
+const renderReelsFeedItem = ({
+  item,
+  index,
+}: {
+  item: CourseFeedItem;
+  index: number;
+}) => <ReelsFeedRow item={item} index={index} />;
 
 export const useReelsFeedRenderer = ({
   bottomInset,
@@ -127,140 +417,84 @@ export const useReelsFeedRenderer = ({
     folder?: SavedFolderOption | null,
   ) => Promise<unknown>;
   topInset: number;
-}) =>
-  useCallback(
-    ({item, index}: {item: CourseFeedItem; index: number}) => {
-      if (!course || !layout.height || !frameWidth) return null;
-      const reel = item.type === 'reel' ? item.reel : undefined;
-      const signedSourceExpired =
-        Boolean(reel?.playbackSessionId) &&
-        manifestRefreshDelayMs(reel?.playbackExpiresAt) === 0;
-      return (
-        <FeedRow
-          onEntitlementChanged={refreshCourseEntitlements}
-          item={item}
-          course={course}
-          pageWidth={layout.width}
-          pageHeight={layout.height}
-          frameWidth={frameWidth}
-          isVisible={index === currentIndex && screenFocused}
-          playbackBlocked={playbackBlocked}
-          nativePreloadOwner={nativePreloadOwner}
-          shouldMountVideo={
-            screenFocused &&
-            !nativePreloadPending &&
-            Boolean(reel?.videoUrl.trim()) &&
-            !signedSourceExpired &&
-            (index === currentIndex ||
-              (preloadNext && !nativePreloadMode && index === currentIndex + 1))
-          }
-          playbackSpeed={playbackSpeed}
-          selectedQuality={selectedQuality}
-          saved={reel ? savedLessons.has(reel.lessonId) : false}
-          savePending={reel ? savingLessons.has(reel.lessonId) : false}
-          initialPosition={
-            reel ? positions.current[`${course.id}:${reel.id}`] || 0 : 0
-          }
-          topInset={topInset}
-          bottomInset={bottomInset}
-          onPlaybackSpeedChange={changePlaybackSpeed}
-          onQualityChange={changeQuality}
-          onToggleSave={folder => {
-            if (reel) toggleSaved(reel, folder).catch(() => undefined);
-          }}
-          onBeforeOpenSave={() => {
-            if (serverSession === true) {
-              return true;
-            }
-            openGuestLogin(navigation, {
-              name: 'Reels',
-              params: {
-                courseId: course.id,
-                reelId: reel?.id,
-                preview,
-                previewCount,
-              },
-            });
-            return false;
-          }}
-          onOpenChat={() => setChatVisible(true)}
-          onOverlayVisibilityChange={onContentOverlayVisibilityChange}
-          onSelectFeedItem={scrollToKey}
-          onProgress={(time, duration) =>
-            reel && persistProgress(reel, time, duration)
-          }
-          onPlaybackEvent={event => reel && handlePlaybackEvent(reel, event)}
-          onPlaybackMetrics={metrics =>
-            reel && handlePlaybackMetrics(reel, metrics)
-          }
-          onComplete={() => reel && completeAndAdvance(reel)}
-          onRefreshVideo={() => {
-            if (reel && serverSession) {
-              return requestPlaybackManifest(reel, reel.playbackSessionId);
-            }
-            return load({lessonId: reel?.lessonId});
-          }}
-          onSubmitProject={(file, note) =>
-            item.type === 'project'
-              ? submitProject(item.project.id, file, note)
-              : Promise.resolve({
-                  submissionStatus: 'draft' as const,
-                  accepted: false,
-                  canContinue: false,
-                })
-          }
-          onContinueAfterProject={
-            index < feedLength - 1
-              ? () => scheduleDelayedAction(() => scrollToIndex(index + 1), 80)
-              : undefined
-          }
-          onReviewResolution={resolution => {
-            if (item.type === 'project')
-              applyReviewResolution?.(item.project.id, resolution);
-          }}
-        />
-      );
-    },
-    [
+}) => {
+  const latestActions: ReelsFeedActions = {
+    applyReviewResolution,
+    changePlaybackSpeed,
+    changeQuality,
+    completeAndAdvance,
+    courseId: course?.id,
+    handlePlaybackEvent,
+    handlePlaybackMetrics,
+    load,
+    navigation,
+    onContentOverlayVisibilityChange,
+    persistProgress,
+    preview,
+    previewCount,
+    refreshCourseEntitlements,
+    requestPlaybackManifest,
+    scheduleDelayedAction,
+    scrollToIndex,
+    scrollToKey,
+    serverSession,
+    setChatVisible,
+    submitProject,
+    toggleSaved,
+  };
+  const actions = useRef(latestActions);
+  // Publish after commit, before any row effect or native event can call it.
+  useLayoutEffect(() => {
+    actions.current = latestActions;
+  });
+
+  const feedState = useMemo<ReelsFeedState>(
+    () => ({
+      actions,
       bottomInset,
-      changePlaybackSpeed,
-      changeQuality,
-      completeAndAdvance,
       course,
       currentIndex,
       feedLength,
       frameWidth,
-      handlePlaybackEvent,
-      handlePlaybackMetrics,
-      layout.height,
-      layout.width,
-      load,
-      refreshCourseEntitlements,
-      navigation,
-      persistProgress,
-      playbackSpeed,
-      playbackBlocked,
-      preloadNext,
       nativePreloadMode,
-      nativePreloadPending,
       nativePreloadOwner,
+      nativePreloadPending,
+      pageHeight: layout.height,
+      pageWidth: layout.width,
+      playbackBlocked,
+      playbackSpeed,
       positions,
-      preview,
-      previewCount,
-      requestPlaybackManifest,
-      screenFocused,
+      preloadNext,
       savedLessons,
       savingLessons,
-      scheduleDelayedAction,
-      scrollToIndex,
-      scrollToKey,
+      screenFocused,
       selectedQuality,
-      serverSession,
-      setChatVisible,
-      onContentOverlayVisibilityChange,
-      submitProject,
-      applyReviewResolution,
-      toggleSaved,
+      topInset,
+    }),
+    [
+      bottomInset,
+      course,
+      currentIndex,
+      feedLength,
+      frameWidth,
+      nativePreloadMode,
+      nativePreloadOwner,
+      nativePreloadPending,
+      layout.height,
+      layout.width,
+      playbackBlocked,
+      playbackSpeed,
+      positions,
+      preloadNext,
+      savedLessons,
+      savingLessons,
+      screenFocused,
+      selectedQuality,
       topInset,
     ],
   );
+
+  // FlatList re-renders every mounted cell when renderItem changes. Keep it
+  // module-stable; rows subscribe to ReelsFeedContext for paging state.
+  return {feedState, renderItem: renderReelsFeedItem};
+};

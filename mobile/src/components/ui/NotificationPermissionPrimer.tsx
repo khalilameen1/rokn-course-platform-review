@@ -49,7 +49,7 @@ const LearningStepIcon = () => (
       cy={14}
       fill="none"
       r={10.5}
-      stroke="#78A8FF"
+      stroke={Palette.primaryTint}
       strokeDasharray="46 20"
       strokeLinecap="round"
       strokeWidth={2}
@@ -63,14 +63,14 @@ const CourseSuggestionIcon = () => (
     <Path
       d="M6 7.5h12.5A3.5 3.5 0 0 1 22 11v9.5H9.5A3.5 3.5 0 0 1 6 17V7.5Z"
       fill="none"
-      stroke="#78A8FF"
+      stroke={Palette.primaryTint}
       strokeLinejoin="round"
       strokeWidth={2}
     />
     <Path
       d="m20.4 4.7.65 1.7 1.7.65-1.7.65-.65 1.7-.65-1.7-1.7-.65 1.7-.65.65-1.7Z"
-      fill="#E6C465"
-      stroke="#E6C465"
+      fill={Palette.coinText}
+      stroke={Palette.coinText}
       strokeLinejoin="round"
     />
   </Svg>
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     borderWidth: 1,
     borderColor: 'rgba(123,163,235,0.22)',
-    backgroundColor: '#131924',
+    backgroundColor: Palette.surface,
   },
   glowBlue: {
     position: 'absolute',
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
     ...Type.caption,
     ...textDirection,
     alignSelf: 'center',
-    color: '#9DBDFA',
+    color: Palette.primaryTintSoftText,
     marginTop: Spacing.lg,
   },
   title: {

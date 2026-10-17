@@ -1,5 +1,6 @@
 import {formatArabicCount} from '../constants/arabicFormatting';
 import {serverNowMs} from '../utils/serverClock';
+import {httpFailureOf} from '../constants/apiHttpError';
 
 export type NetworkFailureKind =
   | 'cancelled'
@@ -23,24 +24,15 @@ const asRecord = (value: unknown): Record<string, unknown> =>
 
 const networkFailureContext = (error: unknown) => {
   const root = asRecord(error);
-  const response = asRecord(root.response);
+  const http = httpFailureOf(error);
   const directData = asRecord(root.data);
-  const responseData = asRecord(response.data);
-  const codes = [root.code, directData.code, responseData.code]
+  const codes = [root.code, directData.code, http.data.code]
     .map(value => String(value || '').trim().toUpperCase())
     .filter(Boolean);
-  const messages = [root.message, directData.message, responseData.message]
+  const messages = [root.message, directData.message, http.data.message]
     .map(value => String(value || '').trim().toLowerCase())
     .filter(Boolean);
-  const directStatus = Number(root.status);
-  const responseStatus = Number(response.status);
-  const status =
-    Number.isFinite(directStatus) && directStatus > 0
-      ? directStatus
-      : Number.isFinite(responseStatus) && responseStatus > 0
-      ? responseStatus
-      : 0;
-  return {root, codes, messages, status};
+  return {root, codes, messages, status: http.status};
 };
 
 const classifyNetworkFailure = (
@@ -117,14 +109,17 @@ const classifyNetworkFailure = (
 export const networkFailureKind = (error: unknown): NetworkFailureKind =>
   classifyNetworkFailure(error, 0);
 
-/** Transport-only recovery for safe reads; semantic and write retries stay domain-owned. */
+/**
+ * Transport-only recovery for safe reads; semantic and write retries stay
+ * domain-owned. 503 is deliberately absent: Rokn answers maintenance/recovery
+ * with 503 + `Retry-After: 300`, so a blind replay only adds load. The shared
+ * client replays a 503/429 only when its Retry-After is short (see api.ts).
+ */
 export const retryableReadTransportFailure = (error: unknown): boolean => {
   const {status} = networkFailureContext(error);
   const kind = networkFailureKind(error);
   return (
-    kind === 'offline' ||
-    kind === 'timeout' ||
-    [425, 502, 503, 504].includes(status)
+    kind === 'offline' || kind === 'timeout' || [425, 502, 504].includes(status)
   );
 };
 
@@ -134,26 +129,31 @@ export const transientReadFailureAllowsCache = (error: unknown): boolean =>
     networkFailureKind(error),
   );
 
-const retryAfterSeconds = (error: unknown) => {
-  const root = asRecord(error);
-  const nestedResponse = asRecord(root.response);
-  const response = Object.keys(nestedResponse).length ? nestedResponse : root;
-  const headers = asRecord(response.headers);
-  const getter = headers.get;
+/**
+ * RFC 9110 §10.2.3 Retry-After: either delay-seconds or an HTTP-date. Dates
+ * are compared with the server-corrected clock. Returns null when absent or
+ * unparseable so callers can tell "no guidance" from "retry now".
+ */
+export const retryAfterMs = (error: unknown): number | null => {
+  const headers = httpFailureOf(error).headers;
+  const record = asRecord(headers);
+  const getter = record.get;
   const raw =
     typeof getter === 'function'
-      ? getter.call(response.headers, 'retry-after')
-      : headers['retry-after'] ?? headers['Retry-After'];
+      ? getter.call(headers, 'retry-after')
+      : record['retry-after'] ?? record['Retry-After'];
   if (typeof raw === 'number' && Number.isFinite(raw)) {
-    return Math.max(0, Math.ceil(raw));
+    return Math.max(0, Math.ceil(raw)) * 1000;
   }
-  const value = String(raw || '').trim();
-  if (/^\d+$/.test(value)) return Math.max(0, Number(value));
+  const value = String(raw ?? '').trim();
+  if (!value) return null;
+  if (/^\d+$/.test(value)) return Number(value) * 1000;
   const date = Date.parse(value);
-  return Number.isFinite(date)
-    ? Math.max(0, Math.ceil((date - serverNowMs()) / 1000))
-    : 0;
+  return Number.isFinite(date) ? Math.max(0, date - serverNowMs()) : null;
 };
+
+const retryAfterSeconds = (error: unknown) =>
+  Math.ceil((retryAfterMs(error) ?? 0) / 1000);
 
 const formatWaitSeconds = (value: number) =>
   formatArabicCount(value, {

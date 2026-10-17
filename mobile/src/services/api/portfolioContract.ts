@@ -27,12 +27,20 @@ export type EligibleProjectDto = ApiRecord & {
   module?: {title?: unknown};
 };
 
+export type PortfolioLink = {label: string; url: string};
+
 export type PortfolioProfile = {
   slug: string;
   headline: string;
   location: string;
   skills: string[];
+  links: PortfolioLink[];
+  /** Live public link; present whenever an approved version is published. */
   publicUrl: string;
+  published: boolean;
+  publishedAt: string;
+  /** Newer edits wait for review while the published version stays live. */
+  hasUnpublishedChanges: boolean;
   shareMode: 'unlisted';
   sharingSuspended?: boolean;
   sharingStatus:
@@ -47,10 +55,19 @@ export type PortfolioProfile = {
 
 export type PortfolioItem = {
   id: string;
+  /** Public project page id: `${publicUrl}/p/${publicId}`. */
+  publicId?: string;
   title: string;
   summary: string;
   coverUri?: string;
-  skills: string[];
+  coverMediaId?: string;
+  role?: string;
+  /** Project tools (the backend also mirrors them as `skills`). */
+  tools: string[];
+  externalUrl?: string;
+  /** Owner hid it from the public link without deleting it. */
+  hidden?: boolean;
+  sortOrder?: number;
   courseName?: string;
   courseId?: string;
   courseImage?: string;
@@ -92,6 +109,11 @@ export type EligibleProject = {
   passedAt?: string;
 };
 
+const stringList = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.map(entry => String(entry ?? '').trim()).filter(Boolean)
+    : [];
+
 export const mapPortfolioProfile = (
   value: unknown,
   fallback: Partial<Pick<PortfolioProfile, 'headline' | 'slug'>> = {},
@@ -107,13 +129,37 @@ export const mapPortfolioProfile = (
       )
     ? (value.sharing_status as PortfolioProfile['sharingStatus'])
     : 'unavailable';
+  const publicUrl =
+    typeof value.public_url === 'string' ? value.public_url.trim() : '';
+  // Publication, not the latest review decision, controls the live link:
+  // an approved version stays public while newer edits wait for review.
+  const published =
+    sharingStatus !== 'suspended' &&
+    (firstBoolean(value.published) === true ||
+      (value.published === undefined && sharingStatus === 'approved')) &&
+    Boolean(publicUrl);
   return {
     slug: String(value.slug || fallback.slug || ''),
     headline: String(value.headline || fallback.headline || ''),
     location: String(value.location || ''),
-    skills: Array.isArray(value.skills) ? value.skills.map(String) : [],
-    publicUrl:
-      sharingStatus === 'approved' ? String(value.public_url || '') : '',
+    skills: stringList(value.skills),
+    links: Array.isArray(value.links)
+      ? value.links.flatMap(link =>
+          isApiRecord(link) &&
+          typeof link.url === 'string' &&
+          /^https:\/\//i.test(link.url.trim())
+            ? [{label: String(link.label || '').trim(), url: link.url.trim()}]
+            : [],
+        )
+      : [],
+    publicUrl: published ? publicUrl : '',
+    published,
+    publishedAt:
+      published && typeof value.published_at === 'string'
+        ? value.published_at
+        : '',
+    hasUnpublishedChanges:
+      published && firstBoolean(value.has_unpublished_changes) === true,
     shareMode: 'unlisted',
     sharingSuspended: sharingStatus === 'suspended',
     sharingStatus,
@@ -178,22 +224,54 @@ export const mapPortfolioMedia = (value: unknown): PortfolioMedia[] => {
   });
 };
 
+/** The owner's chosen cover image, else the first deliverable image. */
+export const portfolioCoverMedia = (
+  media: PortfolioMedia[],
+  coverMediaId?: string,
+) =>
+  (coverMediaId
+    ? media.find(
+        entry =>
+          entry.id === coverMediaId && entry.type === 'image' && entry.uri,
+      )
+    : undefined) ?? media.find(entry => entry.type === 'image' && entry.uri);
+
 export const mapPortfolioItem = (
   item: PortfolioItemDto,
   fallback?: Partial<PortfolioItem>,
 ): PortfolioItem => {
   const media = mapPortfolioMedia(item.media);
-  const cover = media.find(entry => entry.type === 'image' && entry.uri);
+  const coverMediaId =
+    item.cover_media_id !== null && item.cover_media_id !== undefined
+      ? String(item.cover_media_id)
+      : undefined;
+  const cover = portfolioCoverMedia(media, coverMediaId);
   const course = item.course as PortfolioCourseDto | undefined;
   const uploadState = String(item.upload_state);
+  const publicId =
+    typeof item.public_id === 'string' && item.public_id.trim()
+      ? item.public_id.trim().toLowerCase()
+      : fallback?.publicId;
   return {
     id: String(item.id ?? fallback?.id ?? ''),
+    publicId,
     title: String(item.title || fallback?.title || 'مشروع بدون عنوان'),
     summary: String(item.description ?? fallback?.summary ?? ''),
     coverUri: cover?.uri ?? fallback?.coverUri,
-    skills: Array.isArray(item.tools)
-      ? item.tools.map(String)
-      : fallback?.skills ?? [],
+    coverMediaId,
+    role: typeof item.role === 'string' ? item.role : fallback?.role ?? '',
+    // `tools` is the stored field; `skills` is the server's alias of it.
+    tools: Array.isArray(item.tools)
+      ? stringList(item.tools)
+      : Array.isArray(item.skills)
+      ? stringList(item.skills)
+      : fallback?.tools ?? [],
+    externalUrl:
+      typeof item.external_url === 'string'
+        ? item.external_url
+        : fallback?.externalUrl ?? '',
+    hidden: firstBoolean(item.is_hidden) ?? fallback?.hidden ?? false,
+    sortOrder: Math.max(0, Number(item.sort_order) || 0),
     courseName: course?.name ? String(course.name) : fallback?.courseName,
     courseId: course?.id ? String(course.id) : fallback?.courseId,
     courseImage: course?.image ? String(course.image) : fallback?.courseImage,
@@ -263,4 +341,72 @@ export const isValidPortfolioList = (
       return false;
     }
   });
+};
+
+// Limits mirror PortfolioController (tools) and PortfolioProfileController.
+export const PORTFOLIO_TOOLS_MAX = 20;
+export const PORTFOLIO_SKILLS_MAX = 30;
+export const PORTFOLIO_CHIP_MAX_LENGTH = 80;
+export const PORTFOLIO_LINKS_MAX = 10;
+export const PORTFOLIO_LINK_LABEL_MAX_LENGTH = 40;
+
+const latinDigits = (value: string) =>
+  value
+    .replace(/[٠-٩]/g, digit =>
+      String(digit.charCodeAt(0) - 0x0660),
+    )
+    .replace(/[۰-۹]/g, digit =>
+      String(digit.charCodeAt(0) - 0x06f0),
+    );
+
+/** Trimmed, de-duplicated chips within the server's count and length limits. */
+export const normalizePortfolioChips = (
+  values: string[],
+  maximum: number,
+): string[] => {
+  const seen = new Set<string>();
+  const chips: string[] = [];
+  for (const value of values) {
+    const chip = String(value ?? '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, PORTFOLIO_CHIP_MAX_LENGTH);
+    const key = chip.toLocaleLowerCase();
+    if (!chip || seen.has(key)) continue;
+    seen.add(key);
+    chips.push(chip);
+    if (chips.length >= maximum) break;
+  }
+  return chips;
+};
+
+/**
+ * WhatsApp's documented click-to-chat link is https://wa.me/<international
+ * number without + or 0>. Egyptian mobiles written locally (01xxxxxxxxx)
+ * become 201xxxxxxxxx; +20 / 0020 forms are accepted too.
+ */
+export const whatsAppLinkFromPhone = (input: string): string | null => {
+  let digits = latinDigits(String(input || '')).replace(/[\s\-().]/g, '');
+  if (digits.startsWith('+')) digits = digits.slice(1);
+  else if (digits.startsWith('00')) digits = digits.slice(2);
+  else if (/^01[0125]\d{8}$/.test(digits)) digits = `20${digits.slice(1)}`;
+  return /^[1-9]\d{7,14}$/.test(digits) ? `https://wa.me/${digits}` : null;
+};
+
+/** Client-side mirror of the profile link rules: https only, <= 10 links. */
+export const portfolioLinkError = (link: PortfolioLink): string => {
+  const url = link.url.trim();
+  if (!link.label.trim()) return 'اكتب اسم للرابط';
+  if (link.label.trim().length > PORTFOLIO_LINK_LABEL_MAX_LENGTH)
+    return 'اسم الرابط طويل';
+  if (!/^https:\/\/[^\s/]+\.[^\s]+$/i.test(url) || url.length > 2000)
+    return 'الرابط لازم يبدأ بـ https://';
+  if (/^https:\/\/(?:www\.)?(?:wa\.me|wa\.link|(?:[a-z]+\.)?whatsapp\.com)\b/i.test(url)) {
+    const waMe = url.match(/^https:\/\/(?:www\.)?wa\.me\/(\d+)\/?$/i);
+    const send = url.match(/[?&]phone=\+?(\d+)/i);
+    const digits = waMe?.[1] ?? send?.[1];
+    if (!digits || !/^[1-9]\d{7,14}$/.test(digits))
+      return 'اكتب رقم واتساب صحيح';
+  }
+  return '';
 };

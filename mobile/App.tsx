@@ -2,6 +2,7 @@ import React, {useEffect} from 'react';
 import './src/localization/i18n.config';
 import AppInitializer from './src/screens/AppInitializer';
 import {AttachmentDownloadNoticeHost} from './src/components/VideoPlayer/AttachmentDownloadNoticeHost';
+import {AiConsentPromptHost} from './src/components/ui/AiConsentSheet';
 import {
   flushProductEvents,
   trackProductEvent,
@@ -23,6 +24,7 @@ const App = () => {
     <AppArtworkProvider>
       <AppInitializer />
       <AttachmentDownloadNoticeHost />
+      <AiConsentPromptHost />
     </AppArtworkProvider>
   );
 };

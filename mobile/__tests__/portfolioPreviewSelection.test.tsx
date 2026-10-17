@@ -28,7 +28,7 @@ const item = (
   title: id,
   summary: '',
   featured: false,
-  skills: [],
+  tools: [],
   media: files,
   publicationState: 'published',
   uploadedMediaCount: files.length,

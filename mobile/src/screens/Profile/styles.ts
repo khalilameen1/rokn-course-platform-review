@@ -37,7 +37,7 @@ export const profileStyles = StyleSheet.create({
     color: Palette.textMuted,
     flex: 1,
   },
-  staleNoticeAction: {...Type.caption, color: '#8BB5FF', flexShrink: 0},
+  staleNoticeAction: {...Type.caption, color: Palette.primaryTintText, flexShrink: 0},
   profileTop: {...rtlRowStyle, alignItems: 'center', gap: Spacing.md},
   avatarButton: {
     width: 72,

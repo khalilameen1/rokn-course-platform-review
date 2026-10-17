@@ -1,5 +1,3 @@
-import React from 'react';
-import TestRenderer, {act} from 'react-test-renderer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 let mockBoundary = {scope: 'learner', epoch: 1};
@@ -56,9 +54,7 @@ jest.mock('../src/services/roknApi', () => ({
 }));
 
 import {purchaseCourse} from '../src/services/api/coursePurchase';
-import {purchaseFullTrackUpgrade} from '../src/services/api/courseUpgrade';
 import {getOrCreateCoursePurchaseAttemptKey} from '../src/services/api/courseAccessAttemptStore';
-import {useCourseCheckout} from '../src/screens/CourseDetails/details/useCourseCheckout';
 
 const rawGet = jest.mocked(AsyncStorage.getItem).getMockImplementation()!;
 const rawSet = jest.mocked(AsyncStorage.setItem).getMockImplementation()!;
@@ -99,10 +95,6 @@ const attempts = [
   {
     name: 'purchase',
     run: (id = '42') => purchaseCourse(id, 'guided', '', 100, 4),
-  },
-  {
-    name: 'upgrade',
-    run: (id = '42') => purchaseFullTrackUpgrade(id, 'mentor', 100, 4),
   },
 ];
 
@@ -288,72 +280,4 @@ describe('confirmed course access does not wait for native terminal cleanup', ()
       expect(await AsyncStorage.getAllKeys()).toHaveLength(0);
     },
   );
-
-  it('lets the real checkout display access and leave its busy state after the server accepts', async () => {
-    const storage = deferred();
-    mockPost.mockImplementation(async (route: string) => {
-      jest.mocked(AsyncStorage.removeItem).mockImplementationOnce(async key => {
-        await storage.promise;
-        return rawRemove(key);
-      });
-      return success(route);
-    });
-    const setOwned = jest.fn();
-    const showSuccess = jest.fn();
-    const updateWallet = jest.fn();
-    let checkout!: ReturnType<typeof useCourseCheckout>;
-    const Harness = () => {
-      checkout = useCourseCheckout({
-        closePurchase: jest.fn(),
-        couponApplied: false,
-        courseId: '42',
-        effectivePrice: 100,
-        identityKey: 'learner',
-        invalidateCoupon: jest.fn(),
-        packages: [],
-        publishedRevision: 4,
-        purchasePrice: 100,
-        reload: jest.fn(),
-        replaceCouponQuote: jest.fn(),
-        selectedPlan: {code: 'guided', priceCoins: 100} as never,
-        shortfall: 0,
-        showConfirm: jest.fn(),
-        showPlans: jest.fn(),
-        showSuccess,
-        showTopup: jest.fn(),
-        setNotice: jest.fn(),
-        setOwned,
-        setPackages: jest.fn(),
-        updateWallet,
-      });
-      return null;
-    };
-    let renderer!: TestRenderer.ReactTestRenderer;
-    let confirmation!: Promise<void>;
-    try {
-      await act(async () => {
-        renderer = TestRenderer.create(<Harness />);
-      });
-      await act(async () => {
-        confirmation = checkout.confirm();
-        await flush();
-      });
-      await act(async () => {
-        await jest.advanceTimersByTimeAsync(2000);
-      });
-      expect(setOwned).toHaveBeenCalledWith(true);
-      expect(showSuccess).toHaveBeenCalledTimes(1);
-      expect(updateWallet).toHaveBeenCalledWith(
-        expect.objectContaining({kind: 'success', balance: 300}),
-      );
-      expect(checkout.busy).toBe(false);
-      expect(mockPost).toHaveBeenCalledTimes(1);
-    } finally {
-      await act(async () => {
-        storage.resolve();
-        await confirmation;
-        renderer?.unmount();
-      });
-    }
-  });
 });

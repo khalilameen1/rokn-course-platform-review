@@ -28,22 +28,17 @@ import {
   subscribeToBackendPushTokenRefresh,
 } from './nativePushTokens';
 import {prepareNotificationChannels} from './notificationPresentation';
+import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
 
 // Firebase can rotate twice while an earlier registration request is still in
 // flight. Keep registration mutations ordered and invalidate their ownership
 // synchronously on opt-out/logout so a slow older response cannot become the
 // locally remembered token after a newer one.
 let pushRegistrationGeneration = 0;
-let pushRegistrationTail: Promise<unknown> = Promise.resolve();
+const pushRegistrationQueue = createKeyedAsyncQueue();
 
-const serializePushRegistration = <T>(operation: () => Promise<T>) => {
-  const result = pushRegistrationTail.then(operation, operation);
-  pushRegistrationTail = result.then(
-    () => undefined,
-    () => undefined,
-  );
-  return result;
-};
+const serializePushRegistration = <T>(operation: () => Promise<T>) =>
+  pushRegistrationQueue('push-registration', operation);
 
 // Resolve the account at admission, not after another device mutation drains.
 // Store a settled capture so a retired session cannot reject unobserved while

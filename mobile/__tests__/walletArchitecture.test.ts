@@ -64,19 +64,12 @@ describe('wallet architecture', () => {
     const controller = source('src/screens/wallet/useWalletController.ts');
     const data = source('src/screens/wallet/useWalletData.ts');
     const tasks = source('src/screens/wallet/useWalletTasks.ts');
-    const checkout = source('src/screens/wallet/useWalletCheckout.ts');
 
     expect(controller.split('\n').length).toBeLessThan(100);
     expect(data).not.toContain('startCoinTask');
     expect(data).not.toContain('openCoinCheckout');
     expect(tasks).not.toContain('getCoinPackages');
     expect(tasks).not.toContain('openCoinCheckout');
-    expect(checkout).not.toContain('getCoinTasks');
-    expect(checkout).toContain('if (!claim || !sameReturnDestination');
-    expect(checkout).toContain('if (!acknowledged || !focusedRef.current)');
-    expect(checkout).not.toContain(
-      "returnTo: interruptedReturnTo || {name: 'Wallet'}",
-    );
   });
 
   it('keeps wallet styling in its dedicated module', () => {
@@ -89,28 +82,12 @@ describe('wallet architecture', () => {
     );
   });
 
-  it('keeps packages discoverable as one horizontal rail with one coin mark', () => {
-    const rail = source('src/screens/wallet/WalletPackageRail.tsx');
+  it('keeps the package card to one coin mark and one currency label', () => {
     const packageCard = source('src/components/view/Package.tsx');
 
-    expect(rail).toContain('horizontal');
-    expect(rail).toContain('snapToInterval={cardWidth + Spacing.sm}');
-    expect(rail).toContain('packages.map(item =>');
-    expect(rail).toContain('{width: cardWidth}');
-    expect(rail).toContain('formatArabicDisplayText(item.label)');
-    expect(rail.match(/<CoinAmount/g)).toHaveLength(1);
-    expect(rail).toContain('value={item.coins}');
-    expect(rail).not.toContain('<RoknCoin ');
-    expect(rail).toContain('item.displayPrice ||');
-    expect(rail).toContain('formatArabicNumber(item.price,');
-    expect(rail).toContain('<Text style={styles.packagePrice}>{price}</Text>');
-    expect(rail).toContain('onPress={() => onCheckout(item)}');
-    expect(rail).toContain(
-      'const disabled = Boolean(checkoutLoading) || !catalogueReady;',
-    );
-    expect(rail).toContain('disabled={disabled}');
-    expect(rail).toContain('accessibilityState={{busy, disabled}}');
     expect(packageCard.match(/<CoinAmount/g)).toHaveLength(1);
     expect(packageCard).not.toContain('<RoknCoin ');
+    expect(packageCard).toContain('formatArabicCurrency(numericPrice)');
+    expect(packageCard).not.toContain('ج م');
   });
 });

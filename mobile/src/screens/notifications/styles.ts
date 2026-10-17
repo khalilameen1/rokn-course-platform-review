@@ -87,7 +87,7 @@ export const notificationStyles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 1,
   },
-  actionLabel: {...Type.caption, ...textDirection, color: '#A8C7FF'},
+  actionLabel: {...Type.caption, ...textDirection, color: Palette.primaryTintSelected},
   loadMore: {
     minHeight: 48,
     alignItems: 'center',
@@ -97,7 +97,7 @@ export const notificationStyles = StyleSheet.create({
     borderRadius: Radius.md,
   },
   loadMoreDisabled: {opacity: 0.6},
-  loadMoreText: {...Type.bodyStrong, ...textDirection, color: '#A8C7FF'},
+  loadMoreText: {...Type.bodyStrong, ...textDirection, color: Palette.primaryTintSelected},
   staleNotice: {
     minHeight: 52,
     marginTop: Spacing.md,

@@ -12,7 +12,7 @@ const projects: Project[] = [1, 2, 3].map(id => ({
   title: `مشروع ${id}`,
   summary: 'وصف المشروع',
   cover: 1,
-  skills: [],
+  tools: [],
   source: 'remote',
   media: [],
   shareReady: false,

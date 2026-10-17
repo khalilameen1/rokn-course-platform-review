@@ -24,12 +24,18 @@ import styles from './styles';
 import {CourseAbout} from './CourseAbout';
 export {CourseAbout} from './CourseAbout';
 
+export type LockedOutlineItem = 'reel' | 'project';
+
+/** Locked rows open the paywall for the plan that unlocks them, the shipped
+ * Udemy/Duolingo "tap a locked lesson, see the offer" pattern. */
 export const LockedOutline = ({
   details,
   onPreviewSelect,
+  onLockedSelect,
 }: {
   details?: CourseDetailsDto | null;
   onPreviewSelect: (reelId: string) => void;
+  onLockedSelect?: (item: LockedOutlineItem) => void;
 }) => {
   const [expandedModuleId, setExpandedModuleId] = useState<string | null>(null);
   const modules = useMemo(() => details?.modules || [], [details]);
@@ -77,6 +83,7 @@ export const LockedOutline = ({
               <View style={styles.outlineItems}>
                 {module.items.map(item => {
                   const canPreview = item.type === 'reel' && item.isPreview;
+                  const opensPaywall = !canPreview && Boolean(onLockedSelect);
                   return (
                     <Pressable
                       accessible
@@ -89,16 +96,27 @@ export const LockedOutline = ({
                           ? 'شاهد مجانًا'
                           : 'مغلق'
                       }`}
-                      accessibilityRole={canPreview ? 'button' : undefined}
-                      disabled={!canPreview}
+                      accessibilityRole={
+                        canPreview || opensPaywall ? 'button' : undefined
+                      }
+                      accessibilityHint={
+                        opensPaywall ? 'يفتح مع الاشتراك' : undefined
+                      }
+                      disabled={!canPreview && !opensPaywall}
                       key={item.id}
-                      onPress={() =>
+                      onPress={() => {
+                        if (!canPreview) {
+                          onLockedSelect?.(
+                            item.type === 'project' ? 'project' : 'reel',
+                          );
+                          return;
+                        }
                         onPreviewSelect(
                           'reelId' in item && item.reelId
                             ? item.reelId
                             : item.id,
-                        )
-                      }
+                        );
+                      }}
                       style={({pressed}) => [
                         styles.outlineItem,
                         canPreview && styles.outlineItemPreview,
@@ -432,6 +450,7 @@ export const CourseRatingAction = ({
 type CourseBodyProps = {
   activeTab: 'about' | 'outline';
   onFullTrackUpgradeHandled: () => void;
+  onLockedSelect?: (item: LockedOutlineItem) => void;
   onOpenCertificates: () => void;
   onPreviewSelect: (reelId?: string) => void;
   onRetry: () => void;
@@ -447,6 +466,7 @@ type CourseBodyProps = {
 export const CourseBody = ({
   activeTab,
   onFullTrackUpgradeHandled,
+  onLockedSelect,
   onOpenCertificates,
   onPreviewSelect: startPreview,
   onRetry,
@@ -514,6 +534,7 @@ export const CourseBody = ({
         ) : (
           <LockedOutline
             details={remoteCourse}
+            onLockedSelect={onLockedSelect}
             onPreviewSelect={startPreview}
           />
         )}

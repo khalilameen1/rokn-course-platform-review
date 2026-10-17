@@ -54,6 +54,7 @@ describe('portfolio share isolation', () => {
       shareMode: 'unlisted',
       sharingSuspended: false,
       sharingStatus: 'approved',
+      published: true,
     });
   });
 
@@ -88,6 +89,7 @@ describe('portfolio share isolation', () => {
       publicUrl: 'https://rokn.app/@rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
       sharingSuspended: false,
       sharingStatus: 'approved',
+      published: true,
     });
     await act(async () => {
       overview.retry();
@@ -196,6 +198,44 @@ describe('portfolio share isolation', () => {
     },
   );
 
+  it('keeps sharing the published version while newer edits wait for review', async () => {
+    mockGetPortfolioProfile.mockResolvedValue({
+      slug: 'rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
+      publicUrl: 'https://rokn.app/@rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
+      sharingStatus: 'pending',
+      published: true,
+      hasUnpublishedChanges: true,
+      sharingRejectionReason: '',
+    });
+    let overview!: ReturnType<typeof useProfileOverview>;
+    const Harness = () => {
+      overview = useProfileOverview();
+      return null;
+    };
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<Harness />);
+    });
+    // Published is enough: the share action no longer waits for the review.
+    expect(overview.canSharePortfolio).toBe(true);
+    expect(overview.publicPortfolioUrl).toBe(
+      'https://rokn.app/@rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
+    );
+    expect(overview.portfolioSharingNotice).toBe(
+      'تعديلاتك قيد المراجعة والنسخة المنشورة شغالة',
+    );
+    await act(async () => {
+      await overview.sharePortfolio();
+    });
+    expect(mockShareOnce).toHaveBeenCalledWith(
+      'portfolio',
+      expect.objectContaining({
+        url: 'https://rokn.app/@rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
+      }),
+    );
+    await act(async () => renderer.unmount());
+  });
+
   it('withdraws a previous approval when a completed project is edited without changing the item count', async () => {
     let overview!: ReturnType<typeof useProfileOverview>;
     const Harness = () => {
@@ -274,6 +314,7 @@ describe('portfolio share isolation', () => {
     const currentUrl = 'https://rokn.app/@rokn-bbbbbbbbbbbbbbbbbbbbbbbb';
     mockGetPortfolioProfile.mockResolvedValue({
       sharingStatus: 'approved',
+      published: true,
       publicUrl: currentUrl,
     });
     await act(async () => {
@@ -335,6 +376,7 @@ describe('portfolio share isolation', () => {
     await act(async () => {
       resolveFocus({
         sharingStatus: 'approved',
+        published: true,
         sharingRevision: 1,
         publicUrl: 'https://rokn.app/@rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
       });

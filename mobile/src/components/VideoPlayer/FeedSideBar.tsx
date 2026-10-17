@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import {formatArabicNumber} from '../../constants/arabicFormatting';
+import {Palette} from '../../constants/designSystem';
 import {SavedFolderOption} from './courseLearningApi';
 import {CourseAttachment, CourseLearningData, CourseReel} from './types';
 import {openCourseAttachment} from './attachmentActions';
@@ -42,6 +43,8 @@ interface FeedSideBarProps {
   onOverlayVisibilityChange?: (visible: boolean) => void;
   onSelectFeedItem: (key: string) => void;
   currentTime: number;
+  /** Bottom edge of a letterboxed picture, when the player reports one. */
+  videoContentBottom?: number;
 }
 
 const FeedSideBar = ({
@@ -57,6 +60,7 @@ const FeedSideBar = ({
   onOverlayVisibilityChange,
   onSelectFeedItem,
   currentTime,
+  videoContentBottom,
 }: FeedSideBarProps) => {
   const {height, fontScale} = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -199,6 +203,7 @@ const FeedSideBar = ({
       <FeedActions
         bottomInset={bottomInset}
         compact={compact}
+        contentBottom={videoContentBottom}
         currentReelNumber={currentReel.reelNumber}
         isSaved={isSaved}
         savePending={savePending}
@@ -345,7 +350,7 @@ const FeedSideBar = ({
                   {cancelDownload ? (
                     <Text style={styles.attachmentAction}>إلغاء التنزيل</Text>
                   ) : busy ? (
-                    <ActivityIndicator color="#76A9FF" size="small" />
+                    <ActivityIndicator color={Palette.primaryTint} size="small" />
                   ) : attachment.platform === 'computer' ? (
                     <CopyIcon />
                   ) : (
@@ -393,7 +398,7 @@ const FeedSideBar = ({
             أين تريد حفظ المقطع
           </Text>
           {foldersLoading && !folderLoadError ? (
-            <ActivityIndicator color="#76A9FF" style={styles.folderLoader} />
+            <ActivityIndicator color={Palette.primaryTint} style={styles.folderLoader} />
           ) : (
             <View style={styles.folderList}>
               <Pressable

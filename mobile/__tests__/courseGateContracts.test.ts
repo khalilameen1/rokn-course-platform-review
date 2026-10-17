@@ -66,14 +66,15 @@ describe('course gate contracts', () => {
 
   it('renders one entitlement-derived course CTA instead of a duplicate sticky action', () => {
     const screen = source('src/screens/CourseDetails/index.tsx');
-    const coupon = source(
-      'src/screens/CourseDetails/details/useCourseCoupon.ts',
+    // Locked outline rows reuse the existing purchase route intent.
+    expect(screen).toContain('onLockedSelect={openPaywallForLockedItem}');
+    expect(screen).toMatch(
+      /navigation\.setParams\(\{\s*openPurchase: true,\s*purchasePlanCode: unlockingPlan\?\.code,/,
     );
+    expect(screen).toContain('.filter(plan => plan.projectsEnabled !== false)');
     expect(screen).toContain('primaryActionLabel={primaryActionLabel}');
     expect(screen).not.toContain('<StickyCourseAction');
     expect(screen).not.toContain('useStickyCourseAction');
-    expect(coupon).toContain('quoteEpochRef.current += 1');
-    expect(coupon).toContain('quoteEpochRef.current !== quoteEpoch');
     expect(screen).not.toContain('<CourseCodeRedemptionDialog');
 
     const dialogs = source(

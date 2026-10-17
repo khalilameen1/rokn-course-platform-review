@@ -45,7 +45,19 @@ jest.mock('../src/services/secureSession', () => ({
 }));
 
 import {getSocialAuthMethods} from '../src/services/socialAuth';
+import {
+  resetSocialAuthMethodsForTests,
+  subscribeToSocialAuthMethods,
+} from '../src/services/socialAuthMethods';
 import {roknApiUrl} from '../src/constants/apiBaseUrl';
+
+const reviewApi =
+  'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1';
+const cachedContract = (methods: Record<string, unknown>) =>
+  JSON.stringify({savedAt: Date.now() - 60_000, apiUrl: roknApiUrl, methods});
+const flushRevalidation = async () => {
+  for (let tick = 0; tick < 10; tick += 1) await Promise.resolve();
+};
 
 const authMethodsResponse = (data: Record<string, unknown>) => ({
   data: {
@@ -62,6 +74,7 @@ const authMethodsResponse = (data: Record<string, unknown>) => ({
 describe('social auth discovery', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetSocialAuthMethodsForTests();
     mockPlatformOS = 'android';
     mockAppleAvailable.mockResolvedValue(false);
     mockStorageGet.mockResolvedValue(null);
@@ -244,45 +257,44 @@ describe('social auth discovery', () => {
     await expect(getSocialAuthMethods()).rejects.toThrow('NETWORK_UNAVAILABLE');
   });
 
-  it('does not resurrect a missing provider URL from an older cache', async () => {
+  it('serves a fresh cache at once and drops it when the live contract loses a provider URL', async () => {
     mockGet.mockResolvedValue(
       authMethodsResponse({
         providers: ['google', 'tiktok'],
         authorization_urls: {
-          google:
-            'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/social-auth/google/start',
+          google: `${reviewApi}/social-auth/google/start`,
           tiktok: null,
         },
         recommended_provider: 'google',
       }),
     );
     mockStorageGet.mockResolvedValue(
-      JSON.stringify({
-        savedAt: Date.now() - 60_000,
-        apiUrl: roknApiUrl,
-        methods: {
-          providers: ['google', 'tiktok'],
-          authorizationApiUrl:
-            'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1',
-          authorizationUrls: {
-            google:
-              'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/social-auth/google/start',
-            tiktok:
-              'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/social-auth/tiktok/start',
-          },
+      cachedContract({
+        providers: ['google', 'tiktok'],
+        authorizationApiUrl: reviewApi,
+        authorizationUrls: {
+          google: `${reviewApi}/social-auth/google/start`,
+          tiktok: `${reviewApi}/social-auth/tiktok/start`,
         },
       }),
     );
+    const updates: unknown[] = [];
+    subscribeToSocialAuthMethods(update => updates.push(update));
 
-    await expect(getSocialAuthMethods()).rejects.toThrow(
-      'SOCIAL_AUTH_METHODS_CONTRACT_INVALID',
-    );
+    await expect(getSocialAuthMethods()).resolves.toMatchObject({
+      providers: ['google', 'tiktok'],
+    });
+    await flushRevalidation();
+
     expect(mockStorageRemove).toHaveBeenCalledWith(
       '@rokn/social-auth-methods/v1',
     );
+    expect(updates).toEqual([
+      {error: new Error('SOCIAL_AUTH_METHODS_CONTRACT_INVALID')},
+    ]);
   });
 
-  it('does not let the cache conceal an explicitly unsafe provider URL', async () => {
+  it('never adopts an explicitly unsafe live provider URL over the validated cache', async () => {
     mockGet.mockResolvedValue(
       authMethodsResponse({
         providers: ['google'],
@@ -292,24 +304,23 @@ describe('social auth discovery', () => {
       }),
     );
     mockStorageGet.mockResolvedValue(
-      JSON.stringify({
-        savedAt: Date.now() - 60_000,
-        apiUrl: roknApiUrl,
-        methods: {
-          providers: ['google'],
-          authorizationApiUrl:
-            'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1',
-          authorizationUrls: {
-            google:
-              'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/social-auth/google/start',
-          },
-        },
+      cachedContract({
+        providers: ['google'],
+        authorizationApiUrl: reviewApi,
+        authorizationUrls: {google: `${reviewApi}/social-auth/google/start`},
       }),
     );
+    const updates: unknown[] = [];
+    subscribeToSocialAuthMethods(update => updates.push(update));
 
-    await expect(getSocialAuthMethods()).rejects.toThrow(
-      'SOCIAL_AUTH_METHODS_CONTRACT_INVALID',
-    );
+    const methods = await getSocialAuthMethods();
+    await flushRevalidation();
+
+    expect(JSON.stringify(methods)).not.toContain('attacker.example');
+    expect(mockStorageSet).not.toHaveBeenCalled();
+    expect(updates).toEqual([
+      {error: new Error('SOCIAL_AUTH_METHODS_CONTRACT_INVALID')},
+    ]);
   });
 
   it('does not let an expired provider contract hide a real outage', async () => {
@@ -344,32 +355,109 @@ describe('social auth discovery', () => {
     jest.useRealTimers();
   });
 
-  it('does not hide an invalid active API contract behind cached methods', async () => {
+  it('reports an invalid active API contract to the screen that rendered cached methods', async () => {
     mockGet.mockResolvedValue(
       authMethodsResponse({authorization_urls: {}}),
     );
     mockStorageGet.mockResolvedValue(
-      JSON.stringify({
-        savedAt: Date.now() - 60_000,
-        apiUrl: roknApiUrl,
-        methods: {
-          providers: ['google'],
-          authorizationApiUrl:
-            'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1',
-          authorizationUrls: {
-            google:
-              'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/social-auth/google/start',
-          },
-        },
+      cachedContract({
+        providers: ['google'],
+        authorizationApiUrl: reviewApi,
+        authorizationUrls: {google: `${reviewApi}/social-auth/google/start`},
       }),
     );
+    const updates: unknown[] = [];
+    subscribeToSocialAuthMethods(update => updates.push(update));
 
-    await expect(getSocialAuthMethods()).rejects.toThrow(
-      'SOCIAL_AUTH_METHODS_CONTRACT_INVALID',
-    );
+    await getSocialAuthMethods();
+    await flushRevalidation();
+
     expect(mockStorageRemove).toHaveBeenCalledWith(
       '@rokn/social-auth-methods/v1',
     );
+    expect(updates).toEqual([
+      {error: new Error('SOCIAL_AUTH_METHODS_CONTRACT_INVALID')},
+    ]);
+  });
+
+  it('renders cached methods without waiting for a slow discovery read', async () => {
+    mockGet.mockReturnValue(new Promise(() => undefined));
+    mockStorageGet.mockResolvedValue(
+      cachedContract({
+        providers: ['google'],
+        authorizationApiUrl: reviewApi,
+        authorizationUrls: {google: `${reviewApi}/social-auth/google/start`},
+        welcomeBonus: 20,
+      }),
+    );
+
+    await expect(getSocialAuthMethods()).resolves.toMatchObject({
+      providers: ['google'],
+      welcomeBonus: 20,
+    });
+    expect(mockGet).toHaveBeenCalledTimes(1);
+  });
+
+  it('revalidates in the background and publishes changed providers', async () => {
+    mockGet.mockResolvedValue(
+      authMethodsResponse({
+        providers: ['google', 'tiktok'],
+        authorization_urls: {
+          google: `${reviewApi}/social-auth/google/start`,
+          tiktok: `${reviewApi}/social-auth/tiktok/start`,
+        },
+        recommended_provider: 'tiktok',
+      }),
+    );
+    mockStorageGet.mockResolvedValue(
+      cachedContract({
+        providers: ['google'],
+        authorizationApiUrl: reviewApi,
+        authorizationUrls: {google: `${reviewApi}/social-auth/google/start`},
+      }),
+    );
+    const updates: Array<{methods?: {providers: string[]}}> = [];
+    const stop = subscribeToSocialAuthMethods(update =>
+      updates.push(update as {methods?: {providers: string[]}}),
+    );
+
+    await expect(getSocialAuthMethods()).resolves.toMatchObject({
+      providers: ['google'],
+    });
+    await flushRevalidation();
+    stop();
+
+    expect(updates).toHaveLength(1);
+    expect(updates[0].methods).toMatchObject({
+      providers: ['google', 'tiktok'],
+      recommendedProvider: 'tiktok',
+    });
+    expect(mockStorageSet).toHaveBeenCalledWith(
+      '@rokn/social-auth-methods/v1',
+      expect.stringContaining('tiktok'),
+    );
+  });
+
+  it('keeps cached methods silently when background revalidation is offline', async () => {
+    mockGet.mockRejectedValue(
+      Object.assign(new Error('Network Error'), {code: 'ERR_NETWORK'}),
+    );
+    mockStorageGet.mockResolvedValue(
+      cachedContract({
+        providers: ['google'],
+        authorizationApiUrl: reviewApi,
+        authorizationUrls: {google: `${reviewApi}/social-auth/google/start`},
+      }),
+    );
+    const updates: unknown[] = [];
+    subscribeToSocialAuthMethods(update => updates.push(update));
+
+    await expect(getSocialAuthMethods()).resolves.toMatchObject({
+      providers: ['google'],
+    });
+    await flushRevalidation();
+    expect(updates).toEqual([]);
+    expect(mockStorageRemove).not.toHaveBeenCalled();
   });
 
   it('rejects a declared provider without a start URL when no valid cache exists', async () => {

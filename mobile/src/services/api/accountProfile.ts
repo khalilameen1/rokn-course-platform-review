@@ -5,6 +5,7 @@ import {
   type AccountSessionBoundary,
 } from '../../constants/helpers';
 import {firstBoolean, isApiRecord, payload} from './common';
+import {withUploadStallTimeout} from '../uploadStallTimeout';
 
 const profileAvatar = (...values: unknown[]): string | undefined => {
   const value = values.find(candidate => {
@@ -140,10 +141,14 @@ export const updateProfile = async (
   }
   assertAccountSessionBoundary(boundary);
   const data = payload<unknown>(
-    await publicRequest.post('user/profile', form, {
-      timeout: 30_000,
-      headers: {'Idempotency-Key': clientRequestId},
-    }),
+    // The avatar is optional multipart data: time out on a stalled upload,
+    // not on a slow uplink that is still sending bytes.
+    await withUploadStallTimeout(transport =>
+      publicRequest.post('user/profile', form, {
+        ...transport,
+        headers: {'Idempotency-Key': clientRequestId},
+      }),
+    ),
   );
   assertAccountSessionBoundary(boundary);
   const updated = profileFromPayload(data, {

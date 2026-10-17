@@ -1,5 +1,5 @@
 import React from 'react';
-import {Platform, StyleSheet, View} from 'react-native';
+import {Animated, Platform, StyleSheet, View} from 'react-native';
 import {RasterImage as Image} from '../../ui/RasterImage';
 import Video, {BufferingStrategyType, ViewType} from 'react-native-video';
 import {VideoChrome} from './VideoChrome';
@@ -45,50 +45,59 @@ const VideoSurface = (controller: VideoController) => {
         />
       )}
       {controller.appIsActive && !controller.unsupportedSource && (
-        <Video
-          key={videoKey}
-          ref={controller.videoRef}
-          source={controller.nativePreloadOwner ? {
-            ...controller.source,
-            metadata: {title: data.title, description: controller.nativePreloadOwner},
-          } : controller.source}
-          resizeMode="cover"
-          viewType={Platform.OS === 'android' ? ViewType.TEXTURE : undefined}
-          shutterColor="#030507"
-          paused={!playbackEligible || playbackPaused}
-          muted={!playbackEligible}
-          repeat={false}
-          rate={controller.playbackSpeed}
-          selectedVideoTrack={controller.selectedVideoTrack}
-          controls={false}
-          playInBackground={false}
-          playWhenInactive={false}
-          progressUpdateInterval={playbackEligible ? 1000 : 2500}
-          reportBandwidth={playbackEligible}
-          ignoreSilentSwitch="ignore"
-          mixWithOthers="inherit"
-          disableFocus={!playbackEligible || controller.pausedByUser}
-          automaticallyWaitsToMinimizeStalling
-          preferredForwardBufferDuration={4}
-          bufferingStrategy={
-            Platform.OS === 'android'
-              ? BufferingStrategyType.DEPENDING_ON_MEMORY
-              : undefined
-          }
-          preventsDisplaySleepDuringVideoPlayback={
-            playbackEligible && !playbackPaused
-          }
-          onAudioBecomingNoisy={controller.handleAudioBecomingNoisy}
-          onAudioFocusChanged={controller.handleAudioFocusChanged}
-          style={StyleSheet.absoluteFill}
-          bufferConfig={REEL_BUFFER_CONFIG}
-          maxBitRate={VIDEO_BITRATE_BY_QUALITY[controller.effectiveQuality]}
-          {...controller.videoEventHandlers}
-        />
+        <Animated.View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, controller.zoom.style]}>
+          <Video
+            key={videoKey}
+            ref={controller.videoRef}
+            source={controller.playerSource}
+            resizeMode={controller.resizeMode}
+            viewType={Platform.OS === 'android' ? ViewType.TEXTURE : undefined}
+            shutterColor="#030507"
+            paused={!playbackEligible || playbackPaused}
+            muted={!playbackEligible}
+            repeat={false}
+            rate={controller.playbackSpeed}
+            selectedVideoTrack={controller.selectedVideoTrack}
+            {...(controller.captionsAvailable
+              ? {
+                  selectedTextTrack: controller.selectedTextTrack,
+                  subtitleStyle: controller.subtitleStyle,
+                }
+              : {})}
+            controls={false}
+            playInBackground={false}
+            playWhenInactive={false}
+            progressUpdateInterval={playbackEligible ? 1000 : 2500}
+            reportBandwidth={playbackEligible}
+            ignoreSilentSwitch="ignore"
+            mixWithOthers="inherit"
+            disableFocus={!playbackEligible || controller.pausedByUser}
+            automaticallyWaitsToMinimizeStalling
+            preferredForwardBufferDuration={4}
+            bufferingStrategy={
+              Platform.OS === 'android'
+                ? BufferingStrategyType.DEPENDING_ON_MEMORY
+                : undefined
+            }
+            preventsDisplaySleepDuringVideoPlayback={
+              playbackEligible && !playbackPaused
+            }
+            onAudioBecomingNoisy={controller.handleAudioBecomingNoisy}
+            onAudioFocusChanged={controller.handleAudioFocusChanged}
+            style={StyleSheet.absoluteFill}
+            bufferConfig={REEL_BUFFER_CONFIG}
+            maxBitRate={VIDEO_BITRATE_BY_QUALITY[controller.effectiveQuality]}
+            {...controller.videoEventHandlers}
+          />
+        </Animated.View>
       )}
 
       <VideoChrome
         bottomInset={controller.bottomInset}
+        captionsAvailable={controller.captionsAvailable}
+        captionsEnabled={controller.captionsEnabled}
         currentTime={controller.currentTime}
         failureKind={controller.failureKind}
         isBuffering={controller.isBuffering}
@@ -96,6 +105,10 @@ const VideoSurface = (controller: VideoController) => {
         onRetry={controller.retryPlayback}
         onSeekBy={controller.seekBy}
         onTogglePaused={controller.togglePaused}
+        onToggleCaptions={controller.toggleCaptions}
+        onResetZoom={controller.zoom.reset}
+        zoomGesture={controller.zoom.gesture}
+        zoomed={controller.zoom.zoomed}
         onTrackWidth={controller.setTrackWidth}
         panHandlers={controller.panHandlers}
         pausedByUser={playbackPaused}

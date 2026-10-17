@@ -54,7 +54,7 @@ const TabBar: FC = () => {
             <HomeIcon
               width={PixelPerfect(24)}
               height={PixelPerfect(24)}
-              stroke={active === 'Home' ? Palette.primary : Palette.textMuted}
+              stroke={active === 'Home' ? Palette.primaryText : Palette.textMuted}
             />
           </View>
           <Text
@@ -62,7 +62,7 @@ const TabBar: FC = () => {
             style={[
               styles.tabName,
               {
-                color: active === 'Home' ? Palette.primary : Palette.textMuted,
+                color: active === 'Home' ? Palette.primaryText : Palette.textMuted,
               },
             ]}>
             {formatArabicDisplayText(String(t('Home')))}
@@ -80,7 +80,7 @@ const TabBar: FC = () => {
             <MyCornerIcon
               width={PixelPerfect(24)}
               height={PixelPerfect(24)}
-              fill={active === 'MyCorner' ? Palette.primary : Palette.textMuted}
+              fill={active === 'MyCorner' ? Palette.primaryText : Palette.textMuted}
             />
           </View>
           <Text
@@ -89,7 +89,7 @@ const TabBar: FC = () => {
               styles.tabName,
               {
                 color:
-                  active === 'MyCorner' ? Palette.primary : Palette.textMuted,
+                  active === 'MyCorner' ? Palette.primaryText : Palette.textMuted,
               },
             ]}>
             {formatArabicDisplayText(String(t('My Corner')))}
@@ -107,7 +107,7 @@ const TabBar: FC = () => {
             <RewardsIcon
               width={PixelPerfect(24)}
               height={PixelPerfect(24)}
-              stroke={active === 'Wallet' ? Palette.primary : Palette.textMuted}
+              stroke={active === 'Wallet' ? Palette.primaryText : Palette.textMuted}
             />
           </View>
           <Text
@@ -116,7 +116,7 @@ const TabBar: FC = () => {
               styles.tabName,
               {
                 color:
-                  active === 'Wallet' ? Palette.primary : Palette.textMuted,
+                  active === 'Wallet' ? Palette.primaryText : Palette.textMuted,
               },
             ]}>
             {formatArabicDisplayText(String(t('Wallet')))}
@@ -135,7 +135,7 @@ const TabBar: FC = () => {
               width={PixelPerfect(24)}
               height={PixelPerfect(24)}
               stroke={
-                active === 'Profile' ? Palette.primary : Palette.textMuted
+                active === 'Profile' ? Palette.primaryText : Palette.textMuted
               }
             />
           </View>
@@ -145,7 +145,7 @@ const TabBar: FC = () => {
               styles.tabName,
               {
                 color:
-                  active === 'Profile' ? Palette.primary : Palette.textMuted,
+                  active === 'Profile' ? Palette.primaryText : Palette.textMuted,
               },
             ]}>
             {formatArabicDisplayText(String(t('Me')))}

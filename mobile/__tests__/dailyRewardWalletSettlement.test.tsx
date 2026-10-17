@@ -77,11 +77,6 @@ jest.mock('../src/screens/wallet/walletCache', () => ({
   readWalletCache: async () => null,
   saveWalletCache: async () => true,
 }));
-jest.mock('../src/services/coinCheckout', () => ({
-  subscribeCoinCheckoutCredits: jest.requireActual(
-    '../src/services/coinCheckoutCoordinator',
-  ).subscribeCoinCheckoutCredits,
-}));
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   applyLocalLearningState: jest.fn(),
   mapCoursePayload: jest.fn(),
@@ -90,7 +85,6 @@ jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
 import {useHomeEngagement} from '../src/screens/home/useHomeEngagement';
 import {useWalletData} from '../src/screens/wallet/useWalletData';
 import {useCourseDetailsData} from '../src/screens/CourseDetails/details/useCourseDetailsData';
-import {useCourseCheckout} from '../src/screens/CourseDetails/details/useCourseCheckout';
 import {claimDailyReward, getWallet} from '../src/services/api/walletEconomy';
 import {subscribeWalletSettlements} from '../src/services/walletSettlement';
 import * as walletSettlements from '../src/services/walletSettlement';
@@ -131,7 +125,6 @@ describe('daily reward settlement reaches the visible wallet', () => {
   let renderer: TestRenderer.ReactTestRenderer | undefined;
   let wallet!: ReturnType<typeof useWalletData>;
   let course!: ReturnType<typeof useCourseDetailsData>;
-  let checkout!: ReturnType<typeof useCourseCheckout>;
   let stopObserving: (() => void) | undefined;
   const Home = () => {
     useHomeEngagement({
@@ -152,40 +145,6 @@ describe('daily reward settlement reaches the visible wallet', () => {
     course = useCourseDetailsData({
       courseId: '3',
       identityKey: mockBoundary.scope,
-    });
-    checkout = useCourseCheckout({
-      courseId: '3',
-      identityKey: mockBoundary.scope,
-      selectedPlan: {
-        code: 'guided',
-        name: 'إرشاد',
-        priceCoins: 900,
-        minimumPaidCoins: 0,
-        chatEnabled: false,
-        chatMessageLimit: 0,
-        projectFeedbackLevel: 'report',
-        projectReportEnabled: true,
-        projectOutputEnabled: true,
-        certificateEnabled: true,
-      },
-      couponApplied: false,
-      effectivePrice: 900,
-      purchasePrice: 900,
-      shortfall: 880,
-      publishedRevision: 1,
-      packages: [],
-      closePurchase: jest.fn(),
-      invalidateCoupon: jest.fn(),
-      replaceCouponQuote: jest.fn(),
-      showConfirm: jest.fn(),
-      showPlans: jest.fn(),
-      showSuccess: jest.fn(),
-      showTopup: jest.fn(),
-      setNotice: jest.fn(),
-      setOwned: course.course.setOwned,
-      setPackages: course.commerce.setPackages,
-      updateWallet: course.commerce.updateWallet,
-      reload: course.course.reload,
     });
     return null;
   };
@@ -279,34 +238,6 @@ describe('daily reward settlement reaches the visible wallet', () => {
     expect(course.commerce.rewardBalance).toBe(27);
     expect(mockGet).toHaveBeenCalledTimes(2);
     expect(mockPost).toHaveBeenCalledTimes(1);
-    expect(mockPurchase).not.toHaveBeenCalled();
-  });
-
-  it('does not let an older imperative requote wallet read replace the settled balance', async () => {
-    const credit = deferred<ReturnType<typeof response>>();
-    const oldWallet = deferred<ReturnType<typeof response>>();
-    const preCreditWallet = walletResponse();
-    mockPost.mockReturnValue(credit.promise);
-    await act(async () => {
-      renderer = TestRenderer.create(<Home />);
-    });
-    await act(async () => renderer!.update(<Course />));
-    mockGet.mockReturnValueOnce(oldWallet.promise);
-    let reviewing!: Promise<void>;
-    await act(async () => {
-      reviewing = checkout.reviewAfterCredit();
-    });
-    expect(mockGet).toHaveBeenCalledTimes(2);
-    await act(async () => {
-      mockBalance = 27;
-      credit.resolve(response({awarded: 7, balance: 27, reward_balance: 27}));
-    });
-    expect(course.commerce.balance).toBe(27);
-    await act(async () => {
-      oldWallet.resolve(preCreditWallet);
-      await reviewing;
-    });
-    expect(course.commerce.balance).toBe(27);
     expect(mockPurchase).not.toHaveBeenCalled();
   });
 

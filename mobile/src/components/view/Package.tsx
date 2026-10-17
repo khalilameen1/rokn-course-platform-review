@@ -10,6 +10,7 @@ import {
 } from '../../constants/designSystem';
 import {CoinAmount} from '../ui/RoknCoin';
 import {
+  formatArabicCurrency,
   formatArabicDisplayText,
   formatArabicNumber,
   toArabicDigits,
@@ -43,15 +44,18 @@ const Package = React.memo<PackageProps>(
       : Math.max(0, contentWidth - gutter * 2);
     const numericPrice = Number(price);
     const numericCoins = Number(rPrice);
-    const visiblePrice = displayPrice || (Number.isFinite(numericPrice)
-      ? formatArabicNumber(numericPrice, {maximumFractionDigits: 2})
-      : toArabicDigits(price));
+    // One currency label everywhere; store builds keep the store's own price.
+    const visiblePrice =
+      displayPrice ||
+      (Number.isFinite(numericPrice)
+        ? formatArabicCurrency(numericPrice)
+        : `${toArabicDigits(price)} جنيه`);
     const visibleCoins = Number.isFinite(numericCoins)
       ? formatArabicNumber(numericCoins)
       : toArabicDigits(rPrice);
     return (
       <Pressable
-        accessibilityLabel={`${title ? `${formatArabicDisplayText(title)}، ` : ''}${visibleCoins} من رصيد ركن مقابل ${visiblePrice}${displayPrice ? '' : ' جنيه'}`}
+        accessibilityLabel={`${title ? `${formatArabicDisplayText(title)}، ` : ''}${visibleCoins} من رصيد ركن مقابل ${visiblePrice}`}
         accessibilityRole="button"
         accessibilityState={{disabled}}
         disabled={disabled}
@@ -74,7 +78,7 @@ const Package = React.memo<PackageProps>(
           value={numericCoins}
         />
         <Text style={styles.price}>
-          {visiblePrice}{displayPrice ? '' : ' جنيه'}
+          {visiblePrice}
         </Text>
         <View style={styles.action}>
           <Text style={styles.actionLabel}>

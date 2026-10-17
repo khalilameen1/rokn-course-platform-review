@@ -81,6 +81,10 @@ const portfolio = (
   headline: '',
   location: '',
   skills: [],
+  links: [],
+  published: status === 'approved',
+  publishedAt: '',
+  hasUnpublishedChanges: false,
   publicUrl:
     status === 'approved'
       ? 'https://rokn.app/@rokn-aaaaaaaaaaaaaaaaaaaaaaaa'

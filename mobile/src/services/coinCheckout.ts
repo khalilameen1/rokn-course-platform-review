@@ -26,7 +26,6 @@ import {
   emitCoinCheckoutCreditOnce,
   runCoinCheckoutReconciliationSingleFlight,
   runCoinCheckoutSingleFlight,
-  subscribeCoinCheckoutCredits,
 } from './coinCheckoutCoordinator';
 import {
   abandonCoinCheckoutOrder,
@@ -56,7 +55,6 @@ import {
 } from './checkoutRouting';
 
 export type {CoinCheckoutResult} from './coinCheckoutTypes';
-export {subscribeCoinCheckoutCredits};
 
 const CHECKOUT_ATTEMPT_TTL_MS = 30 * 60 * 1000;
 
@@ -467,11 +465,20 @@ const runCoinCheckout = async (
       throw new Error('PAYMENT_CALLBACK_ORDER_MISMATCH');
     }
 
-    const status = await reconcileCoinCheckoutOrder(orderRef, boundary);
+    // Coming back from the browser without a provider callback is no payment
+    // evidence. Read the server once instead of polling as if a capture were
+    // under review; the durable attempt still credits a late capture once.
+    const paymentReported = callback.valid && callback.status !== 'failed';
+    const returnedWithoutCallback = browser && !callback.valid;
+    const status = await reconcileCoinCheckoutOrder(
+      orderRef,
+      boundary,
+      returnedWithoutCallback ? 1 : undefined,
+    );
     if (!status.pending) {
       await clearCoinCheckoutAttempt(attempt.idempotencyKey, boundary);
     }
-    if (status.pending) {
+    if (status.pending && !returnedWithoutCallback) {
       reportClientError(new Error('payment_status_timeout'), {
         source: 'coin_checkout',
         endpoint: 'payment/reconcile',
@@ -484,6 +491,7 @@ const runCoinCheckout = async (
       cancelled: false,
       coinsAdded: status.approved ? status.coinsAdded : 0,
       orderRef,
+      paymentReported,
     };
   } catch (error: unknown) {
     if (errorCode(error) === 'CHECKOUT_CANCELLED') {
@@ -520,10 +528,28 @@ export const reconcilePendingCoinCheckout = async () => {
     const result = await reconcilePendingCoinCheckoutAttempts(boundary);
     assertAccountSessionBoundary(boundary);
     if (result?.success) {
-      emitCoinCheckoutCreditOnce(boundary.scope, result);
+      emitCoinCheckoutCreditOnce(boundary, result);
     }
     return result;
   });
+};
+
+/** The learner chose another way to pay instead of finishing the hosted page.
+ * The server asks the provider before releasing the order, so a capture that
+ * raced the back gesture is credited once instead of being lost. */
+export const releaseCoinCheckoutPackage = async (
+  coinPackage: CoinPackage,
+): Promise<CoinCheckoutResult | null> => {
+  const boundary = await captureAccountSessionBoundary();
+  const attempt = await readCoinCheckoutAttempt(
+    validCoinPackage(coinPackage),
+    boundary,
+  );
+  if (!attempt?.orderRef) return null;
+  const result = await retireCoinCheckoutAttempt(attempt, boundary);
+  assertAccountSessionBoundary(boundary);
+  if (result.success) emitCoinCheckoutCreditOnce(boundary, result);
+  return result;
 };
 
 export const openCoinCheckout = async (
@@ -563,7 +589,7 @@ export const openCoinCheckout = async (
       // pending. Credit belongs to this operation, not that screen's lifetime.
       // Native billing already emits its own verified purchase notification.
       if (transport.kind === 'external' && result.success) {
-        emitCoinCheckoutCreditOnce(boundary.scope, result);
+        emitCoinCheckoutCreditOnce(boundary, result);
       }
       return result;
     } finally {

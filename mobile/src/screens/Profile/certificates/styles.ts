@@ -48,7 +48,7 @@ export const certificateStyles = StyleSheet.create({
     gap: Spacing.sm,
     marginBottom: Spacing.sm,
   },
-  pendingAction: {...Type.caption, color: Palette.primary},
+  pendingAction: {...Type.caption, color: Palette.primaryText},
   lockedHeading: {...Type.section, ...textDirection, color: Palette.text},
   lockedIntro: {
     ...Type.body,
@@ -87,9 +87,9 @@ export const certificateStyles = StyleSheet.create({
     ...Type.caption,
     ...textDirection,
     maxWidth: '28%',
-    color: Palette.primary,
+    color: Palette.primaryText,
   },
-  readyAction: {...Type.caption, ...textDirection, color: Palette.primary},
+  readyAction: {...Type.caption, ...textDirection, color: Palette.primaryText},
   cardCopy: {flex: 1, minWidth: 0},
   title: {
     ...Type.bodyStrong,

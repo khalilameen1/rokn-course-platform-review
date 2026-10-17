@@ -36,6 +36,7 @@ import {
   buildQuickSearches,
   searchHomeCatalogue,
   selectHeroCourses,
+  withoutHeroInFirstRail,
 } from './home/homeCatalogue';
 import {useHomeCatalogue} from './home/useHomeCatalogue';
 import HomeCatalogueFeed from './home/HomeCatalogueFeed';
@@ -134,11 +135,12 @@ const Home = () => {
     void trackProductEvent({event_name: 'home_viewed', screen_key: 'home'});
   }, []);
 
-  const homeSections = useMemo(() => {
-    return buildHomeSections({catalogue});
-  }, [catalogue]);
-
   const heroCourses = useMemo(() => selectHeroCourses(catalogue), [catalogue]);
+
+  const homeSections = useMemo(
+    () => withoutHeroInFirstRail(buildHomeSections({catalogue}), heroCourses),
+    [catalogue, heroCourses],
+  );
 
   const quickSearches = useMemo(
     () => buildQuickSearches(catalogue, QUICK_SEARCHES),

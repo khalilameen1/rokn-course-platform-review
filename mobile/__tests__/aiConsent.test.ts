@@ -10,6 +10,28 @@ jest.mock('../src/services/publicLinks', () => ({privacyPolicyUrl: 'https://rokn
 import {publicRequest} from '../src/constants/api';
 import {assertAccountSessionBoundary} from '../src/constants/helpers';
 import {AI_CONSENT_VERSION, hasAiConsent, requestAiConsent, requireAiConsent} from '../src/services/aiConsent';
+import {aiConsentPromptHost, type AiConsentPromptRequest} from '../src/services/aiConsentPrompt';
+
+// The consent sheet host: records each presented request and can answer it.
+const prompts: AiConsentPromptRequest[] = [];
+let answer: ((prompt: AiConsentPromptRequest) => void) | null = null;
+let releaseHost = () => {};
+let stopRecording = () => {};
+beforeEach(() => {
+  prompts.length = 0;
+  answer = null;
+  stopRecording = aiConsentPromptHost.subscribe(() => {
+    const prompt = aiConsentPromptHost.getSnapshot();
+    if (!prompt || prompts.includes(prompt)) return;
+    prompts.push(prompt);
+    answer?.(prompt);
+  });
+  releaseHost = aiConsentPromptHost.register();
+});
+afterEach(() => {
+  stopRecording();
+  releaseHost();
+});
 
 const payload = (accepted: boolean) => ({data: {success: true, data: {
   version: AI_CONSENT_VERSION, accepted, accepted_at: accepted ? '2026-09-12' : null,
@@ -25,13 +47,12 @@ beforeEach(async () => {
 });
 
 it('does not send acceptance until the learner explicitly agrees and shares one prompt', async () => {
-  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   const first = requestAiConsent(boundary);
   const second = requestAiConsent(boundary);
   for (let i = 0; i < 15; i++) await Promise.resolve();
-  expect(alert).toHaveBeenCalledTimes(1);
+  expect(prompts).toHaveLength(1);
   expect(publicRequest.put).not.toHaveBeenCalled();
-  alert.mock.calls[0][2]![2].onPress!();
+  prompts[0].decide(true);
   await expect(first).resolves.toBe(true);
   await expect(second).resolves.toBe(true);
   expect(publicRequest.put).toHaveBeenCalledWith('ai-consent', {
@@ -42,7 +63,7 @@ it('does not send acceptance until the learner explicitly agrees and shares one 
 
 it('decline preserves the choice without posting consent or discarding draft storage', async () => {
   await AsyncStorage.setItem('learner-draft', 'keep');
-  jest.spyOn(Alert, 'alert').mockImplementation((_title, _text, buttons) => buttons![0].onPress!());
+  answer = prompt => prompt.decide(false);
   await expect(requestAiConsent(boundary)).resolves.toBe(false);
   expect(publicRequest.put).not.toHaveBeenCalled();
   expect(await AsyncStorage.getItem('learner-draft')).toBe('keep');
@@ -50,9 +71,8 @@ it('decline preserves the choice without posting consent or discarding draft sto
 
 it('restores server consent without a repeated prompt after reinstall', async () => {
   (publicRequest.get as jest.Mock).mockResolvedValue(payload(true));
-  const alert = jest.spyOn(Alert, 'alert');
   await expect(requestAiConsent(boundary)).resolves.toBe(true);
-  expect(alert).not.toHaveBeenCalled();
+  expect(prompts).toHaveLength(0);
   expect(publicRequest.put).not.toHaveBeenCalled();
 });
 
@@ -65,10 +85,10 @@ it('never treats a local receipt or guest as transmission authority', async () =
 });
 
 it('cannot apply a prompt acceptance to a different account', async () => {
-  jest.spyOn(Alert, 'alert').mockImplementation((_title, _text, buttons) => {
+  answer = prompt => {
     (assertAccountSessionBoundary as jest.Mock).mockImplementation(() => {throw new Error('ACCOUNT_CHANGED');});
-    buttons![2].onPress!();
-  });
+    prompt.decide(true);
+  };
   await expect(requestAiConsent(boundary)).resolves.toBe(false);
   expect(publicRequest.put).not.toHaveBeenCalled();
 });
@@ -99,6 +119,7 @@ it.each(['declined on server', 'failed read'])(
     else read.resolve(payload(false));
     await expect(requested).resolves.toBe(false);
     expect(alert).not.toHaveBeenCalled();
+    expect(prompts).toHaveLength(0);
     expect(publicRequest.put).not.toHaveBeenCalled();
   },
 );
@@ -106,34 +127,32 @@ it.each(['declined on server', 'failed read'])(
 it('keeps one shared prompt for a surviving same-account action without reviving a departed action', async () => {
   const read = deferred<ReturnType<typeof payload>>();
   (publicRequest.get as jest.Mock).mockReturnValueOnce(read.promise);
-  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   let firstCurrent = true;
   const first = requestAiConsent(boundary, () => firstCurrent);
   const second = requestAiConsent(boundary, () => true);
   firstCurrent = false;
   read.resolve(payload(false));
   for (let i = 0; i < 15; i++) await Promise.resolve();
-  expect(alert).toHaveBeenCalledTimes(1);
-  alert.mock.calls[0][2]![2].onPress!();
+  expect(prompts).toHaveLength(1);
+  prompts[0].decide(true);
   await expect(first).resolves.toBe(false);
   await expect(second).resolves.toBe(true);
   expect(publicRequest.put).toHaveBeenCalledTimes(1);
 });
 
 it('does not apply a displayed dialog button after all owners depart and permits a new explicit request', async () => {
-  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   let current = true;
   const first = requestAiConsent(boundary, () => current);
   for (let i = 0; i < 15; i++) await Promise.resolve();
-  expect(alert).toHaveBeenCalledTimes(1);
+  expect(prompts).toHaveLength(1);
   current = false;
-  alert.mock.calls[0][2]![2].onPress!();
+  prompts[0].decide(true);
   await expect(first).resolves.toBe(false);
   expect(publicRequest.put).not.toHaveBeenCalled();
   const retry = requestAiConsent(boundary, () => true);
   for (let i = 0; i < 15; i++) await Promise.resolve();
-  expect(alert).toHaveBeenCalledTimes(2);
-  alert.mock.calls[1][2]![2].onPress!();
+  expect(prompts).toHaveLength(2);
+  prompts[1].decide(true);
   await expect(retry).resolves.toBe(true);
   expect(publicRequest.put).toHaveBeenCalledTimes(1);
 });
@@ -141,16 +160,22 @@ it('does not apply a displayed dialog button after all owners depart and permits
 it('keeps an explicitly posted account consent receipt without resuming its departed project action', async () => {
   const write = deferred<ReturnType<typeof payload>>();
   (publicRequest.put as jest.Mock).mockReturnValueOnce(write.promise);
-  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   let current = true;
   const requested = requestAiConsent(boundary, () => current);
   for (let i = 0; i < 15; i++) await Promise.resolve();
-  alert.mock.calls[0][2]![2].onPress!();
-  await Promise.resolve();
+  prompts[0].decide(true);
+  for (let i = 0; i < 5; i++) await Promise.resolve();
   expect(publicRequest.put).toHaveBeenCalledTimes(1);
   current = false;
   write.resolve(payload(true));
   await expect(requested).resolves.toBe(false);
   expect(await AsyncStorage.getItem('@rokn/ai-consent/v1:user-a')).toContain(AI_CONSENT_VERSION);
-  expect(alert).toHaveBeenCalledTimes(1);
+  expect(prompts).toHaveLength(1);
+});
+
+it('declines safely when no consent sheet host is mounted', async () => {
+  releaseHost();
+  await expect(requestAiConsent(boundary)).resolves.toBe(false);
+  expect(prompts).toHaveLength(0);
+  expect(publicRequest.put).not.toHaveBeenCalled();
 });

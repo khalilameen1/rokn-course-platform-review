@@ -1,4 +1,6 @@
+import type {AccountSessionBoundary} from '../constants/helpers';
 import type {CoinCheckoutResult} from './coinCheckoutTypes';
+import {notifyWalletSettlement} from './walletSettlement';
 
 type CoinCheckoutFlight = {
   intentKey: string;
@@ -12,11 +14,6 @@ const reconciliationFlights = new Map<
 >();
 const emittedCredits = new Set<string>();
 const MAX_EMITTED_CREDITS = 128;
-type CoinCheckoutCreditListener = (
-  result: CoinCheckoutResult,
-  ownerScope: string,
-) => void;
-const creditListeners = new Set<CoinCheckoutCreditListener>();
 
 export const runCoinCheckoutSingleFlight = (
   ownerKey: string,
@@ -79,12 +76,14 @@ export const runCoinCheckoutReconciliationSingleFlight = (
   return flight;
 };
 
+/** Announces a verified credit once per account and order on the one wallet
+ * channel every balance reader listens to. */
 export const emitCoinCheckoutCreditOnce = (
-  ownerScope: string,
+  boundary: AccountSessionBoundary,
   result: CoinCheckoutResult,
 ) => {
   if (!result.success || !result.orderRef) return;
-  const creditKey = `${ownerScope}:${result.orderRef}`;
+  const creditKey = `${boundary.scope}:${result.orderRef}`;
   if (emittedCredits.has(creditKey)) return;
 
   emittedCredits.add(creditKey);
@@ -93,20 +92,9 @@ export const emitCoinCheckoutCreditOnce = (
     if (typeof oldest !== 'string') break;
     emittedCredits.delete(oldest);
   }
-  creditListeners.forEach(listener => {
-    try {
-      listener(result, ownerScope);
-    } catch {
-      // A screen observer cannot invalidate an authoritative payment result.
-    }
-  });
-};
-
-export const subscribeCoinCheckoutCredits = (
-  listener: CoinCheckoutCreditListener,
-) => {
-  creditListeners.add(listener);
-  return () => {
-    creditListeners.delete(listener);
-  };
+  try {
+    notifyWalletSettlement(boundary);
+  } catch {
+    // The account changed after settlement. Its balance is no longer shown.
+  }
 };

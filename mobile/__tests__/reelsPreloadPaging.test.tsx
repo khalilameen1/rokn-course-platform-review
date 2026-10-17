@@ -195,6 +195,7 @@ jest.mock('../src/components/VideoPlayer/FeedRow', () => {
 });
 
 import {useReelsController} from '../src/screens/reels/useReelsController';
+import {ReelsFeedContext} from '../src/screens/reels/useReelsFeedRenderer';
 
 it('keeps the preloaded next row mounted through paging while playback stays blocked', async () => {
   mockPaging = false;
@@ -203,13 +204,13 @@ it('keeps the preloaded next row mounted through paging while playback stays blo
   function Harness() {
     controller = useReelsController();
     return (
-      <>
+      <ReelsFeedContext.Provider value={controller.feedState}>
         {controller.feedItems.map((item, index) => (
           <React.Fragment key={item.key}>
             {controller.renderItem({item, index})}
           </React.Fragment>
         ))}
-      </>
+      </ReelsFeedContext.Provider>
     );
   }
   let renderer!: TestRenderer.ReactTestRenderer;

@@ -17,9 +17,10 @@ import {
   sanitizePlaybackDiagnostics,
   sanitizePlaybackErrorCode,
 } from '../playbackTelemetry';
-import type {VideoQuality, VideoQualitySources} from '../types';
+import type {CaptionTrack, VideoQuality, VideoQualitySources} from '../types';
 import {publishCourseRevisionChange} from './playbackRevision';
 import {qualityOptions, qualitySources, valueAsString} from './shared';
+import {parseCaptionTracks} from '../video/captions';
 
 export type PlaybackEvidenceContext = {
   playbackSessionId?: string;
@@ -62,6 +63,7 @@ export type PlaybackManifest = {
   availableQualities: VideoQuality[];
   qualitySources: VideoQualitySources;
   mediaStatus: 'ready' | 'processing' | 'failed' | 'unknown';
+  captionTracks?: CaptionTrack[];
 };
 
 type SessionState = {
@@ -342,6 +344,7 @@ export const openPlaybackSession = async (
   if (priorState?.terminal) sessions.delete(key);
   sessionState(playbackSessionId, boundary.scope);
   const sources = qualitySources(raw);
+  const captionTracks = parseCaptionTracks(raw);
   return {
     playbackSessionId,
     sourceUrl,
@@ -364,6 +367,7 @@ export const openPlaybackSession = async (
     mediaStatus: ['ready', 'processing', 'failed'].includes(raw?.media_status)
       ? raw.media_status
       : 'unknown',
+    ...(captionTracks.length ? {captionTracks} : {}),
   };
 };
 

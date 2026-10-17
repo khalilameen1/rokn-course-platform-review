@@ -84,8 +84,9 @@ describe('profile recovery contracts', () => {
 
     expect(overview).not.toContain('portfolioUrlFor(');
     expect(overview).not.toContain('visibleRemoteProfile?.portfolioUrl');
+    // Publication (not the latest review decision) authorizes the live link.
     expect(overview).toContain(
-      "visiblePortfolioProfile?.sharingStatus === 'approved'",
+      'const portfolioPublished = Boolean(visiblePortfolioProfile?.published)',
     );
     expect(profile).toContain("activeTab === 'portfolio' && canSharePortfolio");
     expect(profile).toContain(
@@ -105,11 +106,12 @@ describe('profile recovery contracts', () => {
     expect(details).toContain('mutationFlightRef.current = flight');
     expect(details).not.toContain('mediaFlightRef');
     expect(details).not.toContain('deleteFlightRef');
-    // Four ordinary admissions plus the shared add/resume admission still
-    // use one synchronous mutation owner, not separate upload locks.
+    // Four ordinary admissions, presentation patch and reorder, plus the
+    // shared add/resume admission still use one synchronous mutation owner,
+    // not separate upload locks.
     expect(
       details.match(/beginMutation\((?:false|showSaving)?\)/g),
-    ).toHaveLength(5);
+    ).toHaveLength(7);
     expect(details.match(/beginUploadMutation\((?:false)?\)/g)).toHaveLength(2);
     expect(details).toMatch(
       /const beginUploadMutation = useCallback\(\s*\(showSaving = true\) => \{\s*const flight = beginMutation\(showSaving\);/,

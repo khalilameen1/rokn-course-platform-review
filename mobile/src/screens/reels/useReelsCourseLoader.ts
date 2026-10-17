@@ -50,6 +50,8 @@ export type CourseReloadTarget = {
   onResult?: (succeeded: boolean, reason?: 'project_changed') => void;
 };
 
+type CourseLoadOutcome = {succeeded: boolean; reason?: 'project_changed'};
+
 export const useReelsCourseLoader = ({
   navigation,
   identityKey,
@@ -82,12 +84,56 @@ export const useReelsCourseLoader = ({
   setServerSession: Dispatch<SetStateAction<boolean | null>>;
 }) => {
   const consumedContinueAfterTokenRef = useRef<string | null>(null);
+  // A newer load supersedes an older one (refresh after a section completion
+  // racing a revision reload or route change). The superseded caller is not
+  // told "failed": it waits for, and reports, the load that actually won.
+  const settledLoadRef = useRef<{
+    requestId: number;
+    outcome: CourseLoadOutcome;
+  } | null>(null);
+  const supersededWaitersRef = useRef<
+    Array<(outcome: CourseLoadOutcome) => void>
+  >([]);
+  const unmountedRef = useRef(false);
+  useEffect(() => {
+    unmountedRef.current = false;
+    const waiters = supersededWaitersRef.current;
+    return () => {
+      // Unmounted with no winner left to wait for.
+      unmountedRef.current = true;
+      waiters.splice(0).forEach(resolve => resolve({succeeded: false}));
+    };
+  }, []);
   const load = useCallback(
     async (reloadTarget?: CourseReloadTarget) => {
       refs.loadAbort.current?.abort();
       const controller = new AbortController();
       refs.loadAbort.current = controller;
       const requestId = ++refs.loadRequest.current;
+      const finish = (succeeded: boolean, reason?: 'project_changed') => {
+        const outcome = reason ? {succeeded, reason} : {succeeded};
+        settledLoadRef.current = {requestId, outcome};
+        supersededWaitersRef.current
+          .splice(0)
+          .forEach(resolve => resolve(outcome));
+        reloadTarget?.onResult?.(succeeded, reason);
+      };
+      const superseded = async () => {
+        const onResult = reloadTarget?.onResult;
+        if (!onResult) return;
+        const settled = settledLoadRef.current;
+        const outcome =
+          settled && settled.requestId === refs.loadRequest.current
+            ? settled.outcome
+            : // No newer load exists (the account changed under this one) or
+            // the screen is gone: nothing can win, so report the failure.
+            unmountedRef.current || refs.loadRequest.current === requestId
+            ? {succeeded: false}
+            : await new Promise<CourseLoadOutcome>(resolve => {
+                supersededWaitersRef.current.push(resolve);
+              });
+        onResult(outcome.succeeded, outcome.reason);
+      };
       const requestedCourseId = String(params.courseId || '');
       const savedVersionAtLoadStart = savedLessonsVersion?.current;
       const hasCurrentCourse =
@@ -119,7 +165,7 @@ export const useReelsCourseLoader = ({
       };
       try {
         if (!boundary) {
-          if (!ownsLoadSlot()) return;
+          if (!ownsLoadSlot()) return await superseded();
           if (hasCurrentCourse) {
             setConnectionNote(
               'تعذّر تحديث محتوى الكورس\nحاول مرة أخرى من زر الفيديو',
@@ -131,10 +177,10 @@ export const useReelsCourseLoader = ({
             refs.loadAbort.current = null;
           }
           setLoading(false);
-          reloadTarget?.onResult?.(false);
+          finish(false);
           return;
         }
-        if (!isCurrentOwner()) return;
+        if (!isCurrentOwner()) return await superseded();
         // Optional native state and session restore overlap the metadata read.
         // Read player state once, with one short budget, rather than making a
         // second identical storage read after course details have arrived.
@@ -168,7 +214,7 @@ export const useReelsCourseLoader = ({
           : await loadCourseLearningData(requestedCourseId || undefined, {
               signal: controller.signal,
             });
-        if (!isCurrentOwner()) return;
+        if (!isCurrentOwner()) return await superseded();
         // A public details payload contains the free samples plus the outline.
         // It is not a learning entitlement. If a stale CTA/deep link opens the
         // player without preview mode, return to the commercial course page
@@ -181,7 +227,7 @@ export const useReelsCourseLoader = ({
           (!accessType || accessType === 'none' || accessType === 'preview')
         ) {
           navigation.replace('CourseDetails', {courseId: requestedCourseId});
-          reloadTarget?.onResult?.(false);
+          finish(false);
           return;
         }
         if (
@@ -196,7 +242,7 @@ export const useReelsCourseLoader = ({
           // its source editor until the learner resolves the latest lineage.
           // Gated projects still exist in the outline; only absence blocks this
           // transition, never ordinary access checks or an explicit course load.
-          reloadTarget.onResult?.(false, 'project_changed');
+          finish(false, 'project_changed');
           return;
         }
         const [localState, sessionAvailable] = await localContextFlight;
@@ -204,7 +250,7 @@ export const useReelsCourseLoader = ({
           result.course,
           localState,
         );
-        if (!isCurrentOwner()) return;
+        if (!isCurrentOwner()) return await superseded();
         setServerSession(sessionAvailable);
         // An in-place refresh must not erase the current session while its
         // optional device read is slow, or replace a newer position with an
@@ -332,10 +378,13 @@ export const useReelsCourseLoader = ({
             })
             .catch(() => undefined);
         }
-        reloadTarget?.onResult?.(true);
+        finish(true);
       } catch (error) {
-        if (!isCurrentOwner()) return;
-        if (networkFailureKind(error) === 'cancelled') return;
+        if (!isCurrentOwner()) return await superseded();
+        if (networkFailureKind(error) === 'cancelled') {
+          finish(false);
+          return;
+        }
         if (hasCurrentCourse) {
           setConnectionNote(friendlyNetworkMessage(error, 'الفيديو'));
         } else {
@@ -345,7 +394,7 @@ export const useReelsCourseLoader = ({
             'تعذّر فتح محتوى الكورس\nمكانك محفوظ\nتحقق من الاتصال ثم حاول مرة أخرى',
           );
         }
-        reloadTarget?.onResult?.(false);
+        finish(false);
       } finally {
         if (isCurrentOwner()) {
           if (refs.loadAbort.current === controller)

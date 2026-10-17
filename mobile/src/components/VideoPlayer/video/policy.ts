@@ -218,6 +218,20 @@ export const formatVideoDuration = (seconds: number) => {
   return toArabicDigits(`${minutes}:${remainder.toString().padStart(2, '0')}`);
 };
 
+const LEFT_TO_RIGHT_ISOLATE = '⁦';
+const POP_DIRECTIONAL_ISOLATE = '⁩';
+const MINUS_SIGN = '−';
+
+/**
+ * Remaining time as video players show it ("-0:30"). A clock reads left to
+ * right even inside Arabic copy, so isolate it LTR; otherwise the RTL
+ * paragraph moves the minus sign after the digits.
+ */
+export const formatRemainingTime = (seconds: number) =>
+  `${LEFT_TO_RIGHT_ISOLATE}${MINUS_SIGN}${formatVideoDuration(
+    seconds,
+  )}${POP_DIRECTIONAL_ISOLATE}`;
+
 export const selectPlaybackErrorCopy = (
   failureKind: PlaybackFailure,
   unsupportedSource: boolean,
@@ -261,5 +275,49 @@ export const selectPlaybackErrorCopy = (
   return {
     title: 'الفيديو غير متاح الآن',
     message: 'حاول مرة أخرى بعد قليل',
+  };
+};
+
+export type VideoContentFrame = {top: number; bottom: number};
+
+/**
+ * Portrait sources fill the reel stage (cover), as every vertical feed does.
+ * A landscape source is letterboxed instead of cropped (TikTok, Instagram
+ * Reels and YouTube Shorts all show 16:9 uploads this way): cropping a 16:9
+ * screen recording to 9:16 hides about two thirds of the picture. The band is
+ * reported so overlays can avoid covering the picture.
+ */
+export const resolveVideoPresentation = ({
+  width,
+  height,
+  naturalWidth,
+  naturalHeight,
+  naturalOrientation,
+}: {
+  width: number;
+  height: number;
+  naturalWidth?: number;
+  naturalHeight?: number;
+  naturalOrientation?: string;
+}): {
+  resizeMode: 'cover' | 'contain';
+  contentFrame: VideoContentFrame | null;
+} => {
+  const sourceWidth = Number(naturalWidth) || 0;
+  const sourceHeight = Number(naturalHeight) || 0;
+  if (!width || !height || !sourceWidth || !sourceHeight) {
+    return {resizeMode: 'cover', contentFrame: null};
+  }
+  const sourceAspect = sourceWidth / sourceHeight;
+  const landscapeSource =
+    sourceAspect > 1.2 && naturalOrientation !== 'portrait';
+  if (!landscapeSource || sourceAspect <= (width / height) * 1.2) {
+    return {resizeMode: 'cover', contentFrame: null};
+  }
+  const contentHeight = width / sourceAspect;
+  const top = Math.max(0, (height - contentHeight) / 2);
+  return {
+    resizeMode: 'contain',
+    contentFrame: {top, bottom: Math.min(height, top + contentHeight)},
   };
 };

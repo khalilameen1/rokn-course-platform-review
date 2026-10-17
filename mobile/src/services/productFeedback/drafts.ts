@@ -20,6 +20,7 @@ import {
   type ProductFeedbackReplyDraft,
   type ProductFeedbackDraftConflict,
 } from './contracts';
+import {createKeyedAsyncQueue} from '../../utils/keyedAsyncQueue';
 
 const DRAFT_KEY = learnerDraftStorage.feedbackDraft.namespace;
 
@@ -30,16 +31,11 @@ const MIGRATED_DRAFT_CONFLICTS_KEY =
 
 const DRAFT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
-let draftOperation: Promise<unknown> = Promise.resolve();
+// One serialized lane for every feedback draft key (shared keyed queue).
+const draftOperations = createKeyedAsyncQueue();
 
-const withDraftLock = <T>(operation: () => Promise<T>) => {
-  const result = draftOperation.then(operation, operation);
-  draftOperation = result.then(
-    () => undefined,
-    () => undefined,
-  );
-  return result;
-};
+const withDraftLock = <T>(operation: () => Promise<T>) =>
+  draftOperations('product-feedback-drafts', operation);
 
 export const loadProductFeedbackDraftConflicts = async (
   ownerBoundary?: AccountSessionBoundary,

@@ -14,6 +14,7 @@ import {
   removeLearnerDraftFile,
   retainLearnerDraftFiles,
 } from './learnerDraftFiles';
+import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
 
 export type ProjectSubmissionDraft = {
   files?: SelectedProjectFile[];
@@ -24,21 +25,8 @@ export type ProjectSubmissionDraft = {
 const KEY = learnerDraftStorage.projectEditor.namespace;
 const TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const MAX_BYTES = 25 * 1024 * 1024;
-const draftOperations = new Map<string, Promise<unknown>>();
 
-const withDraftLock = <T>(key: string, operation: () => Promise<T>) => {
-  const previous = draftOperations.get(key) || Promise.resolve();
-  const result = previous.then(operation, operation);
-  const tail = result.then(
-    () => undefined,
-    () => undefined,
-  );
-  draftOperations.set(key, tail);
-  void tail.finally(() => {
-    if (draftOperations.get(key) === tail) draftOperations.delete(key);
-  });
-  return result;
-};
+const withDraftLock = createKeyedAsyncQueue();
 
 const keyFor = async (projectId: string, boundary?: AccountSessionBoundary) =>
   `${await accountScopedStorageKey(KEY, boundary)}:${String(projectId).replace(

@@ -261,9 +261,8 @@ describe('course journey contract', () => {
 
   it('does not turn closing the payment surface into a pending payment', () => {
     const details = source('src/screens/CourseDetails/index.tsx');
-    const purchase = source(
-      'src/screens/CourseDetails/details/useCourseCheckout.ts',
-    );
+    const purchase = source('src/hooks/useCourseSubscriptionCheckout.ts');
+    const coinCheckout = source('src/services/coinCheckout.ts');
     const selectors = source('src/screens/CourseDetails/details/selectors.ts');
     const purchaseOrchestration = source(
       'src/screens/CourseDetails/details/useCoursePurchase.ts',
@@ -278,18 +277,13 @@ describe('course journey contract', () => {
       'src/screens/CourseDetails/details/useCourseDetailsData.ts',
     );
 
+    // Returning from the hosted page without a callback is "not paid yet":
+    // one server read and a calm notice with resume, never a review state.
+    expect(coinCheckout).toContain('returnedWithoutCallback ? 1 : undefined');
     expect(purchase).toContain(
-      "setNotice('لم يكتمل الدفع\\nيمكنك المحاولة مرة أخرى')",
+      "const UNPAID_NOTICE = 'لسه ما دفعتش؟\\nتقدر تكمل الدفع أو تختار طريقة تانية'",
     );
-    expect(purchase).toContain('const outcome = coinCheckoutOutcome(result);');
-    expect(purchase).toMatch(
-      /if \(outcome === 'pending' && result\.orderRef\)[\s\S]{0,240}else if \(outcome === 'paid'\)/,
-    );
-    expect(purchase).toContain(
-      "setNotice('جارٍ تأكيد الدفع\\nسيحدّث رصيدك فور التأكيد')",
-    );
-    expect(purchase).not.toContain('result.cancelled');
-    expect(purchase).not.toContain('لم يكتمل الدفع بعد');
+    expect(purchase).toContain('paymentReportedRef.current =');
     expect(purchaseFlow.match(/selectCoursePurchaseEntryStep\(/g)).toHaveLength(
       2,
     );
@@ -313,9 +307,6 @@ describe('course journey contract', () => {
     const entry = source(
       'src/screens/CourseDetails/details/usePurchaseEntry.ts',
     );
-    const checkout = source(
-      'src/screens/CourseDetails/details/useCourseCheckout.ts',
-    );
     const flow = source(
       'src/screens/CourseDetails/details/useCoursePurchaseFlow.ts',
     );
@@ -327,14 +318,12 @@ describe('course journey contract', () => {
     expect(details).not.toContain('commerceInFlightRef');
     expect(purchase).toContain('} = useCoursePurchaseFlow();');
     expect(flow).toMatch(/useReducer\(\s*coursePurchaseFlowReducer/);
-    expect(`${purchase}\n${entry}\n${checkout}`).not.toContain('setDialogStep');
+    expect(`${purchase}\n${entry}`).not.toContain('setDialogStep');
     expect(purchase).toContain('usePurchaseEntry({');
     expect(purchase).not.toContain('useCourseCheckout({');
     expect(purchase).not.toContain('useCourseCoupon({');
     expect(purchase).toContain('useCourseAccessCode({');
     expect(entry).toContain('const runPrimaryAction = useCallback(');
-    expect(checkout).toContain('const confirm = useCallback(');
-    expect(checkout).toContain('const buyCoins = useCallback(');
   });
 
   it('projects details and the owned outline from one details response', () => {
@@ -375,7 +364,10 @@ describe('course journey contract', () => {
     expect(controller).toContain('canOpenCourseAssistant: Boolean(course)');
     expect(surface).toContain('controller.canOpenCourseAssistant');
     expect(surface).toContain('onOpenCourseAccess={() =>');
-    expect(renderer).toContain('onOpenChat={() => setChatVisible(true)}');
+    expect(renderer).toContain(
+      '() => call(latest => latest.setChatVisible(true))',
+    );
+    expect(renderer).toContain('onOpenChat={onOpenChat}');
     expect(renderer).not.toMatch(
       /onOpenChat=\{\(\) => \{[\s\S]{0,220}openGuestLogin/,
     );

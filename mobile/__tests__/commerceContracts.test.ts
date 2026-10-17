@@ -329,25 +329,15 @@ describe('commerce API contracts', () => {
     );
   });
 
-  it('wires the responsive package rail to one minted coin mark per package', () => {
+  it('keeps the wallet free of a package rail and uses one minted coin mark', () => {
     const walletView = fs.readFileSync(
       path.resolve(__dirname, '../src/screens/wallet/WalletView.tsx'),
-      'utf8',
-    );
-    const packageRail = fs.readFileSync(
-      path.resolve(__dirname, '../src/screens/wallet/WalletPackageRail.tsx'),
       'utf8',
     );
     const coin = fs.readFileSync(
       path.resolve(__dirname, '../src/components/ui/RoknCoin.tsx'),
       'utf8',
     );
-    // Viewport/peek geometry is rendered at 320–430dp in walletPresentation;
-    // this boundary protects the live rail, not the retired Package wrapper.
-    expect(packageRail).toContain('{width: cardWidth}');
-    expect(packageRail).toContain('formatArabicDisplayText(item.label)');
-    expect(packageRail).toContain('horizontal');
-    expect(packageRail).toContain('snapToInterval={cardWidth + Spacing.sm}');
     expect(walletView).not.toContain('WalletPackageRail');
     expect(walletView).toContain('RewardsTaskList');
     expect(walletView).not.toContain('packageColumns');
@@ -359,62 +349,17 @@ describe('commerce API contracts', () => {
       ),
     ).toContain("require('../../assets/images/coins/rokn-coin-minted.png')");
     expect(coin).not.toContain('#FFF1A9');
-    expect(packageRail).not.toContain('<RoknCoin');
-    expect(packageRail.match(/<CoinAmount/g)).toHaveLength(1);
-    expect(packageRail).toContain('value={item.coins}');
   });
 
-  it('uses the same package contract in wallet and in-course top-up', () => {
-    const walletRail = fs.readFileSync(
-      path.resolve(__dirname, '../src/screens/wallet/WalletPackageRail.tsx'),
-      'utf8',
-    );
-    const courseTopup = fs.readFileSync(
-      path.resolve(
-        __dirname,
-        '../src/screens/CourseDetails/details/PurchaseDialogSteps.tsx',
-      ),
-      'utf8',
-    );
-    const walletCheckout = fs.readFileSync(
-      path.resolve(__dirname, '../src/screens/wallet/useWalletCheckout.ts'),
-      'utf8',
-    );
+  it('classifies checkout availability failures in the live checkout types', () => {
     const checkoutTypes = fs.readFileSync(
       path.resolve(__dirname, '../src/services/coinCheckoutTypes.ts'),
       'utf8',
     );
-    const courseCheckout = fs.readFileSync(
-      path.resolve(
-        __dirname,
-        '../src/screens/CourseDetails/details/useCourseCheckout.ts',
-      ),
-      'utf8',
-    );
-
-    expect(walletRail).toContain('type {CoinPackage}');
-    expect(courseTopup).toContain('type {CoinPackage}');
-    for (const packageSurface of [walletRail, courseTopup]) {
-      expect(packageSurface).toContain('formatArabicDisplayText(item.label)');
-      expect(packageSurface).toContain('value={item.coins}');
-      expect(packageSurface).toContain('item.displayPrice ||');
-      expect(packageSurface).toContain('formatArabicNumber(item.price');
-    }
-    expect(walletRail).toContain('onPress={() => onCheckout(item)}');
-    expect(walletRail).toContain('disabled={disabled}');
-    expect(walletRail).toContain(
-      'const disabled = Boolean(checkoutLoading) || !catalogueReady;',
-    );
-    expect(courseTopup).toContain('onPress={() => void onBuyCoins(item)}');
-    expect(walletCheckout).toContain('openCoinCheckout(item');
-    expect(courseCheckout).toContain('openCoinCheckout(coinPackage');
-    expect(walletCheckout).toContain('coinCheckoutFailureDisposition(code)');
     expect(checkoutTypes).toContain("'recovery_in_progress'");
     expect(checkoutTypes).toContain("'FEATURE_CHECKOUT_DISABLED'");
     expect(checkoutTypes).toContain("'payment_configuration_unavailable'");
     expect(checkoutTypes).toContain("'checkout_temporarily_unavailable'");
-    expect(walletCheckout).toContain('else if (!checkoutUnavailable)');
-    expect(walletCheckout).toContain("'الدفع متوقف مؤقتًا'");
   });
 
   it('uses mobile-first devices artwork without a desktop stand', () => {

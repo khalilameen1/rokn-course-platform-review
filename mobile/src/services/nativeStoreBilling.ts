@@ -164,7 +164,40 @@ const settleActive = (
   action(current);
 };
 
+/** Once the store reports a charge, the sheet waits only this long for our
+ * server. The transaction stays unfinished, so launch/foreground recovery
+ * verifies and finishes it later (StoreKit/Play Billing pending-purchase rule). */
+export const NATIVE_VERIFICATION_WINDOW_MS = 25_000;
+
+const deferredActivationResult = (): CoinCheckoutResult => ({
+  ...pendingResult(),
+  paymentReported: true,
+  activationDeferred: true,
+});
+
+const boundActiveVerification = async (purchase: Purchase) => {
+  if (purchase.purchaseState === 'pending') return;
+  let accountScope: string;
+  try {
+    // Local key only: a dropped network must not delay this bound.
+    accountScope = await accountScopedStorageKey(
+      '@rokn/native-store-reconciliation/v1',
+    );
+  } catch {
+    return;
+  }
+  const current = activePurchases.get(accountScope);
+  if (!current || current.productId !== purchase.productId) return;
+  clearTimeout(current.timer);
+  current.timer = setTimeout(() => {
+    settleActive(purchase.productId, accountScope, active =>
+      active.resolve(deferredActivationResult()),
+    );
+  }, NATIVE_VERIFICATION_WINDOW_MS);
+};
+
 const handlePurchaseUpdate = async (purchase: Purchase) => {
+  await boundActiveVerification(purchase);
   const owner = await currentStoreBillingOwner();
   if (!owner || !purchaseBelongsTo(purchase, owner)) return;
   try {

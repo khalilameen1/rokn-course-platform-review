@@ -1,6 +1,6 @@
 import {useNavigation, useRoute} from '@react-navigation/native';
 import type {RootNavigation, RootRoute} from '../../navigation/types';
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {Modal, Pressable, ScrollView, Text, View} from 'react-native';
 import {RasterImage as Image} from '../../components/ui/RasterImage';
 import {SettingsIcon, ShareProfileIcon} from '../../assets/SVG';
@@ -37,6 +37,7 @@ export default function Profile() {
   const [failedAvatarUri, setFailedAvatarUri] = useState<string>();
   const [showPortfolioQr, setShowPortfolioQr] = useState(false);
   const {
+    applyPortfolioProfile,
     authenticatedIdentity,
     avatarUri,
     canSharePortfolio,
@@ -70,6 +71,12 @@ export default function Profile() {
   useEffect(() => {
     if (route.params?.tab) setActiveTab(route.params.tab);
   }, [route.params?.tab]);
+
+  // One-shot request from a passed project; consumed by the gallery.
+  const clearAddPortfolioProject = useCallback(
+    () => navigation.setParams({addPortfolioProjectId: undefined}),
+    [navigation],
+  );
 
   return (
     <Container noPadding>
@@ -275,6 +282,10 @@ export default function Profile() {
                   canSharePortfolio ? sharePortfolio : undefined
                 }
                 onShareablePortfolioChange={setHasShareablePortfolio}
+                portfolioPublicUrl={publicPortfolioUrl}
+                onPortfolioProfileChange={applyPortfolioProfile}
+                addFromProjectId={route.params?.addPortfolioProjectId}
+                onAddFromProjectHandled={clearAddPortfolioProject}
               />
             </>
           )}

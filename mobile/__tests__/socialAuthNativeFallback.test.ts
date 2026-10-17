@@ -1,5 +1,3 @@
-const mockNativeCapability = jest.fn();
-const mockNativeSignIn = jest.fn();
 const mockOpenAndroidAuthSession = jest.fn();
 const mockPost = jest.fn();
 const mockSaveSession = jest.fn();
@@ -26,12 +24,6 @@ jest.mock('expo-web-browser', () => ({
   openAuthSessionAsync: jest.fn(),
 }));
 
-jest.mock('../src/services/nativeSocialAuth', () => ({
-  hasNativeSocialCapability: (...args: unknown[]) =>
-    mockNativeCapability(...args),
-  signInWithNativeSocialProvider: (...args: unknown[]) =>
-    mockNativeSignIn(...args),
-}));
 
 jest.mock('../src/services/androidAuthSession', () => ({
   openAndroidAuthSession: (...args: unknown[]) =>
@@ -103,7 +95,6 @@ describe('canonical browser social transport', () => {
     jest.clearAllMocks();
     mockPendingAttempt = null;
     mockCommittedSession = null;
-    mockNativeCapability.mockReturnValue(true);
     mockSaveSession.mockImplementation(async session => {
       mockCommittedSession = session;
     });
@@ -147,11 +138,9 @@ describe('canonical browser social transport', () => {
     expect(mockSaveSession).toHaveBeenCalledWith(
       expect.objectContaining({api_token: 'rokn-session-token'}),
     );
-    expect(mockNativeSignIn).not.toHaveBeenCalled();
   });
 
-  it('retires a failed native attempt and falls back to browser PKCE', async () => {
-    mockNativeSignIn.mockResolvedValue({type: 'fallback'});
+  it('reports a cancelled browser PKCE attempt without saving a session', async () => {
     mockOpenAndroidAuthSession.mockResolvedValue({type: 'cancel'});
 
     await expect(signInWithSocialProvider('google', methods)).rejects.toThrow(
@@ -170,7 +159,6 @@ describe('canonical browser social transport', () => {
   });
 
   it('keeps browser PKCE recoverable when Android delivers its callback late', async () => {
-    mockNativeSignIn.mockResolvedValue({type: 'fallback'});
     mockOpenAndroidAuthSession.mockResolvedValue({
       type: 'cancel',
       recoverable: true,

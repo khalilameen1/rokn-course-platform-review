@@ -7,11 +7,21 @@ import {
   View,
   type GestureResponderHandlers,
 } from 'react-native';
-import {Gesture, GestureDetector} from 'react-native-gesture-handler';
+import {
+  Gesture,
+  GestureDetector,
+  type ComposedGesture,
+} from 'react-native-gesture-handler';
 import LinearGradient from 'react-native-linear-gradient';
 import {Fonts} from '../../../constants/styleConstants';
-import {Palette, textDirection} from '../../../constants/designSystem';
 import {
+  Accessibility,
+  Palette,
+  Type,
+  textDirection,
+} from '../../../constants/designSystem';
+import {
+  formatRemainingTime,
   formatVideoDuration,
   selectPlaybackErrorCopy,
   type PlaybackFailure,
@@ -20,6 +30,8 @@ import {
 
 type VideoChromeProps = {
   bottomInset: number;
+  captionsAvailable?: boolean;
+  captionsEnabled?: boolean;
   currentTime: number;
   failureKind: PlaybackFailure;
   isBuffering: boolean;
@@ -27,6 +39,8 @@ type VideoChromeProps = {
   onRetry: () => void;
   onSeekBy: (seconds: number) => void;
   onTogglePaused: () => void;
+  onToggleCaptions?: () => void;
+  onResetZoom?: () => void;
   onTrackWidth: (width: number) => void;
   panHandlers: GestureResponderHandlers;
   pausedByUser: boolean;
@@ -36,10 +50,14 @@ type VideoChromeProps = {
   timeline: VideoTimelinePresentation;
   trackWidth: number;
   unsupportedSource: boolean;
+  zoomGesture?: ComposedGesture;
+  zoomed?: boolean;
 };
 
 export const VideoChrome = ({
   bottomInset,
+  captionsAvailable = false,
+  captionsEnabled = false,
   currentTime,
   failureKind,
   isBuffering,
@@ -47,6 +65,8 @@ export const VideoChrome = ({
   onRetry,
   onSeekBy,
   onTogglePaused,
+  onToggleCaptions,
+  onResetZoom,
   onTrackWidth,
   panHandlers,
   pausedByUser,
@@ -56,6 +76,8 @@ export const VideoChrome = ({
   timeline,
   trackWidth,
   unsupportedSource,
+  zoomGesture,
+  zoomed = false,
 }: VideoChromeProps) => {
   const errorCopy = selectPlaybackErrorCopy(failureKind, unsupportedSource);
   const surfaceTap = React.useMemo(
@@ -68,10 +90,16 @@ export const VideoChrome = ({
         }),
     [onTogglePaused],
   );
+  // Two-finger zoom and the one-finger pause tap race: whichever activates
+  // first owns the touch, so pinching never toggles playback.
+  const surfaceGesture = React.useMemo(
+    () => (zoomGesture ? Gesture.Race(zoomGesture, surfaceTap) : surfaceTap),
+    [surfaceTap, zoomGesture],
+  );
 
   return (
     <>
-      <GestureDetector gesture={surfaceTap}>
+      <GestureDetector gesture={surfaceGesture}>
         <View
           accessible
           accessibilityRole="button"
@@ -137,10 +165,15 @@ export const VideoChrome = ({
       )}
 
       <View style={[styles.timelineArea, {bottom: bottomInset + 5}]}>
-        <Text style={styles.remainingText} maxFontSizeMultiplier={1.15}>
-          {timeline.duration
-            ? `−${formatVideoDuration(timeline.remaining)}`
-            : '—:—'}
+        <Text
+          accessibilityLabel={
+            timeline.duration
+              ? `المتبقي ${formatVideoDuration(timeline.remaining)}`
+              : 'جارٍ تحديد مدة الفيديو'
+          }
+          style={styles.remainingText}
+          maxFontSizeMultiplier={1.15}>
+          {timeline.duration ? formatRemainingTime(timeline.remaining) : '—:—'}
         </Text>
         <View
           accessible
@@ -213,6 +246,44 @@ export const VideoChrome = ({
             />
           )}
         </View>
+        {zoomed && !!onResetZoom && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="إلغاء تكبير الفيديو"
+            hitSlop={4}
+            onPress={onResetZoom}
+            style={styles.chromeButton}
+            testID="video-zoom-reset">
+            <Text style={styles.chromeButtonText} maxFontSizeMultiplier={1.15}>
+              ١×
+            </Text>
+          </Pressable>
+        )}
+        {captionsAvailable && !!onToggleCaptions && (
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityLabel="الترجمة النصية"
+            accessibilityState={{checked: captionsEnabled}}
+            hitSlop={4}
+            onPress={onToggleCaptions}
+            style={styles.chromeButton}
+            testID="video-captions-toggle">
+            <View
+              style={[
+                styles.captionsBadge,
+                captionsEnabled && styles.captionsBadgeActive,
+              ]}>
+              <Text
+                style={[
+                  styles.captionsText,
+                  captionsEnabled && styles.captionsTextActive,
+                ]}
+                maxFontSizeMultiplier={1.15}>
+                CC
+              </Text>
+            </View>
+          </Pressable>
+        )}
       </View>
     </>
   );
@@ -312,12 +383,47 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   remainingText: {
-    minWidth: 44,
+    ...Type.caption,
+    minWidth: 48,
     color: 'rgba(255,255,255,.88)',
     fontFamily: Fonts.medium,
-    fontSize: 11,
     fontVariant: ['tabular-nums'],
+    textAlign: 'center',
   },
+  chromeButton: {
+    minWidth: Accessibility.minTouchTarget,
+    minHeight: Accessibility.minTouchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chromeButtonText: {
+    ...Type.caption,
+    color: '#FFFFFF',
+    fontFamily: Fonts.semiBold,
+    textShadowColor: 'rgba(0,0,0,.8)',
+    textShadowOffset: {width: 0, height: 1},
+    textShadowRadius: 3,
+  },
+  captionsBadge: {
+    minWidth: 30,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,.88)',
+    alignItems: 'center',
+  },
+  captionsBadgeActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
+  },
+  captionsText: {
+    color: '#FFFFFF',
+    fontFamily: Fonts.bold,
+    fontSize: Type.caption.fontSize,
+    lineHeight: Type.caption.fontSize + 4,
+  },
+  captionsTextActive: {color: Palette.canvas},
   touchTrack: {
     flex: 1,
     minHeight: 48,

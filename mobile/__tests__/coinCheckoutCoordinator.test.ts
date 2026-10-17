@@ -1,9 +1,14 @@
+jest.mock('../src/constants/helpers', () => ({
+  assertAccountSessionBoundary: (boundary: {epoch: number}) => {
+    if (boundary.epoch < 0) throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
+  },
+}));
 import {
   emitCoinCheckoutCreditOnce,
   runCoinCheckoutReconciliationSingleFlight,
   runCoinCheckoutSingleFlight,
-  subscribeCoinCheckoutCredits,
 } from '../src/services/coinCheckoutCoordinator';
+import {subscribeWalletSettlements} from '../src/services/walletSettlement';
 import type {CoinCheckoutResult} from '../src/services/coinCheckoutTypes';
 
 describe('coin checkout operation ownership', () => {
@@ -94,50 +99,51 @@ describe('coin checkout operation ownership', () => {
     expect(retryOperation).toHaveBeenCalledTimes(1);
   });
 
-  it('notifies once per account and receipt and respects unsubscribe', () => {
+  it('announces a credit once per account and order on the wallet settlement channel', () => {
     const listener = jest.fn();
-    const unsubscribe = subscribeCoinCheckoutCredits(listener);
+    const unsubscribe = subscribeWalletSettlements(listener);
     const result = credited('notification-receipt');
+    const owner1 = {scope: 'notification-owner-1', epoch: 1};
+    const owner2 = {scope: 'notification-owner-2', epoch: 2};
     try {
-      emitCoinCheckoutCreditOnce('notification-owner-1', result);
-      emitCoinCheckoutCreditOnce('notification-owner-1', result);
-      emitCoinCheckoutCreditOnce('notification-owner-2', result);
-      expect(listener.mock.calls).toEqual([
-        [result, 'notification-owner-1'],
-        [result, 'notification-owner-2'],
-      ]);
+      emitCoinCheckoutCreditOnce(owner1, result);
+      emitCoinCheckoutCreditOnce(owner1, result);
+      emitCoinCheckoutCreditOnce(owner2, result);
+      expect(listener.mock.calls).toEqual([[owner1], [owner2]]);
     } finally {
       unsubscribe();
     }
-    emitCoinCheckoutCreditOnce(
-      'notification-owner-1',
-      credited('after-unsubscribe'),
-    );
+    emitCoinCheckoutCreditOnce(owner1, credited('after-unsubscribe'));
     expect(listener).toHaveBeenCalledTimes(2);
   });
 
-  it('does not announce pending payments or let a broken observer hide credit', () => {
-    const observerFailure = subscribeCoinCheckoutCredits(() => {
+  it('does not announce pending payments or let a broken observer or account change hide credit', () => {
+    const observerFailure = subscribeWalletSettlements(() => {
       throw new Error('Screen unmounted');
     });
     const listener = jest.fn();
-    const unsubscribe = subscribeCoinCheckoutCredits(listener);
+    const unsubscribe = subscribeWalletSettlements(listener);
+    const owner = {scope: 'observer-owner', epoch: 1};
     try {
       const result = credited('observer-receipt');
-      emitCoinCheckoutCreditOnce('observer-owner', {
+      emitCoinCheckoutCreditOnce(owner, {
         ...result,
         success: false,
         pending: true,
         coinsAdded: 0,
       });
-      emitCoinCheckoutCreditOnce('observer-owner', {
-        ...result,
-        orderRef: undefined,
-      });
+      emitCoinCheckoutCreditOnce(owner, {...result, orderRef: undefined});
       expect(listener).not.toHaveBeenCalled();
-      emitCoinCheckoutCreditOnce('observer-owner', result);
+      expect(() =>
+        emitCoinCheckoutCreditOnce(
+          {scope: 'switched-owner', epoch: -1},
+          credited('switched-receipt'),
+        ),
+      ).not.toThrow();
+      expect(listener).not.toHaveBeenCalled();
+      emitCoinCheckoutCreditOnce(owner, result);
       expect(listener).toHaveBeenCalledTimes(1);
-      expect(listener).toHaveBeenCalledWith(result, 'observer-owner');
+      expect(listener).toHaveBeenCalledWith(owner);
     } finally {
       observerFailure();
       unsubscribe();

@@ -7,9 +7,12 @@ import {
 import {getCoinPackages} from '../services/roknApi';
 import {
   openCoinCheckout,
-  subscribeCoinCheckoutCredits,
+  releaseCoinCheckoutPackage,
 } from '../services/coinCheckout';
-import {subscribeNativeStoreCredits} from '../services/nativeStoreCredits';
+import {
+  notifyWalletSettlement,
+  subscribeWalletSettlements,
+} from '../services/walletSettlement';
 import {
   asRecord,
   errorCode,
@@ -31,6 +34,43 @@ import {
 import type {CoinPackage} from '../services/api/coinPackageMapper';
 import {courseCheckoutTransport} from '../services/checkoutRouting';
 import {trackProductEvent} from '../services/productAnalytics';
+
+const CONFIRMING_NOTICE = 'الدفع قيد التأكيد\nلا تدفع مرة أخرى';
+// The learner left the hosted page without a provider callback and the server
+// still reports the order as not captured: "not paid yet", not "under review".
+const UNPAID_NOTICE = 'لسه ما دفعتش؟\nتقدر تكمل الدفع أو تختار طريقة تانية';
+const DEFERRED_ACTIVATION_NOTICE = 'الدفع وصل وهنكمّل تفعيله أول ما النت يرجع';
+
+/** The server reports the hosted payment as open and not captured. */
+const unpaidOpenPayment = (checkout: CourseCheckout) =>
+  courseCheckoutTransport.kind === 'external' &&
+  checkout.status === 'pending_payment' &&
+  checkout.channel === 'direct' &&
+  checkout.canResumePayment === true;
+
+const blockingCheckoutFrom = (error: unknown) => {
+  if (errorCode(error) !== 'checkout_already_pending') return null;
+  const active = asRecord(asRecord(errorPayload(error).data)?.active_checkout);
+  const id = typeof active?.id === 'string' ? active.id : '';
+  const activeCourseId = Number(active?.course_id);
+  return /^[a-zA-Z0-9-]{1,100}$/.test(id) &&
+    Number.isSafeInteger(activeCourseId) &&
+    activeCourseId > 0
+    ? {id, courseId: String(activeCourseId)}
+    : null;
+};
+
+/** Leaving an unpaid hosted order uses the server abandon path first, which
+ * asks the provider and credits a racing capture once. Returns the checkout
+ * after release; a captured order is resumed instead of cancelled. */
+const releaseUnpaidCheckout = async (
+  checkout: CourseCheckout,
+): Promise<CourseCheckout> => {
+  const funding = checkout.selectedPackage;
+  const released = funding ? await releaseCoinCheckoutPackage(funding) : null;
+  if (released?.success) return resumeCourseCheckout(checkout.id);
+  return cancelCourseCheckout(checkout.id);
+};
 
 type Params = {
   courseId: string;
@@ -64,17 +104,23 @@ export function useCourseSubscriptionCheckout({
     id: string;
     courseId: string;
   } | null>(null);
+  const [awaitingPayment, setAwaitingPayment] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const generation = useRef(0);
   const flight = useRef(false);
   const current = useRef({courseId, planCode, visible});
   const quoteRef = useRef(quote);
+  const awaitingRef = useRef(awaitingPayment);
+  // A provider callback reported payment in this process. Only then is a
+  // pending server state "under confirmation" rather than "not paid yet".
+  const paymentReportedRef = useRef(false);
   const completedRef = useRef(new Set<string>());
   const viewedRef = useRef<string | null>(null);
   const callback = useRef(onCompleted);
   const recoveryCallback = useRef(onPaymentRecovery);
   current.current = {courseId, planCode, visible};
   quoteRef.current = quote;
+  awaitingRef.current = awaitingPayment;
   callback.current = onCompleted;
   recoveryCallback.current = onPaymentRecovery;
   const owns = useCallback(
@@ -85,10 +131,23 @@ export function useCourseSubscriptionCheckout({
       current.current.planCode === planCode,
     [courseId, planCode],
   );
+  const showPendingNotice = useCallback((next: CourseCheckout) => {
+    const unpaid =
+      !paymentReportedRef.current &&
+      (awaitingRef.current || unpaidOpenPayment(next));
+    setAwaitingPayment(unpaid);
+    setNotice(unpaid ? UNPAID_NOTICE : CONFIRMING_NOTICE);
+  }, []);
   const acceptCompleted = useCallback(async (next: CourseCheckout) => {
     setQuote(next);
+    if (next.status !== 'pending_payment') setAwaitingPayment(false);
     if (next.status === 'completed' && !completedRef.current.has(next.id)) {
       completedRef.current.add(next.id);
+      // The enrollment debited (and possibly topped up) the wallet. Announce
+      // it on the one channel every balance reader listens to.
+      void captureAccountSessionBoundary()
+        .then(notifyWalletSettlement)
+        .catch(() => undefined);
       // The server records the receipt transition even when this sheet is
       // closed or the process is gone. This callback only updates learner UI.
       await callback.current();
@@ -101,6 +160,9 @@ export function useCourseSubscriptionCheckout({
     setCoinPackage(undefined);
     setNotice('');
     setBlockingCheckout(null);
+    setAwaitingPayment(false);
+    awaitingRef.current = false;
+    paymentReportedRef.current = false;
     setBusy(false);
     flight.current = false;
     if (!visible || !planCode) {
@@ -150,7 +212,7 @@ export function useCourseSubscriptionCheckout({
                   ),
               );
             }
-            setNotice('الدفع قيد التأكيد\nلا تدفع مرة أخرى');
+            showPendingNotice(latest);
             return;
           }
         }
@@ -249,6 +311,7 @@ export function useCourseSubscriptionCheckout({
     planCode,
     reloadKey,
     requiredFeature,
+    showPendingNotice,
     visible,
   ]);
 
@@ -321,8 +384,7 @@ export function useCourseSubscriptionCheckout({
         setNotice(
           'تغيّرت تفاصيل الاشتراك\nرصيد الشحن محفوظ ويمكنك مراجعة الاختيار',
         );
-      else if (next.status === 'pending_payment')
-        setNotice('الدفع قيد التأكيد\nلا تدفع مرة أخرى');
+      else if (next.status === 'pending_payment') showPendingNotice(next);
     } catch {
       if (owns(token))
         setNotice('تعذّر تأكيد النتيجة\nلا تشحن مرة أخرى قبل التحقق');
@@ -332,24 +394,28 @@ export function useCourseSubscriptionCheckout({
         setBusy(false);
       }
     }
-  }, [acceptCompleted, blockingCheckout, owns, resolveBlockingCheckout]);
+  }, [
+    acceptCompleted,
+    blockingCheckout,
+    owns,
+    resolveBlockingCheckout,
+    showPendingNotice,
+  ]);
 
   useEffect(() => {
     if (!visible) return;
     const app = AppState.addEventListener('change', state => {
       if (state === 'active') void refreshPending();
     });
-    const refreshAfterCredit = () => {
+    // Every verified credit (Kashier or store) and every wallet mutation
+    // arrives on the one wallet channel. It wakes the single-flight server
+    // reconciliation; it never grants enrollment by itself.
+    const credits = subscribeWalletSettlements(() => {
       void refreshPending();
-    };
-    // Both providers signal an already-verified credit. They wake the same
-    // single-flight server reconciliation; neither event grants enrollment.
-    const credits = subscribeCoinCheckoutCredits(refreshAfterCredit);
-    const nativeCredits = subscribeNativeStoreCredits(refreshAfterCredit);
+    });
     return () => {
       app.remove();
       credits();
-      nativeCredits();
     };
   }, [refreshPending, visible]);
 
@@ -391,7 +457,35 @@ export function useCourseSubscriptionCheckout({
       const boundary = await captureAccountSessionBoundary();
       assertAccountSessionBoundary(boundary);
       if (!owns(token)) return;
-      let next = await authorizeCourseCheckout(quote.id);
+      let next: CourseCheckout;
+      try {
+        next = await authorizeCourseCheckout(quote.id);
+      } catch (error) {
+        // One tap: an earlier hosted order that was never paid must not make
+        // the learner cancel it by hand. Settle or release it on the server,
+        // then authorize these unchanged terms once more.
+        const blocker = blockingCheckoutFrom(error);
+        if (!blocker || courseCheckoutTransport.kind !== 'external')
+          throw error;
+        const previous = await resumeCourseCheckout(blocker.id);
+        assertAccountSessionBoundary(boundary);
+        if (!owns(token)) return;
+        if (
+          previous.id !== blocker.id ||
+          previous.courseId !== blocker.courseId ||
+          !unpaidOpenPayment(previous)
+        )
+          throw error;
+        const released = await releaseUnpaidCheckout(previous);
+        assertAccountSessionBoundary(boundary);
+        if (!owns(token)) return;
+        if (released.status === 'pending_payment') throw error;
+        if (released.status === 'completed' && released.courseId === courseId) {
+          await acceptCompleted(released);
+          return;
+        }
+        next = await authorizeCourseCheckout(quote.id);
+      }
       assertAccountSessionBoundary(boundary);
       if (!owns(token)) return;
       authorized = next.status === 'pending_payment';
@@ -404,6 +498,9 @@ export function useCourseSubscriptionCheckout({
         setNotice('تغيّرت تفاصيل الاشتراك\nراجعها قبل المتابعة');
         return;
       }
+      setAwaitingPayment(false);
+      awaitingRef.current = false;
+      paymentReportedRef.current = false;
       const payment = await openCoinCheckout(coinPackage, {
         transport: courseCheckoutTransport,
         courseCheckoutId: next.id,
@@ -426,33 +523,41 @@ export function useCourseSubscriptionCheckout({
         setReloadKey(value => value + 1);
         return;
       }
+      paymentReportedRef.current =
+        payment.success || payment.paymentReported === true;
+      if (payment.activationDeferred) {
+        // The store charged the learner but our server is unreachable. The
+        // unfinished transaction is verified by launch/foreground recovery,
+        // whose wallet settlement then resumes this checkout.
+        setNotice(DEFERRED_ACTIVATION_NOTICE);
+        return;
+      }
       next = await resumeCourseCheckout(next.id);
       assertAccountSessionBoundary(boundary);
       if (!owns(token)) return;
       await acceptCompleted(next);
-      if (next.status === 'pending_payment')
-        setNotice('الدفع قيد التأكيد\nسيُفعّل الاشتراك بعد التأكيد');
-      else if (next.status !== 'completed')
+      if (next.status === 'pending_payment') {
+        if (
+          courseCheckoutTransport.kind === 'external' &&
+          !paymentReportedRef.current
+        ) {
+          setAwaitingPayment(true);
+          awaitingRef.current = true;
+          setNotice(UNPAID_NOTICE);
+        } else {
+          setNotice('الدفع قيد التأكيد\nسيُفعّل الاشتراك بعد التأكيد');
+        }
+      } else if (next.status !== 'completed')
         setNotice('تم تحديث الرصيد\nراجع تفاصيل الاشتراك قبل المتابعة');
     } catch (error) {
       if (!owns(token)) return;
-      if (errorCode(error) === 'checkout_already_pending') {
-        const active = asRecord(
-          asRecord(errorPayload(error).data)?.active_checkout,
+      const blocker = blockingCheckoutFrom(error);
+      if (blocker) {
+        setBlockingCheckout(blocker);
+        setNotice(
+          'عندك طلب اشتراك سابق لم يُحسم\nتحقق من الدفع أو ألغِ الطلب السابق',
         );
-        const id = typeof active?.id === 'string' ? active.id : '';
-        const activeCourseId = Number(active?.course_id);
-        if (
-          /^[a-zA-Z0-9-]{1,100}$/.test(id) &&
-          Number.isSafeInteger(activeCourseId) &&
-          activeCourseId > 0
-        ) {
-          setBlockingCheckout({id, courseId: String(activeCourseId)});
-          setNotice(
-            'عندك طلب اشتراك سابق لم يُحسم\nتحقق من الدفع أو ألغِ الطلب السابق',
-          );
-          return;
-        }
+        return;
       }
       // A lost authorization response can still represent a committed debit.
       // Read its durable result before allowing another payment attempt.
@@ -509,7 +614,11 @@ export function useCourseSubscriptionCheckout({
     flight.current = true;
     setBusy(true);
     try {
-      const next = await cancelCourseCheckout(previous.id);
+      // "Choose another way" leaves an unpaid hosted order through the same
+      // provider-checked abandon path, so a racing capture is never lost.
+      const next = awaitingRef.current
+        ? await releaseUnpaidCheckout(previous)
+        : await cancelCourseCheckout(previous.id);
       if (!owns(token)) return;
       if (next.status === 'completed') {
         await acceptCompleted(next);
@@ -538,6 +647,7 @@ export function useCourseSubscriptionCheckout({
     retry,
     blockedByPreviousCheckout: Boolean(blockingCheckout),
     pending: quote?.status === 'pending_payment',
+    awaitingPayment: awaitingPayment && quote?.status === 'pending_payment',
     canResumePayment: Boolean(
       courseCheckoutTransport.kind === 'external' &&
         quote?.channel === 'direct' &&

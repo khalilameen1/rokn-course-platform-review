@@ -78,7 +78,7 @@ export const savedLibraryStyles = StyleSheet.create({
     backgroundColor: Palette.primarySoft,
   },
   folderChipText: {...Type.caption, ...textDirection, color: Palette.textMuted},
-  folderChipTextActive: {color: '#A9C9FF'},
+  folderChipTextActive: {color: Palette.primaryTintSelected},
   deleteFolderButton: {
     alignSelf: 'flex-end',
     minHeight: Accessibility.minTouchTarget,
@@ -116,7 +116,7 @@ export const savedLibraryStyles = StyleSheet.create({
   },
   retryNoticeAction: {
     ...Type.caption,
-    color: Palette.primary,
+    color: Palette.primaryText,
   },
   folder: {marginTop: Spacing.lg},
   folderTitle: {
@@ -202,6 +202,6 @@ export const savedLibraryStyles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   moreButtonDisabled: {opacity: 0.56},
-  moreButtonText: {...Type.bodyStrong, color: Palette.primary},
+  moreButtonText: {...Type.bodyStrong, color: Palette.primaryText},
   pressed: {opacity: 0.72},
 });

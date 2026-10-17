@@ -132,4 +132,41 @@ describe('course details progressive disclosure', () => {
     act(() => free.props.onPress());
     expect(preview).toHaveBeenCalledWith('reel-7');
   });
+
+  it('opens the paywall for the plan that unlocks a tapped locked row', () => {
+    const preview = jest.fn();
+    const paywall = jest.fn();
+    act(() => {
+      renderer = TestRenderer.create(
+        <LockedOutline
+          details={details}
+          onPreviewSelect={preview}
+          onLockedSelect={paywall}
+        />,
+      );
+    });
+    const module = renderer.root.findAll(
+      node =>
+        node.props.accessibilityRole === 'button' &&
+        node.props.accessibilityState?.expanded === false &&
+        node.props.onPress,
+    )[0];
+    act(() => module.props.onPress());
+    const row = (title: string) =>
+      renderer.root.findAll(
+        node =>
+          node.props.accessibilityLabel?.includes(title) && node.props.onPress,
+      )[0];
+    const locked = row('التنفيذ');
+    expect(locked.props.disabled).toBe(false);
+    expect(locked.props.accessibilityRole).toBe('button');
+    expect(locked.props.accessibilityHint).toBe('يفتح مع الاشتراك');
+    act(() => locked.props.onPress());
+    expect(paywall).toHaveBeenLastCalledWith('reel');
+    act(() => row('تطبيق عملي').props.onPress());
+    expect(paywall).toHaveBeenLastCalledWith('project');
+    act(() => row('شاهد مجانًا').props.onPress());
+    expect(preview).toHaveBeenCalledWith('reel-7');
+    expect(paywall).toHaveBeenCalledTimes(2);
+  });
 });

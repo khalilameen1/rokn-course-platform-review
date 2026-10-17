@@ -46,6 +46,8 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>لتصوير مشروعك وتسليمه</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>لاختيار صورة للحساب أو المشروع</string>
 	<key>RCTNewArchEnabled</key>

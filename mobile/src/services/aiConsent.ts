@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {Alert, Linking} from 'react-native';
+import {Alert} from 'react-native';
 import {publicRequest} from '../constants/api';
 import {
   accountScopedStorageKey,
@@ -7,7 +7,7 @@ import {
   captureAccountSessionBoundary,
   type AccountSessionBoundary,
 } from '../constants/helpers';
-import {privacyPolicyUrl} from './publicLinks';
+import {presentAiConsentPrompt} from './aiConsentPrompt';
 import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
 
 export const AI_CONSENT_VERSION = 'third-party-ai-v1';
@@ -84,34 +84,16 @@ const askPermission = (
   boundary: AccountSessionBoundary,
   canPresent: () => boolean,
 ) =>
-  new Promise<boolean>(resolve => {
-    Alert.alert(
-      'الاستفسارات ومراجعة المشاريع',
-      'تستخدم الاستفسارات ومراجعة المشاريع الذكاء الاصطناعي\nنرسل ما تكتبه ومرفقاتك وسياق الكورس والمحادثة إلى OpenRouter ومزودي النماذج للإجابة وتقييم مشروعك\nهل توافق؟',
-      [
-        {text: 'ليس الآن', style: 'cancel', onPress: () => resolve(false)},
-        {
-          text: 'سياسة الخصوصية',
-          onPress: () => {
-            resolve(false);
-            if (!canPresent()) return;
-            void Linking.openURL(privacyPolicyUrl).catch(() => undefined);
-          },
-        },
-        {
-          text: 'أوافق وأتابع',
-          onPress: () => {
-            try {
-              assertAccountSessionBoundary(boundary);
-              resolve(canPresent());
-            } catch {
-              resolve(false);
-            }
-          },
-        },
-      ],
-      {cancelable: true, onDismiss: () => resolve(false)},
-    );
+  // The app's consent sheet (AiConsentPromptHost) owns the presentation.
+  // Reading the privacy policy keeps the request open; only "accept" agrees.
+  presentAiConsentPrompt().then(accepted => {
+    if (!accepted) return false;
+    try {
+      assertAccountSessionBoundary(boundary);
+      return canPresent();
+    } catch {
+      return false;
+    }
   });
 
 /** One shared affirmative gate, only on a learner-initiated AI action. */

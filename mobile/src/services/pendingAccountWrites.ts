@@ -17,6 +17,7 @@ import {
   markPrivacyPreferenceMutation,
   withAccountPreferenceWrite,
 } from './accountPreferenceWrites';
+import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
 
 export const PENDING_PRIVACY_PREFERENCES_KEY =
   '@rokn/pending-privacy-preferences/v1';
@@ -52,26 +53,12 @@ const validPatch = (value: unknown): PendingPrivacyPreferences => {
   return patch;
 };
 
-const scopeTails = new Map<string, Promise<unknown>>();
+const scopeWrites = createKeyedAsyncQueue();
 
 const withScopeWrite = <T>(
   boundary: AccountSessionBoundary,
   callback: () => Promise<T>,
-): Promise<T> => {
-  const previous = scopeTails.get(boundary.scope) ?? Promise.resolve();
-  const result = previous.then(callback, callback);
-  const tail = result.then(
-    () => undefined,
-    () => undefined,
-  );
-  scopeTails.set(boundary.scope, tail);
-  void tail.finally(() => {
-    if (scopeTails.get(boundary.scope) === tail) {
-      scopeTails.delete(boundary.scope);
-    }
-  });
-  return result;
-};
+): Promise<T> => scopeWrites(boundary.scope, callback);
 
 const privacyKey = (boundary?: AccountSessionBoundary) =>
   accountScopedStorageKey(PENDING_PRIVACY_PREFERENCES_KEY, boundary);

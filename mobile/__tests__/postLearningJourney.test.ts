@@ -11,8 +11,10 @@ describe('post-learning journey contract', () => {
       'src/screens/Profile/gallery/usePortfolioCreateFlow.ts',
     );
 
-    expect(project).toContain(
-      "navigation.navigate('Profile', {tab: 'portfolio'})",
+    // The passed project only opens the add sheet preselected; the learner
+    // still authors and confirms the portfolio item.
+    expect(project).toMatch(
+      /navigation\.navigate\('Profile', \{\s*tab: 'portfolio',\s*addPortfolioProjectId: project\.id,\s*\}\)/,
     );
     expect(project).not.toContain('createPortfolioItem');
     expect(createFlow).toContain('setDraftMediaAssets([])');

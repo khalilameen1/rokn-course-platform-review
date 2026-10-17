@@ -33,7 +33,7 @@ const item = (coverUri: string) => ({
   title: 'مشروع',
   summary: '',
   coverUri,
-  skills: [],
+  tools: [],
   featured: false,
   media: [
     {

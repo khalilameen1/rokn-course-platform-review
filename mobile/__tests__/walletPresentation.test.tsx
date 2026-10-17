@@ -2,7 +2,6 @@ import React from 'react';
 import {ScrollView, StyleSheet, Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import {WalletView} from '../src/screens/wallet/WalletView';
-import {WalletPackageRail} from '../src/screens/wallet/WalletPackageRail';
 import {RoknCoinStack, CoinAmount} from '../src/components/ui/RoknCoin';
 import {AppArtwork} from '../src/components/ui/AppArtwork';
 import TaskBrandIcon from '../src/components/ui/TaskBrandIcon';
@@ -100,7 +99,6 @@ describe('rewards presentation', () => {
     async (width, fontScale) => {
       mockDimensions = {...mockDimensions, width, fontScale};
       const root = await render();
-      expect(root.findAllByType(WalletPackageRail)).toHaveLength(0);
       expect(root.findAllByType(RoknCoinStack)).toHaveLength(1);
       expect(texts()).toContain('اكسب عملات');
       expect(texts()).toContain(formatArabicNumber(250));

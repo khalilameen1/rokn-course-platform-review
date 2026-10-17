@@ -8,10 +8,7 @@ import {savePendingLoginReturnTo} from '../navigation/authReturn';
 // import {showMessage} from 'react-native-flash-message';
 import {store} from '../store/store';
 import {LogOut} from '../store/reducers/auth';
-import {
-  cancelLearningReminders,
-  setSmartRemindersEnabled,
-} from '../services/smartReminders';
+import {cancelLearningReminders} from '../services/smartReminders';
 import {invalidateLocalPushDeviceRegistration} from '../services/pushDeviceState';
 import {roknApiUrl} from './apiBaseUrl';
 import {observeServerTime} from '../utils/serverClock';
@@ -19,7 +16,12 @@ import {
   deleteSecureSessionIfToken,
   peekSecureSession,
 } from '../services/secureSession';
-import {retryableReadTransportFailure} from '../services/networkExperience';
+import {
+  retryAfterMs,
+  retryableReadTransportFailure,
+} from '../services/networkExperience';
+import {reportBackgroundWriteFailure} from '../services/backgroundFailure';
+import {toApiRejection} from './apiHttpError';
 import {
   assertResponseStillBelongsToSession,
   captureSessionAtApiCall,
@@ -37,6 +39,7 @@ export const headers = {
 };
 export {getExceptionPayload, InternalError} from './apiErrors';
 export type {APIError} from './apiErrors';
+export {ApiError, isApiError} from './apiHttpError';
 
 export type {RoknRequestConfig} from './apiSessionBoundary';
 export {
@@ -66,9 +69,42 @@ let handledExpiredToken: string | null = null;
 // One foreground read must fail in human time. A long ladder here multiplies
 // the wait across every GET (including screens which have no cached answer)
 // and can leave a healthy UI spinning for more than a minute after the origin
-// has already failed. Three short attempts cover a radio hand-off or gateway
+// has already failed. Three attempts in total cover a radio hand-off or gateway
 // wake; the screen-owned background refresh handles longer outages.
-export const READ_RECOVERY_DELAYS_MS = [300, 700, 1_500] as const;
+//
+// Delays use "full jitter" exponential backoff from the AWS Architecture Blog,
+// "Exponential Backoff and Jitter" (Marc Brooker, 2015), the policy the AWS
+// SDKs ship: sleep = random(0, min(cap, base * 2 ** attempt)). Fixed delays made
+// every client that lost the origin together hit it again together.
+export const READ_RETRY_LIMIT = 2;
+export const READ_RETRY_BASE_DELAY_MS = 300;
+export const READ_RETRY_MAX_DELAY_MS = 2_000;
+// RFC 9110 §10.2.3 Retry-After is honoured only while it fits a foreground
+// read. Rokn's maintenance/recovery 503s send `Retry-After: 300`; those fail
+// fast so the screen shows its maintenance state instead of spinning.
+export const READ_RETRY_AFTER_CAP_MS = 2_000;
+
+export const readRetryDelayMs = (attempt: number, random = Math.random) =>
+  Math.floor(
+    Math.max(0, Math.min(1, random())) *
+      Math.min(
+        READ_RETRY_MAX_DELAY_MS,
+        READ_RETRY_BASE_DELAY_MS * 2 ** Math.max(0, attempt),
+      ),
+  );
+
+/** Null means "do not replay"; otherwise the minimum wait the server asked for. */
+const readRetryFloorMs = (error: unknown, status: number): number | null => {
+  const serverDelay = retryAfterMs(error);
+  if (serverDelay !== null && serverDelay > READ_RETRY_AFTER_CAP_MS) {
+    return null;
+  }
+  // 503 (maintenance) and 429 (rate limit) are replayed only on the server's
+  // own short Retry-After guidance (RFC 9110 §15.6.4, RFC 6585 §4).
+  if (status === 503 || status === 429) return serverDelay;
+  return retryableReadTransportFailure(error) ? serverDelay ?? 0 : null;
+};
+
 const cancelledReadError = (config?: RoknRequestConfig) =>
   Object.assign(new Error('canceled'), {
     code: 'ERR_CANCELED',
@@ -136,6 +172,8 @@ export const onRejectedResponse = async (error: unknown): Promise<never> => {
   const method =
     typeof config?.method === 'string' ? config.method.toLowerCase() : '';
   const rawRetryCount = Number(config?.roknNetworkRetryCount || 0);
+  // `roknNetworkRetryCount: Number.MAX_SAFE_INTEGER` is the legacy way to opt
+  // out and keeps working; new callers pass `retry: false`.
   const retryCount =
     Number.isSafeInteger(rawRetryCount) && rawRetryCount >= 0
       ? rawRetryCount
@@ -143,17 +181,17 @@ export const onRejectedResponse = async (error: unknown): Promise<never> => {
   const retryDeadlineAt = Number(config?.roknNetworkRetryDeadlineAt || 0);
   const responseStatus = Number(response?.status || 0);
   const safeTransientReadFailure = retryableReadTransportFailure(error);
+  const rejection = toApiRejection(error);
+  const retryFloorMs =
+    config && config.retry !== false && retryCount < READ_RETRY_LIMIT
+      ? readRetryFloorMs(error, responseStatus)
+      : null;
 
   // Cover both a socket lost during Wi-Fi/mobile-data hand-off and the brief
   // gateway responses returned while the origin wakes. Keep the retry budget
   // finite and never replay a mutation whose server result may be unknown.
-  if (
-    safeTransientReadFailure &&
-    Boolean(config) &&
-    retryCount < READ_RECOVERY_DELAYS_MS.length &&
-    (method === 'get' || method === 'head')
-  ) {
-    const retryDelay = READ_RECOVERY_DELAYS_MS[retryCount];
+  if (retryFloorMs !== null && (method === 'get' || method === 'head')) {
+    const retryDelay = Math.max(retryFloorMs, readRetryDelayMs(retryCount));
     const remainingRetryBudget = retryDeadlineAt
       ? retryDeadlineAt - Date.now() - retryDelay
       : Number.POSITIVE_INFINITY;
@@ -200,7 +238,7 @@ export const onRejectedResponse = async (error: unknown): Promise<never> => {
     const rejectedToken = bearerTokenUsedByRequest(config);
     // A public guest request has no session to invalidate. Do not turn an
     // unexpected gateway 401 into a keychain read or Login navigation.
-    if (!rejectedToken) return Promise.reject(response ?? error);
+    if (!rejectedToken) return Promise.reject(rejection);
     const expiredToken = extractApiToken(peekSecureSession().session);
     // Several requests can fail together. Handle this bearer once so the
     // learner gets one Login screen instead of a stack of duplicates. A late
@@ -217,11 +255,17 @@ export const onRejectedResponse = async (error: unknown): Promise<never> => {
       // while Login or the provider browser is opening, cold start restores
       // the same course/lesson instead of silently dropping the learner home.
       if (returnTo) {
-        await savePendingLoginReturnTo(returnTo).catch(() => undefined);
+        await savePendingLoginReturnTo(returnTo).catch(
+          reportBackgroundWriteFailure('auth_expiry_return_route'),
+        );
       }
+      // Retire this device's timers, but keep the learner's stored reminder
+      // opt-in. An expired bearer is not an opt-out; push registration
+      // re-registers from that preference on the next sign-in.
       cancelLearningReminders();
-      await setSmartRemindersEnabled(false).catch(() => undefined);
-      await invalidateLocalPushDeviceRegistration().catch(() => undefined);
+      await invalidateLocalPushDeviceRegistration().catch(
+        reportBackgroundWriteFailure('auth_expiry_push_registration'),
+      );
       await import('../components/VideoPlayer/courseLearningApi')
         .then(module => module.quiesceLearningRuntime())
         .catch(() => undefined);
@@ -246,18 +290,20 @@ export const onRejectedResponse = async (error: unknown): Promise<never> => {
       }
       if (!invalidated) {
         if (handledExpiredToken === expiredToken) handledExpiredToken = null;
-        return Promise.reject(response ?? error);
+        return Promise.reject(rejection);
       }
       // A 401 asks for reauthentication; it is not account deletion. Keep the
       // owner's scoped progress, pending submissions and editor drafts. If a
       // different person signs in next, secureSession clears the previous
       // scope before committing the replacement profile.
-      await rotateGuestStorageScope().catch(() => undefined);
+      await rotateGuestStorageScope().catch(
+        reportBackgroundWriteFailure('auth_expiry_storage_scope'),
+      );
       // All awaited cleanup belongs to the expired bearer. If a provider
       // callback committed another session meanwhile, its synchronous Redux
       // state and navigation now own the app.
       if (extractApiToken(peekSecureSession().session)) {
-        return Promise.reject(response ?? error);
+        return Promise.reject(rejection);
       }
       handledExpiredToken = null;
       store.dispatch(LogOut());
@@ -285,7 +331,7 @@ export const onRejectedResponse = async (error: unknown): Promise<never> => {
       .catch(() => undefined);
   }
 
-  return Promise.reject(response ?? error);
+  return Promise.reject(rejection);
 };
 const axiosClient = axios.create({
   headers: headers,

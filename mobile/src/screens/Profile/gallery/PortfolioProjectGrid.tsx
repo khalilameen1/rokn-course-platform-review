@@ -65,12 +65,17 @@ export const PortfolioProjectGrid = ({
               <Text numberOfLines={2} style={styles.projectSummary}>
                 {formatAuthoredDisplayText(project.summary)}
               </Text>
-              {!!project.skills.length && (
+              {!!project.tools.length && (
                 <Text style={styles.projectSkills}>
-                  {project.skills
+                  {project.tools
                     .slice(0, 2)
                     .map(formatAuthoredDisplayText)
                     .join(' · ')}
+                </Text>
+              )}
+              {(project.hidden || project.featured) && (
+                <Text style={styles.projectSkills}>
+                  {project.hidden ? 'مخفي من الرابط' : 'مثبت في الأول'}
                 </Text>
               )}
             </View>

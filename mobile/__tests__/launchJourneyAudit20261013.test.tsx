@@ -54,9 +54,6 @@ jest.mock('../src/services/checkoutRouting', () => ({
 }));
 jest.mock('../src/services/coinCheckout', () => ({
   openCoinCheckout: jest.fn(),
-  subscribeCoinCheckoutCredits: jest.requireActual(
-    '../src/services/coinCheckoutCoordinator',
-  ).subscribeCoinCheckoutCredits,
 }));
 jest.mock('../src/services/api/courseCheckout', () => ({
   getLatestCourseCheckout: jest.fn(),
@@ -401,7 +398,7 @@ describe('Launch audit — remaining defect reproductions and prepared repair ac
       expect(completed).toHaveBeenCalledTimes(1);
       expect(current.pending).toBe(false);
       await act(async () => {
-        emitCoinCheckoutCreditOnce('user-7', credit);
+        emitCoinCheckoutCreditOnce({scope: 'user-7', epoch: 1}, credit);
         await tick();
       });
       expect(resumeCourseCheckout).toHaveBeenCalledTimes(1);

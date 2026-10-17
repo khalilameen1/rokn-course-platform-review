@@ -31,6 +31,7 @@ import {
   requestAiConsent,
   requireAiConsent,
 } from '../src/services/aiConsent';
+import {aiConsentPromptHost} from '../src/services/aiConsentPrompt';
 
 const originalSet = jest.mocked(AsyncStorage.setItem).getMockImplementation()!;
 const response = (accepted: boolean) => ({
@@ -122,19 +123,19 @@ describe('server-owned AI consent with optional local receipts', () => {
         write.promise.then(() => originalSet(key, value)),
       );
     jest.mocked(publicRequest.get).mockResolvedValue(response(false) as never);
-    const alert = jest
-      .spyOn(Alert, 'alert')
-      .mockImplementation(() => undefined);
+    const releaseHost = aiConsentPromptHost.register();
     const decision = requestAiConsent(mockBoundary);
     try {
       await tick();
-      expect(alert).toHaveBeenCalledTimes(1);
+      const prompt = aiConsentPromptHost.getSnapshot();
+      expect(prompt).not.toBeNull();
       expect(publicRequest.put).not.toHaveBeenCalled();
-      alert.mock.calls[0][2]![2].onPress!();
+      prompt!.decide(true);
       await expect(decision).resolves.toBe(true);
       expect(publicRequest.put).toHaveBeenCalledTimes(1);
       expect(AsyncStorage.setItem).toHaveBeenCalledTimes(1);
     } finally {
+      releaseHost();
       write.resolve();
       await tick();
     }

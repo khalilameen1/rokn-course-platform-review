@@ -1,21 +1,29 @@
-import {accountScopedStorageKey} from '../constants/helpers';
+import {
+  accountScopedStorageKey,
+  captureAccountSessionBoundary,
+  type AccountSessionBoundary,
+} from '../constants/helpers';
 import type {CoinCheckoutResult} from './coinCheckoutTypes';
+import {notifyWalletSettlement} from './walletSettlement';
 
 const emittedCredits = new Set<string>();
 const MAX_EMITTED_CREDIT_KEYS = 128;
-const creditListeners = new Set<(result: CoinCheckoutResult) => void>();
 
-/** Best-effort UI delivery only; receipt verification and settlement live elsewhere. */
+/** Best-effort UI delivery only; receipt verification and settlement live elsewhere.
+ * A verified store credit is announced on the one wallet settlement channel. */
 export const emitNativeStoreCreditOnce = async (
   receiptKey: string,
   result: CoinCheckoutResult,
   accountScope: string,
 ): Promise<void> => {
   if (!result.success || emittedCredits.has(receiptKey)) return;
+  let boundary: AccountSessionBoundary;
   let currentScope: string;
   try {
+    boundary = await captureAccountSessionBoundary();
     currentScope = await accountScopedStorageKey(
       '@rokn/native-store-reconciliation/v1',
+      boundary,
     );
   } catch {
     // An unavailable local account key cannot turn an accepted payment into a
@@ -29,21 +37,9 @@ export const emitNativeStoreCreditOnce = async (
     if (typeof oldest !== 'string') break;
     emittedCredits.delete(oldest);
   }
-  creditListeners.forEach(listener => {
-    try {
-      listener(result);
-    } catch {
-      // One screen observer cannot hide the accepted credit from other screens
-      // or change the authoritative payment outcome.
-    }
-  });
-};
-
-export const subscribeNativeStoreCredits = (
-  listener: (result: CoinCheckoutResult) => void,
-) => {
-  creditListeners.add(listener);
-  return () => {
-    creditListeners.delete(listener);
-  };
+  try {
+    notifyWalletSettlement(boundary);
+  } catch {
+    // The account changed after verification. Its balance is no longer shown.
+  }
 };

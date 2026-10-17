@@ -1,5 +1,7 @@
 import {publicRequest} from '../../../constants/api';
 import {requireAiConsent} from '../../../services/aiConsent';
+import {withUploadStallTimeout} from '../../../services/uploadStallTimeout';
+import {publishProjectUploadProgress} from './projectSubmissionProgress';
 import {
   asRecord,
   type DataRecord,
@@ -349,19 +351,37 @@ const performProjectSubmissionSync = async (
   let response: unknown;
   try {
     assertProjectSubmissionOwner(operation);
-    response = await publicRequest.post(
-      `projects/${pending.projectId}/submissions`,
-      makeSubmissionForm(pending),
+    // Up to five 8 MB files share one request. A fixed 30 s budget always
+    // failed on 1-2 Mbps uplinks; abort only when the bytes stop moving.
+    publishProjectUploadProgress(pending.projectId, {loaded: 0, total: null});
+    response = await withUploadStallTimeout(
+      transport =>
+        publicRequest.post(
+          `projects/${pending.projectId}/submissions`,
+          makeSubmissionForm(pending),
+          {
+            ...transport,
+            headers: {
+              'Content-Type': 'multipart/form-data',
+              'Idempotency-Key': pending.clientSubmissionId,
+            },
+          },
+        ),
       {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Idempotency-Key': pending.clientSubmissionId,
-        },
-        timeout: 30000,
+        onUploadProgress: event =>
+          publishProjectUploadProgress(pending.projectId, {
+            loaded: Math.max(0, Number(event.loaded) || 0),
+            total:
+              Number.isFinite(Number(event.total)) && Number(event.total) > 0
+                ? Number(event.total)
+                : null,
+          }),
       },
     );
+    publishProjectUploadProgress(pending.projectId, null);
     assertProjectSubmissionOwner(operation);
   } catch (error) {
+    publishProjectUploadProgress(pending.projectId, null);
     assertProjectSubmissionOwner(operation);
     const errorResponse = asRecord(asRecord(error).response || error);
     if (

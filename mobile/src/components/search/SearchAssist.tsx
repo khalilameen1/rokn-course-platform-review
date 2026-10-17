@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginEnd: -Spacing.sm,
   },
-  clearText: {...Type.caption, color: Palette.primary},
+  clearText: {...Type.caption, color: Palette.primaryText},
   chips: {...rtlRowStyle, flexWrap: 'wrap', gap: Spacing.xs},
   chip: {
     maxWidth: '100%',

@@ -33,6 +33,11 @@ import {ProjectFeedbackReadRecovery} from './projectTransition/ProjectFeedbackRe
 import ProjectSubmissionEditor from './projectTransition/ProjectSubmissionEditor';
 import FullTrackUpgradeSheet from '../FullTrackUpgradeSheet';
 import {useProjectTransitionController} from './projectTransition/useProjectTransitionController';
+import {
+  projectUploadStatus,
+  useProjectUploadProgress,
+} from './courseLearning/projectSubmissionProgress';
+import {PortfolioUploadStatus} from '../../screens/Profile/gallery/PortfolioUploadStatus';
 
 interface ProjectTransitionProps {
   active: boolean;
@@ -187,6 +192,7 @@ const ProjectTransition = ({
     onSubmit,
     onReviewResolution,
   });
+  const uploadProgress = useProjectUploadProgress(project.id);
 
   useEffect(() => {
     setBriefExpanded(false);
@@ -328,7 +334,13 @@ const ProjectTransition = ({
                       accessibilityLabel="أضف مشروعك إلى البورتفوليو"
                       style={styles.secondaryButton}
                       onPress={() =>
-                        navigation.navigate('Profile', {tab: 'portfolio'})
+                        // Opens the add sheet with this project chosen and
+                        // its files (or the photo picker) instead of a blank
+                        // portfolio tab, like Coursera/Domestika "share project".
+                        navigation.navigate('Profile', {
+                          tab: 'portfolio',
+                          addPortfolioProjectId: project.id,
+                        })
                       }>
                       <Text style={styles.secondaryButtonText}>
                         أضف مشروعك إلى البورتفوليو
@@ -380,12 +392,19 @@ const ProjectTransition = ({
                 )}
               </>
             ) : controller.journeyState === 'submitting' ? (
-              <StatusHeading
-                busy
-                description="نحفظ الملفات الآن"
-                title="نسلّم مشروعك"
-                tone="progress"
-              />
+              <>
+                <StatusHeading
+                  busy
+                  description="نحفظ الملفات الآن"
+                  title="نسلّم مشروعك"
+                  tone="progress"
+                />
+                {uploadProgress && (
+                  <PortfolioUploadStatus
+                    progress={projectUploadStatus(uploadProgress)}
+                  />
+                )}
+              </>
             ) : controller.journeyState === 'reviewing' ? (
               <>
                 <StatusHeading
@@ -585,11 +604,6 @@ const ProjectTransition = ({
 };
 
 export default ProjectTransition;
-export {
-  pickMedia,
-  pickProjectFiles,
-  pickProjectFilesOwned,
-} from './projectTransition/pickers';
 
 const styles = StyleSheet.create({
   page: {

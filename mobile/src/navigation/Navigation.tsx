@@ -40,7 +40,12 @@ import {extractApiToken} from '../constants/helpers';
 import {useSelector} from 'react-redux';
 import type {RootState} from '../store/store';
 import {useStartupExperience} from '../screens/appInitializer/StartupExperience';
+import {isTabSwitchRoute} from './journeyNavigation';
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// A destination chosen from the tab bar appears in place, without a push.
+const rootTabOptions = ({route}: {route: {key: string; name: string}}) =>
+  isTabSwitchRoute(route) ? {animation: 'none' as const} : {};
 
 // The native splash already owns the brand while initial linking resolves.
 const NavigationFallback = () => <View style={styles.navigationFallback} />;
@@ -92,9 +97,21 @@ const Stacks = ({sessionReady}: {sessionReady: boolean}) => {
           </AuthenticatedScreenBoundary>
         )}>
         <Stack.Screen name="EditAccount" component={EditAccount} />
-        <Stack.Screen name="MyCorner" component={MyCorner} />
-        <Stack.Screen name="Wallet" component={Wallet} />
-        <Stack.Screen name="Profile" component={Profile} />
+        <Stack.Screen
+          name="MyCorner"
+          component={MyCorner}
+          options={rootTabOptions}
+        />
+        <Stack.Screen
+          name="Wallet"
+          component={Wallet}
+          options={rootTabOptions}
+        />
+        <Stack.Screen
+          name="Profile"
+          component={Profile}
+          options={rootTabOptions}
+        />
         <Stack.Screen name="CourseCertificate" component={CourseCertificate} />
         <Stack.Screen name="Notifications" component={Notifications} />
         <Stack.Screen name="DeviceSessions" component={DeviceSessions} />

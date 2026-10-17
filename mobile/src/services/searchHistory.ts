@@ -6,10 +6,10 @@ import {
   type AccountSessionBoundary,
 } from '../constants/helpers';
 import {cleanUnicodeText, truncateGraphemes} from '../utils/unicodeText';
+import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
 
 const SEARCH_HISTORY_KEY = '@rokn/search-history/v1';
 const SEARCH_HISTORY_LIMIT = 7;
-const historyLocks = new Map<string, Promise<unknown>>();
 
 const historyKey = (boundary: AccountSessionBoundary) =>
   accountScopedStorageKey(SEARCH_HISTORY_KEY, boundary);
@@ -17,19 +17,7 @@ const historyKey = (boundary: AccountSessionBoundary) =>
 const cleanQuery = (value: string) =>
   truncateGraphemes(cleanUnicodeText(value, false), 80);
 
-const withHistoryLock = <T>(key: string, operation: () => Promise<T>) => {
-  const previous = historyLocks.get(key) || Promise.resolve();
-  const result = previous.then(operation, operation);
-  const tail = result.then(
-    () => undefined,
-    () => undefined,
-  );
-  historyLocks.set(key, tail);
-  void tail.finally(() => {
-    if (historyLocks.get(key) === tail) historyLocks.delete(key);
-  });
-  return result;
-};
+const withHistoryLock = createKeyedAsyncQueue();
 
 const readSearchHistory = async (
   key: string,

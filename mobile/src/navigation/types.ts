@@ -80,7 +80,13 @@ export type RootStackParamList = {
   CourseCertificate: {courseId: string};
   MyCorner: undefined;
   Wallet: {returnTo?: LoginReturnTo} | undefined;
-  Profile: {tab?: 'portfolio' | 'certificates' | 'saved'} | undefined;
+  Profile:
+    | {
+        tab?: 'portfolio' | 'certificates' | 'saved';
+        /** Passed course project to add to the portfolio (one-shot). */
+        addPortfolioProjectId?: string;
+      }
+    | undefined;
   AboutUs: undefined;
   PrivacyPolicy: undefined;
   TermsOfUse: undefined;

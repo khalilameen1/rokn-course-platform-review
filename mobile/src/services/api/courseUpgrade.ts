@@ -4,10 +4,6 @@ import {
   captureAccountSessionBoundary,
 } from '../../constants/helpers';
 import type {CoinPackage} from './coinPackageMapper';
-import {
-  clearCourseUpgradeAttemptKey,
-  getOrCreateCourseUpgradeAttemptKey,
-} from './courseAccessAttemptStore';
 import {mapFinancialPackages, numericCourseId} from './courseAccessValidation';
 import {firstBoolean, payload, requireNonNegativeNumber} from './common';
 import type {CourseCheckoutFeature} from './courseCheckout';
@@ -188,54 +184,4 @@ export const getFullTrackUpgradeQuote = async (
     payload(response),
     Boolean(options.requiredFeature),
   );
-};
-
-export const purchaseFullTrackUpgrade = async (
-  courseId: string,
-  targetPlanCode?: string,
-  expectedPrice?: number,
-  expectedCourseRevision?: number,
-): Promise<CourseChatUpgradeQuote> => {
-  const boundary = await captureAccountSessionBoundary();
-  const courseIdValue = numericCourseId(courseId);
-  const normalizedTargetPlan = String(targetPlanCode || '')
-    .trim()
-    .toLowerCase();
-  if (
-    !['guided', 'mentor'].includes(normalizedTargetPlan) ||
-    !Number.isSafeInteger(expectedPrice) ||
-    Number(expectedPrice) < 0 ||
-    !Number.isSafeInteger(expectedCourseRevision) ||
-    Number(expectedCourseRevision) < 1
-  ) {
-    throw new Error('COURSE_UPGRADE_INTENT_INVALID');
-  }
-  const normalizedExpectedPrice = Math.trunc(Number(expectedPrice));
-  const upgradeIntent = {
-    courseId: courseIdValue,
-    targetPlanCode: normalizedTargetPlan,
-    expectedPrice: normalizedExpectedPrice,
-  };
-  const idempotencyKey = await getOrCreateCourseUpgradeAttemptKey(
-    upgradeIntent,
-    boundary,
-  );
-  assertAccountSessionBoundary(boundary);
-  const result = mapCourseChatUpgradeQuote(
-    payload(
-      await publicRequest.post(
-        `courses/${courseIdValue}/full-track-upgrade`,
-        {
-          target_plan_code: normalizedTargetPlan,
-          expected_price: normalizedExpectedPrice,
-          expected_course_revision: expectedCourseRevision,
-          idempotency_key: idempotencyKey,
-        },
-        {headers: {'Idempotency-Key': idempotencyKey}},
-      ),
-    ),
-  );
-  assertAccountSessionBoundary(boundary);
-  await clearCourseUpgradeAttemptKey(upgradeIntent, idempotencyKey, boundary);
-  return result;
 };

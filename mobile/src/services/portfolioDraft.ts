@@ -13,6 +13,7 @@ import {
   removeLearnerDraftFile,
   retainLearnerDraftFiles,
 } from './learnerDraftFiles';
+import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
 
 export type PortfolioDraft = {
   clientRequestId: string;
@@ -27,21 +28,8 @@ export type PortfolioDraft = {
 const STORAGE_KEY = learnerDraftStorage.portfolioEditor.namespace;
 const REFERENCE_OWNER = 'portfolio-editor-draft';
 const TTL_MS = 30 * 24 * 60 * 60 * 1000;
-const draftOperations = new Map<string, Promise<unknown>>();
 
-const withDraftLock = <T>(key: string, operation: () => Promise<T>) => {
-  const previous = draftOperations.get(key) ?? Promise.resolve();
-  const result = previous.then(operation, operation);
-  const tail = result.then(
-    () => undefined,
-    () => undefined,
-  );
-  draftOperations.set(key, tail);
-  void tail.finally(() => {
-    if (draftOperations.get(key) === tail) draftOperations.delete(key);
-  });
-  return result;
-};
+const withDraftLock = createKeyedAsyncQueue();
 
 const draftFiles = (draft?: Partial<PortfolioDraft> | null) => [
   ...(Array.isArray(draft?.media) ? draft.media : []),

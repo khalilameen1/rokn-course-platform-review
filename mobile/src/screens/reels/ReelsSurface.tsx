@@ -9,6 +9,7 @@ import {
   ReelsUnavailableState,
 } from './ReelsPresentation';
 import type {ReelsController} from './useReelsController';
+import {ReelsFeedContext} from './useReelsFeedRenderer';
 
 const ReelsSurface = (controller: ReelsController) => {
   const {course, feedItems, insets, layout, loadError, loading} = controller;
@@ -36,7 +37,7 @@ const ReelsSurface = (controller: ReelsController) => {
           title="لا يوجد مقطع متاح الآن"
         />
       ) : (
-        <>
+        <ReelsFeedContext.Provider value={controller.feedState}>
           <FlatList
             accessibilityLabel="مقاطع الكورس"
             key={`reels:${controller.identityKey}:${course.id}`}
@@ -115,7 +116,7 @@ const ReelsSurface = (controller: ReelsController) => {
             onEnable={controller.enableRemindersFromNudge}
             visible={controller.reminderNudgeVisible}
           />
-        </>
+        </ReelsFeedContext.Provider>
       )}
     </View>
   );

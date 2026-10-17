@@ -17,6 +17,7 @@ import {
   sessionBinding,
   writeSecureToken,
 } from './secureSessionStorage';
+import {reportBackgroundWriteFailure} from './backgroundFailure';
 
 export {
   assertSecureSessionStorageAvailable,
@@ -185,8 +186,10 @@ const clearPreviousAccountBeforeReplacement = async () => {
       import('../utils/fileCache'),
     ]);
 
+  // Retire device timers only. The old account's reminder opt-in lives in its
+  // scoped storage, which clearAccountScopedStorage below removes on success;
+  // if cleanup fails it must survive for that learner's next sign-in.
   reminders.cancelLearningReminders();
-  await reminders.setSmartRemindersEnabled(false).catch(() => undefined);
   const previousPushToken = await pushState
     .getStoredPushDeviceToken()
     .catch(() => null);
@@ -200,7 +203,7 @@ const clearPreviousAccountBeforeReplacement = async () => {
       // very session mutation which is waiting for this request to finish.
       preservePersistedSessionOnUnauthorized: true,
     })
-    .catch(() => undefined);
+    .catch(reportBackgroundWriteFailure('auth_session_revoke'));
   await pushCleanup.clearAccountPushState();
   await learning.clearCurrentAccountLearningFiles(accountScope);
   await chat.clearTransientChatCache({accountBoundary: true});
@@ -219,7 +222,7 @@ const revokeReplacedBearerForSameAccount = async () => {
     .revokeCurrentDeviceSession(pushToken, {
       preservePersistedSessionOnUnauthorized: true,
     })
-    .catch(() => undefined);
+    .catch(reportBackgroundWriteFailure('auth_session_revoke'));
 };
 
 let cachedSession: unknown = null;
@@ -459,24 +462,6 @@ export const deleteSecureSessionIfToken = (expectedToken: string) =>
     }
     return true;
   });
-
-const performClearSecureSessionStorage = async () => {
-  sessionCacheEpoch += 1;
-  cachedSession = null;
-  sessionCacheReady = true;
-  sessionLoadPromise = null;
-  const results = await Promise.allSettled([
-    Promise.resolve().then(deleteSecureTokens),
-    Promise.resolve().then(() => secureDeleteItem(PENDING_SOCIAL_AUTH_KEY)),
-  ]);
-  if (results.some(result => result.status === 'rejected')) {
-    throw new Error('SESSION_STORAGE_UNAVAILABLE_DELETE');
-  }
-  await AsyncStorage.clear();
-};
-
-export const clearSecureSessionStorage = () =>
-  serializeSessionMutation(performClearSecureSessionStorage);
 
 /** Reset module-level session state between isolated tests. */
 export const resetSecureSessionForTests = () => {

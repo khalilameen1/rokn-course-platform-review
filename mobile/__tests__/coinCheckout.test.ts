@@ -193,6 +193,76 @@ describe('coin checkout boundary', () => {
     expect(removeItem).not.toHaveBeenCalled();
   });
 
+  it('reads the server once and keeps the order when the browser returns without a callback', async () => {
+    process.env.EXPO_PUBLIC_BUILD_PROFILE = 'production';
+    jest.resetModules();
+    const checkoutId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    jest.doMock('../src/services/coursePaymentUrl', () => ({
+      isCoursePaymentUrl: () => true,
+    }));
+    jest.doMock('../src/services/coinCheckoutProvider', () => ({
+      ...jest.requireActual('../src/services/coinCheckoutProvider'),
+      // The learner backs out of the hosted page: no rokn://payment-result.
+      openCourseBrowserCheckoutSurface: jest.fn(async () => ''),
+    }));
+    const {publicRequest} = require('../src/constants/api') as {
+      publicRequest: {post: jest.Mock};
+    };
+    const helpers = require('../src/constants/helpers') as {
+      removeItem: jest.Mock;
+    };
+    const telemetry = require('../src/services/operationalTelemetry') as {
+      reportClientError: jest.Mock;
+    };
+    publicRequest.post
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            payment_url: `https://rokn.app/course-payment/${checkoutId}`,
+            order_ref: 'PKG-BACKED-OUT',
+            idempotency_key: '11111111-1111-4111-8111-111111111111',
+            course_checkout_id: checkoutId,
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {data: {status: 'pending', financial_status: 'pending'}},
+      });
+    const {openCoinCheckout} = require('../src/services/coinCheckout');
+
+    await expect(
+      openCoinCheckout(
+        {id: '7', coins: 600, price: 49, label: 'باقة'},
+        {
+          courseCheckoutId: checkoutId,
+          transport: {
+            kind: 'external',
+            channel: 'direct',
+            apiChannel: 'direct',
+            surface: 'browser',
+          },
+        },
+      ),
+    ).resolves.toEqual({
+      success: false,
+      pending: true,
+      cancelled: false,
+      coinsAdded: 0,
+      orderRef: 'PKG-BACKED-OUT',
+      paymentReported: false,
+    });
+    expect(
+      publicRequest.post.mock.calls.filter(([path]) =>
+        String(path).startsWith('payment/reconcile/'),
+      ),
+    ).toHaveLength(1);
+    // The durable attempt stays so a late capture is still credited once.
+    expect(helpers.removeItem).not.toHaveBeenCalled();
+    expect(telemetry.reportClientError).not.toHaveBeenCalled();
+    jest.dontMock('../src/services/coursePaymentUrl');
+    jest.dontMock('../src/services/coinCheckoutProvider');
+  });
+
   it('does not finish an old account checkout after the learner switches accounts', async () => {
     process.env.EXPO_PUBLIC_BUILD_PROFILE = 'production';
     jest.resetModules();
@@ -479,7 +549,9 @@ describe('coin checkout boundary', () => {
     const helpers = require('../src/constants/helpers') as {getItem: jest.Mock};
     const checkout = require('../src/services/coinCheckout') as {
       reconcilePendingCoinCheckout: () => Promise<unknown>;
-      subscribeCoinCheckoutCredits: (listener: jest.Mock) => () => void;
+    };
+    const settlements = require('../src/services/walletSettlement') as {
+      subscribeWalletSettlements: (listener: jest.Mock) => () => void;
     };
     helpers.getItem.mockResolvedValue({
       attempts: [
@@ -503,7 +575,8 @@ describe('coin checkout boundary', () => {
       },
     });
     const listener = jest.fn();
-    const unsubscribe = checkout.subscribeCoinCheckoutCredits(listener);
+    // Every balance reader listens to the one wallet settlement channel.
+    const unsubscribe = settlements.subscribeWalletSettlements(listener);
 
     await expect(
       checkout.reconcilePendingCoinCheckout(),
@@ -512,10 +585,12 @@ describe('coin checkout boundary', () => {
       coinsAdded: 600,
       orderRef: 'PKG-FOREGROUND-CREDIT',
     });
+    expect(listener).toHaveBeenCalledTimes(1);
     expect(listener).toHaveBeenCalledWith(
-      expect.objectContaining({success: true, coinsAdded: 600}),
-      'user-a',
+      expect.objectContaining({scope: 'user-a'}),
     );
+    await checkout.reconcilePendingCoinCheckout();
+    expect(listener).toHaveBeenCalledTimes(1);
     unsubscribe();
   });
 

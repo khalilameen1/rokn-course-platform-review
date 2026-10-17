@@ -19,9 +19,6 @@ jest.mock('../src/components/ui/RoknCoin', () => ({
   RoknCoinStack: () => null,
 }));
 jest.mock('../src/components/ui/TaskBrandIcon', () => () => null);
-jest.mock('../src/screens/wallet/WalletPackageRail', () => ({
-  WalletPackageRail: () => null,
-}));
 jest.mock('../src/hooks/useReducedMotion', () => ({
   useReducedMotion: () => true,
 }));

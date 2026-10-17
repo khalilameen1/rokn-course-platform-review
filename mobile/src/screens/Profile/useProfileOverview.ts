@@ -18,22 +18,8 @@ import {
 } from '../../services/roknApi';
 import {trustedPortfolioShareUrl} from '../../services/publicLinks';
 import {shareOnce} from '../../services/systemActions';
+import {portfolioSharingNotice} from './portfolioState';
 import type {RootState} from '../../store/store';
-
-const sharingNotice = (profile: PortfolioProfile | null) => {
-  switch (profile?.sharingStatus) {
-    case 'pending':
-      return 'أعمالك قيد المراجعة\nسيظهر رابط المشاركة بعد الموافقة';
-    case 'rejected':
-      return profile.sharingRejectionReason
-        ? `عدّل أعمالك لإتاحتها للمشاركة\n${profile.sharingRejectionReason}`
-        : 'عدّل أعمالك لإتاحتها للمشاركة';
-    case 'suspended':
-      return 'المشاركة موقوفة مؤقتًا\nأعمالك محفوظة ويمكنك التواصل مع الدعم';
-    default:
-      return '';
-  }
-};
 
 export function useProfileOverview() {
   const storedUser = useSelector((state: RootState) => state.auth.userData);
@@ -104,22 +90,22 @@ export function useProfileOverview() {
   const portfolioSharingSuspended = Boolean(
     visiblePortfolioProfile?.sharingSuspended,
   );
-  // Only the reviewed portfolio response can authorize sharing. A slug or an
-  // older account-profile URL says nothing about the current review decision.
+  // Only the portfolio response can authorize sharing. The live published
+  // version stays shareable while newer edits wait for review; a slug or an
+  // older account-profile URL says nothing about publication.
+  const portfolioPublished = Boolean(visiblePortfolioProfile?.published);
   const publicPortfolioUrl =
-    visiblePortfolioProfile?.sharingStatus === 'approved' &&
-    !portfolioSharingSuspended
-      ? trustedPortfolioShareUrl(visiblePortfolioProfile.publicUrl) || ''
+    portfolioPublished && !portfolioSharingSuspended
+      ? trustedPortfolioShareUrl(visiblePortfolioProfile?.publicUrl) || ''
       : '';
-  const portfolioSharingNotice =
-    hasShareablePortfolio || portfolioSharingSuspended
-      ? sharingNotice(visiblePortfolioProfile)
+  const sharingNoticeText =
+    hasShareablePortfolio || portfolioSharingSuspended || portfolioPublished
+      ? portfolioSharingNotice(visiblePortfolioProfile)
       : '';
   const canSharePortfolio = Boolean(
     serverSession === true &&
       identityLoaded &&
       !portfolioSharingSuspended &&
-      hasShareablePortfolio &&
       publicPortfolioUrl,
   );
   const avatarUri = useMemo(
@@ -239,6 +225,13 @@ export function useProfileOverview() {
 
   const retry = useCallback(() => setReloadProfile(value => value + 1), []);
 
+  // A saved profile response is authoritative; older in-flight reads lose.
+  const applyPortfolioProfile = useCallback((profile: PortfolioProfile) => {
+    portfolioReadRef.current += 1;
+    setPortfolioProfile(profile);
+    setPortfolioReadError('');
+  }, []);
+
   const refreshPortfolioShareUrl = useCallback(async () => {
     if (!canSharePortfolio || shareCheckRef.current) return;
     const flight = Symbol('portfolio-share-check');
@@ -260,8 +253,8 @@ export function useProfileOverview() {
       if (!isCurrent()) return;
       setPortfolioProfile(latest);
       setPortfolioReadError('');
-      if (latest.sharingStatus !== 'approved' || latest.sharingSuspended) {
-        const notice = sharingNotice(latest);
+      if (!latest.published || latest.sharingSuspended) {
+        const notice = portfolioSharingNotice(latest);
         Alert.alert(
           'مشاركة الأعمال',
           notice || 'تعذّر تحديث حالة المشاركة\nحاول مرة أخرى',
@@ -307,8 +300,9 @@ export function useProfileOverview() {
     identityKey,
     profileError,
     portfolioSharingSuspended,
-    portfolioSharingNotice,
+    portfolioSharingNotice: sharingNoticeText,
     publicPortfolioUrl,
+    applyPortfolioProfile,
     refreshPortfolioShareUrl,
     retry,
     role,

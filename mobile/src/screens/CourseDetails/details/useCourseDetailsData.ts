@@ -12,8 +12,6 @@ import {
   friendlyNetworkMessage,
   networkFailureKind,
 } from '../../../services/networkExperience';
-import {CAN_START_NATIVE_CHECKOUT} from '../../../constants/distribution';
-import {subscribeCoinCheckoutCredits} from '../../../services/coinCheckout';
 import {subscribeWalletSettlements} from '../../../services/walletSettlement';
 import {
   assertAccountSessionBoundary,
@@ -306,29 +304,16 @@ export const useCourseDetailsData = ({
     };
   }, [courseId, identityKey, remoteReload]);
 
-  useEffect(() => {
-    let active = true;
-    let unsubscribe: () => void = () => undefined;
-    const reloadAfterCredit = () => setRemoteReload(value => value + 1);
-    const unsubscribeExternal = subscribeCoinCheckoutCredits(reloadAfterCredit);
-    const unsubscribeWallet = subscribeWalletSettlements(boundary => {
-      assertAccountSessionBoundary(boundary);
-      reloadAfterCredit();
-    });
-    if (CAN_START_NATIVE_CHECKOUT) {
-      void import('../../../services/nativeStoreCredits').then(storeCredits => {
-        if (!active) return;
-        unsubscribe =
-          storeCredits.subscribeNativeStoreCredits(reloadAfterCredit);
-      });
-    }
-    return () => {
-      active = false;
-      unsubscribe();
-      unsubscribeExternal();
-      unsubscribeWallet();
-    };
-  }, []);
+  // Kashier credits, store credits, rewards and course debits all arrive on
+  // the one wallet settlement channel.
+  useEffect(
+    () =>
+      subscribeWalletSettlements(boundary => {
+        assertAccountSessionBoundary(boundary);
+        setRemoteReload(value => value + 1);
+      }),
+    [],
+  );
 
   const ownerMatches =
     displayScopeRef.current.identityKey === identityKey &&

@@ -114,11 +114,11 @@ export function mapCourseCheckout(value: unknown): CourseCheckout {
         checkoutPackageChannel(value.channel),
       )[0]
     : undefined;
+  // Exact funding may round up to the provider's minimum charge, so the issued
+  // top-up can carry more coins than the shortfall. It may never carry fewer.
   if (
     selectedPackageId &&
-    (!selectedPackage ||
-      selectedPackage.coins < deficit ||
-      (fundingMode === 'exact_shortfall' && selectedPackage.coins !== deficit))
+    (!selectedPackage || selectedPackage.coins < deficit)
   ) {
     throw new Error('API_CONTRACT_INVALID_SELECTED_PACKAGE');
   }

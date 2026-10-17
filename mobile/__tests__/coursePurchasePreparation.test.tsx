@@ -21,7 +21,6 @@ jest.mock('../src/constants/distribution', () => ({
   CAN_START_COIN_CHECKOUT: true,
 }));
 jest.mock('../src/services/coinCheckout', () => ({
-  subscribeCoinCheckoutCredits: () => () => undefined,
 }));
 jest.mock('../src/services/walletSettlement', () => ({
   subscribeWalletSettlements: () => () => undefined,

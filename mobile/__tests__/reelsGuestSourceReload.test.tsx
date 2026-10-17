@@ -1,9 +1,13 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 
+let mockFeedRowProps: {onRefreshVideo: () => Promise<void>} | null = null;
 jest.mock('../src/components/VideoPlayer/FeedRow', () => ({
   __esModule: true,
-  default: () => null,
+  default: (props: {onRefreshVideo: () => Promise<void>}) => {
+    mockFeedRowProps = props;
+    return null;
+  },
 }));
 jest.mock('../src/navigation/journeyNavigation', () => ({
   openGuestLogin: jest.fn(),
@@ -29,7 +33,10 @@ import type {RootNavigation} from '../src/navigation/types';
 import {hasSession} from '../src/services/roknApi';
 import {buildPreviewFeed} from '../src/screens/reels/presentation';
 import {useReelsCourseLoader} from '../src/screens/reels/useReelsCourseLoader';
-import {useReelsFeedRenderer} from '../src/screens/reels/useReelsFeedRenderer';
+import {
+  ReelsFeedContext,
+  useReelsFeedRenderer,
+} from '../src/screens/reels/useReelsFeedRenderer';
 
 const course: CourseLearningData = {
   id: 'course-1',
@@ -87,6 +94,7 @@ it.each([
     const requestPlaybackManifest = jest.fn();
     const noop = jest.fn();
     let refresh!: () => Promise<void>;
+    mockFeedRowProps = null;
     const Harness = () => {
       const load = useReelsCourseLoader({
         navigation,
@@ -107,7 +115,7 @@ it.each([
         setSavedLessons: noop,
         setServerSession: noop,
       });
-      const renderItem = useReelsFeedRenderer({
+      const {feedState, renderItem} = useReelsFeedRenderer({
         bottomInset: 0,
         changePlaybackSpeed: noop,
         changeQuality: noop,
@@ -142,15 +150,18 @@ it.each([
         toggleSaved: jest.fn(),
         topInset: 0,
       });
-      const row = renderItem({item: buildPreviewFeed(course)[1], index: 1});
-      refresh = row!.props.onRefreshVideo;
-      return null;
+      return (
+        <ReelsFeedContext.Provider value={feedState}>
+          {renderItem({item: buildPreviewFeed(course)[1], index: 1})}
+        </ReelsFeedContext.Provider>
+      );
     };
     let renderer!: TestRenderer.ReactTestRenderer;
     try {
       await act(async () => {
         renderer = TestRenderer.create(<Harness />);
       });
+      refresh = () => mockFeedRowProps!.onRefreshVideo();
       expect(requestInitialPosition).toHaveBeenLastCalledWith({
         key: 'reel-reel-1',
       });

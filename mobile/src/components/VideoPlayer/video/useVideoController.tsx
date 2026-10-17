@@ -3,7 +3,9 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
+  useState,
 } from 'react';
 import {VideoRef} from 'react-native-video';
 import {CourseReel, VideoQuality} from '../types';
@@ -22,6 +24,17 @@ import {usePlaybackStatus} from './usePlaybackStatus';
 import {usePlaybackTelemetry} from './usePlaybackTelemetry';
 import {useVideoSourceSelection} from './useVideoSourceSelection';
 import {useVideoTimelineController} from './useVideoTimelineController';
+import {useVideoZoom} from './useVideoZoom';
+import {
+  captionStyle,
+  normalizeReportedTextTracks,
+  selectCaptionTrack,
+  setCaptionsEnabled,
+  toSideloadedTextTracks,
+  useCaptionsEnabled,
+  type ReportedTextTrack,
+} from './captions';
+import {resolveVideoPresentation, type VideoContentFrame} from './policy';
 
 export interface VideoComponentHandle {
   seekTo: (seconds: number) => void;
@@ -43,6 +56,8 @@ export interface VideoComponentProps {
   onRefreshSource?: () => void | Promise<void>;
   onPlaybackEvent?: (event: PlaybackPlayerEvent) => void;
   onPlaybackMetrics?: (metrics: PlaybackRuntimeMetrics) => void;
+  /** The picture's band inside the frame when a landscape source is letterboxed. */
+  onContentFrameChange?: (frame: VideoContentFrame | null) => void;
 }
 
 export const useVideoController = (
@@ -62,6 +77,7 @@ export const useVideoController = (
     onRefreshSource,
     onPlaybackEvent,
     onPlaybackMetrics,
+    onContentFrameChange,
   }: VideoComponentProps,
   forwardedRef: ForwardedRef<VideoComponentHandle>,
 ) => {
@@ -99,7 +115,6 @@ export const useVideoController = (
     pendingSeekRef,
     pendingSeekStartedAtRef,
     previewTime,
-    resetTimeline,
     seekBy,
     seekTo,
     setBufferedTime,
@@ -123,7 +138,6 @@ export const useVideoController = (
     isPlayingRef,
     loadStartedAtRef,
     publishRuntimeMetrics,
-    resetTelemetry,
   } = usePlaybackTelemetry({
     durationRef,
     onPlaybackEvent,
@@ -180,7 +194,6 @@ export const useVideoController = (
     pauseAtEnd,
     pausedByUser,
     playbackPaused,
-    resetInterruption,
     togglePaused: togglePlaybackPaused,
   } = usePlaybackInterruption({
     emitPlaybackEvent,
@@ -211,23 +224,43 @@ export const useVideoController = (
     togglePlaybackPaused,
   ]);
 
-  if (reelIdentityRef.current !== data.id) {
-    reelIdentityRef.current = data.id;
-    playbackLifecycleGenerationRef.current += 1;
-    reelInitialPositionRef.current = initialPosition;
-    declaredDurationRef.current = Number.isFinite(Number(data.durationSeconds))
-      ? Math.max(0, Number(data.durationSeconds))
-      : 0;
-  }
-
   useImperativeHandle(forwardedRef, () => ({seekTo}), [seekTo]);
+
+  const clearPlaybackTimers = useCallback(() => {
+    if (longBufferTimerRef.current) {
+      clearTimeout(longBufferTimerRef.current);
+      longBufferTimerRef.current = null;
+    }
+    if (recoveryTimerRef.current) {
+      clearTimeout(recoveryTimerRef.current);
+      recoveryTimerRef.current = null;
+    }
+  }, []);
+
+  /**
+   * Retires the current source generation: delayed recovery, diagnostics and
+   * manual retries owned by it can no longer act, and the next generation
+   * restores `resumeAt` once it loads. A controller owns exactly one reel:
+   * VideoComponent keys it by reel id, so React itself resets reel-owned
+   * state and refs when a recycled row receives another reel.
+   */
+  const retireSourceGeneration = useCallback(
+    (resumeAt: number | null) => {
+      playbackLifecycleGenerationRef.current += 1;
+      diagnosticRequestRef.current += 1;
+      manualRetryFlightRef.current = null;
+      hasRestoredRef.current = false;
+      retryPositionRef.current = resumeAt;
+      clearPlaybackTimers();
+    },
+    [clearPlaybackTimers],
+  );
 
   useEffect(() => {
     // Optional device state can finish after a paused adjacent decoder loads.
     // Adopt its resume hint before playback starts, not by rewinding a reel
     // that has played or replacing a seek already owned by the learner.
     if (
-      reelIdentityRef.current !== data.id ||
       hasStartedRef.current ||
       pendingSeekRef.current !== null ||
       lastPositionRef.current > 0 ||
@@ -247,49 +280,6 @@ export const useVideoController = (
   ]);
 
   useEffect(() => {
-    hasRestoredRef.current = false;
-    retryPositionRef.current = null;
-    resetInterruption();
-    resetTimeline(reelInitialPositionRef.current, declaredDurationRef.current);
-    resetStatus();
-    if (longBufferTimerRef.current) {
-      clearTimeout(longBufferTimerRef.current);
-      longBufferTimerRef.current = null;
-    }
-    if (recoveryTimerRef.current) {
-      clearTimeout(recoveryTimerRef.current);
-      recoveryTimerRef.current = null;
-    }
-    resetSource(preferredQualityRef.current);
-    recoveryAttemptsRef.current = 0;
-    sameSourceRetryUsedRef.current = false;
-    deferredPreloadFailureRef.current = false;
-    diagnosticRequestRef.current += 1;
-    manualRetryFlightRef.current = null;
-    previousVisibleRef.current = false;
-    previousManifestIdentityRef.current = '';
-    resetTelemetry();
-    const stopReelOwner = stopOnRemovalRef.current;
-    return () => {
-      // FlatList normally keys rows by reel, but a recycled component can
-      // still receive another reel before unmount. Close the old playback
-      // owner here so its session and progress cannot remain live behind
-      // the replacement source.
-      if (previousVisibleRef.current) {
-        previousVisibleRef.current = false;
-        stopReelOwner();
-      }
-    };
-  }, [
-    data.id,
-    resetInterruption,
-    resetSource,
-    resetStatus,
-    resetTelemetry,
-    resetTimeline,
-  ]);
-
-  useEffect(() => {
     const manifestIdentity = `${data.playbackSessionId || 'local'}:${
       data.playbackManifestRevision || 0
     }`;
@@ -300,21 +290,9 @@ export const useVideoController = (
       // quality or delayed retry into it; doing so can leave a recovered
       // lesson permanently degraded even though the primary source is
       // healthy again. Preserve only the learner's playback position.
-      playbackLifecycleGenerationRef.current += 1;
-      retryPositionRef.current = lastPositionRef.current;
-      hasRestoredRef.current = false;
+      retireSourceGeneration(lastPositionRef.current);
       isPlayingRef.current = false;
       deferredPreloadFailureRef.current = false;
-      diagnosticRequestRef.current += 1;
-      manualRetryFlightRef.current = null;
-      if (longBufferTimerRef.current) {
-        clearTimeout(longBufferTimerRef.current);
-        longBufferTimerRef.current = null;
-      }
-      if (recoveryTimerRef.current) {
-        clearTimeout(recoveryTimerRef.current);
-        recoveryTimerRef.current = null;
-      }
       resetSource(preferredQualityRef.current);
       resetStatus();
     }
@@ -326,6 +304,7 @@ export const useVideoController = (
     lastPositionRef,
     resetSource,
     resetStatus,
+    retireSourceGeneration,
   ]);
 
   useEffect(() => {
@@ -335,24 +314,18 @@ export const useVideoController = (
     // Bunny manifest. Cancel recovery work owned by the previous variant;
     // otherwise its delayed remount can fire over the learner's new choice
     // and visibly reload the new source a second time.
-    playbackLifecycleGenerationRef.current += 1;
-    diagnosticRequestRef.current += 1;
-    manualRetryFlightRef.current = null;
-    retryPositionRef.current = lastPositionRef.current;
-    hasRestoredRef.current = false;
-    if (longBufferTimerRef.current) {
-      clearTimeout(longBufferTimerRef.current);
-      longBufferTimerRef.current = null;
-    }
-    if (recoveryTimerRef.current) {
-      clearTimeout(recoveryTimerRef.current);
-      recoveryTimerRef.current = null;
-    }
+    retireSourceGeneration(lastPositionRef.current);
     recoveryAttemptsRef.current = 0;
     sameSourceRetryUsedRef.current = false;
     resetSource(selectedQuality);
     resetStatus('جارٍ ضبط الجودة');
-  }, [lastPositionRef, resetSource, resetStatus, selectedQuality]);
+  }, [
+    lastPositionRef,
+    resetSource,
+    resetStatus,
+    retireSourceGeneration,
+    selectedQuality,
+  ]);
 
   acceptsLearningEventsRef.current = playbackEligible;
 
@@ -392,23 +365,11 @@ export const useVideoController = (
   useEffect(() => {
     if (!appIsActive) {
       clearTransientInterruption();
-      retryPositionRef.current = lastPositionRef.current;
-      hasRestoredRef.current = false;
-      playbackLifecycleGenerationRef.current += 1;
-      diagnosticRequestRef.current += 1;
-      manualRetryFlightRef.current = null;
+      retireSourceGeneration(lastPositionRef.current);
       activePlayerOwnerRef.current = '';
       setIsLoaded(false);
       setIsBuffering(false);
       setPreviewTime(null);
-      if (longBufferTimerRef.current) {
-        clearTimeout(longBufferTimerRef.current);
-        longBufferTimerRef.current = null;
-      }
-      if (recoveryTimerRef.current) {
-        clearTimeout(recoveryTimerRef.current);
-        recoveryTimerRef.current = null;
-      }
     } else if (!previousAppActiveRef.current) {
       // The native decoder is deliberately detached in the background on
       // low-memory Android devices. Its fresh instance restores this exact
@@ -423,6 +384,7 @@ export const useVideoController = (
     appIsActive,
     clearTransientInterruption,
     lastPositionRef,
+    retireSourceGeneration,
     setError,
     setFailureKind,
     setIsBuffering,
@@ -433,23 +395,84 @@ export const useVideoController = (
 
   useEffect(
     () => () => {
-      if (longBufferTimerRef.current) {
-        clearTimeout(longBufferTimerRef.current);
-      }
-      if (recoveryTimerRef.current) {
-        clearTimeout(recoveryTimerRef.current);
-      }
-      diagnosticRequestRef.current += 1;
-      playbackLifecycleGenerationRef.current += 1;
-      manualRetryFlightRef.current = null;
+      retireSourceGeneration(null);
       activePlayerOwnerRef.current = '';
+      // Removal, including another reel arriving in a recycled row (which
+      // remounts this keyed controller), closes the owner it left visible.
       if (previousVisibleRef.current) {
         previousVisibleRef.current = false;
         stopOnRemovalRef.current();
       }
     },
-    [],
+    [retireSourceGeneration],
   );
+
+  const [naturalSize, setNaturalSize] = useState<{
+    width: number;
+    height: number;
+    orientation?: string;
+  } | null>(null);
+  const [reportedTextTracks, setReportedTextTracks] = useState<
+    ReportedTextTrack[]
+  >([]);
+  const captionsEnabled = useCaptionsEnabled();
+  const textTracks = useMemo(
+    () => toSideloadedTextTracks(data.captionTracks),
+    [data.captionTracks],
+  );
+  const selectedTextTrack = useMemo(
+    () =>
+      selectCaptionTrack({
+        enabled: captionsEnabled,
+        reported: reportedTextTracks,
+        sideloaded: data.captionTracks,
+      }),
+    [captionsEnabled, data.captionTracks, reportedTextTracks],
+  );
+  const captionsAvailable = selectedTextTrack !== undefined;
+  // Keep one source object per real change: RNV re-resolves the native source
+  // whenever this prop's identity changes.
+  const playerSource = useMemo(
+    () =>
+      textTracks || nativePreloadOwner
+        ? {
+            ...source,
+            ...(textTracks ? {textTracks} : {}),
+            ...(nativePreloadOwner
+              ? {metadata: {title: data.title, description: nativePreloadOwner}}
+              : {}),
+          }
+        : source,
+    [data.title, nativePreloadOwner, source, textTracks],
+  );
+  const subtitleStyle = useMemo(() => captionStyle(bottomInset), [bottomInset]);
+  const toggleCaptions = useCallback(
+    () => setCaptionsEnabled(!captionsEnabled),
+    [captionsEnabled],
+  );
+  const presentation = useMemo(
+    () =>
+      resolveVideoPresentation({
+        width,
+        height,
+        naturalHeight: naturalSize?.height,
+        naturalOrientation: naturalSize?.orientation,
+        naturalWidth: naturalSize?.width,
+      }),
+    [height, naturalSize, width],
+  );
+  const contentTop = presentation.contentFrame?.top;
+  const contentBottom = presentation.contentFrame?.bottom;
+  useEffect(() => {
+    if (!onContentFrameChange) return;
+    onContentFrameChange(
+      contentTop === undefined || contentBottom === undefined
+        ? null
+        : {top: contentTop, bottom: contentBottom},
+    );
+  }, [contentBottom, contentTop, onContentFrameChange]);
+  useEffect(() => () => onContentFrameChange?.(null), [onContentFrameChange]);
+  const zoom = useVideoZoom({active: isVisible, height, width});
 
   const sourceFailed = unsupportedSource || error;
   const playerOwner = `${data.id}:${data.playbackSessionId || 'local'}:${
@@ -529,37 +552,98 @@ export const useVideoController = (
       unsupportedSource,
     });
 
-  const videoEventHandlers = createVideoEventHandlers({
-    acceptsLearningEvents: () =>
-      acceptsLearningEventsRef.current &&
-      activePlayerOwnerRef.current === playerOwner,
-    bufferCount: bufferCountRef,
-    bufferDurationMs: bufferDurationMsRef,
-    bufferingStartedAt: bufferingStartedAtRef,
+  // Rebuild native callbacks only when their inputs change, not on every
+  // playback-clock render.
+  const videoEventHandlers = useMemo(() => {
+    const handlers = createVideoEventHandlers({
+      acceptsLearningEvents: () =>
+        acceptsLearningEventsRef.current &&
+        activePlayerOwnerRef.current === playerOwner,
+      bufferCount: bufferCountRef,
+      bufferDurationMs: bufferDurationMsRef,
+      bufferingStartedAt: bufferingStartedAtRef,
+      data,
+      diagnosticRequest: diagnosticRequestRef,
+      durationRef,
+      emitPlaybackEvent,
+      hasRestored: hasRestoredRef,
+      hasStarted: hasStartedRef,
+      isFallbackSource,
+      isPlaying: isPlayingRef,
+      lastPosition: lastPositionRef,
+      loadStartedAt: loadStartedAtRef,
+      longBufferTimer: longBufferTimerRef,
+      onComplete: () => {
+        pauseAtEnd();
+        onComplete?.();
+      },
+      onPlaybackHealthy: markPlaybackHealthy,
+      onProgressChange: onProgress,
+      ownsPlayback: () => activePlayerOwnerRef.current === playerOwner,
+      pendingSeek: pendingSeekRef,
+      pendingSeekStartedAt: pendingSeekStartedAtRef,
+      publishRuntimeMetrics,
+      recoverOrFail,
+      reelInitialPosition: reelInitialPositionRef,
+      retryPosition: retryPositionRef,
+      setBufferedTime,
+      setCurrentTime,
+      setDuration,
+      setError,
+      setIsBuffering,
+      setIsLoaded,
+      setRecoveryMessage,
+      sourceType,
+      sourceUri: source.uri,
+      videoRef,
+    });
+    return {
+      ...handlers,
+      onLoad: (event: Parameters<NonNullable<typeof handlers.onLoad>>[0]) => {
+        const size = event.naturalSize;
+        if (size?.width > 0 && size?.height > 0) {
+          const orientation = size.orientation ?? undefined;
+          setNaturalSize(current =>
+            current?.width === size.width &&
+            current?.height === size.height &&
+            current?.orientation === orientation
+              ? current
+              : {width: size.width, height: size.height, orientation},
+          );
+        }
+        setReportedTextTracks(normalizeReportedTextTracks(event.textTracks));
+        handlers.onLoad?.(event);
+      },
+      onTextTracks: (event: {
+        textTracks?: ReadonlyArray<{
+          index: number;
+          title?: string;
+          language?: string;
+        }>;
+      }) =>
+        setReportedTextTracks(normalizeReportedTextTracks(event.textTracks)),
+    };
+  }, [
+    bufferCountRef,
+    bufferDurationMsRef,
+    bufferingStartedAtRef,
     data,
-    diagnosticRequest: diagnosticRequestRef,
     durationRef,
     emitPlaybackEvent,
-    hasRestored: hasRestoredRef,
-    hasStarted: hasStartedRef,
+    hasStartedRef,
     isFallbackSource,
-    isPlaying: isPlayingRef,
-    lastPosition: lastPositionRef,
-    loadStartedAt: loadStartedAtRef,
-    longBufferTimer: longBufferTimerRef,
-    onComplete: () => {
-      pauseAtEnd();
-      onComplete?.();
-    },
-    onPlaybackHealthy: markPlaybackHealthy,
-    onProgressChange: onProgress,
-    ownsPlayback: () => activePlayerOwnerRef.current === playerOwner,
-    pendingSeek: pendingSeekRef,
-    pendingSeekStartedAt: pendingSeekStartedAtRef,
+    isPlayingRef,
+    lastPositionRef,
+    loadStartedAtRef,
+    markPlaybackHealthy,
+    onComplete,
+    onProgress,
+    pauseAtEnd,
+    pendingSeekRef,
+    pendingSeekStartedAtRef,
+    playerOwner,
     publishRuntimeMetrics,
     recoverOrFail,
-    reelInitialPosition: reelInitialPositionRef,
-    retryPosition: retryPositionRef,
     setBufferedTime,
     setCurrentTime,
     setDuration,
@@ -567,13 +651,21 @@ export const useVideoController = (
     setIsBuffering,
     setIsLoaded,
     setRecoveryMessage,
+    source.uri,
     sourceType,
-    sourceUri: source.uri,
-    videoRef,
-  });
+  ]);
 
   return {
     appIsActive,
+    captionsAvailable,
+    captionsEnabled,
+    playerSource,
+    resizeMode: presentation.resizeMode,
+    selectedTextTrack,
+    subtitleStyle,
+    textTracks,
+    toggleCaptions,
+    zoom,
     nativePreloadOwner,
     bottomInset,
     currentTime,

@@ -6,6 +6,8 @@ export type RoknRequestConfig = AxiosRequestConfig & {
   skipPersistedSessionInvalidation?: boolean;
   skipAuthorization?: boolean;
   optionalAuthorization?: boolean;
+  /** `false` disables the shared client's automatic read retry (api.ts). */
+  retry?: boolean;
   roknNetworkRetryCount?: number;
   roknNetworkRetryDeadlineAt?: number;
   roknSessionToken?: string;

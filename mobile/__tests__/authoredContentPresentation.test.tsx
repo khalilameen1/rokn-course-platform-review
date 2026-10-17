@@ -140,7 +140,7 @@ describe('authored text is not localized as interface copy', () => {
       title: authoredTitle,
       summary: authoredCode + '\u0000',
       cover: 1,
-      skills: [],
+      tools: [],
       source: 'remote',
       media: [],
       shareReady: false,

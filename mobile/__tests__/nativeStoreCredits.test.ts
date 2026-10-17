@@ -1,5 +1,8 @@
 const mockScope = jest.fn();
+const mockCapture = jest.fn();
 jest.mock('../src/constants/helpers', () => ({
+  captureAccountSessionBoundary: (...args: unknown[]) => mockCapture(...args),
+  assertAccountSessionBoundary: jest.fn(),
   accountScopedStorageKey: (...args: unknown[]) => mockScope(...args),
 }));
 jest.mock('expo-iap', () => {
@@ -14,21 +17,27 @@ describe('native store credit delivery', () => {
     coinsAdded: 600,
     orderRef: 'paid-receipt',
   };
+  const boundary = {scope: 'scope-a', epoch: 1};
 
   beforeEach(() => {
     jest.resetModules();
+    mockCapture.mockReset().mockResolvedValue(boundary);
     mockScope.mockReset().mockResolvedValue('owner-a');
   });
 
-  it('isolates a failing screen observer and delivers a receipt only once', async () => {
-    const {emitNativeStoreCreditOnce, subscribeNativeStoreCredits} =
-      require('../src/services/nativeStoreCredits');
+  const load = () => ({
+    ...(require('../src/services/nativeStoreCredits') as typeof import('../src/services/nativeStoreCredits')),
+    ...(require('../src/services/walletSettlement') as typeof import('../src/services/walletSettlement')),
+  });
+
+  it('announces a verified receipt once on the wallet settlement channel and isolates a failing observer', async () => {
+    const {emitNativeStoreCreditOnce, subscribeWalletSettlements} = load();
     const broken = jest.fn(() => {
       throw new Error('Screen no longer mounted');
     });
     const healthy = jest.fn();
-    subscribeNativeStoreCredits(broken);
-    subscribeNativeStoreCredits(healthy);
+    subscribeWalletSettlements(broken);
+    subscribeWalletSettlements(healthy);
 
     await expect(
       emitNativeStoreCreditOnce('receipt-1', credited, 'owner-a'),
@@ -36,15 +45,18 @@ describe('native store credit delivery', () => {
     await emitNativeStoreCreditOnce('receipt-1', credited, 'owner-a');
     expect(broken).toHaveBeenCalledTimes(1);
     expect(healthy).toHaveBeenCalledTimes(1);
-    expect(healthy).toHaveBeenCalledWith(credited);
+    expect(healthy).toHaveBeenCalledWith(boundary);
+    expect(mockScope).toHaveBeenCalledWith(
+      '@rokn/native-store-reconciliation/v1',
+      boundary,
+    );
   });
 
   it('allows recovery to retry delivery after a local account lookup failure', async () => {
-    const {emitNativeStoreCreditOnce, subscribeNativeStoreCredits} =
-      require('../src/services/nativeStoreCredits');
+    const {emitNativeStoreCreditOnce, subscribeWalletSettlements} = load();
     const listener = jest.fn();
-    subscribeNativeStoreCredits(listener);
-    mockScope.mockRejectedValueOnce(new Error('Storage unavailable'));
+    subscribeWalletSettlements(listener);
+    mockCapture.mockRejectedValueOnce(new Error('Storage unavailable'));
     await expect(
       emitNativeStoreCreditOnce('retry-receipt', credited, 'owner-a'),
     ).resolves.toBeUndefined();
@@ -54,15 +66,19 @@ describe('native store credit delivery', () => {
   });
 
   it('checks the current account after the asynchronous lookup without consuming a foreign notification', async () => {
-    const {emitNativeStoreCreditOnce, subscribeNativeStoreCredits} =
-      require('../src/services/nativeStoreCredits');
+    const {emitNativeStoreCreditOnce, subscribeWalletSettlements} = load();
     let finishScope!: (scope: string) => void;
     mockScope.mockImplementationOnce(
       () => new Promise<string>(resolve => (finishScope = resolve)),
     );
     const listener = jest.fn();
-    subscribeNativeStoreCredits(listener);
-    const emission = emitNativeStoreCreditOnce('switched-receipt', credited, 'owner-a');
+    subscribeWalletSettlements(listener);
+    const emission = emitNativeStoreCreditOnce(
+      'switched-receipt',
+      credited,
+      'owner-a',
+    );
+    await Promise.resolve();
     finishScope('owner-b');
     await emission;
     expect(listener).not.toHaveBeenCalled();
@@ -71,10 +87,9 @@ describe('native store credit delivery', () => {
   });
 
   it('coalesces concurrent delivery and respects unsubscription', async () => {
-    const {emitNativeStoreCreditOnce, subscribeNativeStoreCredits} =
-      require('../src/services/nativeStoreCredits');
+    const {emitNativeStoreCreditOnce, subscribeWalletSettlements} = load();
     const listener = jest.fn();
-    const unsubscribe = subscribeNativeStoreCredits(listener);
+    const unsubscribe = subscribeWalletSettlements(listener);
     await Promise.all([
       emitNativeStoreCreditOnce('concurrent-receipt', credited, 'owner-a'),
       emitNativeStoreCreditOnce('concurrent-receipt', credited, 'owner-a'),
@@ -86,12 +101,13 @@ describe('native store credit delivery', () => {
   });
 
   it('never emits pending or rejected outcomes and keeps deduplication memory bounded', async () => {
-    const {emitNativeStoreCreditOnce, subscribeNativeStoreCredits} =
-      require('../src/services/nativeStoreCredits');
+    const {emitNativeStoreCreditOnce, subscribeWalletSettlements} = load();
     const listener = jest.fn();
-    subscribeNativeStoreCredits(listener);
+    subscribeWalletSettlements(listener);
     await emitNativeStoreCreditOnce(
-      'pending', {...credited, success: false, pending: true}, 'owner-a',
+      'pending',
+      {...credited, success: false, pending: true},
+      'owner-a',
     );
     expect(mockScope).not.toHaveBeenCalled();
     for (let index = 0; index < 129; index += 1) {

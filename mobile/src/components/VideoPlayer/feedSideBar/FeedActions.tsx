@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import Svg, {Path} from 'react-native-svg';
 import {formatArabicNumber} from '../../../constants/arabicFormatting';
-import {Accessibility, Palette} from '../../../constants/designSystem';
+import {Accessibility, Palette, Type} from '../../../constants/designSystem';
 import {Fonts} from '../../../constants/styleConstants';
 
 const ChatIcon = () => (
@@ -101,6 +101,12 @@ const FeedActionButton = ({
 type FeedActionsProps = {
   bottomInset: number;
   compact: boolean;
+  /**
+   * Bottom edge of a letterboxed picture inside the frame. When the rail would
+   * cover the picture it tightens into its compact spacing so it sits in the
+   * letterbox area below the picture whenever that area is tall enough.
+   */
+  contentBottom?: number;
   currentReelNumber: number;
   isSaved: boolean;
   savePending: boolean;
@@ -114,7 +120,8 @@ type FeedActionsProps = {
 
 const FeedActions = ({
   bottomInset,
-  compact,
+  compact: compactLayout,
+  contentBottom,
   currentReelNumber,
   isSaved,
   savePending,
@@ -124,43 +131,60 @@ const FeedActions = ({
   onOpenChat,
   onOpenIndex,
   onOpenSave,
-}: FeedActionsProps) => (
-  <View
-    style={[
-      styles.container,
-      compact && styles.containerCompact,
-      {bottom: (compact ? 42 : 56) + bottomInset},
-    ]}>
-    <FeedActionButton label="اسأل" compact={compact} onPress={onOpenChat}>
-      <ChatIcon />
-    </FeedActionButton>
-    <FeedActionButton
-      label={savePending ? 'جارٍ الحفظ' : isSaved ? 'محفوظ' : 'احفظ'}
-      active={isSaved}
-      compact={compact}
-      disabled={savePending}
-      onPress={onOpenSave}>
-      {savePending ? (
-        <ActivityIndicator color="#FFFFFF" size="small" />
-      ) : (
-        <BookmarkIcon filled={isSaved} />
-      )}
-    </FeedActionButton>
-    {showAttachments && (
-      <FeedActionButton
-        label="ملفات"
-        compact={compact}
-        onPress={onOpenAttachments}>
-        <AttachmentIcon />
+}: FeedActionsProps) => {
+  // Latched per picture band so the switch cannot oscillate with its layout.
+  const [avoidedBand, setAvoidedBand] = useState<number | null>(null);
+  const compact =
+    compactLayout ||
+    (contentBottom !== undefined && avoidedBand === contentBottom);
+  return (
+    <View
+      onLayout={event => {
+        if (
+          contentBottom !== undefined &&
+          !compact &&
+          event.nativeEvent.layout.y < contentBottom
+        ) {
+          setAvoidedBand(contentBottom);
+        }
+      }}
+      style={[
+        styles.container,
+        compact && styles.containerCompact,
+        {bottom: (compact ? 42 : 56) + bottomInset},
+      ]}>
+      <FeedActionButton label="اسأل" compact={compact} onPress={onOpenChat}>
+        <ChatIcon />
       </FeedActionButton>
-    )}
-    <FeedActionButton label="الفهرس" compact={compact} onPress={onOpenIndex}>
-      <Text style={styles.counter} maxFontSizeMultiplier={1.1}>
-        {formatArabicNumber(currentReelNumber)}/{formatArabicNumber(totalReels)}
-      </Text>
-    </FeedActionButton>
-  </View>
-);
+      <FeedActionButton
+        label={savePending ? 'جارٍ الحفظ' : isSaved ? 'محفوظ' : 'احفظ'}
+        active={isSaved}
+        compact={compact}
+        disabled={savePending}
+        onPress={onOpenSave}>
+        {savePending ? (
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        ) : (
+          <BookmarkIcon filled={isSaved} />
+        )}
+      </FeedActionButton>
+      {showAttachments && (
+        <FeedActionButton
+          label="ملفات"
+          compact={compact}
+          onPress={onOpenAttachments}>
+          <AttachmentIcon />
+        </FeedActionButton>
+      )}
+      <FeedActionButton label="الفهرس" compact={compact} onPress={onOpenIndex}>
+        <Text style={styles.counter} maxFontSizeMultiplier={1.1}>
+          {formatArabicNumber(currentReelNumber)}/
+          {formatArabicNumber(totalReels)}
+        </Text>
+      </FeedActionButton>
+    </View>
+  );
+};
 
 export default FeedActions;
 
@@ -196,18 +220,18 @@ const styles = StyleSheet.create({
   actionIconActive: {
     backgroundColor: 'rgba(20,47,89,.96)',
   },
+  // Plain shadowed labels under the buttons, as TikTok/Reels/Shorts rails do:
+  // no second dark plate wider than the button, still legible on any frame.
   actionLabel: {
     color: '#FFFFFF',
-    fontFamily: Fonts.medium,
-    fontSize: 11,
-    marginTop: 4,
-    textShadowColor: 'rgba(0,0,0,.9)',
-    textShadowRadius: 5,
+    fontFamily: Fonts.semiBold,
+    fontSize: Type.caption.fontSize,
+    marginTop: 3,
+    textShadowColor: 'rgba(0,0,0,.85)',
+    textShadowOffset: {width: 0, height: 1},
+    textShadowRadius: 4,
     width: '100%',
     textAlign: 'center',
-    backgroundColor: 'rgba(7,11,18,.86)',
-    borderRadius: 8,
-    paddingVertical: 3,
   },
   counter: {
     color: '#FFFFFF',

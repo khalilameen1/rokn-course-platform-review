@@ -121,13 +121,32 @@ describe('authoritative course checkout contract', () => {
       rewardCoins: 80,
       selectedPackage: {id: '5', coins: 300, price: 3.33},
     });
+    // A provider minimum charge funds more than the shortfall; the surplus
+    // stays in the wallet. Fewer coins than the shortfall is still invalid.
+    expect(
+      mapCourseCheckout({
+        ...data,
+        channel: 'direct',
+        funding_mode: 'exact_shortfall',
+        recommended_packages: [funding],
+        selected_package: {
+          ...funding,
+          coins: 450,
+          shortfall_coins: 300,
+          direct_price: 5,
+        },
+      }),
+    ).toMatchObject({
+      deficit: 300,
+      selectedPackage: {id: '5', coins: 450, price: 5},
+    });
     expect(() =>
       mapCourseCheckout({
         ...data,
         channel: 'direct',
         funding_mode: 'exact_shortfall',
         recommended_packages: [funding],
-        selected_package: {...funding, coins: 900},
+        selected_package: {...funding, coins: 299},
       }),
     ).toThrow('API_CONTRACT_INVALID_SELECTED_PACKAGE');
     expect(() =>

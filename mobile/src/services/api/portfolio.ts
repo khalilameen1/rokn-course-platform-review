@@ -12,6 +12,7 @@ import {uploadPortfolioVideo} from '../portfolioVideoUpload';
 import type {PortfolioTransferObserver} from '../portfolioUploadProgress';
 import {assertPortfolioTransferActive} from '../portfolioTransferControl';
 import {settleWithin} from '../../utils/settleWithin';
+import {withUploadStallTimeout} from '../uploadStallTimeout';
 import {
   isApiRecord,
   isResourceListPayload,
@@ -26,8 +27,13 @@ import {
   mapPortfolioMedia,
   mapPortfolioMutation,
   mapPortfolioProfile,
+  normalizePortfolioChips,
+  PORTFOLIO_LINKS_MAX,
+  PORTFOLIO_SKILLS_MAX,
+  PORTFOLIO_TOOLS_MAX,
   type PortfolioItem,
   type PortfolioItemDto,
+  type PortfolioLink,
   type PortfolioMedia,
   type PortfolioProfile,
   type PortfolioUpload,
@@ -36,6 +42,7 @@ import {
 export type {
   EligibleProject,
   PortfolioItem,
+  PortfolioLink,
   PortfolioMedia,
   PortfolioProfile,
   PortfolioUpload,
@@ -134,23 +141,39 @@ export const getPortfolioProfile = async (
   return mapPortfolioProfile(data);
 };
 
-export const updatePortfolioProfile = async ({
-  slug,
-  headline,
-}: {
-  slug: string;
-  headline: string;
-}): Promise<PortfolioProfile> => {
-  const boundary = await captureAccountSessionBoundary();
+/** Only fields present in the patch are sent (PortfolioProfileController). */
+export type PortfolioProfilePatch = {
+  headline?: string;
+  location?: string;
+  skills?: string[];
+  links?: PortfolioLink[];
+};
+
+export const updatePortfolioProfile = async (
+  patch: PortfolioProfilePatch,
+  ownerBoundary?: AccountSessionBoundary,
+): Promise<PortfolioProfile> => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   assertAccountSessionBoundary(boundary);
+  const body: Record<string, unknown> = {};
+  if (patch.headline !== undefined) body.portfolio_headline = patch.headline;
+  if (patch.location !== undefined) body.portfolio_location = patch.location;
+  if (patch.skills !== undefined) {
+    body.portfolio_skills = normalizePortfolioChips(
+      patch.skills,
+      PORTFOLIO_SKILLS_MAX,
+    );
+  }
+  if (patch.links !== undefined) {
+    body.portfolio_links = patch.links.slice(0, PORTFOLIO_LINKS_MAX).map(
+      link => ({label: link.label.trim(), url: link.url.trim()}),
+    );
+  }
   const data = payload<unknown>(
-    await publicRequest.put('portfolio-profile', {
-      portfolio_slug: slug,
-      portfolio_headline: headline,
-    }),
+    await publicRequest.put('portfolio-profile', body),
   );
   assertAccountSessionBoundary(boundary);
-  return mapPortfolioProfile(data, {headline, slug});
+  return mapPortfolioProfile(data, {headline: patch.headline});
 };
 
 export const getPortfolio = async (
@@ -269,18 +292,52 @@ export const finalizePortfolioItem = async (
   return mapPortfolioMutation(data, id);
 };
 
+/**
+ * Partial project update (POST portfolio/{id}). Only present keys are sent,
+ * so a hide/show or reorder never rewrites the text fields.
+ */
+export type PortfolioItemPatch = {
+  title?: string;
+  summary?: string;
+  role?: string;
+  tools?: string[];
+  externalUrl?: string;
+  /** false hides the project from the public link without deleting it. */
+  visible?: boolean;
+  /** An image media id of this project; null returns to the first image. */
+  coverMediaId?: string | null;
+  featured?: boolean;
+  sortOrder?: number;
+};
+
+export const portfolioItemPatchBody = (input: PortfolioItemPatch) => {
+  const body: Record<string, unknown> = {};
+  if (input.title !== undefined) body.title = input.title;
+  if (input.summary !== undefined) body.description = input.summary;
+  if (input.role !== undefined) body.role = input.role;
+  if (input.tools !== undefined)
+    body.tools = normalizePortfolioChips(input.tools, PORTFOLIO_TOOLS_MAX);
+  if (input.externalUrl !== undefined)
+    body.external_url = input.externalUrl.trim() || null;
+  if (input.visible !== undefined) body.is_public = input.visible;
+  if (input.coverMediaId !== undefined)
+    body.cover_media_id =
+      input.coverMediaId === null ? null : Number(input.coverMediaId);
+  if (input.featured !== undefined) body.is_featured = input.featured;
+  if (input.sortOrder !== undefined)
+    body.sort_order = Math.max(0, Math.min(10000, Math.round(input.sortOrder)));
+  return body;
+};
+
 export const updatePortfolioItem = async (
   id: string,
-  input: {title: string; summary: string},
+  input: PortfolioItemPatch,
   ownerBoundary?: AccountSessionBoundary,
 ): Promise<PortfolioItem> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   assertAccountSessionBoundary(boundary);
   const data = payload(
-    await publicRequest.post(`portfolio/${id}`, {
-      title: input.title,
-      description: input.summary,
-    }),
+    await publicRequest.post(`portfolio/${id}`, portfolioItemPatchBody(input)),
   );
   assertAccountSessionBoundary(boundary);
   invalidatePortfolioCache(boundary);
@@ -337,37 +394,43 @@ export const appendPortfolioMedia = async (
   }
   let response;
   try {
-    response = await publicRequest.post(`portfolio/${id}/media`, form, {
-      timeout: 60_000,
-      signal,
-      headers: {'Idempotency-Key': clientRequestId},
-      onUploadProgress: event => {
-        if (
-          signal?.aborted ||
-          !active ||
-          !onProgress ||
-          !Number.isFinite(event.loaded) ||
-          event.loaded < 0
-        )
-          return;
-        const total =
-          typeof event.total === 'number' &&
-          Number.isFinite(event.total) &&
-          event.total > 0
-            ? event.total
-            : null;
-        try {
-          assertAccountSessionBoundary(boundary);
-          onProgress({
-            loaded: event.loaded,
-            total,
-            phase: total && event.loaded >= total ? 'saving' : 'uploading',
-          });
-        } catch {
-          /* Progress is presentation, not a mutation result. */
-        }
+    // A stall timeout, not a 60 s total: a moving slow upload must finish.
+    response = await withUploadStallTimeout(
+      transport =>
+        publicRequest.post(`portfolio/${id}/media`, form, {
+          ...transport,
+          headers: {'Idempotency-Key': clientRequestId},
+        }),
+      {
+        signal,
+        onUploadProgress: event => {
+          if (
+            signal?.aborted ||
+            !active ||
+            !onProgress ||
+            !Number.isFinite(event.loaded) ||
+            event.loaded < 0
+          )
+            return;
+          const total =
+            typeof event.total === 'number' &&
+            Number.isFinite(event.total) &&
+            event.total > 0
+              ? event.total
+              : null;
+          try {
+            assertAccountSessionBoundary(boundary);
+            onProgress({
+              loaded: event.loaded,
+              total,
+              phase: total && event.loaded >= total ? 'saving' : 'uploading',
+            });
+          } catch {
+            /* Progress is presentation, not a mutation result. */
+          }
+        },
       },
-    });
+    );
   } finally {
     active = false;
   }

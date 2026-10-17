@@ -10,6 +10,7 @@ import {
   type AccountSessionBoundary,
 } from '../../../constants/helpers';
 import {openExternalUrlOnce} from '../../../services/systemActions';
+import {withUploadStallTimeout} from '../../../services/uploadStallTimeout';
 import {cleanUnicodeText} from '../../../utils/unicodeText';
 import {includesCourseAssistant} from '../courseEntitlements';
 import type {ChatMessage, CourseLearningData, CourseReel} from '../types';
@@ -551,10 +552,12 @@ export const uploadCourseAssistantAttachment = async ({
     name: file.name,
     type: file.type || 'application/octet-stream',
   } as unknown as Blob);
-  const response = await publicRequest.post(
-    `courses/${serverCourseId}/chat/attachments`,
-    body,
-    {headers: {'Content-Type': 'multipart/form-data'}, timeout: 45000},
+  // Abort a stalled attachment, never a slow one that is still moving.
+  const response = await withUploadStallTimeout(transport =>
+    publicRequest.post(`courses/${serverCourseId}/chat/attachments`, body, {
+      ...transport,
+      headers: {'Content-Type': 'multipart/form-data'},
+    }),
   );
   const id = valueAsString(response?.data?.data?.id);
   if (!id) throw new Error('attachment_upload_failed');

@@ -171,9 +171,8 @@ describe('first-launch experience', () => {
 
   it('keeps a pending payment recoverable while the app stays foregrounded', () => {
     const runtime = readSource('src/screens/appInitializer/useAppRuntime.ts');
-    const walletCheckout = readSource(
-      'src/screens/wallet/useWalletCheckout.ts',
-    );
+    const walletData = readSource('src/screens/wallet/useWalletData.ts');
+    const coordinator = readSource('src/services/coinCheckoutCoordinator.ts');
 
     expect(runtime).toContain(
       'const delays = [4_000, 10_000, 20_000, 40_000, 60_000]',
@@ -181,10 +180,10 @@ describe('first-launch experience', () => {
     expect(runtime).toContain('storeAttempt >= delays.length');
     expect(runtime).toContain("AppState.currentState !== 'active'");
     expect(runtime).toContain('clearStoreTimer();');
-    expect(walletCheckout).toContain(
-      'subscribeCoinCheckoutCredits((_result, ownerScope) =>',
-    );
-    expect(walletCheckout).toContain('void handleRecoveredCredit(ownerScope)');
+    // Recovered credit reaches the wallet through the one settlement channel.
+    expect(coordinator).toContain('notifyWalletSettlement(boundary);');
+    expect(walletData).toContain('subscribeWalletSettlements(boundary => {');
+    expect(walletData).toContain('if (ownsBoundary(boundary)) void refreshAfterCurrent();');
   });
 
   it('adopts an Android OAuth callback even when the Custom Tab returns first', () => {

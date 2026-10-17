@@ -25,6 +25,7 @@ import {
   CourseHero,
   CourseIntro,
   CourseRatingAction,
+  type LockedOutlineItem,
 } from './details/sections';
 import styles from './details/styles';
 import {useCourseDetailsData} from './details/useCourseDetailsData';
@@ -169,6 +170,25 @@ export default function CourseDetails() {
     });
   }, [runPrimaryAction, startCourse, startPreview]);
 
+  // Reuse the route intent that Reels and login use to open the subscription
+  // sheet; it already handles guests, plan restore and unavailable checkout.
+  const accessPlans = course.value?.accessPlans;
+  const openPaywallForLockedItem = useCallback(
+    (item: LockedOutlineItem) => {
+      const unlockingPlan =
+        item === 'project'
+          ? [...(accessPlans ?? [])]
+              .filter(plan => plan.projectsEnabled !== false)
+              .sort((a, b) => a.priceCoins - b.priceCoins)[0]
+          : undefined;
+      navigation.setParams({
+        openPurchase: true,
+        purchasePlanCode: unlockingPlan?.code,
+      });
+    },
+    [accessPlans, navigation],
+  );
+
   const handleFullTrackUpgradePrompt = useCallback(() => {
     navigation.setParams({openFullTrackUpgrade: false});
   }, [navigation]);
@@ -253,6 +273,7 @@ export default function CourseDetails() {
           <CourseBody
             activeTab={activeTab}
             onFullTrackUpgradeHandled={handleFullTrackUpgradePrompt}
+            onLockedSelect={openPaywallForLockedItem}
             onOpenCertificates={openCertificates}
             onPreviewSelect={startPreview}
             onRetry={reloadCourse}

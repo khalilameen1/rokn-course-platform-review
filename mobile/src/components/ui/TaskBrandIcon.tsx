@@ -41,7 +41,7 @@ export default function TaskBrandIcon({
   plain?: boolean;
 }) {
   const kind = detectKind(value);
-  const stroke = plain ? Palette.text : '#E9C66F';
+  const stroke = plain ? Palette.text : Palette.coinText;
   return (
     <View
       accessibilityElementsHidden

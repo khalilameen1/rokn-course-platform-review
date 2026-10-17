@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     ...Type.caption,
     ...textDirection,
-    color: Palette.primary,
+    color: Palette.primaryText,
     marginBottom: Spacing.xxs,
   },
   headingTitle: {
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.primarySoft,
     marginTop: Spacing.md,
   },
-  statusActionLabel: {...Type.bodyStrong, color: '#8BB5FF'},
+  statusActionLabel: {...Type.bodyStrong, color: Palette.primaryTintText},
   pill: {
     alignSelf: rtlStartAlignment,
     paddingHorizontal: Spacing.sm,
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   pillLabel: {...Type.caption, ...textDirection, color: Palette.textMuted},
   artworkPill: {backgroundColor: 'rgba(7,10,16,0.88)'},
   artworkPillLabel: {color: Palette.text},
-  primaryPillLabel: {color: '#8BB5FF'},
+  primaryPillLabel: {color: Palette.primaryTintText},
   coinPillLabel: {color: '#F1CB76'},
   successPillLabel: {color: '#79D6AE'},
   divider: {

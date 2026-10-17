@@ -11,6 +11,7 @@ import {
   removeLearnerDraftFile,
 } from '../../../services/learnerDraftFiles';
 import {showMediaPickerFailure} from '../../../services/mediaPickerErrors';
+import {loadProjectSubmissionDraft} from '../../../services/projectSubmissionDraft';
 import {
   createPortfolioItem,
   assertPortfolioUploadAccess,
@@ -31,6 +32,7 @@ import {secureRandomUuid} from '../../../utils/secureRandom';
 import {settleWithin} from '../../../utils/settleWithin';
 import {
   isPortfolioAccountChangedError,
+  PORTFOLIO_PICKER_IMAGE_OPTIONS,
   toPortfolioProject,
   type Project,
 } from './portfolioModel';
@@ -66,6 +68,9 @@ type Options = {
   ) => Promise<unknown>;
   serverSession: boolean | null;
   setLibraryProjects: React.Dispatch<React.SetStateAction<Project[]>>;
+  /** One-shot "add this passed project" request from the project screen. */
+  addFromProjectId?: string;
+  onAddFromProjectHandled?: () => void;
 };
 
 const portfolioMediaRequestId = (projectRequestId: string, index: number) => {
@@ -87,6 +92,49 @@ const discardPickerFiles = (files: PortfolioDraftAsset[]) => {
   void Promise.all(files.map(removeLearnerDraftFile)).catch(() => undefined);
 };
 
+const PORTFOLIO_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const PORTFOLIO_DRAFT_FILE_MAX_BYTES = 50 * 1024 * 1024;
+
+/**
+ * Submitted project images still kept on this device (an unsent or restored
+ * submission draft). Accepted submissions retire their files, so this is
+ * usually empty and the picker opens instead.
+ */
+const submittedProjectImages = async (
+  projectId: string,
+  boundary: AccountSessionBoundary,
+): Promise<PortfolioDraftAsset[]> => {
+  const draft = await loadProjectSubmissionDraft(projectId, boundary).catch(
+    () => null,
+  );
+  assertAccountSessionBoundary(boundary);
+  const images = (draft?.files || [])
+    .filter(file =>
+      PORTFOLIO_IMAGE_TYPES.includes(String(file.type || '').toLowerCase()),
+    )
+    .slice(0, MAX_PORTFOLIO_MEDIA_COUNT);
+  const copies: PortfolioDraftAsset[] = [];
+  for (const file of images) {
+    try {
+      copies.push(
+        await cacheLearnerDraftFile(
+          'portfolio',
+          {uri: file.uri, type: file.type, fileName: file.name, size: file.size},
+          PORTFOLIO_DRAFT_FILE_MAX_BYTES,
+          boundary,
+        ),
+      );
+    } catch (error) {
+      if (isPortfolioAccountChangedError(error)) {
+        discardPickerFiles(copies);
+        throw error;
+      }
+      // A file the OS already removed is simply not offered.
+    }
+  }
+  return copies;
+};
+
 /** Owns eligible source selection, the durable draft and create/upload. */
 export const usePortfolioCreateFlow = ({
   onSubscriptions,
@@ -101,6 +149,8 @@ export const usePortfolioCreateFlow = ({
   reconcileProject,
   serverSession,
   setLibraryProjects,
+  addFromProjectId,
+  onAddFromProjectHandled,
 }: Options) => {
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -120,6 +170,13 @@ export const usePortfolioCreateFlow = ({
   const eligibleGenerationRef = useRef(0);
   const pickerFlightRef = useRef(false);
   const pickerGenerationRef = useRef(0);
+  // "Add to portfolio" after a passed project: preselect that project, then
+  // its files or the photo picker once the sheet is on screen.
+  const [pendingSourceProjectId, setPendingSourceProjectId] = useState<
+    string | null
+  >(null);
+  const [autoPickMedia, setAutoPickMedia] = useState(false);
+  const [addSheetShown, setAddSheetShown] = useState(false);
   const {
     changeDraft,
     clearDraft,
@@ -220,8 +277,43 @@ export const usePortfolioCreateFlow = ({
     eligibleGenerationRef.current += 1;
     pickerGenerationRef.current += 1;
     setEligibleLoading(false);
+    setPendingSourceProjectId(null);
+    setAutoPickMedia(false);
+    setAddSheetShown(false);
     setAdding(false);
   }, [busyRef, pauseUpload]);
+
+  const openAddProjectFrom = useCallback(
+    (sourceProjectId: string) => {
+      if (serverSession !== true || busyRef.current || isDetailBusy()) return;
+      setPendingSourceProjectId(sourceProjectId);
+      openAddProject();
+    },
+    [busyRef, isDetailBusy, openAddProject, serverSession],
+  );
+
+  const markAddSheetShown = useCallback(() => setAddSheetShown(true), []);
+
+  const handledAddFromRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!addFromProjectId) {
+      handledAddFromRef.current = null;
+      return;
+    }
+    if (
+      serverSession !== true ||
+      handledAddFromRef.current === addFromProjectId
+    )
+      return;
+    handledAddFromRef.current = addFromProjectId;
+    openAddProjectFrom(addFromProjectId);
+    onAddFromProjectHandled?.();
+  }, [
+    addFromProjectId,
+    onAddFromProjectHandled,
+    openAddProjectFrom,
+    serverSession,
+  ]);
 
   const pickDraftMedia = useCallback(async () => {
     if (
@@ -246,7 +338,7 @@ export const usePortfolioCreateFlow = ({
       const result = await launchImageLibrary({
         mediaType: 'mixed' as MediaType,
         selectionLimit: MAX_PORTFOLIO_MEDIA_COUNT - draftMediaAssets.length,
-        quality: 0.8,
+        ...PORTFOLIO_PICKER_IMAGE_OPTIONS,
       });
       assertAccountSessionBoundary(boundary);
       if (!mountedRef.current || pickerGenerationRef.current !== generation)
@@ -393,10 +485,17 @@ export const usePortfolioCreateFlow = ({
         return;
       const previous = draftCoverAsset;
       const previousMedia = draftMediaAssets;
+      const previousBrief = selectedSourceProject?.summary;
       changeDraft(() => {
         setSelectedSourceProject(project);
         setDraftTitle(project.title);
-        setDraftSummary(project.summary);
+        // The teacher's brief is not the learner's story. Keep what they
+        // wrote; only drop a brief that older builds copied in.
+        setDraftSummary(current =>
+          current.trim() && current !== previousBrief && current !== project.summary
+            ? current
+            : '',
+        );
         setDraftCover(project.courseImage ? {uri: project.courseImage} : null);
         setDraftCoverAsset(undefined);
         setDraftMediaAssets([]);
@@ -414,6 +513,7 @@ export const usePortfolioCreateFlow = ({
       draftReady,
       isDetailBusy,
       saving,
+      selectedSourceProject?.summary,
       setDraftCover,
       setDraftCoverAsset,
       setDraftMediaAssets,
@@ -422,6 +522,78 @@ export const usePortfolioCreateFlow = ({
       setSelectedSourceProject,
     ],
   );
+
+  useEffect(() => {
+    if (
+      !pendingSourceProjectId ||
+      !adding ||
+      eligibleLoading ||
+      !draftReady ||
+      saving ||
+      pickerFlightRef.current
+    )
+      return;
+    const sourceProjectId = pendingSourceProjectId;
+    setPendingSourceProjectId(null);
+    const project = eligibleProjects.find(
+      candidate => candidate.projectId === sourceProjectId,
+    );
+    if (!project) return;
+    chooseSourceProject(project);
+    const generation = ++pickerGenerationRef.current;
+    pickerFlightRef.current = true;
+    setPickingMedia(true);
+    void captureBoundary()
+      .then(boundary => submittedProjectImages(sourceProjectId, boundary))
+      .then(files => {
+        if (!mountedRef.current || pickerGenerationRef.current !== generation) {
+          discardPickerFiles(files);
+          return;
+        }
+        if (!files.length) {
+          setAutoPickMedia(true);
+          return;
+        }
+        const cover = files[0];
+        changeDraft(() => {
+          setDraftMediaAssets(files);
+          setDraftCover(cover ? {uri: cover.uri} : null);
+          setDraftCoverAsset(cover);
+        });
+      })
+      .catch(() => {
+        if (mountedRef.current && pickerGenerationRef.current === generation)
+          setAutoPickMedia(true);
+      })
+      .finally(() => {
+        if (pickerGenerationRef.current === generation)
+          pickerFlightRef.current = false;
+        if (mountedRef.current) setPickingMedia(false);
+      });
+  }, [
+    adding,
+    captureBoundary,
+    changeDraft,
+    chooseSourceProject,
+    draftReady,
+    eligibleLoading,
+    eligibleProjects,
+    mountedRef,
+    pendingSourceProjectId,
+    saving,
+    setDraftCover,
+    setDraftCoverAsset,
+    setDraftMediaAssets,
+  ]);
+
+  useEffect(() => {
+    // iOS cannot present the photo picker over a sheet that is still
+    // animating in, so wait for the Modal's onShow.
+    if (!autoPickMedia || !addSheetShown || !adding || pickerFlightRef.current)
+      return;
+    setAutoPickMedia(false);
+    void pickDraftMedia();
+  }, [addSheetShown, adding, autoPickMedia, pickDraftMedia, pickingMedia]);
 
   const clearSelectedSourceProject = useCallback(() => {
     if (
@@ -636,6 +808,8 @@ export const usePortfolioCreateFlow = ({
     addProject,
     adding,
     chooseSourceProject,
+    markAddSheetShown,
+    openAddProjectFrom,
     clearSelectedSourceProject,
     closeAddProject,
     draftCover,

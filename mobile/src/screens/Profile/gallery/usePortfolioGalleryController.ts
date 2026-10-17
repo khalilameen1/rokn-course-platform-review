@@ -5,28 +5,24 @@ import {
   isShareablePortfolioItem,
   portfolioNeedsPublicationRecovery,
 } from '../portfolioState';
+import type {GalleryProps} from './galleryProps';
 import type {Project} from './portfolioModel';
 import {usePortfolioCreateFlow} from './usePortfolioCreateFlow';
 import {usePortfolioLibrary} from './usePortfolioLibrary';
 import {usePortfolioMediaReplay} from './usePortfolioMediaReplay';
 import {usePortfolioOwnerBoundary} from './usePortfolioOwnerBoundary';
 import {usePortfolioProjectDetails} from './usePortfolioProjectDetails';
+import {usePortfolioProfileEditor} from './usePortfolioProfileEditor';
+import {usePortfolioProjectShare} from './usePortfolioProjectShare';
 
-export type GalleryProps = {
-  onSubscriptions?: (hasSubscription: boolean) => void;
-  onSharePortfolio?: () => void | Promise<void>;
-  onShareablePortfolioChange?: (available: boolean) => void;
-};
+export type {GalleryProps};
 
 /**
  * Gallery orchestration only. Library, create draft/upload, selected-project
  * mutations and post-upload publication each own their own state machine.
  */
-export const usePortfolioGalleryController = ({
-  onSubscriptions,
-  onSharePortfolio,
-  onShareablePortfolioChange,
-}: GalleryProps = {}) => {
+export const usePortfolioGalleryController = (props: GalleryProps = {}) => {
+  const {onSubscriptions, onSharePortfolio, onShareablePortfolioChange} = props;
   const appActive = useAppForegroundState();
   const mountedRef = useRef(true);
   const createBusyRef = useRef(false);
@@ -53,6 +49,7 @@ export const usePortfolioGalleryController = ({
     cancelLibraryLoad: library.cancelLoad,
     captureBoundary,
     isCreateBusy,
+    libraryProjects: library.projects,
     mountedRef,
     setLibraryProjects: library.setProjects,
     setMutationBlocked: setDetailMutationBlocked,
@@ -70,6 +67,8 @@ export const usePortfolioGalleryController = ({
     reconcileProject: details.reconcileProject,
     serverSession: library.serverSession,
     setLibraryProjects: library.setProjects,
+    addFromProjectId: props.addFromProjectId,
+    onAddFromProjectHandled: props.onAddFromProjectHandled,
   });
   const loadProjects = library.loadProjects;
   const openProjectDetails = details.openProject;
@@ -77,6 +76,16 @@ export const usePortfolioGalleryController = ({
   const selectedRef = details.selectedRef;
   const settleUploadedProjects = details.settleUploadedProjects;
   const portfolioMutationBusy = create.saving || details.saving;
+  const profile = usePortfolioProfileEditor({
+    captureBoundary,
+    mountedRef,
+    onProfileChange: props.onPortfolioProfileChange,
+  });
+  const shareSelectedProject = usePortfolioProjectShare({
+    mountedRef,
+    portfolioPublicUrl: props.portfolioPublicUrl,
+    selected: details.selected,
+  });
 
   useEffect(() => {
     mountedRef.current = true;
@@ -145,7 +154,9 @@ export const usePortfolioGalleryController = ({
   return {
     ...details,
     ...create,
+    ...profile,
     appActive,
+    shareSelectedProject,
     loadError: library.loadError,
     loading: library.loading,
     loadProjects,

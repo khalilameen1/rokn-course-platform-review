@@ -71,7 +71,7 @@ const item = (overrides: Partial<PortfolioItem> = {}): PortfolioItem => ({
   id: '9',
   title: 'العنوان القديم',
   summary: '',
-  skills: [],
+  tools: [],
   featured: false,
   media: [oldMedia],
   publicationState: 'uploading',

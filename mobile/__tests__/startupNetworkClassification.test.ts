@@ -13,7 +13,9 @@ describe('startup network failure classification', () => {
     const contract = new Error('COURSE_CATALOGUE_CONTRACT_INVALID');
 
     expect(networkFailureKind(maintenance)).toBe('maintenance');
-    expect(retryableReadTransportFailure(maintenance)).toBe(true);
+    // Rokn sends 503 for maintenance with a long Retry-After; a blind replay
+    // only adds load. The API client replays it only on short guidance.
+    expect(retryableReadTransportFailure(maintenance)).toBe(false);
     expect(transientReadFailureAllowsCache(maintenance)).toBe(true);
     expect(networkFailureKind(contract)).toBe('contract');
     expect(transientReadFailureAllowsCache(contract)).toBe(false);

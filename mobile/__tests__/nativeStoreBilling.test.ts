@@ -20,6 +20,11 @@ let mockScopeUnavailable = false;
 jest.mock('expo-iap', () => mockExpoIap);
 jest.mock('../src/constants/api', () => ({publicRequest: mockApi}));
 jest.mock('../src/constants/helpers', () => ({
+  captureAccountSessionBoundary: async () => ({
+    scope: mockAccountScope,
+    epoch: 1,
+  }),
+  assertAccountSessionBoundary: jest.fn(),
   accountScopedStorageKey: jest.fn(
     async (key: string) => {
       if (mockScopeUnavailable) throw new Error('Account storage unavailable');
@@ -86,12 +91,12 @@ describe('native store billing', () => {
       });
     });
     const {purchaseNativeCoinPackage} = require('../src/services/nativeStoreBilling');
-    const {subscribeNativeStoreCredits} = require('../src/services/nativeStoreCredits');
+    const {subscribeWalletSettlements} = require('../src/services/walletSettlement');
     const healthyObserver = jest.fn();
-    const unsubscribeBroken = subscribeNativeStoreCredits(() => {
+    const unsubscribeBroken = subscribeWalletSettlements(() => {
       throw new Error('Unmounted screen observer');
     });
-    const unsubscribeHealthy = subscribeNativeStoreCredits(healthyObserver);
+    const unsubscribeHealthy = subscribeWalletSettlements(healthyObserver);
     try {
       await expect(purchaseNativeCoinPackage({
         id: '1', coins: 600, price: 120, label: '600',
@@ -102,6 +107,53 @@ describe('native store billing', () => {
     } finally {
       unsubscribeBroken();
       unsubscribeHealthy();
+    }
+  });
+
+  it('stops waiting after the store charged when the network drops and leaves the receipt for recovery', async () => {
+    jest.useFakeTimers();
+    try {
+      mockApi.get
+        .mockResolvedValueOnce({
+          data: {data: {google_obfuscated_account_id: 'account-binding'}},
+        })
+        // The network drops right after the learner paid.
+        .mockImplementation(() => new Promise(() => undefined));
+      mockExpoIap.requestPurchase.mockImplementation(async () => {
+        purchaseUpdate({
+          id: 'offline-purchase', store: 'google', productId: 'rokn.coins.600',
+          purchaseState: 'purchased', purchaseToken: 'offline-token',
+        });
+      });
+      const {
+        purchaseNativeCoinPackage,
+        NATIVE_VERIFICATION_WINDOW_MS,
+      } = require('../src/services/nativeStoreBilling');
+      let settled: unknown;
+      const purchase = purchaseNativeCoinPackage({
+        id: '1', coins: 600, price: 120, label: '600',
+        storeProductIds: {google: 'rokn.coins.600'},
+      }).then((value: unknown) => {
+        settled = value;
+      });
+      await jest.advanceTimersByTimeAsync(NATIVE_VERIFICATION_WINDOW_MS - 1);
+      expect(settled).toBeUndefined();
+      await jest.advanceTimersByTimeAsync(1);
+      await purchase;
+      expect(NATIVE_VERIFICATION_WINDOW_MS).toBeLessThanOrEqual(30_000);
+      expect(settled).toEqual({
+        success: false,
+        pending: true,
+        cancelled: false,
+        coinsAdded: 0,
+        paymentReported: true,
+        activationDeferred: true,
+      });
+      // Unfinished, so launch/foreground recovery verifies and finishes it.
+      expect(mockExpoIap.finishTransaction).not.toHaveBeenCalled();
+      expect(mockApi.post).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
     }
   });
 

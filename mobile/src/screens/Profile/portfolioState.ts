@@ -1,3 +1,5 @@
+import type {PortfolioProfile} from '../../services/api/portfolioContract';
+
 const MAX_PORTFOLIO_MEDIA = 12;
 
 type PortfolioMediaState = {
@@ -65,4 +67,24 @@ export const portfolioLifecycleAfterMediaRemoval = (
     uploadedMediaCount,
     shareReady: uploadedMediaCount > 0 && item.shareReady,
   };
+};
+
+/** Owner-facing sharing state; the live version stays shareable during review. */
+export const portfolioSharingNotice = (profile: PortfolioProfile | null) => {
+  switch (profile?.sharingStatus) {
+    case 'pending':
+      return profile.hasUnpublishedChanges
+        ? 'تعديلاتك قيد المراجعة والنسخة المنشورة شغالة'
+        : 'أعمالك قيد المراجعة\nسيظهر رابط المشاركة بعد الموافقة';
+    case 'rejected': {
+      const notice = profile.sharingRejectionReason
+        ? `عدّل أعمالك لإتاحتها للمشاركة\n${profile.sharingRejectionReason}`
+        : 'عدّل أعمالك لإتاحتها للمشاركة';
+      return profile.published ? `${notice}\nالنسخة المنشورة شغالة` : notice;
+    }
+    case 'suspended':
+      return 'المشاركة موقوفة مؤقتًا\nأعمالك محفوظة ويمكنك التواصل مع الدعم';
+    default:
+      return '';
+  }
 };

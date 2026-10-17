@@ -112,4 +112,24 @@ describe('keyed async queue', () => {
     await expect(third).resolves.toBe('third');
     await expect(run('same', async () => 'fourth')).resolves.toBe('fourth');
   });
+  it.each([
+    'src/services/durableOutbox.ts',
+    'src/services/portfolioDraft.ts',
+    'src/services/projectFeedbackDraft.ts',
+    'src/services/projectSubmissionDraft.ts',
+    'src/services/searchHistory.ts',
+    'src/services/pendingAccountWrites.ts',
+    'src/services/productFeedback/drafts.ts',
+    'src/services/pushDeviceRegistration.ts',
+    'src/services/operationalTelemetry.ts',
+  ])('%s serializes through the shared keyed queue', file => {
+    const source = require('fs').readFileSync(
+      require('path').resolve(__dirname, '..', file),
+      'utf8',
+    ) as string;
+    expect(source).toContain('createKeyedAsyncQueue()');
+    // The hand-rolled tail chain this utility replaced.
+    expect(source).not.toContain('.then(operation, operation)');
+    expect(source).not.toContain('.then(callback, callback)');
+  });
 });

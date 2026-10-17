@@ -89,22 +89,16 @@ describe('learning async ownership contracts', () => {
   });
 
   it('does not let a completed course transaction mutate the next course route', () => {
-    const checkout = source(
-      'src/screens/CourseDetails/details/useCourseCheckout.ts',
-    );
+    // The live course checkout is the subscription sheet hook.
+    const checkout = source('src/hooks/useCourseSubscriptionCheckout.ts');
 
-    expect(checkout).toContain('generationRef.current += 1;');
-    expect(checkout).toContain(
-      'activeScopeRef.current.courseId === expectedCourseId',
-    );
-    expect(checkout).toContain(
-      'activeScopeRef.current.identityKey === expectedIdentity',
+    expect(checkout).toContain('generation.current += 1;');
+    expect(checkout).toContain('current.current.courseId === courseId');
+    expect(checkout).toMatch(
+      /next = await authorizeCourseCheckout\(quote\.id\);[\s\S]{0,1600}if \(!owns\(token\)\) return;/,
     );
     expect(checkout).toMatch(
-      /const result = await purchaseCourse\([\s\S]*!ownsOperation\([\s\S]{0,180}operationCourseId,[\s\S]{0,180}operationIdentity,[\s\S]{0,180}operationGeneration/,
-    );
-    expect(checkout).toMatch(
-      /const result = await openCoinCheckout\([\s\S]*!ownsOperation\([\s\S]{0,180}operationCourseId,[\s\S]{0,180}operationIdentity,[\s\S]{0,180}operationGeneration/,
+      /const payment = await openCoinCheckout\([\s\S]{0,600}assertAccountSessionBoundary\(boundary\);\s*if \(!owns\(token\)\) return;/,
     );
   });
 

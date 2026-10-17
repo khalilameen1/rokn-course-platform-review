@@ -287,7 +287,7 @@ describe('portfolio draft hydration lifecycle', () => {
       id: '71',
       title: draft.title,
       summary: draft.summary,
-      skills: [],
+      tools: [],
       media: [],
       publicationState: 'uploading',
     });

@@ -49,6 +49,25 @@ export const buildHomeSections = ({
   return configuredRows;
 };
 
+/**
+ * The hero already presents its course above the fold. Repeating it as a card
+ * in the first rail shows the same course twice on the first screen, so the
+ * first rail skips it (later rails, below the fold, keep their full list).
+ */
+export const withoutHeroInFirstRail = (
+  sections: HomeCourseSection[],
+  heroCourses: Course[],
+): HomeCourseSection[] => {
+  if (!heroCourses.length || !sections.length) return sections;
+  const heroIds = new Set(heroCourses.map(course => String(course.id)));
+  const [first, ...rest] = sections;
+  const data = first.data.filter(course => !heroIds.has(String(course.id)));
+  if (data.length === first.data.length) return sections;
+  return data.length
+    ? [{...first, data}, ...rest]
+    : withoutHeroInFirstRail(rest, heroCourses);
+};
+
 export const selectHeroCourses = (catalogue: Course[]): Course[] =>
   catalogue.filter(
     course => course.published !== false && course.isMainCourse === true,

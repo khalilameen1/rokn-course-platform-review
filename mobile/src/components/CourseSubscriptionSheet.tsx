@@ -26,7 +26,17 @@ import type {
   CourseCheckoutFeature,
 } from '../services/api/courseCheckout';
 import {CoinAmount} from './ui/RoknCoin';
-import {formatArabicNumber} from '../constants/arabicFormatting';
+import {
+  formatArabicCurrency,
+  formatArabicNumber,
+} from '../constants/arabicFormatting';
+import type {CoinPackage} from '../services/api/coinPackageMapper';
+
+/** Store builds must show the localized store price; direct builds show the
+ * server-bound EGP amount with the one currency label used across the app. */
+export const coinPackageCashPrice = (coinPackage: CoinPackage) =>
+  coinPackage.displayPrice ||
+  formatArabicCurrency(coinPackage.price, coinPackage.currency || 'EGP');
 
 export const subscriptionPlanName = (plan: CourseAccessPlan) =>
   ({basic: 'Basic', guided: 'Plus', mentor: 'Pro'}[plan.code] || plan.name);
@@ -176,6 +186,7 @@ export default function CourseSubscriptionSheet({
     loading,
     busy,
     pending,
+    awaitingPayment,
     blockedByPreviousCheckout,
   } = checkout;
   const displayedPlan = pending
@@ -276,6 +287,12 @@ export default function CourseSubscriptionSheet({
                     : selected && quote
                     ? quote.originalPrice
                     : undefined;
+                // Plans carry coin prices only. The cash amount exists once
+                // the server quote binds it, so it is shown on that card alone.
+                const cashPrice =
+                  selected && quote?.planCode === plan.code && coinPackage
+                    ? coinPackageCashPrice(coinPackage)
+                    : '';
                 return (
                   <Pressable
                     key={plan.code}
@@ -286,7 +303,7 @@ export default function CourseSubscriptionSheet({
                       price !== undefined
                         ? ` ${formatArabicNumber(price)} من رصيد ركن`
                         : ''
-                    }`}
+                    }${cashPrice ? ` تدفع ${cashPrice}` : ''}`}
                     accessibilityState={{checked: selected, disabled: locked}}
                     disabled={locked}
                     onPress={() => onSelectPlan(plan)}
@@ -310,6 +327,9 @@ export default function CourseSubscriptionSheet({
                       />
                     ) : (
                       <Text style={styles.description}>عرض السعر</Text>
+                    )}
+                    {!!cashPrice && (
+                      <Text style={styles.cashOnCard}>{cashPrice}</Text>
                     )}
                   </Pressable>
                 );
@@ -380,8 +400,7 @@ export default function CourseSubscriptionSheet({
                   <View style={styles.cashRow}>
                     <Text style={styles.cashLabel}>المطلوب دفعه</Text>
                     <Text style={styles.cashValue}>
-                      {coinPackage.displayPrice ||
-                        `${formatArabicNumber(coinPackage.price)} ج م`}
+                      {coinPackageCashPrice(coinPackage)}
                     </Text>
                   </View>
                 )}
@@ -417,6 +436,8 @@ export default function CourseSubscriptionSheet({
               accessibilityLabel={
                 blockedByPreviousCheckout
                   ? 'إلغاء الطلب السابق'
+                  : awaitingPayment
+                  ? 'اختار طريقة تانية'
                   : 'إلغاء طلب الاشتراك'
               }
               disabled={busy}
@@ -428,6 +449,8 @@ export default function CourseSubscriptionSheet({
               <Text style={styles.detailAction}>
                 {blockedByPreviousCheckout
                   ? 'إلغاء الطلب السابق'
+                  : awaitingPayment
+                  ? 'اختار طريقة تانية'
                   : 'إلغاء طلب الاشتراك'}
               </Text>
             </Pressable>
@@ -599,6 +622,7 @@ const styles = StyleSheet.create({
   },
   coinAmount: {alignSelf: 'center'},
   coinText: {...Type.section, color: Palette.text},
+  cashOnCard: {...Type.caption, color: Palette.textMuted, textAlign: 'center'},
   disclosure: {
     ...rtlRowStyle,
     minHeight: 48,
