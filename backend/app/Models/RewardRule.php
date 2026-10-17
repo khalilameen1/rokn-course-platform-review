@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Cache;
 use App\Support\AfterCommitCacheInvalidation;
+use App\Support\DatabaseCapabilities;
 use Throwable;
 
 final class RewardRule extends Model
@@ -42,7 +42,7 @@ final class RewardRule extends Model
 
     public static function activeFor(string $event): ?self
     {
-        if (!Schema::hasTable('reward_rules')) {
+        if (!DatabaseCapabilities::hasTable('reward_rules')) {
             return null;
         }
 
@@ -57,7 +57,7 @@ final class RewardRule extends Model
 
     public static function configuredAmount(string $event, int $legacyFallback = 0): int
     {
-        if (!Schema::hasTable('reward_rules')) {
+        if (!DatabaseCapabilities::hasTable('reward_rules')) {
             return max(0, $legacyFallback);
         }
 

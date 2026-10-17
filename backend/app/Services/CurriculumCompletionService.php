@@ -30,7 +30,12 @@ final class CurriculumCompletionService
         ?int $requestedRevision = null
     ): ?int {
         return DB::transaction(function () use ($userId, $courseId, $requestedRevision): ?int {
-            $course = Course::query()->whereKey($courseId)->lockForUpdate()->first();
+            // The course is only read here (its published revision); the
+            // enrollment row below is the one written, under its own exclusive
+            // lock. A shared lock still excludes a concurrent publish and
+            // avoids a shared-to-exclusive upgrade deadlock when section
+            // completion calls this while holding the course in share mode.
+            $course = Course::query()->whereKey($courseId)->sharedLock()->first();
             if (!$course) {
                 return null;
             }

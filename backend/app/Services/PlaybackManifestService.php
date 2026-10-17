@@ -163,15 +163,26 @@ final class PlaybackManifestService
             $clientContext,
             $graceSession
         ): PlaybackSession {
-            // Publishing takes the canonical course lock before swapping its
-            // graph. Taking the same lock here makes the boundary exact: a
-            // session either exists before the publish timestamp and receives
-            // archive grace, or this request observes the new graph and asks
-            // the client to reload. It can never issue an immediately stale
-            // manifest in the gap between the initial read and allocation.
+            // One lock order for every learner write: user, then course, then
+            // dependent rows (completion, purchase, rating and certificate
+            // issuance use the same order). The user lock also serializes the
+            // tiny session-allocation section below. A refresh reuses a
+            // session only when the client names it; two fresh players must
+            // never share a sequence namespace merely because they opened the
+            // same lesson within a short time window.
+            User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+
+            // Publishing takes an exclusive lock on the canonical course
+            // before swapping its graph. A shared lock waits for that publish
+            // and blocks the next one until this transaction commits, so the
+            // boundary stays exact: a session either exists before the
+            // publish timestamp and receives archive grace, or this request
+            // observes the new graph and asks the client to reload. Shared
+            // locks are compatible with each other, so concurrent learners
+            // opening reels of one course no longer queue on its row.
             $lockedCourse = Course::query()
                 ->whereKey($course->id)
-                ->lockForUpdate()
+                ->sharedLock()
                 ->first();
             $stillCurrent = $lockedCourse
                 && ($graceSession !== null || $lockedCourse->isPublishedForLearning())
@@ -194,9 +205,14 @@ final class PlaybackManifestService
                     )
                 );
             }
+            // Playback only reads the media generation; probes and
+            // reconciliation own its writes under an exclusive lock. A shared
+            // lock still reads the latest committed row and holds a concurrent
+            // quarantine until this session is allocated, without making
+            // learners of the same reel wait for each other.
             $lockedState = LessonMediaState::query()
                 ->where('lesson_id', $lesson->id)
-                ->lockForUpdate()
+                ->sharedLock()
                 ->first();
             $lessonGuid = strtolower(trim((string) $lesson->bunny_video_id));
             $stateGuid = strtolower(trim((string) $lockedState?->provider_media_id));
@@ -213,11 +229,6 @@ final class PlaybackManifestService
                 throw new RuntimeException('The lesson video became unavailable during manifest allocation.');
             }
 
-            // Serialize only the tiny session-allocation section. A refresh
-            // reuses a session only when the client names it; two fresh
-            // players must never share a sequence namespace merely because
-            // they opened the same lesson within a short time window.
-            User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
             $requestedSessionId = (string) ($clientContext['playback_session_id'] ?? '');
             if ($requestedSessionId !== '') {
                 $requested = PlaybackSession::query()

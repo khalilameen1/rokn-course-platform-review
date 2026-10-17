@@ -309,7 +309,8 @@ final class ProjectRevisionLineageTest extends TestCase
         $result = app(CourseCompletionService::class)->complete($student, (int) $course->id, (int) $source->section->id);
         self::assertSame(409, $result['status']);
         self::assertSame('project_submission_required', $result['code']);
-        self::assertSame([['users', true], ['courses', true]], array_slice($locks, 0, 2));
+        // Learner exclusive, then the course in share mode (publish holds it exclusively).
+        self::assertSame([['users', true], ['courses', false]], array_slice($locks, 0, 2));
         self::assertSame(0, DB::table('student_section_progress')->count());
         $this->assertNoSubmissionWork();
     }
@@ -331,7 +332,7 @@ final class ProjectRevisionLineageTest extends TestCase
         $this->actingAs($student, 'api');
         $url = '/api/v1/courses/'.$course->id.'/sections/'.$section->id.'/complete';
         $this->postJson($url)->assertStatus(409)->assertJsonPath('code', 'verified_watch_required');
-        self::assertSame([['users', true], ['courses', true]], array_slice($locks, 0, 2));
+        self::assertSame([['users', true], ['courses', false]], array_slice($locks, 0, 2));
         self::assertSame(0, DB::table('student_section_progress')->count());
         LessonWatchEvidence::query()->create([
             'user_id' => $student->id, 'lesson_id' => $lesson->id, 'course_section_id' => $section->id,
@@ -340,7 +341,12 @@ final class ProjectRevisionLineageTest extends TestCase
         foreach ([1, 2] as $attempt) {
             $locks = [];
             $this->postJson($url)->assertOk()->assertJsonPath('data.section.is_completed', true);
-            self::assertSame([['users', true], ['courses', true]], array_slice($locks, 0, 2));
+            // The replay of an already-completed section (course still has a
+            // pending project) is a pure read and takes no learner/course lock.
+            self::assertSame(
+                $attempt === 1 ? [['users', true], ['courses', false]] : [],
+                array_slice($locks, 0, 2)
+            );
             self::assertSame(1, DB::table('student_section_progress')->count());
         }
         $this->assertNoSubmissionWork();

@@ -274,10 +274,11 @@ final class LearningRewardService
     private function result(User $user, ?WalletTransaction $transaction, array $extra = []): array
     {
         // The bearer guard may retain its model instance across idempotent
-        // retries (and long-running workers can do the same). The ledger is
-        // authoritative even when this call did not create a transaction.
-        $fresh = $user->fresh();
-        $balances = $this->wallet->balances($fresh);
+        // retries (and long-running workers can do the same). balances()
+        // reads the committed projection and ledger tail by user key in one
+        // statement, so the ledger stays authoritative without re-hydrating
+        // the whole user row on every heartbeat.
+        $balances = $this->wallet->balances($user);
 
         return $extra + [
             'awarded' => $transaction ? (int) $transaction->amount : 0,

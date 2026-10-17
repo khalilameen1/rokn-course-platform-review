@@ -29,20 +29,71 @@ final readonly class CourseCompletionService
      */
     public function complete(User $user, int $courseId, int $sectionId): array
     {
-        // Publishing takes the canonical course lock before swapping section
-        // IDs. Hold that same boundary through evidence validation and the
-        // progress write so a request can never complete a section removed by
-        // a publish that won the race.
+        // The player re-sends completion on every eligible heartbeat, including
+        // rewatches. When the section is already durably completed and the
+        // course has no pending completion write, the answer is a pure read of
+        // committed state; answer it from a consistent (non-locking) read.
+        // Every other outcome, including each failure, takes the locked path
+        // below, which remains the only writer and the authority.
+        $alreadyCompleted = $this->alreadyCompletedWithoutWrites($user, $courseId, $sectionId);
+        if ($alreadyCompleted !== null) {
+            return $alreadyCompleted;
+        }
+
+        // Publishing takes an exclusive lock on the canonical course before
+        // swapping section IDs. A shared lock waits for that publish and holds
+        // the next one off through evidence validation and the progress write,
+        // so a request can never complete a section removed by a publish that
+        // won the race, while learners of one course no longer queue on its
+        // row. Lock order everywhere: learner, then course, then other rows.
         return DB::transaction(function () use ($user, $courseId, $sectionId): array {
             // Match submission, purchase and rating: learner before course.
             User::query()->lockForUpdate()->findOrFail($user->id);
             $course = Course::query()
                 ->whereKey($courseId)
-                ->lockForUpdate()
+                ->sharedLock()
                 ->firstOrFail();
 
             return $this->completeWithinCourseLock($user, $course, $sectionId);
         }, 3);
+    }
+
+    /**
+     * Lock-free answer for a section that is already completed. Returns null
+     * whenever the locked path could produce a different result or a write.
+     *
+     * @return array{success:true,status:200,message:string,data:mixed}|null
+     */
+    private function alreadyCompletedWithoutWrites(User $user, int $courseId, int $sectionId): ?array
+    {
+        $course = Course::query()->whereKey($courseId)->first();
+        if (!$course || !$course->isPublishedForLearning()) {
+            return null;
+        }
+        $sectionId = $this->currentSectionId($sectionId);
+        $existingProgress = $this->revisionReads->completedSectionProgress(
+            (int) $user->id,
+            $sectionId
+        );
+        if (!$existingProgress || !$existingProgress->is_completed) {
+            return null;
+        }
+        [$section] = $this->completableSection($user, $course, $sectionId);
+        if (!$section) {
+            return null;
+        }
+
+        $courseProgress = $this->coursePresentation->progressSummary(
+            (int) $user->id,
+            (int) $course->id
+        );
+        if ($courseProgress['is_completed']) {
+            // Recording the course achievement is a write; keep it under the
+            // learner lock that account deletion also takes.
+            return null;
+        }
+
+        return $this->alreadyCompletedResult($section, $existingProgress, $courseProgress);
     }
 
     /** @return array{success:bool,status:int,message:string,data:mixed,code?:string} */
@@ -55,26 +106,10 @@ final readonly class CourseCompletionService
         // A durable phone command retains the section it originally viewed.
         // Resolve only published learner-state lineage, under the same course
         // lock as completion; current membership/evidence/access still decide.
-        $sectionId = $this->revisions->currentLearnerEntityMap(
-            CourseSection::class,
-            [$sectionId]
-        )[$sectionId] ?? $sectionId;
-        $section = CourseSection::query()
-            ->whereKey($sectionId)
-            ->where('course_id', $courseId)
-            ->first();
-
+        $sectionId = $this->currentSectionId($sectionId);
+        [$section, $failure] = $this->completableSection($user, $course, $sectionId);
         if (!$section) {
-            return $this->failure(404, 'Section not found in this course');
-        }
-        if (!in_array($section->getSectionType(), ['lesson', 'project'], true)) {
-            return $this->failure(404, 'Section is not part of the learning sequence');
-        }
-        if (!$this->courseAccess->hasCourseAccess($user, $course)) {
-            return $this->failure(403, 'You are not authorized to access this course');
-        }
-        if ($section->getSectionType() === 'project' && !$this->sectionAccess->projectsEnabledForUser((int) $user->id, $courseId)) {
-            return $this->failure(403, 'Projects are not included in this subscription', 'projects_not_included');
+            return $failure;
         }
 
         $existingProgress = $this->revisionReads->completedSectionProgress(
@@ -90,16 +125,7 @@ final readonly class CourseCompletionService
                 );
             }, 3);
 
-            return $this->success(
-                'Section already completed',
-                [
-                    'section' => $this->sectionPayload(
-                        $section,
-                        $existingProgress->completed_at ?? $existingProgress->updated_at
-                    ),
-                    'course_progress' => $courseProgress,
-                ]
-            );
+            return $this->alreadyCompletedResult($section, $existingProgress, $courseProgress);
         }
 
         if ($section->getSectionType() === 'project') {
@@ -217,6 +243,62 @@ final readonly class CourseCompletionService
         }
 
         return $progress;
+    }
+
+    private function currentSectionId(int $sectionId): int
+    {
+        return $this->revisions->currentLearnerEntityMap(
+            CourseSection::class,
+            [$sectionId]
+        )[$sectionId] ?? $sectionId;
+    }
+
+    /**
+     * @return array{0:CourseSection,1:null}|array{0:null,1:array{success:false,status:int,message:string,data:mixed,code?:string}}
+     */
+    private function completableSection(User $user, Course $course, int $sectionId): array
+    {
+        $courseId = (int) $course->id;
+        $section = CourseSection::query()
+            ->whereKey($sectionId)
+            ->where('course_id', $courseId)
+            ->first();
+
+        if (!$section) {
+            return [null, $this->failure(404, 'Section not found in this course')];
+        }
+        if (!in_array($section->getSectionType(), ['lesson', 'project'], true)) {
+            return [null, $this->failure(404, 'Section is not part of the learning sequence')];
+        }
+        if (!$this->courseAccess->hasCourseAccess($user, $course)) {
+            return [null, $this->failure(403, 'You are not authorized to access this course')];
+        }
+        if ($section->getSectionType() === 'project' && !$this->sectionAccess->projectsEnabledForUser((int) $user->id, $courseId)) {
+            return [null, $this->failure(403, 'Projects are not included in this subscription', 'projects_not_included')];
+        }
+
+        return [$section, null];
+    }
+
+    /**
+     * @param array<string, mixed> $courseProgress
+     * @return array{success:true,status:200,message:string,data:mixed}
+     */
+    private function alreadyCompletedResult(
+        CourseSection $section,
+        StudentSectionProgress $existingProgress,
+        array $courseProgress
+    ): array {
+        return $this->success(
+            'Section already completed',
+            [
+                'section' => $this->sectionPayload(
+                    $section,
+                    $existingProgress->completed_at ?? $existingProgress->updated_at
+                ),
+                'course_progress' => $courseProgress,
+            ]
+        );
     }
 
     /** @return array<string, mixed> */

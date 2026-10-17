@@ -92,7 +92,11 @@ class CertificateService
             // locked aggregate is the only version that may create a new
             // credential. Lock the user first so issuance follows the same
             // boundary as account deletion and financial reversal, then lock
-            // the editorial aggregate before reading its snapshot.
+            // the editorial aggregate before reading its snapshot. Issuance
+            // only reads the course, so a shared lock is enough: it waits for
+            // a moderator's or publisher's exclusive write and blocks the next
+            // one until the snapshot commits, while learners finishing the
+            // same course issue certificates in parallel.
             try {
                 $certificate = DB::transaction(function () use (
                     $user,
@@ -109,7 +113,7 @@ class CertificateService
 
                     $lockedCourse = Course::query()
                         ->whereKey($course->id)
-                        ->lockForUpdate()
+                        ->sharedLock()
                         ->first();
                     if (
                         !$lockedCourse

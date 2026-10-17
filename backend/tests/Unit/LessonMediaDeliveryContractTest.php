@@ -59,9 +59,22 @@ final class LessonMediaDeliveryContractTest extends TestCase
         $issue = $this->method($manifest, 'issue');
 
         self::assertStringContainsString('Course::query()', $issue);
-        self::assertStringContainsString('->lockForUpdate()', $issue);
+        self::assertStringContainsString('->sharedLock()', $issue);
         self::assertStringContainsString('$stillCurrent', $issue);
         self::assertStringContainsString('throw new CourseRevisionChangedException(', $issue);
+        // One global order: learner, then course, then the media row.
+        $userLock = strpos($issue, 'User::query()->whereKey($user->id)->lockForUpdate()');
+        $courseLock = strpos($issue, '$lockedCourse = Course::query()');
+        $stateLock = strpos($issue, '$lockedState = LessonMediaState::query()');
+        self::assertNotFalse($userLock);
+        self::assertNotFalse($courseLock);
+        self::assertNotFalse($stateLock);
+        self::assertLessThan($courseLock, $userLock);
+        self::assertLessThan($stateLock, $courseLock);
+        self::assertStringNotContainsString(
+            '->lockForUpdate()',
+            substr($issue, $courseLock, strpos($issue, '$requestedSessionId') - $courseLock)
+        );
     }
 
     public function test_fresh_players_never_share_an_implicit_playback_session(): void
@@ -84,8 +97,39 @@ final class LessonMediaDeliveryContractTest extends TestCase
         );
 
         self::assertStringContainsString('Course::query()', $completion);
-        self::assertStringContainsString('->lockForUpdate()', $completion);
         self::assertStringContainsString('completeWithinCourseLock', $completion);
+        $userLock = strpos($completion, 'User::query()->lockForUpdate()->findOrFail($user->id)');
+        self::assertSame(1, preg_match(
+            '/->whereKey\(\$courseId\)\s*->sharedLock\(\)/',
+            $completion,
+            $courseLock,
+            PREG_OFFSET_CAPTURE
+        ));
+        self::assertNotFalse($userLock);
+        self::assertLessThan($courseLock[0][1], $userLock);
+    }
+
+    public function test_learner_course_readers_share_the_course_lock_after_the_learner(): void
+    {
+        $certificate = $this->source('app/Services/CertificateService.php');
+        $userLock = strpos($certificate, '$lockedUser = User::query()');
+        $courseLock = strpos($certificate, '$lockedCourse = Course::query()');
+        self::assertNotFalse($userLock);
+        self::assertNotFalse($courseLock);
+        self::assertLessThan($courseLock, $userLock);
+        self::assertStringContainsString(
+            '->sharedLock()',
+            substr($certificate, $courseLock, 160)
+        );
+
+        // Called inside section completion's shared course lock; an exclusive
+        // lock here would be a shared-to-exclusive upgrade.
+        $curriculum = $this->method(
+            $this->source('app/Services/CurriculumCompletionService.php'),
+            'markCompleted'
+        );
+        self::assertStringContainsString('Course::query()->whereKey($courseId)->sharedLock()', $curriculum);
+        self::assertStringNotContainsString('Course::query()->whereKey($courseId)->lockForUpdate()', $curriculum);
     }
 
     public function test_learner_course_map_exposes_server_completion_beside_server_lock_state(): void
