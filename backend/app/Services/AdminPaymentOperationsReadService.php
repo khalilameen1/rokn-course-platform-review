@@ -99,6 +99,32 @@ final readonly class AdminPaymentOperationsReadService
         ];
     }
 
+    /**
+     * Stream the filtered orders in id order using the list's own filters
+     * and state labels, chunk by chunk, so an export never loads the whole
+     * table (same streamed pattern as the support-case and course-code CSVs).
+     *
+     * @param array<string, mixed> $filters
+     * @param callable(Order):void $each
+     */
+    public function eachForExport(array $filters, callable $each, int $limit = 50000): void
+    {
+        $query = $this->ordersQuery();
+        $this->applyFilters($query, $filters);
+        $seen = 0;
+        $query->reorder()->chunkById(500, function (Collection $orders) use ($each, $limit, &$seen): bool {
+            $this->decorate($orders);
+            foreach ($orders as $order) {
+                if ($seen++ >= $limit) {
+                    return false;
+                }
+                $each($order);
+            }
+
+            return true;
+        }, 'orders.id', 'id');
+    }
+
     /** @return array<string, mixed> */
     public function show(Order $order): array
     {

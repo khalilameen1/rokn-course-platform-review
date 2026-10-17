@@ -150,11 +150,10 @@ final class AdminLearningViewsTest extends TestCase
         self::assertStringContainsString('onsubmit="return confirm(', $show);
     }
 
-    public function test_legal_editor_and_online_map_contracts_are_preserved(): void
+    public function test_legal_editor_contracts_are_preserved(): void
     {
         $privacy = $this->viewSource('abouts/privacy.blade.php');
         $policy = $this->viewSource('abouts/policy.blade.php');
-        $online = $this->viewSource('pages/online.blade.php');
 
         self::assertStringContainsString("route('admin.abouts.update'", $privacy);
         self::assertStringContainsString("route('admin.abouts.update'", $policy);
@@ -164,12 +163,6 @@ final class AdminLearningViewsTest extends TestCase
         self::assertStringContainsString('name="policy_en"', $policy);
         self::assertStringContainsString('name="editor_version"', $privacy);
         self::assertStringContainsString('name="editor_version"', $policy);
-
-        self::assertStringContainsString('json_encode($providers)', $online);
-        self::assertStringContainsString('function initMap()', $online);
-        self::assertStringContainsString('navigator.geolocation.getCurrentPosition', $online);
-        self::assertStringContainsString("config('services.google.maps_browser_key')", $online);
-        self::assertStringContainsString('class="online-map__marker-label"', $online);
     }
 
     public function test_public_links_and_legal_copy_have_one_dashboard_editor(): void
@@ -194,10 +187,12 @@ final class AdminLearningViewsTest extends TestCase
     {
         foreach ([
             'lessons/location.html',
+            // Never routed and needed a $providers variable no controller supplied.
+            'pages/online.blade.php',
         ] as $view) {
             self::assertFileDoesNotExist(
                 dirname(__DIR__, 2).'/resources/views/admin/'.$view,
-                $view.' is an unreferenced prototype; the live map belongs to pages/online.blade.php.'
+                $view.' is an unreferenced prototype.'
             );
         }
     }
@@ -214,7 +209,6 @@ final class AdminLearningViewsTest extends TestCase
             'contact notification email' => ['contacts/send_email.blade.php', false],
             'privacy editor' => ['abouts/privacy.blade.php', true],
             'policy editor' => ['abouts/policy.blade.php', true],
-            'online users map' => ['pages/online.blade.php', true],
         ];
     }
 

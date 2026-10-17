@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\AdminAuditLog;
 use App\Models\Course;
 use App\Services\AdminAuthoringCreateIntentService;
+use App\Support\AdminAuditChangeRecorder;
 use App\Support\PrivacyFingerprint;
 use Closure;
 use Illuminate\Http\Request;
@@ -44,6 +45,8 @@ final class AuditAdminMutation
             $request->attributes->set(AdminAuthoringCreateIntentService::CLAIM_ATTRIBUTE, $createIntent);
         }
 
+        $isMutation = in_array(strtoupper($request->method()), self::MUTATING_METHODS, true);
+        $changeRecorder = $isMutation ? AdminAuditChangeRecorder::begin() : null;
         try {
             $response = $next($request);
         } catch (\Throwable $exception) {
@@ -52,6 +55,8 @@ final class AuditAdminMutation
             // therefore cannot overwrite a committed success.
             $this->createIntents->fail($request, $createIntent);
             throw $exception;
+        } finally {
+            $changes = $changeRecorder?->finish() ?? [];
         }
         $response->headers->set('X-Request-ID', $requestId);
         $this->createIntents->settleFromResponse($request, $response, $createIntent);
@@ -101,7 +106,10 @@ final class AuditAdminMutation
                 $parameters['authoring_draft_receipt'] = $draftReceipt;
             }
 
-            AdminAuditLog::query()->create([
+            $changeColumn = $changes !== [] && DatabaseCapabilities::hasColumn('admin_audit_logs', 'changes')
+                ? ['changes' => $changes]
+                : [];
+            AdminAuditLog::query()->create($changeColumn + [
                 'request_id' => $requestId,
                 'actor_id' => $request->user()->id,
                 'actor_role' => (string) $request->user()->role,

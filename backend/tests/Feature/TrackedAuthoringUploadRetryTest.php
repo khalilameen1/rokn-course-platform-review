@@ -7,8 +7,8 @@ namespace Tests\Feature;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Jobs\DeleteAccountFile;
 use App\Models\AccountFileDeletion;
-use App\Models\Category;
 use App\Models\Coupon;
+use App\Models\Level;
 use App\Models\User;
 use App\Services\StoredFileReferenceService;
 use Illuminate\Http\UploadedFile;
@@ -43,7 +43,7 @@ final class TrackedAuthoringUploadRetryTest extends TestCase
     {
         $payload = $this->payload($kind);
         $fixture = $this->image();
-        $table = $kind === 'categories' ? 'categories' : 'photos';
+        $table = $kind === 'levels' ? 'levels' : 'photos';
         DB::statement("CREATE TRIGGER reject_owned_upload BEFORE INSERT ON {$table}
             BEGIN SELECT RAISE(ABORT, 'owner write unavailable'); END");
         try {
@@ -181,7 +181,9 @@ final class TrackedAuthoringUploadRetryTest extends TestCase
 
     public static function authoringRoutes(): array
     {
-        return ['controller upload' => ['categories'], 'HasPhoto upload' => ['coupons']];
+        // Levels stage the upload before writing the owner row, the same path
+        // the removed legacy category editor exercised here.
+        return ['service-staged upload' => ['levels'], 'HasPhoto upload' => ['coupons']];
     }
 
     private function assertAcceptedReplay(string $kind, array $payload, UploadedFile $fixture, string $path): void
@@ -205,9 +207,9 @@ final class TrackedAuthoringUploadRetryTest extends TestCase
         Http::assertNothingSent();
     }
 
-    private function owner(string $kind, string $intentId): Category|Coupon
+    private function owner(string $kind, string $intentId): Level|Coupon
     {
-        $class = $kind === 'categories' ? Category::class : Coupon::class;
+        $class = $kind === 'levels' ? Level::class : Coupon::class;
 
         return $class::query()->where('authoring_request_id', $intentId)->sole();
     }
@@ -216,7 +218,7 @@ final class TrackedAuthoringUploadRetryTest extends TestCase
     {
         return $this->post(route('admin.'.$kind.'.store'), [
             ...$payload,
-            'image' => new UploadedFile($fixture->getPathname(), 'image.png', 'image/png', null, true),
+            ($kind === 'levels' ? 'badge_image' : 'image') => new UploadedFile($fixture->getPathname(), 'image.png', 'image/png', null, true),
         ], ['Accept' => 'application/json']);
     }
 

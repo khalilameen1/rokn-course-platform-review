@@ -28,7 +28,7 @@
                     <td>
                         @php($status = $campaign->status ?? 'completed')
                         @php($withdrawn = ($campaign->failure_code ?? null) === 'course_withdrawn_before_delivery')
-                        {{ $withdrawn ? 'لم يُرسل — الكورس غير متاح' : (['scheduled' => 'في موعده', 'queued' => 'في القائمة', 'delivering' => 'جارٍ التوزيع', 'completed' => 'اكتمل', 'failed' => 'تعذّر الإرسال'][$status] ?? 'حالة غير معروفة') }}
+                        {{ $withdrawn ? 'لم يُرسل — الكورس غير متاح' : (['scheduled' => 'في موعده', 'queued' => 'في القائمة', 'delivering' => 'جارٍ التوزيع', 'completed' => 'اكتمل', 'failed' => 'تعذّر الإرسال', 'cancelled' => 'أُلغيت قبل الإرسال'][$status] ?? 'حالة غير معروفة') }}
                         @if($status === 'failed' && !$withdrawn)
                             @php($failureCode = (string) ($campaign->failure_code ?? ''))
                             <br><small class="text-danger">
@@ -67,6 +67,11 @@
                             <form method="POST" action="{{ route('admin.notifications.retry', $campaign) }}" onsubmit="const button=this.querySelector('button[type=submit]'); if(button.disabled) return false; button.disabled=true;">
                                 @csrf
                                 <button type="submit" class="btn btn-sm btn-outline-primary">إعادة المحاولة</button>
+                            </form>
+                        @elseif(isset($campaign->id) && \App\Services\NotificationCampaignService::looksCancellable($campaign))
+                            <form method="POST" action="{{ route('admin.notifications.cancel', $campaign) }}" onsubmit="if(!confirm('إلغاء هذه الحملة؟ لن تُرسل لأي طالب ولا يمكن استئنافها، ويمكنك إنشاء حملة جديدة بدلًا منها.')) return false; const button=this.querySelector('button[type=submit]'); if(button.disabled) return false; button.disabled=true;">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-outline-danger">إلغاء الحملة</button>
                             </form>
                         @else
                             <span class="text-muted">—</span>

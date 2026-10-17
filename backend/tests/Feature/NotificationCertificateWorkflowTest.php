@@ -168,6 +168,7 @@ final class NotificationCertificateWorkflowTest extends TestCase
             'course_id' => $course->id,
             'audience' => 'not_enrolled',
             'authoring_request_id' => (string) Str::uuid(),
+            'confirm_send' => '1',
         ]);
         $request->setUserResolver(static fn () => $admin);
 

@@ -8,8 +8,8 @@
         </div>
         <img class="profile-avatar" src="{{ $user->profile_image_url ?: '/images/avatar/customer_blank.png' }}" alt="{{ $user->name }}">
         <h2 class="profile-name">{{ $user->name }}</h2>
-        <div class="profile-email"><i class="fa fa-envelope"></i> {{ $user->email }}</div>
-        <div class="profile-phone"><i class="fa fa-phone"></i> {{ $user->phone }}</div>
+        <div class="profile-email"><i class="fa fa-envelope"></i> <bdi dir="ltr">{{ $user->email }}</bdi></div>
+        <div class="profile-phone"><i class="fa fa-phone"></i> <bdi dir="ltr">{{ $user->phone }}</bdi></div>
         @if($user->socialAccounts->isNotEmpty())
             @php($providerLabels = ['google' => 'Google', 'facebook' => 'Facebook', 'tiktok' => 'TikTok', 'apple' => 'Apple'])
             <div class="profile-phone">

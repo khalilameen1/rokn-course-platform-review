@@ -69,25 +69,17 @@
                         && $order->wallet_transaction_id
                         && $order->coin_allocation_complete
                         && (int) ($order->ledger_total_coins ?? 0) > 0
+                        && (int) ($compensableCoins ?? 0) > 0
                     )
                         <div class="alert alert-light">
                             <strong>تعويض عطل من طرف ركن</strong>
                             <div>يعيد العملات إلى مكوناتها الأصلية ولا يلغي وصول الطالب إلى الكورس.</div>
                         </div>
-                        <form method="POST" action="{{ route('admin.orders.compensate-course', $order) }}">
-                            @csrf
-                            <div class="form-group">
-                                <label for="compensation-amount">عدد العملات</label>
-                                <input id="compensation-amount" name="amount" type="number" min="1" max="{{ (int) ($order->ledger_total_coins ?? 0) }}" class="form-control" value="{{ old('amount') }}" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="compensation-note">رقم الشكوى وسبب التعويض</label>
-                                <textarea id="compensation-note" name="note" class="form-control" rows="3" minlength="8" maxlength="1000" required>{{ old('note') }}</textarea>
-                            </div>
-                            <button type="submit" class="btn btn-outline-warning btn-block action-btn" onclick="return confirm('هل تحققت من الشكوى والمبلغ؟')">
-                                <i class="fa fa-life-ring"></i> إضافة التعويض
-                            </button>
-                        </form>
+                        @include('admin.partials.course-compensation-form', [
+                            'action' => route('admin.orders.compensate-course', $order),
+                            'maxCoins' => (int) $compensableCoins,
+                            'idPrefix' => 'compensation',
+                        ])
                         <hr class="order-action-separator">
                     @endif
                     @if($order->financial_status === \App\Models\Order::FINANCIAL_REVIEW_REQUIRED && $order->package_id)

@@ -407,7 +407,17 @@ class CoursePublishingService
                 if (config('course_plans.enforce_commercial_floor')) $issues[] = $message;
                 else $warnings[] = $message;
             } elseif ($price > 0 && !$economics['meets_floor']) {
-                $issues[] = "الفئة «{$plan->name_ar}» لا تغطي التكلفة والهامش بعد المكافآت والكوبونات";
+                // The economics panel is administrator-only, so the blocker
+                // itself carries the minimum the same evaluation requires.
+                $fixes = [];
+                if ($price < (int) $economics['required_price_coins']) {
+                    $fixes[] = "السعر {$economics['required_price_coins']} عملة على الأقل";
+                }
+                if ((int) $plan->minimum_paid_coins < (int) $economics['required_paid_coins']) {
+                    $fixes[] = "الحد المدفوع {$economics['required_paid_coins']} عملة على الأقل";
+                }
+                $fix = 'اجعل '.implode(' و', $fixes);
+                $issues[] = "الفئة «{$plan->name_ar}» لا تغطي التكلفة والهامش بعد المكافآت والكوبونات: {$fix}";
             }
 
             // AI limits, token budgets and attachment ceilings are enforced by

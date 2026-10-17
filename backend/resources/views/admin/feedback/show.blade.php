@@ -130,18 +130,24 @@
                 </div>
             </div>
 
-            @if($feedback->order)
-                <form method="POST" action="{{ route('admin.feedback.compensate', $feedback) }}" class="card admin-card mb-4">
-                    @csrf
-                    <input type="hidden" name="version" value="{{ $feedback->version }}">
+            @if($feedback->order && $compensableCoins > 0)
+                <div class="card admin-card mb-4">
                     <div class="card-header"><strong>تعويض عطل من طرفنا</strong></div>
                     <div class="card-body">
-                        <p class="text-muted">يُسجل التعويض على الطلب الموثق ولا يُنفذ تلقائيًا</p>
-                        <div class="form-group"><label for="amount">عملات ركن</label><input id="amount" class="form-control" type="number" name="amount" min="1" required></div>
-                        <div class="form-group"><label for="note">سبب التعويض</label><textarea id="note" class="form-control" name="note" rows="3" maxlength="1000" required></textarea></div>
-                        <button class="btn btn-outline-primary" type="submit">تسجيل التعويض</button>
+                        @include('admin.partials.course-compensation-form', [
+                            'action' => route('admin.feedback.compensate', $feedback),
+                            'maxCoins' => $compensableCoins,
+                            'idPrefix' => 'case-compensation',
+                            'hidden' => ['version' => $feedback->version],
+                            'noteLabel' => 'سبب التعويض',
+                        ])
                     </div>
-                </form>
+                </div>
+            @elseif($feedback->order)
+                <div class="card admin-card mb-4">
+                    <div class="card-header"><strong>تعويض عطل من طرفنا</strong></div>
+                    <div class="card-body"><p class="text-muted mb-0">لا يتوفر تعويض لهذا الطلب: إما أنه ليس شراء كورس مدفوعًا بالعملات ومسوّى، أو استُنفد الحد المتاح.</p></div>
+                </div>
             @endif
         </div>
     </div>

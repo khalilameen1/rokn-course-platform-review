@@ -10,7 +10,9 @@ use App\Models\UserNote;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminStudentReadService;
 use App\Services\StudentAccountStateService;
+use App\Support\CsvCell;
 use App\Support\StudentEditorVersion;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Services\AdminStudentAuthoringService;
 use App\Services\AdminStudentNoteService;
 use Illuminate\Http\Request;
@@ -46,6 +48,33 @@ class UsersController extends Controller
         ));
     }
 
+
+    /** Streamed CSV of the current list filters (UTF-8 BOM so Excel reads Arabic). */
+    public function export(Request $request, AdminStudentReadService $students): StreamedResponse
+    {
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:120'],
+            'active' => ['nullable', 'in:0,1'],
+        ]);
+
+        return response()->streamDownload(function () use ($students, $filters): void {
+            $file = fopen('php://output', 'wb');
+            fwrite($file, "\xEF\xBB\xBF");
+            fputcsv($file, ['student_id', 'name', 'email', 'phone', 'active', 'marketing_opt_in', 'created_at']);
+            $students->eachForExport($filters, function (User $user) use ($file): void {
+                fputcsv($file, CsvCell::row([
+                    $user->id,
+                    $user->name ?: ($user->name_ar ?: $user->name_en),
+                    $user->email,
+                    $user->phone,
+                    $user->active ? 1 : 0,
+                    $user->marketing_notifications_enabled ? 1 : 0,
+                    $user->created_at?->toIso8601String(),
+                ]));
+            });
+            fclose($file);
+        }, 'students-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
 
     /**
      * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View

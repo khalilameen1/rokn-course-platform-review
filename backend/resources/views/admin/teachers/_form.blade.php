@@ -41,7 +41,7 @@
         <div class="col-md-6">
             <div class="form-group">
                 <label for="phone">رقم الهاتف <span class="text-muted">(اختياري)</span></label>
-                <input type="text" name="phone" id="phone" autocomplete="off" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone', $teacher->phone ?? '') }}" {{ $manageCredentials ? '' : 'disabled' }}>
+                <input type="tel" dir="ltr" name="phone" id="phone" autocomplete="off" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone', $teacher->phone ?? '') }}" {{ $manageCredentials ? '' : 'disabled' }}>
                 @error('phone')
                     <span class="invalid-feedback">{{ $message }}</span>
                 @enderror

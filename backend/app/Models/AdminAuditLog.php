@@ -13,6 +13,7 @@ final class AdminAuditLog extends Model
     protected $casts = [
         'route_parameters' => 'array',
         'request_fields' => 'array',
+        'changes' => 'array',
         'occurred_at' => 'datetime',
     ];
 

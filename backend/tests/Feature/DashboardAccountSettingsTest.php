@@ -30,6 +30,7 @@ final class DashboardAccountSettingsTest extends TestCase
         $response = $this->actingAs($moderator)->post(route('admin.update_admin_data'), [
             'email' => 'moderator.updated@example.test',
             'password' => 'new-password-123',
+            'current_password' => 'old-password-123',
         ]);
 
         $response
@@ -39,7 +40,33 @@ final class DashboardAccountSettingsTest extends TestCase
                 app(AdminSessionIdentity::class)->fingerprint($moderator->fresh())
             );
 
-        $this->get(route('admin.admin_data'))->assertOk();
+        $this->get(route('admin.admin_data'))->assertOk()->assertSee('name="current_password"', false);
         $this->assertAuthenticatedAs($moderator);
+        self::assertTrue(Hash::check('new-password-123', $moderator->fresh()->password));
+    }
+
+    public function test_credentials_do_not_change_without_the_correct_current_password(): void
+    {
+        $moderator = new User();
+        $moderator->forceFill([
+            'name_ar' => 'محرر المحتوى',
+            'email' => 'moderator@example.test',
+            'password' => Hash::make('old-password-123'),
+            'role' => 'moderator',
+            'active' => true,
+        ])->save();
+        $this->withoutMiddleware(RequireAdminMfa::class);
+
+        foreach ([[], ['current_password' => 'wrong-password-1']] as $proof) {
+            $this->actingAs($moderator)->post(route('admin.update_admin_data'), [
+                'email' => 'attacker@example.test',
+                'password' => 'attacker-password-1',
+            ] + $proof)->assertSessionHasErrors('current_password')
+                ->assertSessionMissing('_old_input.current_password');
+        }
+
+        $fresh = $moderator->fresh();
+        self::assertSame('moderator@example.test', $fresh->email);
+        self::assertTrue(Hash::check('old-password-123', $fresh->password));
     }
 }

@@ -82,7 +82,7 @@ final class PruneOperationalData extends Command
         $counts['notification_campaigns'] = $this->deleteByIds(
             'notification_campaigns',
             fn (Builder $query): Builder => $query
-                ->whereIn('status', ['completed', 'failed'])
+                ->whereIn('status', ['completed', 'failed', 'cancelled'])
                 ->where(
                     'created_at',
                     '<=',

@@ -37,8 +37,8 @@
                         <tr>
                             <th>{{ $contact->id }}</th>
                             <td>{{ $contact->name }}</td>
-                            <td><a href="tel:{{ $contact->phone }}">{{ $contact->phone }}</a></td>
-                            <td><a href="mailto:{{ $contact->email }}">{{ $contact->email }}</a></td>
+                            <td><a href="tel:{{ $contact->phone }}"><bdi dir="ltr">{{ $contact->phone }}</bdi></a></td>
+                            <td><a href="mailto:{{ $contact->email }}"><bdi dir="ltr">{{ $contact->email }}</bdi></a></td>
                             <td>{{ $contact->created_at->isoFormat('LLL') }}</td>
                             <td>
                                 <span class="status-badge {{ $contact->read ? 'read' : 'unread' }}">

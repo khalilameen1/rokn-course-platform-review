@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Support\PublicDiskUrl;
 use App\Support\NotificationAudience;
 use App\Support\NotificationCampaignIntent;
+use App\Support\NotificationRecipientSelector;
 use App\Support\RoknAppLink;
 use Closure;
 use Illuminate\Http\UploadedFile;
@@ -47,13 +48,7 @@ final readonly class AdminNotificationCampaignAuthoringService
         $messageEn = trim((string) $input->messageEn) ?: $messageAr;
         $courseId = $input->courseId;
         $audience = $targetStudent ? 'all' : $input->audience;
-        $notificationType = $targetStudent
-            ? 'admin_message'
-            : (!$courseId
-                ? ($input->kind === 'service'
-                    ? 'service_notice'
-                    : 'admin_broadcast')
-                : ($audience === 'enrolled' ? 'continue_course' : 'course_promotion'));
+        $notificationType = self::notificationType($targetStudent !== null, $courseId, $audience, $input->kind);
         $actionLabelAr = trim((string) $input->actionLabel) ?: ($courseId
             ? ($audience === 'enrolled' ? 'أكمل من مكانك' : 'تفاصيل الكورس')
             : 'افتح ركن');
@@ -161,6 +156,39 @@ final readonly class AdminNotificationCampaignAuthoringService
         return $campaign ?? NotificationCampaign::query()
             ->where('delivery_key', $deliveryKey)
             ->firstOrFail();
+    }
+
+    /** The stored campaign type; it decides opt-out, quiet hours and cooldown rules. */
+    public static function notificationType(bool $individual, ?int $courseId, string $audience, ?string $kind): string
+    {
+        if ($individual) {
+            return 'admin_message';
+        }
+        if (!$courseId) {
+            return $kind === 'service' ? 'service_notice' : 'admin_broadcast';
+        }
+
+        return $audience === 'enrolled' ? 'continue_course' : 'course_promotion';
+    }
+
+    /**
+     * Learners the draft would reach if it were released now, using the same
+     * selector delivery uses. Shown and confirmed before a broadcast is queued.
+     */
+    public function previewRecipientCount(?int $courseId, string $audience, ?string $kind): int
+    {
+        if ($courseId) {
+            $course = Course::query()->find($courseId);
+            if (!$course) {
+                return 0;
+            }
+        }
+
+        return NotificationRecipientSelector::students(
+            self::notificationType(false, $courseId, $audience, $kind),
+            $audience,
+            $courseId
+        )->count();
     }
 
     private function scheduledAt(mixed $value): ?Carbon

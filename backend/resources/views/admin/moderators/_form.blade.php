@@ -37,7 +37,7 @@
 </div>
 <div class="form-group">
     <label for="phone">الهاتف (اختياري)</label>
-    <input id="phone" name="phone" class="form-control" maxlength="20" value="{{ old('phone', $moderator->phone ?? '') }}">
+    <input id="phone" name="phone" type="tel" dir="ltr" class="form-control" maxlength="20" value="{{ old('phone', $moderator->phone ?? '') }}">
 </div>
 <input type="hidden" name="active" value="0">
 <label class="mb-3"><input type="checkbox" name="active" value="1" {{ old('active', $moderator->active ?? true) ? 'checked' : '' }}> الحساب نشط</label>

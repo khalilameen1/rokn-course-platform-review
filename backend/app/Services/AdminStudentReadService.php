@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\ProjectSubmission;
 use App\Models\User;
+use App\Support\AdminStudentSearch;
 use App\Support\StudentEditorVersion;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -46,28 +47,7 @@ final readonly class AdminStudentReadService
             $query->where('active', ($filters['active'] ?? null) === '1');
         }
 
-        $search = trim((string) ($filters['search'] ?? ''));
-        if ($search !== '') {
-            $accountId = preg_match('/^(?:(UID\s*:\s*|#\s*))?([1-9][0-9]*)$/iD', $search, $identity) === 1
-                ? filter_var($identity[2], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
-                : false;
-            $explicitId = $accountId !== false && ($identity[1] ?? '') !== '';
-            $query->where(function (Builder $users) use ($search, $accountId, $explicitId): void {
-                if ($explicitId) {
-                    $users->whereKey($accountId);
-                    return;
-                }
-                $pattern = "%{$search}%";
-                $users->where('name', 'like', $pattern)
-                    ->orWhere('name_ar', 'like', $pattern)
-                    ->orWhere('name_en', 'like', $pattern)
-                    ->orWhere('email', 'like', $pattern)
-                    ->orWhere('phone', 'like', $pattern);
-                if ($accountId !== false) {
-                    $users->orWhere('id', $accountId);
-                }
-            });
-        }
+        AdminStudentSearch::apply($query, (string) ($filters['search'] ?? ''));
 
         $users = $query
             ->orderByDesc('id')
@@ -80,6 +60,35 @@ final readonly class AdminStudentReadService
         );
 
         return compact('users', 'accountStateVersions');
+    }
+
+    /**
+     * Same selection as listing(), streamed in id order for CSV export.
+     *
+     * @param array{search?:?string,active?:?string} $filters
+     * @param callable(User):void $each
+     */
+    public function eachForExport(array $filters, callable $each, int $limit = 100000): void
+    {
+        $query = User::query()->students();
+        if (in_array($filters['active'] ?? null, ['0', '1'], true)) {
+            $query->where('active', ($filters['active'] ?? null) === '1');
+        }
+        AdminStudentSearch::apply($query, (string) ($filters['search'] ?? ''));
+        $seen = 0;
+        $query->select([
+            'id', 'name', 'name_ar', 'name_en', 'email', 'phone', 'active',
+            'marketing_notifications_enabled', 'created_at',
+        ])->chunkById(1000, function ($users) use ($each, $limit, &$seen): bool {
+            foreach ($users as $user) {
+                if ($seen++ >= $limit) {
+                    return false;
+                }
+                $each($user);
+            }
+
+            return true;
+        });
     }
 
     /**

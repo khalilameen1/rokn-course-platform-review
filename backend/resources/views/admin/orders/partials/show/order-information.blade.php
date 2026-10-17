@@ -31,13 +31,13 @@
                             @endif
                             <div>
                                 <small class="text-muted">
-                                    <i class="fa fa-envelope"></i> {{ $order->user?->email ?: '—' }}
+                                    <i class="fa fa-envelope"></i> <bdi dir="ltr">{{ $order->user?->email ?: '—' }}</bdi>
                                 </small>
                             </div>
                             @if($order->user?->phone)
                                 <div>
                                     <small class="text-muted">
-                                        <i class="fa fa-phone"></i> {{ $order->user->phone }}
+                                        <i class="fa fa-phone"></i> <bdi dir="ltr">{{ $order->user->phone }}</bdi>
                                     </small>
                                 </div>
                             @endif

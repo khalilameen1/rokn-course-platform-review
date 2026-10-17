@@ -9,7 +9,10 @@ use App\Models\DesignSetting;
 use App\Services\AdminPaymentOperationsReadService;
 use App\Services\AdminOrderSettlementService;
 use App\Services\OrderLifecycleService;
+use App\Services\SupportCaseCompensationService;
+use App\Support\CsvCell;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OrdersController extends Controller
 {
@@ -35,16 +38,62 @@ class OrdersController extends Controller
         ]);
     }
 
+    /** Streamed CSV of the current filters (UTF-8 BOM so Excel reads Arabic). */
+    public function export(OrderIndexRequest $request, AdminPaymentOperationsReadService $payments): StreamedResponse
+    {
+        $filters = $request->validated();
+        $labels = $payments->channelLabels();
+
+        return response()->streamDownload(function () use ($payments, $filters, $labels): void {
+            $file = fopen('php://output', 'wb');
+            fwrite($file, "\xEF\xBB\xBF");
+            fputcsv($file, [
+                'order_id', 'order_ref', 'created_at', 'student', 'email', 'phone', 'product',
+                'payment_method', 'operation_state', 'status', 'financial_status',
+                'amount', 'discount_amount', 'final_amount', 'gateway_currency',
+                'total_coins', 'paid_coins', 'reward_coins', 'coupon_code',
+            ]);
+            $payments->eachForExport($filters, function (Order $order) use ($file, $labels): void {
+                fputcsv($file, CsvCell::row([
+                    $order->id,
+                    $order->order_ref,
+                    $order->created_at?->toIso8601String(),
+                    $order->user?->name,
+                    $order->user?->email,
+                    $order->user?->phone,
+                    $order->course?->title ?? $order->package?->name_ar ?? $order->package?->name_en,
+                    $labels[$order->payment_method] ?? $order->payment_method,
+                    $order->payment_operation_label,
+                    $order->status,
+                    $order->financial_status,
+                    $order->amount,
+                    $order->discount_amount,
+                    $order->final_amount,
+                    $order->gateway_currency,
+                    $order->total_coins,
+                    $order->paid_coins,
+                    $order->reward_coins,
+                    $order->coupon_code,
+                ]));
+            });
+            fclose($file);
+        }, 'orders-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
     /**
      * Display the specified order.
      *
      * @param Order $order
      * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
-    public function show(Order $order, AdminPaymentOperationsReadService $payments)
-    {
+    public function show(
+        Order $order,
+        AdminPaymentOperationsReadService $payments,
+        SupportCaseCompensationService $compensation
+    ) {
         return view('admin.orders.show', $payments->show($order) + [
             'designSettings' => $this->getDesignSettings(),
+            'compensableCoins' => $compensation->remainingCompensableCoins($order),
         ]);
     }
 

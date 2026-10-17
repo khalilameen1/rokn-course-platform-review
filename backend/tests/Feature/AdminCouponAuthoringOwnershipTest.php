@@ -5,14 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Controllers\Admin\CouponController;
-use App\Http\Controllers\Admin\GradeController;
 use App\Models\AccountFileDeletion;
 use App\Models\Coupon;
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
-use App\Models\Grade;
 use App\Services\AdminAuthoringCreateIntentService;
-use App\Services\AdminContentInventoryReadService;
 use App\Services\AdminCouponAuthoringService;
 use App\Services\CourseStagedAuthoringService;
 use App\Support\BusinessClock;
@@ -39,11 +36,10 @@ final class AdminCouponAuthoringOwnershipTest extends TestCase
         Http::preventStrayRequests();
     }
 
-    public function test_coupon_choices_and_grade_courses_exclude_drafts_and_archives_not_unpublished_originals(): void
+    public function test_coupon_choices_exclude_drafts_and_archives_not_unpublished_originals(): void
     {
-        $grade = Grade::query()->create(['name_ar' => 'مرحلة', 'name_en' => 'Grade', 'type' => 'university', 'country' => 'Egypt']);
-        $course = $this->course(['grade_id' => $grade->id]);
-        $unpublished = $this->course(['grade_id' => $grade->id, 'is_coming_soon' => true, 'is_catalog_visible' => false]);
+        $course = $this->course();
+        $unpublished = $this->course(['is_coming_soon' => true, 'is_catalog_visible' => false]);
         $other = $this->course();
         $draft = app(CourseStagedAuthoringService::class)->draftFor($course);
         $deleted = $this->course();
@@ -58,8 +54,6 @@ final class AdminCouponAuthoringOwnershipTest extends TestCase
                 $controller->create()->getData()['courses']->modelKeys());
             self::assertEqualsCanonicalizing([$course->id, $unpublished->id, $other->id],
                 $controller->edit($coupon)->getData()['courses']->modelKeys());
-            $data = app(GradeController::class)->courses($grade, app(AdminContentInventoryReadService::class))->getData();
-            self::assertEqualsCanonicalizing([$course->id, $unpublished->id], $data['courses']->modelKeys());
         }
     }
 

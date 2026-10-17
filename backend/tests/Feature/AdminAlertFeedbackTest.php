@@ -91,8 +91,6 @@ final class AdminAlertFeedbackTest extends TestCase
             'support inbox' => ['feedback/index'],
             'support case' => ['feedback/show'],
             'contact message' => ['contacts/show'],
-            'grade create' => ['grades/create'],
-            'grade edit' => ['grades/edit'],
             'payment reconciliation' => ['payment-reconciliation-findings/index'],
             'notification create' => ['notifications/create'],
             'students' => ['users/index'],

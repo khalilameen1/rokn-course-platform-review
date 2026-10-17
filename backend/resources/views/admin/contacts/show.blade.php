@@ -28,7 +28,7 @@
             <div class="contact-field"><span>الاسم</span><strong>{{ $contact->name ?: '—' }}</strong></div>
             <div class="contact-field"><span>تاريخ الطلب</span><strong>{{ $contact->created_at ? \App\Support\BusinessClock::format($contact->created_at) : '—' }}</strong></div>
             <div class="contact-field"><span>البريد الإلكتروني</span><a href="mailto:{{ $contact->email }}">{{ $contact->email ?: '—' }}</a></div>
-            <div class="contact-field"><span>رقم الهاتف</span><a href="tel:{{ $contact->phone }}">{{ $contact->phone ?: '—' }}</a></div>
+            <div class="contact-field"><span>رقم الهاتف</span><a href="tel:{{ $contact->phone }}"><bdi dir="ltr">{{ $contact->phone ?: '—' }}</bdi></a></div>
         </div>
     </section>
 

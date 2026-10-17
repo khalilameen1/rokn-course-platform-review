@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const key = draftPrefix + ':' + tabId;
     const registryKey = 'rokn:course-authoring-draft-index:{{ auth()->id() }}';
     const consumedReceipts = new Set(@json($consumedDraftReceipts));
-    const ignored = new Set(['_token', '_method', 'authoring_version', 'editor_version', 'authoring_request_id', 'authoring_draft_receipt', 'password', 'password_confirmation']);
+    const ignored = new Set(['_token', '_method', 'authoring_version', 'editor_version', 'authoring_request_id', 'authoring_draft_receipt', 'password', 'password_confirmation', 'current_password', 'confirm_send']);
     const enqueueDraftMicrotask = window.queueMicrotask || (callback => Promise.resolve().then(callback));
     const receiptInput = form.querySelector('[name="authoring_draft_receipt"]') || (() => {
         const input = document.createElement('input');

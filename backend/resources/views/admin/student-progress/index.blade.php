@@ -69,7 +69,7 @@
                                     <div class="ms-3 student-summary">
                                         <h5 class="mb-1 student-summary-name">{{ $userProgress['user']->name }}</h5>
                                         <small class="text-muted student-summary-meta">
-                                            <i class="fa fa-phone"></i> {{ $userProgress['user']->phone ?? 'لا يوجد' }}
+                                            <i class="fa fa-phone"></i> @if($userProgress['user']->phone)<bdi dir="ltr">{{ $userProgress['user']->phone }}</bdi>@else لا يوجد @endif
                                         </small>
                                     </div>
                                 </div>

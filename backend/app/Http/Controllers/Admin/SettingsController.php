@@ -178,12 +178,19 @@ class SettingsController extends Controller
         $user = $request->user();
         abort_unless($user, 403);
 
+        // Re-authenticate before changing login credentials (Laravel's
+        // current_password rule, as in Jetstream/Fortify password updates),
+        // so an unattended session cannot take over the account.
         $validated = $request->validate([
             'email' => [
                 'required', 'email:rfc', 'max:255',
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
             'password' => ['nullable', 'string', 'min:10', 'max:72'],
+            'current_password' => ['required', 'string', 'current_password:web'],
+        ], [
+            'current_password.required' => 'اكتب كلمة السر الحالية لتأكيد التغيير',
+            'current_password.current_password' => 'كلمة السر الحالية غير صحيحة',
         ]);
 
         // This form only updates the administrator's login credentials.

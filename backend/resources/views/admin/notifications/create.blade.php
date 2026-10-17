@@ -60,11 +60,12 @@
                         </div>
                         @unless($targetStudent)
                         <div class="form-group">
-                            <label for="notification-audience">الجمهور</label>
+                            <label for="notification-audience">الجمهور <span class="text-danger">*</span></label>
                             <select name="audience" id="notification-audience" class="form-control" required>
+                                <option value="" {{ old('audience') ? '' : 'selected' }}>اختر الجمهور</option>
                                 <option value="not_enrolled" {{ old('audience') === 'not_enrolled' ? 'selected' : '' }}>غير المسجلين في الكورس</option>
                                 <option value="enrolled" {{ old('audience') === 'enrolled' ? 'selected' : '' }}>المسجلون في الكورس</option>
-                                <option value="all" {{ old('audience', 'all') === 'all' ? 'selected' : '' }}>كل الطلاب</option>
+                                <option value="all" {{ old('audience') === 'all' ? 'selected' : '' }}>كل الطلاب</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -111,13 +112,39 @@
                             <label for="notification-message-en">English message <small class="text-muted">(optional)</small></label>
                             <textarea name="message_en" id="notification-message-en" maxlength="240" class="form-control" rows="3" dir="ltr">{{ old('message_en') }}</textarea>
                         </div>
+                        @unless($targetStudent)
+                        <div class="form-group">
+                            <label for="notification-test-email">إرسال تجربة <small class="text-muted">اختياري</small></label>
+                            <div class="input-group">
+                                <input class="form-control" id="notification-test-email" name="test_email" type="email" dir="ltr" maxlength="255" autocomplete="off" placeholder="بريد حساب طالب للتجربة" value="{{ old('test_email') }}">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary" type="submit" formaction="{{ route('admin.notifications.test') }}" formnovalidate data-notification-test-send>إرسال تجربة</button>
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">تصل نسخة واحدة الآن لهذا الحساب فقط بعنوان يبدأ بـ «تجربة:» ولا تُرسل للجمهور</small>
+                            <div class="small mt-1" data-notification-test-status role="status" aria-live="polite"></div>
+                        </div>
+                        <div class="alert alert-light border" data-recipient-preview data-preview-url="{{ route('admin.notifications.audience-preview') }}">
+                            <strong class="d-block mb-1">مراجعة قبل الإرسال</strong>
+                            <div data-recipient-count role="status" aria-live="polite">اختر الجمهور لعرض عدد المستلمين</div>
+                            <small class="form-text text-muted">العدد محسوب الآن بنفس قواعد الإرسال وقد يتغير قليلًا حتى موعد الإرسال</small>
+                            <label class="d-flex align-items-start mt-2 mb-0" for="notification-confirm-send">
+                                <input class="mt-1 ml-2" id="notification-confirm-send" name="confirm_send" type="checkbox" value="1" required>
+                                <span data-confirm-send-label>راجعت الجمهور والنص وأؤكد الإرسال</span>
+                            </label>
+                            @error('confirm_send')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                        </div>
+                        @endunless
                         <div class="form-group">
                             <button type="submit" class="btn btn-primary btn-block">
-                                <i class="fa fa-paper-plane"></i> {{ $targetStudent ? 'إرسال للطالب' : 'إضافة إلى قائمة الإرسال' }}
+                                <i class="fa fa-paper-plane"></i> {{ $targetStudent ? 'إرسال للطالب' : 'تأكيد الإرسال' }}
                             </button>
                         </div>
                     {!! Form::close() !!}
                     @include('admin.partials.course-authoring-draft', ['formId' => $notificationFormId])
+                    @unless($targetStudent)
+                        @include('admin.notifications.partials.review-script', ['formId' => $notificationFormId])
+                    @endunless
                 </div>
             </div>
         </div>

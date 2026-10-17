@@ -19,10 +19,10 @@
                     <div class="student-identity">
                         <h2 class="student-identity-name">{{ $user->name }}</h2>
                         <p class="student-identity-meta">
-                            <i class="fa fa-envelope"></i> {{ $user->email ?? 'لا يوجد' }}
+                            <i class="fa fa-envelope"></i> @if($user->email)<bdi dir="ltr">{{ $user->email }}</bdi>@else لا يوجد @endif
                         </p>
                         <p class="student-identity-meta">
-                            <i class="fa fa-phone"></i> {{ $user->phone ?? 'لا يوجد' }}
+                            <i class="fa fa-phone"></i> @if($user->phone)<bdi dir="ltr">{{ $user->phone }}</bdi>@else لا يوجد @endif
                         </p>
 
                     </div>

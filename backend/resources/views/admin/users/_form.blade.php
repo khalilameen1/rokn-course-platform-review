@@ -37,7 +37,7 @@
             <span class="required">*</span>
         </label>
         <div class="input-group-modern">
-            {!! Form::text('phone', null, ['class' => 'form-control-modern form-control-modern--padded' , 'required', 'id'=>"phone", 'placeholder'=>"05xxxxxxxx"] )!!}
+            {!! Form::text('phone', null, ['class' => 'form-control-modern form-control-modern--padded' , 'required', 'id'=>"phone", 'dir' => 'ltr', 'placeholder'=>"05xxxxxxxx"] )!!}
         </div>
     </div>
 

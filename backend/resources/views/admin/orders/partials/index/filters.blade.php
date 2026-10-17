@@ -71,6 +71,9 @@
                                 <a href="{{ route('admin.orders.index') }}" class="btn btn-reset-filter">
                                     <i class="fa fa-refresh"></i> إعادة تعيين
                                 </a>
+                                <a href="{{ route('admin.orders.export', request()->query()) }}" class="btn btn-reset-filter">
+                                    <i class="fa fa-download"></i> تصدير CSV
+                                </a>
                             </div>
                         </div>
                     </form>

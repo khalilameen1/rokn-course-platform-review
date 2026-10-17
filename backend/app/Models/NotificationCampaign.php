@@ -13,6 +13,8 @@ final class NotificationCampaign extends Model
     public const STATUS_DELIVERING = 'delivering';
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_FAILED = 'failed';
+    /** Withdrawn by staff before any recipient was selected; terminal. */
+    public const STATUS_CANCELLED = 'cancelled';
 
     protected $fillable = [
         'delivery_key',

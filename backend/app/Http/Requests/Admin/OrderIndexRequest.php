@@ -28,7 +28,12 @@ final class OrderIndexRequest extends FormRequest
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
             'amount_min' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
-            'amount_max' => ['nullable', 'numeric', 'gte:amount_min', 'max:9999999999.99'],
+            // gte against an absent amount_min rejects a lone "up to" filter.
+            'amount_max' => array_values(array_filter([
+                'nullable', 'numeric', 'min:0',
+                $this->filled('amount_min') ? 'gte:amount_min' : null,
+                'max:9999999999.99',
+            ])),
         ];
     }
 }

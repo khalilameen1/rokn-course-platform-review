@@ -151,6 +151,54 @@ final class NotificationCampaignService
         return true;
     }
 
+    /**
+     * Withdraw a campaign that has not started selecting recipients.
+     *
+     * One conditional UPDATE is the whole transition. The scheduler releases
+     * a campaign with `status = scheduled -> queued` and the coordinator job
+     * claims it with `status IN (queued, delivering) -> delivering`; both are
+     * compare-and-set on the same row. Whichever write lands first wins, so a
+     * cancelled campaign is never claimed and a claimed one is never
+     * cancelled. Queued campaigns are only cancellable while no recipient has
+     * been selected (a manual retry re-queues a campaign that already
+     * delivered to part of its audience, which must not be half-cancelled).
+     */
+    public function cancel(NotificationCampaign $campaign): bool
+    {
+        return NotificationCampaign::query()
+            ->whereKey($campaign->getKey())
+            ->where(function ($cancellable): void {
+                $cancellable->where('status', NotificationCampaign::STATUS_SCHEDULED)
+                    ->orWhere(function ($queued): void {
+                        $queued->where('status', NotificationCampaign::STATUS_QUEUED)
+                            ->where(fn ($cursor) => $cursor->whereNull('selection_cursor')->orWhere('selection_cursor', 0))
+                            ->whereNull('selection_finished_at')
+                            ->whereNotExists(function ($recipients): void {
+                                $recipients->selectRaw('1')
+                                    ->from('notification_campaign_recipients')
+                                    ->whereColumn('notification_campaign_recipients.notification_campaign_id', 'notification_campaigns.id');
+                            });
+                    });
+            })
+            ->update([
+                'status' => NotificationCampaign::STATUS_CANCELLED,
+                'coordinator_finished_at' => now(),
+                'completed_at' => null,
+                'failed_at' => null,
+                'failure_code' => 'cancelled_by_staff',
+                'updated_at' => now(),
+            ]) === 1;
+    }
+
+    /** Whether the dashboard should offer cancel; cancel() remains the authority. */
+    public static function looksCancellable(NotificationCampaign $campaign): bool
+    {
+        return $campaign->status === NotificationCampaign::STATUS_SCHEDULED
+            || ($campaign->status === NotificationCampaign::STATUS_QUEUED
+                && (int) $campaign->selection_cursor === 0
+                && $campaign->selection_finished_at === null);
+    }
+
     public function jobForCampaign(NotificationCampaign $campaign): SendStudentNotification
     {
         return new SendStudentNotification((string) $campaign->delivery_key);

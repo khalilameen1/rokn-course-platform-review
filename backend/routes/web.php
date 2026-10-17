@@ -162,6 +162,8 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
         ->whereUuid('playbackSession')->middleware('admin.only')->name('playback-operations.terminate-stale');
     Route::post('media-health/{lesson}/probe', 'MediaHealthController@probe')
         ->middleware('admin.only')->name('media-health.probe');
+    Route::get('audit-log', 'AuditLogController@index')
+        ->middleware('admin.only')->name('audit-log.index');
     Route::get('user-sessions', 'UserSessionController@index')
         ->middleware('admin.only')->name('user-sessions.index');
     Route::delete('user-sessions/{sessionId}', 'UserSessionController@destroy')
@@ -183,15 +185,9 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::post('feedback/{feedback}/messages', 'FeedbackController@message')->middleware(['admin.only', 'admin.audit'])->name('feedback.message');
     Route::post('feedback/{feedback}/compensate', 'FeedbackController@compensate')->middleware(['admin.only', 'admin.audit'])->name('feedback.compensate');
     Route::get('feedback/{feedback}/attachments/{attachment}', 'FeedbackController@attachment')->middleware('admin.only')->name('feedback.attachment');
-    Route::delete('feedback/{feedback}', 'FeedbackController@destroy')->middleware('admin.only')->name('feedback.destroy');
-
-    // Urgent Tasks routes
-    Route::get('urgent-tasks', 'UrgentTasksController@index')->middleware('admin.only')->name('urgent-tasks.index');
-    Route::get('urgent-tasks/pending-orders', 'UrgentTasksController@pendingOrders')->middleware('admin.only')->name('urgent-tasks.pending-orders');
-    Route::get('urgent-tasks/inactive-students', 'UrgentTasksController@inactiveStudents')->middleware('admin.only')->name('urgent-tasks.inactive-students');
-    Route::post('urgent-tasks/orders/{order}/approve', 'UrgentTasksController@approveOrder')->middleware('admin.only')->name('urgent-tasks.approve-order');
-    Route::post('urgent-tasks/orders/{order}/reject', 'UrgentTasksController@rejectOrder')->middleware('admin.only')->name('urgent-tasks.reject-order');
-    Route::post('urgent-tasks/students/{user}/activate', 'UrgentTasksController@activateStudent')->middleware('admin.only')->name('urgent-tasks.activate-student');
+    // Support cases are closed, never deleted; retention prunes them.
+    // The former urgent-tasks pages duplicated the orders pending filter and
+    // the students inactive filter and were linked from nowhere.
 
     // Moderators own course authoring and commercial plan configuration.
     // Deleting a commercial shell remains administrator-only.
@@ -266,15 +262,8 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::resource('admin_notifications', 'AdminNotificationsController')
         ->except(['show'])
         ->middleware('admin.only');
-    Route::resource('categories', 'CategoryController')
-        ->only(['create', 'store', 'edit', 'update', 'destroy'])
-        ->middleware('admin.only');
-    Route::resource('categories', 'CategoryController')->only(['index'])->middleware('admin.only');
-    Route::resource('grades', 'GradeController')
-        ->only(['create', 'store', 'edit', 'update', 'destroy'])
-        ->middleware('admin.only');
-    Route::resource('grades', 'GradeController')->only(['index'])->middleware('admin.only');
-    Route::get('grades/{grade}/courses', 'GradeController@courses')->middleware('admin.only')->name('grades.courses');
+    // Legacy categories and grades are not editable here: no course editor
+    // field, learner screen or routed category API reads them any more.
     Route::resource('coupons', 'CouponController')->except(['show'])->middleware('admin.only');
 
     // Course Codes Management
@@ -295,6 +284,10 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::resource('moderators', 'ModeratorController')
         ->only(['index', 'create', 'store', 'edit', 'update'])
         ->middleware('admin.only');
+    Route::post('moderators/{moderator}/mfa-reset', 'ModeratorController@resetMfa')
+        ->whereNumber('moderator')
+        ->middleware(['admin.only', 'throttle:6,1'])
+        ->name('moderators.mfa-reset');
 
     // User notes routes
     Route::name('users.notes.store')->post('users/{user}/notes', 'UsersController@storeNote')->middleware('admin.only');
@@ -304,6 +297,8 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     // verified deletion-request workflow in ContactsController. Exposing the
     // resource destroy action would bypass its identity checks and resolution
     // evidence even though the dashboard does not render a delete button.
+    Route::get('users/export', 'UsersController@export')
+        ->middleware(['admin.only', 'throttle:admin-bulk'])->name('users.export');
     Route::resource('users', 'UsersController')->except(['destroy'])->middleware('admin.only');
     Route::resource('packages', 'PackageController')->middleware('admin.only');
     // Home rows are editorial content. Moderators can arrange and rename
@@ -338,8 +333,6 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     /* ====== Student Progress =======*/
     Route::name('student-progress.index')->get('student-progress', 'StudentProgressController@index')->middleware('admin.only');
     Route::name('student-progress.show')->get('student-progress/{user}', 'StudentProgressController@show')->middleware('admin.only');
-    Route::name('student-progress.statistics')->get('student-progress-statistics', 'StudentProgressController@statistics')->middleware('admin.only');
-    Route::name('student-progress.compare')->post('student-progress/compare', 'StudentProgressController@compare')->middleware('admin.only');
 
     /* ====== Project Submissions =======*/
     Route::get('project-submissions', 'ProjectSubmissionController@index')->name('project-submissions.index');
@@ -350,6 +343,8 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::post('project-submissions/{projectSubmission}/reject', 'ProjectSubmissionController@reject')->name('project-submissions.reject');
 
     /* ====== Orders =======*/
+    Route::get('orders/export', 'OrdersController@export')
+        ->middleware(['admin.only', 'throttle:admin-bulk'])->name('orders.export');
     Route::resource('orders', 'OrdersController', ['only' => ['index', 'show']])->middleware('admin.only');
     Route::post('orders/{order}/financial-resolution', 'OrdersController@resolveFinancialReview')->middleware('admin.only')->name('orders.resolve-financial-review');
     Route::post('orders/{order}/course-compensation', 'OrdersController@compensateCourse')->middleware('admin.only')->name('orders.compensate-course');
@@ -396,6 +391,16 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::post('notifications', 'NotificationsController@store')
         ->middleware(['admin.only', 'throttle:admin-bulk'])
         ->name('notifications.store');
+    Route::get('notifications/audience-preview', 'NotificationsController@audiencePreview')
+        ->middleware(['admin.only', 'throttle:60,1'])
+        ->name('notifications.audience-preview');
+    Route::post('notifications/test', 'NotificationsController@test')
+        ->middleware(['admin.only', 'throttle:10,1'])
+        ->name('notifications.test');
+    Route::post('notifications/{notificationCampaign}/cancel', 'NotificationsController@cancel')
+        ->whereNumber('notificationCampaign')
+        ->middleware('admin.only')
+        ->name('notifications.cancel');
     Route::post('notifications/{notificationCampaign}/retry', 'NotificationsController@retry')
         ->whereNumber('notificationCampaign')
         ->middleware(['admin.only', 'throttle:admin-bulk'])

@@ -17,7 +17,6 @@ final class AdminInlineStyleContractTest extends TestCase
         'course-codes/partials/_dynamic_styles.blade.php',
         'courses/partials/_dynamic_styles.blade.php',
         'orders/partials/_dynamic_styles.blade.php',
-        'urgent-tasks/partials/_dynamic_styles.blade.php',
     ];
 
     public function test_interactive_admin_views_have_no_inline_styles(): void

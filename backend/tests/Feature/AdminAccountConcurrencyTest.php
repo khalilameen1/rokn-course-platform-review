@@ -189,7 +189,7 @@ final class AdminAccountConcurrencyTest extends TestCase
         self::assertNull($moderator->email_verified_at);
     }
 
-    public function test_urgent_activation_rejects_an_aba_state_change(): void
+    public function test_student_activation_rejects_an_aba_state_change(): void
     {
         $student = User::query()->forceCreate([
             'name' => 'Inactive Student',
@@ -211,7 +211,7 @@ final class AdminAccountConcurrencyTest extends TestCase
             false
         );
 
-        $this->post(route('admin.urgent-tasks.activate-student', $student), [
+        $this->patch(route('admin.users.deactive', $student), [
             'expected_active' => '0',
             'state_version' => $staleVersion,
         ])->assertSessionHasErrors('expected_active');

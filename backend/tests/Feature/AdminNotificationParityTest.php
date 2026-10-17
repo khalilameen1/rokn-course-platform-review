@@ -156,6 +156,7 @@ final class AdminNotificationParityTest extends ApiTestCase
             'message_en' => 'English message',
             'audience' => 'all',
             'authoring_request_id' => (string) Str::uuid(),
+            'confirm_send' => '1',
         ]);
         $request->setUserResolver(fn () => $this->user);
 

@@ -228,6 +228,7 @@ final class NotificationAuthoringApplicationTest extends TestCase
         return [
             'authoring_request_id' => (string) Str::uuid(), 'title_ar' => 'عنوان الإشعار',
             'message_ar' => 'رسالة الإشعار', 'audience' => 'all', 'notification_kind' => 'service',
+            'confirm_send' => '1',
         ];
     }
 }

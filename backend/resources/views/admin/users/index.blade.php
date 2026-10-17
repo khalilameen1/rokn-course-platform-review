@@ -24,6 +24,10 @@
                                 <i class="fa fa-database"></i>
                                 {{ $users->total() }} طالب
                             </span>
+                            <a href="{{ route('admin.users.export', request()->only(['search', 'active'])) }}" class="btn-create-student">
+                                <i class="fa fa-download"></i>
+                                تصدير CSV
+                            </a>
                             <a href="{{ route('admin.notifications.create') }}" class="btn-create-student">
                                 <i class="fa fa-bell"></i>
                                 إرسال إشعار للجميع

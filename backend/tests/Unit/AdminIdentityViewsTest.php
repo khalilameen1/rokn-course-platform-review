@@ -14,7 +14,6 @@ class AdminIdentityViewsTest extends TestCase
     private const VIEW_FAMILIES = [
         'users',
         'design-settings',
-        'grades',
         'app-versions',
     ];
 
@@ -43,10 +42,6 @@ class AdminIdentityViewsTest extends TestCase
             'users/index.blade.php' => ['users-theme.css', 'users-index.css', 'admin-page'],
             'users/show.blade.php' => ['users-theme.css', 'users-show.css', 'admin-page'],
             'design-settings/index.blade.php' => ['design-settings.css', 'admin-page'],
-            'grades/create.blade.php' => ['grades-theme.css', 'grades-create.css', 'grades-form.css', 'admin-page'],
-            'grades/edit.blade.php' => ['grades-theme.css', 'grades-edit.css', 'grades-form.css', 'admin-page'],
-            'grades/index.blade.php' => ['grades-theme.css', 'grades-index.css', 'admin-page'],
-            'grades/courses.blade.php' => ['grades-theme.css', 'grades-courses.css', 'admin-page'],
             'app-versions/create.blade.php' => ['app-versions.css', 'admin-card'],
             'app-versions/edit.blade.php' => ['app-versions.css', 'admin-card'],
             'app-versions/index.blade.php' => ['app-versions.css', 'admin-card'],
@@ -83,10 +78,6 @@ class AdminIdentityViewsTest extends TestCase
             'admin.users.notes.store',
             'admin.users.notes.delete',
             'admin.design-settings.store',
-            'admin.grades.store',
-            'admin.grades.update',
-            'admin.grades.destroy',
-            'admin.grades.courses',
             'admin.app-versions.store',
             'admin.app-versions.update',
             'admin.app-versions.destroy',
@@ -99,8 +90,6 @@ class AdminIdentityViewsTest extends TestCase
             "Form::text('name'",
             "Form::email('email'",
             "Form::text('phone'",
-            "Form::text('name_ar'",
-            "Form::text('name_en'",
             'name="platform"',
             'name="distribution_channel"',
             'name="version_name"',
@@ -119,9 +108,6 @@ class AdminIdentityViewsTest extends TestCase
         foreach ([
             'function toggleAccordion',
             'function updateDemoColors',
-            'function confirmDelete',
-            'function highlightSearchResults',
-            'function viewStudents',
             'function syncPlatformFields',
             'data-progress-value',
             'aria-valuenow',
@@ -132,7 +118,7 @@ class AdminIdentityViewsTest extends TestCase
 
     public function test_identity_stylesheets_use_admin_tokens_and_scoped_entry_points(): void
     {
-        $stylesheets = glob($this->projectRoot().'/public/admin/assets/css/{users-,grades-}*.css', GLOB_BRACE);
+        $stylesheets = glob($this->projectRoot().'/public/admin/assets/css/users-*.css');
         self::assertIsArray($stylesheets);
         $stylesheets[] = $this->projectRoot().'/public/admin/assets/css/design-settings.css';
         $stylesheets[] = $this->projectRoot().'/public/admin/assets/css/app-versions.css';
@@ -149,14 +135,13 @@ class AdminIdentityViewsTest extends TestCase
         self::assertStringContainsString('--rokn-admin-primary', $source);
         self::assertStringContainsString('--rokn-admin-radius', $source);
         self::assertStringContainsString('.app-versions-page', $source);
-        self::assertStringContainsString('.grades-module', $source);
         self::assertStringContainsString('.users-page', $source);
         self::assertStringContainsString('.design-settings-wrapper', $source);
     }
 
     public function test_identity_families_share_one_theme_runtime(): void
     {
-        foreach (['users', 'grades'] as $family) {
+        foreach (['users'] as $family) {
             $partial = (string) file_get_contents(
                 $this->projectRoot().'/resources/views/admin/'.$family.'/partials/_dynamic_styles.blade.php'
             );
@@ -208,10 +193,6 @@ class AdminIdentityViewsTest extends TestCase
         if (str_starts_with($view, 'users/')) {
             $source .= (string) file_get_contents(
                 $this->projectRoot().'/resources/views/admin/users/partials/_dynamic_styles.blade.php'
-            );
-        } elseif (str_starts_with($view, 'grades/')) {
-            $source .= (string) file_get_contents(
-                $this->projectRoot().'/resources/views/admin/grades/partials/_dynamic_styles.blade.php'
             );
         }
 

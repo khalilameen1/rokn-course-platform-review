@@ -131,6 +131,13 @@
                     </a>
                 </li>
 
+                <li class="nav-item{{ isRouteActive('admin.coupons.*') ? ' active' : '' }}">
+                    <a href="{{ route('admin.coupons.index') }}" class="nav-link">
+                        <i class="menu-icon fa fa-ticket"></i>
+                        <span class="menu-text">كوبونات الخصم</span>
+                    </a>
+                </li>
+
                 <li class="nav-item{{ isRouteActive('admin.orders.*') ? ' active' : '' }}">
                     <a href="{{ route('admin.orders.index') }}" class="nav-link">
                         <i class="menu-icon fa fa-shopping-cart"></i>
@@ -203,6 +210,13 @@
                     <a href="{{ route('admin.app-versions.index') }}" class="nav-link">
                         <i class="menu-icon fa fa-mobile"></i>
                         <span class="menu-text">إصدارات التطبيق</span>
+                    </a>
+                </li>
+
+                <li class="nav-item{{ isRouteActive('admin.audit-log.*') ? ' active' : '' }}">
+                    <a href="{{ route('admin.audit-log.index') }}" class="nav-link">
+                        <i class="menu-icon fa fa-history"></i>
+                        <span class="menu-text">سجل التدقيق</span>
                     </a>
                 </li>
 

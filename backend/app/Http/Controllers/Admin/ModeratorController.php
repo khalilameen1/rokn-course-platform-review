@@ -7,11 +7,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AdminAuthoringCreateIntentService;
+use App\Services\AdminMfaResetService;
 use App\Services\AdminModeratorAuthoringService;
 use App\Support\ModeratorEditorVersion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 final class ModeratorController extends Controller
@@ -59,6 +61,35 @@ final class ModeratorController extends Controller
         $this->authoring->update((int) $moderator->id, $data, (string) $data['editor_version']);
 
         return redirect()->route('admin.moderators.index')->with('success', 'تم تحديث حساب مسؤول المحتوى.');
+    }
+
+    /**
+     * Administrator recovery for a moderator who lost the authenticator and
+     * recovery codes. Destructive, so it uses GitHub's "type the name to
+     * confirm" pattern: the administrator must type the moderator's email.
+     */
+    public function resetMfa(Request $request, User $moderator, AdminMfaResetService $resets): RedirectResponse
+    {
+        $this->assertModerator($moderator);
+        abort_if((int) $moderator->getKey() === (int) $request->user()?->getKey(), 403);
+        $request->validate([
+            'confirm_email' => ['required', 'string', 'max:255'],
+        ], [
+            'confirm_email.required' => 'اكتب بريد الحساب لتأكيد إعادة الضبط',
+        ]);
+        if (!hash_equals(
+            strtolower(trim((string) $moderator->email)),
+            strtolower(trim((string) $request->input('confirm_email')))
+        )) {
+            throw ValidationException::withMessages([
+                'confirm_email' => ['البريد المكتوب لا يطابق بريد هذا الحساب'],
+            ]);
+        }
+
+        $resets->reset($moderator);
+
+        return redirect()->route('admin.moderators.edit', $moderator)
+            ->with('success', 'أُعيد ضبط التحقق بخطوتين. سيُطلب من مسؤول المحتوى إعداد تطبيق المصادقة عند دخوله التالي.');
     }
 
     /** @return array<string, mixed> */

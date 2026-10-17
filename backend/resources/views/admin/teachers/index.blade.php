@@ -54,8 +54,8 @@
                                     <small class="text-muted">{{ $teacher->job_title }}</small>
                                 </td>
                                 @if($canManageCredentials)
-                                    <td>{{ $teacher->email }}</td>
-                                    <td>{{ $teacher->phone }}</td>
+                                    <td><bdi dir="ltr">{{ $teacher->email }}</bdi></td>
+                                    <td><bdi dir="ltr">{{ $teacher->phone }}</bdi></td>
                                 @endif
                                 <td>
                                     <span class="badge badge-info">{{ $teacher->teaching_courses_count }}</span>

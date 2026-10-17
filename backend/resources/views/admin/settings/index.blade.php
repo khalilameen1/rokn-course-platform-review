@@ -81,7 +81,7 @@
                             <label for="phone">
                                 <i class="fa fa-phone"></i> رقم الهاتف
                             </label>
-                            {!! Form::text('phone', null, ['class' => 'form-control-modern', 'id' => 'phone', 'placeholder' => '+20 10 0000 0000']) !!}
+                            {!! Form::text('phone', null, ['class' => 'form-control-modern', 'id' => 'phone', 'dir' => 'ltr', 'placeholder' => '+20 10 0000 0000']) !!}
                         </div>
                     </div>
 

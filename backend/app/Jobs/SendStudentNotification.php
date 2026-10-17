@@ -4,13 +4,10 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Support\NotificationAudience;
-use App\Models\User;
+use App\Support\NotificationRecipientSelector;
 use App\Models\NotificationCampaign;
 use App\Models\NotificationCampaignRecipient;
 use App\Models\Course;
-use App\Models\FinancialEntitlementHold;
-use App\Services\NotificationDeliveryPolicy;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -81,63 +78,14 @@ class SendStudentNotification implements ShouldQueue, ShouldBeUnique
             $excludeUserIds = $this->normalizeUserIds((array) ($campaign->exclude_user_ids ?? []));
             $courseId = $campaign->course_id ? (int) $campaign->course_id : null;
             $audience = (string) $campaign->audience;
-            $query = User::query()->students()->where('active', true);
-
-            if (NotificationDeliveryPolicy::isMarketing($notificationType)) {
-                $query->where('marketing_notifications_enabled', true);
-            }
-
-            $cooldownHours = NotificationDeliveryPolicy::cooldownHours($notificationType);
-            if ($cooldownHours > 0) {
-                $family = NotificationDeliveryPolicy::cooldownFamily($notificationType);
-                $query->where(function ($eligible) use ($cooldownHours, $family): void {
-                    $eligible->whereDoesntHave('studentNotifications', function ($notifications) use ($cooldownHours, $family): void {
-                        $notifications
-                            ->whereIn('notification_type', $family)
-                            ->where('created_at', '>=', now()->subHours($cooldownHours));
-                    })->orWhereHas('studentNotifications', function ($notifications): void {
-                        $notifications->where('delivery_key', $this->deliveryKey);
-                    });
-                });
-            }
-
-            if ($userIds !== []) {
-                $query->whereIn('id', $userIds);
-            }
-
-            if ($excludeUserIds !== []) {
-                $query->whereNotIn('id', $excludeUserIds);
-            }
-
-            if ($courseId !== null && $audience === NotificationAudience::ENROLLED) {
-                $query->whereHas('enrollments', function ($enrollments) use ($courseId): void {
-                    $enrollments
-                        ->where('course_id', $courseId)
-                        ->where('is_active', true)
-                        ->where(function ($expiry): void {
-                            $expiry->whereNull('expires_at')->orWhere('expires_at', '>', now());
-                        });
-                });
-            } elseif ($courseId !== null && $audience === NotificationAudience::NOT_ENROLLED) {
-                $query->whereDoesntHave('enrollments', function ($enrollments) use ($courseId): void {
-                    $enrollments
-                        ->where('course_id', $courseId)
-                        ->where('is_active', true)
-                        ->where(function ($expiry): void {
-                            $expiry->whereNull('expires_at')->orWhere('expires_at', '>', now());
-                        });
-                });
-            }
-            if ($courseId !== null) {
-                $query->whereNotExists(function ($holds) use ($courseId): void {
-                    $holds->selectRaw('1')
-                        ->from('financial_entitlement_holds')
-                        ->whereColumn('financial_entitlement_holds.user_id', 'users.id')
-                        ->where('course_id', $courseId)
-                        ->where('status', FinancialEntitlementHold::STATUS_ACTIVE)
-                        ->whereIn('entitlement_scope', ['course', 'plan', 'chat']);
-                });
-            }
+            $query = NotificationRecipientSelector::students(
+                $notificationType,
+                $audience,
+                $courseId,
+                $userIds,
+                $excludeUserIds,
+                $this->deliveryKey
+            );
             $queuedRecipientsCount = 0;
 
             if (!$campaign->selection_finished_at) {

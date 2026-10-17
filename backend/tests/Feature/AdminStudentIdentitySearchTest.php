@@ -19,10 +19,36 @@ final class AdminStudentIdentitySearchTest extends TestCase
         $this->student(1234);
         $this->student(888, ['phone' => '01012399999']);
 
+        // A bare number is an exact id or a phone *prefix* (index-friendly);
+        // it no longer scans for the digits anywhere inside a phone number.
         foreach (['123', 'UID: 123', '#123', ' uid:123 ', '# 123'] as $search) {
-            $expected = $search === '123' ? [888, 123] : [123];
-            self::assertSame($expected, $this->search($search), $search);
+            self::assertSame([123], $this->search($search), $search);
         }
+    }
+
+    public function test_phone_and_email_use_prefix_matches_and_local_numbers_find_stored_international_form(): void
+    {
+        $this->student(501, ['phone' => '201012345678', 'email' => 'mona.ali@example.test']);
+        $this->student(502, ['phone' => '201099999999', 'email' => 'ali@example.test']);
+
+        self::assertSame([501], $this->search('01012345678'));
+        self::assertSame([501], $this->search('+20 101 234'));
+        self::assertSame([501], $this->search('MONA.ALI@example.test'));
+        self::assertSame([502], $this->search('ali@'));
+        self::assertSame([], $this->search('2345678'));
+    }
+
+    public function test_wildcards_in_input_are_literal(): void
+    {
+        $this->student(601, ['name' => 'Learner 100% ready']);
+        $this->student(602, ['name' => 'Learner_x']);
+        $this->student(603, ['name' => 'Learner plain']);
+
+        self::assertSame([601], $this->search('100%'));
+        self::assertSame([602], $this->search('r_x'));
+        // Only the rows that really contain the character, not every row.
+        self::assertSame([601], $this->search('%'));
+        self::assertSame([602], $this->search('_'));
     }
 
     public function test_existing_name_email_and_phone_search_is_not_reinterpreted_as_an_id(): void

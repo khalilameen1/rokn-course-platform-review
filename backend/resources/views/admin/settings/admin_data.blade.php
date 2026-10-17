@@ -63,6 +63,27 @@
                     </div>
                 </div>
 
+                <div class="form-group-styled">
+                    <label for="current_password">
+                        <span class="label-icon">
+                            <i class="fa fa-shield"></i>
+                        </span>
+                        كلمة السر الحالية
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fa fa-shield input-icon"></i>
+                        <input class="form-control-styled" type="password" name="current_password" id="current_password" autocomplete="current-password" required placeholder="للتأكد من أنك صاحب الحساب">
+                    </div>
+                    @error('current_password')
+                        <div class="helper-text text-danger"><i class="fa fa-exclamation-circle"></i><span>{{ $message }}</span></div>
+                    @else
+                        <div class="helper-text">
+                            <i class="fa fa-info-circle"></i>
+                            <span>مطلوبة لتغيير البريد أو كلمة السر</span>
+                        </div>
+                    @enderror
+                </div>
+
                 <div class="submit-btn-wrapper">
                     <button type="submit" class="btn-submit-modern">
                         <i class="fa fa-save btn-icon"></i>

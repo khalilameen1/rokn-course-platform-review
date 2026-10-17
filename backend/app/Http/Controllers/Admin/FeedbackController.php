@@ -81,7 +81,7 @@ final class FeedbackController extends Controller
         return [$filters, $query];
     }
 
-    public function show(FeedbackReport $feedback): View
+    public function show(FeedbackReport $feedback, SupportCaseCompensationService $compensation): View
     {
         $feedback->load([
             'user', 'course', 'lesson', 'order', 'assignee', 'attachments',
@@ -103,7 +103,10 @@ final class FeedbackController extends Controller
             $attachment->setAttribute('is_available', $available);
             });
         $admins = User::query()->where('role', 'admin')->orderBy('name')->get(['id', 'name']);
-        return view('admin.feedback.show', compact('feedback', 'admins'));
+        $compensableCoins = (int) $feedback->user_id === (int) $feedback->order?->user_id
+            ? $compensation->remainingCompensableCoins($feedback->order)
+            : 0;
+        return view('admin.feedback.show', compact('feedback', 'admins', 'compensableCoins'));
     }
 
     public function export(Request $request): StreamedResponse
@@ -185,9 +188,9 @@ final class FeedbackController extends Controller
         try {
             $compensation->compensate($feedback, $validated, $request->user()?->id);
         } catch (\DomainException|\InvalidArgumentException $exception) {
-            return back()->with('error', 'لا يمكن تسجيل التعويض على هذا الطلب');
+            return back()->withInput()->with('error', "لا يمكن إضافة هذا التعويض\nتحقق من أن المبلغ لا يتجاوز الحد المتاح");
         }
-        return back()->with('success', 'تم تسجيل التعويض وربطه بالبلاغ');
+        return back()->with('success', 'أُضيفت العملات إلى محفظة الطالب وربط التعويض بالبلاغ');
     }
 
     public function attachment(
@@ -205,10 +208,5 @@ final class FeedbackController extends Controller
             'X-Content-Type-Options' => 'nosniff',
             'Content-Security-Policy' => "default-src 'none'; sandbox",
         ]);
-    }
-
-    public function destroy(FeedbackReport $feedback): RedirectResponse
-    {
-        return back()->with('error', "أغلق البلاغ بدل حذفه\nيُزال تلقائيًا بعد مدة الاحتفاظ");
     }
 }
