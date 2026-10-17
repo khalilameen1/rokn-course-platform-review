@@ -63,6 +63,11 @@ export type PortfolioItem = {
   externalUrl?: string;
   /** Owner hid it from the public link without deleting it. */
   hidden?: boolean;
+  /**
+   * Its own public page answers now. A project added or changed after the
+   * last approval is not live until review. Undefined from older servers.
+   */
+  live?: boolean;
   sortOrder?: number;
   courseName?: string;
   courseId?: string;
@@ -257,6 +262,7 @@ export const mapPortfolioItem = (
         ? item.external_url
         : fallback?.externalUrl ?? '',
     hidden: firstBoolean(item.is_hidden) ?? fallback?.hidden ?? false,
+    live: firstBoolean(item.is_live) ?? fallback?.live,
     sortOrder: Math.max(0, Number(item.sort_order) || 0),
     courseName: course?.name ? String(course.name) : fallback?.courseName,
     courseId: course?.id ? String(course.id) : fallback?.courseId,

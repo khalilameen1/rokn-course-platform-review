@@ -43,7 +43,8 @@ final class PortfolioReviewReadOwnershipTest extends TestCase
         self::assertSame(RoknPublicUrl::portfolio($owner->portfolio_slug), $reader->publicUrlFor($owner));
         self::assertSame(RoknPublicUrl::portfolio($owner->portfolio_slug), $owner->profile_deeplink);
         self::assertSame('Selected work', $reader->livePublication($owner)['projects'][0]['content']['item']['title']);
-        self::assertSame('certificate', app(CertificateQrDestinationService::class)
+        // A new certificate's QR follows the live publication, not the draft.
+        self::assertSame('portfolio', app(CertificateQrDestinationService::class)
             ->forIssuance($owner, (string) Str::uuid())['type']);
         $this->assertOnlyReadQueries();
         self::assertSame($before, $owner->fresh()->getAttributes());

@@ -63,24 +63,22 @@ final class CertificateQrDestinationService
         ];
     }
 
-    /** New credentials reference existing approved work, never an empty future portfolio. */
+    /**
+     * New credentials reference existing approved work, never an empty future
+     * portfolio. "Live" is what the public page serves now: a newer draft
+     * waiting for review does not take the published version down, so it
+     * does not take the QR away either.
+     */
     public function forIssuance(User $user, string $publicId): array
     {
-        $slug = trim((string) $user->portfolio_slug);
-        if ($user->active
-            && $user->portfolio_sharing_suspended_at === null
-            && $user->portfolio_sharing_status === 'approved'
-            && $this->portfolioShares->isValidUnlistedSlug($slug)) {
-            $snapshot = $this->reviews->snapshot($user);
-            if ($snapshot['items']->isNotEmpty()
-                && hash_equals((string) $user->portfolio_approved_hash, $snapshot['hash'])) {
-                return [
-                    'url' => RoknPublicUrl::portfolio($slug),
-                    'title' => 'شاهد الأعمال',
-                    'hint' => 'امسح الرمز لعرضها',
-                    'type' => 'portfolio',
-                ];
-            }
+        $live = $this->reviews->livePublication($user);
+        if ($live !== null && $live['projects'] !== []) {
+            return [
+                'url' => RoknPublicUrl::portfolio((string) $user->portfolio_slug),
+                'title' => 'شاهد الأعمال',
+                'hint' => 'امسح الرمز لعرضها',
+                'type' => 'portfolio',
+            ];
         }
 
         return [

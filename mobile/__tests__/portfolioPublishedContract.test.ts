@@ -24,7 +24,10 @@ import {
   updatePortfolioItem,
   updatePortfolioProfile,
 } from '../src/services/api/portfolio';
-import {portfolioProjectShareUrl} from '../src/screens/Profile/gallery/portfolioModel';
+import {
+  portfolioProjectShareUrl,
+  toPortfolioProject,
+} from '../src/screens/Profile/gallery/portfolioModel';
 import {portfolioSharingNotice} from '../src/screens/Profile/portfolioState';
 
 const LIVE_URL = 'https://rokn.app/@rokn-aaaaaaaaaaaaaaaaaaaaaaaa';
@@ -177,5 +180,17 @@ describe('published portfolio contract (backend 510b9e76)', () => {
     expect(
       portfolioProjectShareUrl('https://evil.example/@rokn-aaaaaaaaaaaaaaaaaaaaaaaa', project),
     ).toBeNull();
+  });
+
+  it('does not share a project whose public page waits for review', () => {
+    const shareUrl = (fields: Record<string, unknown>) =>
+      portfolioProjectShareUrl(
+        LIVE_URL,
+        toPortfolioProject(mapPortfolioItem(itemDto({public_id: PROJECT_ID, ...fields}))),
+      );
+    expect(shareUrl({is_live: true})).toBe(`${LIVE_URL}/p/${PROJECT_ID}`);
+    expect(shareUrl({is_live: false})).toBeNull();
+    // Servers before is_live keep the previous behaviour.
+    expect(shareUrl({})).toBe(`${LIVE_URL}/p/${PROJECT_ID}`);
   });
 });

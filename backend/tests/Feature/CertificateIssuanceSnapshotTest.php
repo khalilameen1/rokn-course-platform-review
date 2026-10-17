@@ -21,6 +21,8 @@ use App\Models\User;
 use App\Services\CertificateIssuanceSnapshotService;
 use App\Services\CertificateQrDestinationService;
 use App\Services\CertificateTextTemplateService;
+use App\Services\BunnyDeliveryService;
+use App\Services\PortfolioModerationService;
 use App\Services\PortfolioReviewReadService;
 use App\Support\RoknPublicUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -203,8 +205,9 @@ final class CertificateIssuanceSnapshotTest extends TestCase
         self::assertSame('portfolio', $destination['type']);
         self::assertSame(RoknPublicUrl::portfolio($user->portfolio_slug), $destination['url']);
 
+        // An unreviewed change leaves the approved version live, so the QR stays.
         DB::table('portfolio_items')->where('id', $publicWork->id)->update(['title' => 'unreviewed change']);
-        self::assertSame('certificate', $service->forIssuance($user->fresh(), $publicId)['type']);
+        self::assertSame('portfolio', $service->forIssuance($user->fresh(), $publicId)['type']);
         $this->approve($user);
         $user->forceFill(['portfolio_sharing_suspended_at' => now()])->save();
         self::assertSame('certificate', $service->forIssuance($user->fresh(), $publicId)['type']);
@@ -439,18 +442,26 @@ final class CertificateIssuanceSnapshotTest extends TestCase
         ]);
         PortfolioMedia::query()->create([
             'portfolio_item_id' => $item->id, 'file_path' => 'portfolio/example.jpg', 'file_type' => 'image',
+            'content_sha256' => str_repeat('a', 64),
         ]);
 
         return $item;
     }
 
+    /** The dashboard's approval: it stores the publication the public page serves. */
     private function approve(User $user): void
     {
         $fresh = $user->fresh();
         $snapshot = app(PortfolioReviewReadService::class)->snapshot($fresh);
-        $fresh->forceFill([
-            'portfolio_sharing_status' => 'approved', 'portfolio_approved_hash' => $snapshot['hash'],
-        ])->save();
+        $this->mock(BunnyDeliveryService::class)->shouldReceive('storageUrl')
+            ->andReturn('https://cdn.rokn.test/ready.jpg');
+        $admin = User::query()->forceCreate([
+            'name' => 'Admin', 'email' => Str::uuid().'@rokn.test', 'role' => 'admin', 'active' => true,
+        ]);
+        app(PortfolioModerationService::class)->decide(
+            $fresh, $admin, $snapshot['revision'], $snapshot['hash'], 'approved', null
+        );
+        $this->app->forgetInstance(BunnyDeliveryService::class);
     }
 
     private function snapshot(User $user, Course $course): array

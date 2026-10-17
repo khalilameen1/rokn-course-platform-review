@@ -17,6 +17,7 @@ use App\Services\CourseAccessPlanService;
 use App\Services\CourseRevisionLearnerReadService;
 use App\Services\CourseRevisionResolver;
 use App\Services\PortfolioMediaMutationService;
+use App\Services\PortfolioReviewReadService;
 use App\Services\PortfolioUploadAccessService;
 use App\Services\SafeExternalUrl;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
@@ -39,8 +40,24 @@ final class PortfolioController extends Controller
         private PortfolioMediaMutationService $mediaMutations,
         private CourseRevisionLearnerReadService $revisionReads,
         private CourseRevisionResolver $revisionResolver,
-        private PortfolioUploadAccessService $uploadAccess
+        private PortfolioUploadAccessService $uploadAccess,
+        private PortfolioReviewReadService $reviews
     ) {
+    }
+
+    /** @return list<int> */
+    private function liveItemIds(User $owner): array
+    {
+        $live = $this->reviews->livePublication($owner);
+
+        return array_map(static fn (array $project): int => (int) $project['item']->id, $live['projects'] ?? []);
+    }
+
+    private function itemResource(PortfolioItem $item): PortfolioItemResource
+    {
+        $owner = $item->relationLoaded('user') ? $item->user : User::query()->find($item->user_id);
+
+        return (new PortfolioItemResource($item))->withLiveItemIds($owner ? $this->liveItemIds($owner) : []);
     }
 
     public function uploadAccess(): JsonResponse
@@ -103,11 +120,16 @@ final class PortfolioController extends Controller
             $items = $query->get();
         }
 
+        $liveItemIds = $this->liveItemIds($user);
+        $resources = PortfolioItemResource::collection($items);
+        $resources->collection->each(
+            fn (PortfolioItemResource $resource) => $resource->withLiveItemIds($liveItemIds)
+        );
         $payload = [
             'status' => 200,
             'success' => true,
             'message' => 'تم تحميل المشروعات',
-            'data' => PortfolioItemResource::collection($items),
+            'data' => $resources,
         ];
         if ($pagination !== null) {
             $payload['pagination'] = $pagination;
@@ -470,7 +492,7 @@ final class PortfolioController extends Controller
             'status' => 200,
             'success' => true,
             'message' => 'تمت إضافة المشروع',
-            'data' => new PortfolioItemResource($item),
+            'data' => $this->itemResource($item),
             'replayed' => $replayed,
         ]);
     }
@@ -495,7 +517,7 @@ final class PortfolioController extends Controller
             'status' => 200,
             'success' => true,
             'message' => 'تم تحميل المشروع',
-            'data' => new PortfolioItemResource($item),
+            'data' => $this->itemResource($item),
         ]);
     }
 
@@ -563,7 +585,7 @@ final class PortfolioController extends Controller
             'status' => 200,
             'success' => true,
             'message' => 'تم تحديث المشروع',
-            'data' => new PortfolioItemResource($item),
+            'data' => $this->itemResource($item),
         ]);
     }
 
@@ -597,7 +619,7 @@ final class PortfolioController extends Controller
             'status' => 200,
             'success' => true,
             'message' => 'تم حفظ المشروع للمراجعة',
-            'data' => new PortfolioItemResource($item),
+            'data' => $this->itemResource($item),
         ]);
     }
 

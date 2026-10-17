@@ -153,6 +153,48 @@ final class PortfolioPublicationTest extends TestCase
         $this->get($projectUrl)->assertNotFound();
     }
 
+    public function test_owner_api_marks_only_projects_whose_public_page_answers_as_live(): void
+    {
+        $owner = $this->owner();
+        $approved = $this->work($owner, 'Approved work');
+        $this->approve($owner);
+        $later = $this->work($owner, 'Added after approval');
+
+        $live = fn (): array => collect(
+            $this->actingAs($owner->fresh(), 'api')->getJson('/api/v1/portfolio?summary=1')->assertOk()->json('data')
+        )->pluck('is_live', 'id')->sortKeys()->all();
+        self::assertSame([$approved->id => true, $later->id => false], $live());
+        $this->get(RoknPublicUrl::portfolioProject($owner->portfolio_slug, $later->public_id))->assertNotFound();
+        $this->actingAs($owner->fresh(), 'api')->getJson('/api/v1/portfolio/'.$later->id)->assertOk()
+            ->assertJsonPath('data.is_live', false);
+
+        $approved->update(['hidden_at' => now()]);
+        self::assertSame([$approved->id => false, $later->id => false], $live());
+        $approved->update(['hidden_at' => null]);
+        $this->approve($owner);
+        self::assertSame([$approved->id => true, $later->id => true], $live());
+        $owner->forceFill(['portfolio_sharing_suspended_at' => now()])->save();
+        self::assertSame([$approved->id => false, $later->id => false], $live());
+    }
+
+    public function test_new_certificate_qr_points_at_a_live_portfolio_while_a_newer_draft_waits(): void
+    {
+        $owner = $this->owner();
+        $this->work($owner, 'Approved work');
+        $this->approve($owner);
+        $this->work($owner, 'Waiting for review');
+        self::assertSame('pending', app(PortfolioReviewReadService::class)->status($owner->fresh()));
+
+        $qr = app(\App\Services\CertificateQrDestinationService::class)->forIssuance($owner->fresh(), (string) Str::uuid());
+        self::assertSame('portfolio', $qr['type']);
+        self::assertSame(RoknPublicUrl::portfolio($owner->portfolio_slug), $qr['url']);
+
+        $owner->forceFill(['portfolio_sharing_suspended_at' => now()])->save();
+        $publicId = (string) Str::uuid();
+        $qr = app(\App\Services\CertificateQrDestinationService::class)->forIssuance($owner->fresh(), $publicId);
+        self::assertSame(['certificate', RoknPublicUrl::certificate($publicId)], [$qr['type'], $qr['url']]);
+    }
+
     public function test_media_redirect_is_publicly_cacheable_cookie_free_and_poster_uses_the_stream_thumbnail(): void
     {
         $owner = $this->owner();

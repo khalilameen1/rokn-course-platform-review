@@ -70,7 +70,8 @@ export const toPortfolioProject = (item: PortfolioItem): Project => ({
   courseId: item.courseId,
   sourceProjectId: item.sourceProjectId,
   media: item.media,
-  shareReady: item.publicationState === 'published',
+  // A project page 404s until review even when its files are published.
+  shareReady: item.publicationState === 'published' && item.live !== false,
   uploadedMediaCount: item.uploadedMediaCount,
   expectedMediaCount: item.expectedMediaCount,
 });

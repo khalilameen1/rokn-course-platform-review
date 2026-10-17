@@ -8,6 +8,24 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class PortfolioItemResource extends JsonResource
 {
     /**
+     * IDs of the owner's items on the live public portfolio, when the caller
+     * computed them (owner reads only). A project is "live" when its own
+     * public page answers; one added or changed after the last approval is
+     * not until review.
+     *
+     * @var list<int>|null
+     */
+    public ?array $liveItemIds = null;
+
+    /** @param list<int> $liveItemIds */
+    public function withLiveItemIds(array $liveItemIds): static
+    {
+        $this->liveItemIds = $liveItemIds;
+
+        return $this;
+    }
+
+    /**
      * Transform the resource into an array.
      *
      * @param  \Illuminate\Http\Request  $request
@@ -35,6 +53,10 @@ class PortfolioItemResource extends JsonResource
             // Shown on the public link once approved: finalized and not hidden.
             'is_public' => (bool) $this->is_public && $this->hidden_at === null,
             'is_hidden' => $this->hidden_at !== null,
+            'is_live' => $this->when(
+                $this->liveItemIds !== null,
+                fn (): bool => in_array((int) $this->id, $this->liveItemIds ?? [], true)
+            ),
             'cover_media_id' => $this->cover_media_id ? (int) $this->cover_media_id : null,
             'upload_state' => $this->deletion_started_at
                 ? 'deleting'
