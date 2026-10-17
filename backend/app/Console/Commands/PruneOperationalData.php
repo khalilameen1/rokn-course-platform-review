@@ -12,18 +12,24 @@ use App\Services\ProjectSubmissionFileRetentionService;
 use App\Support\PublicDiskUrl;
 use Illuminate\Console\Command;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 final class PruneOperationalData extends Command
 {
-    protected $signature = 'data:prune-operational {--limit=5000 : Maximum rows per table per run}';
+    protected $signature = 'data:prune-operational
+        {--limit=5000 : Rows deleted per chunk}
+        {--max-seconds=600 : Stop starting new chunks after this many seconds (0 = one chunk per table)}';
     protected $description = 'Bound privacy-sensitive and high-volume operational tables without touching financial ledgers.';
+
+    private float $deadline = 0.0;
 
     public function handle(BunnyMediaRegistry $mediaRegistry, ProjectSubmissionFileRetentionService $submissionFiles): int
     {
         $limit = max(100, min(20000, (int) $this->option('limit')));
+        $this->deadline = microtime(true) + max(0, (int) $this->option('max-seconds'));
         $counts = [];
 
         $counts['client_events'] = $this->deleteByIds(
@@ -150,19 +156,35 @@ final class PruneOperationalData extends Command
         return self::SUCCESS;
     }
 
-    /** @param callable(Builder):Builder $scope */
+    /**
+     * Chunked delete loop in the shape of Laravel's MassPrunable::pruneAll():
+     * delete one bounded chunk, repeat while chunks come back full. The first
+     * chunk always runs; later chunks stop at the run's time budget so one
+     * large backlog cannot hold the overlap lock or starve later tables.
+     *
+     * @param callable(Builder):Builder $scope
+     */
     private function deleteByIds(string $table, callable $scope, int $limit): int
     {
         if (!Schema::hasTable($table)) {
             return 0;
         }
 
-        $ids = $scope(DB::table($table))->orderBy('id')->limit($limit)->pluck('id');
-        if ($ids->isEmpty()) {
-            return 0;
-        }
+        $deleted = 0;
+        do {
+            $ids = $scope(DB::table($table))->orderBy('id')->limit($limit)->pluck('id');
+            if ($ids->isEmpty()) {
+                break;
+            }
+            $deleted += DB::table($table)->whereIn('id', $ids)->delete();
+        } while ($ids->count() === $limit && $this->withinBudget());
 
-        return DB::table($table)->whereIn('id', $ids)->delete();
+        return $deleted;
+    }
+
+    private function withinBudget(): bool
+    {
+        return microtime(true) < $this->deadline;
     }
 
     private function pseudonymizeVisitors(int $limit): void
@@ -376,46 +398,56 @@ final class PruneOperationalData extends Command
             return 0;
         }
 
-        $query = DB::table('student_notifications')
-            ->where(
-                'created_at',
-                '<=',
-                now()->subDays(max(1, (int) config('retention.student_notifications_days', 180)))
-            )
-            ->orderBy('id')
-            ->limit($limit);
         $columns = Schema::hasColumn('student_notifications', 'image_url')
             ? ['id', 'image_url']
             : ['id'];
-        $rows = $query->get($columns);
-        if ($rows->isEmpty()) {
-            return 0;
-        }
+        $deleted = 0;
+        do {
+            $rows = DB::table('student_notifications')
+                ->where(
+                    'created_at',
+                    '<=',
+                    now()->subDays(max(1, (int) config('retention.student_notifications_days', 180)))
+                )
+                ->orderBy('id')
+                ->limit($limit)
+                ->get($columns);
+            if ($rows->isEmpty()) {
+                break;
+            }
 
-        $deleted = DB::table('student_notifications')
-            ->whereIn('id', $rows->pluck('id'))
-            ->delete();
-
-        if ($columns === ['id']) {
-            return $deleted;
-        }
-
-        $referencedAssets = $this->notificationAssetReferenceSet();
-        $rows->pluck('image_url')
-            ->filter()
-            ->unique()
-            ->each(function (string $url) use ($referencedAssets): void {
-                $path = PublicDiskUrl::pathFrom($url);
-                if (
-                    is_string($path)
-                    && str_starts_with($path, 'student-notifications/')
-                    && !isset($referencedAssets[$path])
-                ) {
-                    Storage::disk('public')->delete($path);
-                }
-            });
+            $deleted += DB::table('student_notifications')
+                ->whereIn('id', $rows->pluck('id'))
+                ->delete();
+            if ($columns !== ['id']) {
+                $this->deleteUnreferencedNotificationImages($rows->pluck('image_url'));
+            }
+        } while ($rows->count() === $limit && $this->withinBudget());
 
         return $deleted;
+    }
+
+    /** @param Collection<int, mixed> $imageUrls */
+    private function deleteUnreferencedNotificationImages(Collection $imageUrls): void
+    {
+        $imageUrls = $imageUrls->filter()->unique();
+        if ($imageUrls->isEmpty()) {
+            return;
+        }
+
+        // Rebuilt after each chunk's delete, exactly as before, so a file
+        // still referenced by a retained row or campaign is never removed.
+        $referencedAssets = $this->notificationAssetReferenceSet();
+        $imageUrls->each(function (string $url) use ($referencedAssets): void {
+            $path = PublicDiskUrl::pathFrom($url);
+            if (
+                is_string($path)
+                && str_starts_with($path, 'student-notifications/')
+                && !isset($referencedAssets[$path])
+            ) {
+                Storage::disk('public')->delete($path);
+            }
+        });
     }
 
     private function pruneNotificationAssets(int $limit): int

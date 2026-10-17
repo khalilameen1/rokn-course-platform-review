@@ -94,7 +94,12 @@ class Kernel extends ConsoleKernel
             ->dailyAt('02:20')
             ->withoutOverlapping(30)
             ->onOneServer();
-        $schedule->command('data:prune-operational --limit=5000')
+        // Chunked until caught up (5000 rows per chunk). New chunks stop after
+        // 10 minutes so the run stays well inside its 30-minute overlap lock
+        // and does not hold this scheduler tick for long. Kept daily: a run
+        // can reset course-chat context checkpoints and lists media
+        // directories, which should not happen hourly.
+        $schedule->command('data:prune-operational --limit=5000 --max-seconds=600')
             ->dailyAt('02:40')
             ->withoutOverlapping(30)
             ->onOneServer();
@@ -136,8 +141,11 @@ class Kernel extends ConsoleKernel
         $schedule->job(new PurgeExpiredApiTokens())
             ->dailyAt('01:00')
             ->onOneServer();
-        $schedule->command('learning:send-nudges')
-            ->everyMinute()
+        // Reminders open for a whole local hour. Five batches every five
+        // minutes keep the former 60 x 500 hourly capacity, while a drained
+        // window costs one recipient query per run instead of one per minute.
+        $schedule->command('learning:send-nudges --limit=500 --chunks=5')
+            ->everyFiveMinutes()
             ->withoutOverlapping(10)
             ->onOneServer();
         $schedule->command('notifications:retry-stalled --limit=500')

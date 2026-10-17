@@ -90,6 +90,34 @@ final class LearningReminderPreferenceTest extends TestCase
         $this->assertDatabaseHas('student_notifications', ['user_id' => $student->id]);
     }
 
+    public function test_batches_continue_only_while_full_and_never_reload_a_learner(): void
+    {
+        Queue::fake([SendUserPushNotification::class]);
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-05 17:00:00', 'UTC'));
+        $learners = [
+            $this->learner('batch-1@rokn.test'),
+            $this->learner('batch-2@rokn.test'),
+            $this->learner('batch-3@rokn.test'),
+        ];
+        // A staff account sharing the zone is listed by the index-only zone
+        // probe but must still be filtered out of the recipients.
+        $staff = User::query()->forceCreate([
+            'name' => 'Staff', 'email' => 'staff-zone@rokn.test', 'role' => 'admin',
+            'active' => true, 'notifications_status' => true,
+        ]);
+
+        $this->artisan('learning:send-nudges --limit=1')->assertSuccessful();
+        self::assertSame(1, StudentNotification::query()->where('notification_type', 'learning_nudge')->count());
+
+        $this->artisan('learning:send-nudges --limit=1 --chunks=5')
+            ->expectsOutputToContain('Sent 2 learning nudge(s).')
+            ->assertSuccessful();
+        foreach ($learners as $learner) {
+            self::assertSame(1, StudentNotification::query()->where('user_id', $learner->id)->count());
+        }
+        self::assertSame(0, StudentNotification::query()->where('user_id', $staff->id)->count());
+    }
+
     public function test_carbon_schedule_uses_named_timezone_dst_not_a_fixed_offset(): void
     {
         self::assertSame(10, LearningReminderSchedule::dueHour('Europe/Berlin',

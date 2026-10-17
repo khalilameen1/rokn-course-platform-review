@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\PaymentReconciliationCheckpoint;
 use App\Models\PaymentReconciliationFinding;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -45,12 +46,25 @@ final readonly class KashierReconciliationService
             'last_error_code' => null,
         ]);
 
+        // Two lanes, both on indexed columns. Pending orders are the ones a
+        // late capture can still settle, so the newest of them are checked on
+        // every run. The remaining capacity walks a cursor over the bounded
+        // window in which a captured order can still be refunded or charged
+        // back; history older than that window is no longer polled.
+        $pending = $this->pendingBatch(intdiv($limit + 1, 2));
+        $floor = $this->windowFloor();
+        $cursor = max((int) $checkpoint->cursor_order_id, $floor ?? 0);
+        $sweepLimit = $limit - $pending->count();
         $wrapped = false;
-        $orders = $this->batchAfter((int) $checkpoint->cursor_order_id, $limit);
-        if ($orders->isEmpty() && (int) $checkpoint->cursor_order_id > 0) {
-            $wrapped = true;
-            $checkpoint->increment('cycles');
-            $orders = $this->batchAfter(0, $limit);
+        $swept = new Collection();
+        if ($floor !== null && $sweepLimit > 0) {
+            $swept = $this->batchAfter($cursor, $sweepLimit);
+            if ($swept->isEmpty() && $cursor > $floor) {
+                $wrapped = true;
+                $checkpoint->increment('cycles');
+                $cursor = $floor;
+                $swept = $this->batchAfter($cursor, $sweepLimit);
+            }
         }
 
         $stats = [
@@ -61,39 +75,20 @@ final readonly class KashierReconciliationService
             'findings' => 0,
             'unavailable' => 0,
             'wrapped' => $wrapped,
-            'cursor' => (int) $checkpoint->cursor_order_id,
+            'cursor' => $cursor,
         ];
 
-        foreach ($orders as $order) {
-            $stats['checked']++;
-            try {
-                $outcome = $this->reconcileOrder($order);
-                $stats[$outcome]++;
-                if (
-                    $outcome === 'unavailable'
-                    || (
-                        $outcome === 'reversed'
-                        && $order->fresh()->financial_status === Order::FINANCIAL_REVIEW_REQUIRED
-                    )
-                ) {
-                    $stats['findings']++;
+        $inspected = [];
+        foreach ([$pending, $swept] as $lane => $orders) {
+            foreach ($orders as $order) {
+                if (!isset($inspected[$order->id])) {
+                    $inspected[$order->id] = true;
+                    $this->inspect($order, $stats);
                 }
-            } catch (Throwable $exception) {
-                $stats['findings']++;
-                $this->recordFinding(
-                    $order,
-                    'reconciliation_exception',
-                    null,
-                    null,
-                    ['exception' => $exception::class]
-                );
-                Log::error('Kashier reconciliation could not inspect an order', [
-                    'order_id' => $order->id,
-                    'order_ref' => $order->order_ref,
-                    'exception' => $exception::class,
-                ]);
+                if ($lane === 1) {
+                    $stats['cursor'] = (int) $order->id;
+                }
             }
-            $stats['cursor'] = (int) $order->id;
         }
 
         $errorCode = $stats['checked'] > 0 && $stats['unavailable'] === $stats['checked']
@@ -111,6 +106,70 @@ final readonly class KashierReconciliationService
         return $stats;
     }
 
+    /** @param array<string, int|bool> $stats */
+    private function inspect(Order $order, array &$stats): void
+    {
+        $stats['checked']++;
+        try {
+            $outcome = $this->reconcileOrder($order);
+            $stats[$outcome]++;
+            if (
+                $outcome === 'unavailable'
+                || (
+                    $outcome === 'reversed'
+                    && $order->fresh()->financial_status === Order::FINANCIAL_REVIEW_REQUIRED
+                )
+            ) {
+                $stats['findings']++;
+            }
+        } catch (Throwable $exception) {
+            $stats['findings']++;
+            $this->recordFinding(
+                $order,
+                'reconciliation_exception',
+                null,
+                null,
+                ['exception' => $exception::class]
+            );
+            Log::error('Kashier reconciliation could not inspect an order', [
+                'order_id' => $order->id,
+                'order_ref' => $order->order_ref,
+                'exception' => $exception::class,
+            ]);
+        }
+    }
+
+    /** @return Collection<int, Order> */
+    private function pendingBatch(int $limit): Collection
+    {
+        $hours = max(1, (int) config('operations.kashier_reconcile_pending_window_hours', 72));
+
+        return Order::query()
+            ->where('payment_method', Order::PAYMENT_METHOD_KASHIER)
+            ->where('status', Order::STATUS_PENDING)
+            ->whereNotNull('order_ref')
+            ->where('created_at', '>=', now()->subHours($hours))
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get();
+    }
+
+    /** The id just below the oldest order still inside the reversal window. */
+    private function windowFloor(): ?int
+    {
+        $first = Order::query()
+            ->where('payment_method', Order::PAYMENT_METHOD_KASHIER)
+            ->where('created_at', '>=', $this->windowStart())
+            ->min('id');
+
+        return $first === null ? null : (int) $first - 1;
+    }
+
+    private function windowStart(): CarbonInterface
+    {
+        return now()->subDays(max(1, (int) config('operations.kashier_reconcile_window_days', 120)));
+    }
+
     /** @return Collection<int, Order> */
     private function batchAfter(int $cursor, int $limit): Collection
     {
@@ -118,6 +177,7 @@ final readonly class KashierReconciliationService
             ->where('payment_method', Order::PAYMENT_METHOD_KASHIER)
             ->whereNotNull('order_ref')
             ->where('id', '>', $cursor)
+            ->where('created_at', '>=', $this->windowStart())
             ->orderBy('id')
             ->limit($limit)
             ->get();

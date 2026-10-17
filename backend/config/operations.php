@@ -59,6 +59,11 @@ return [
         'operations:kashier-reconcile:lock:v1'
     ),
     'kashier_reconcile_lock_seconds' => (int) env('KASHIER_RECONCILE_LOCK_SECONDS', 1800),
+    // Pending orders can still be captured late; captured ones can still be
+    // refunded or charged back (card-network dispute windows are up to 120
+    // days). Webhooks remain the primary signal; this bounds the backstop.
+    'kashier_reconcile_pending_window_hours' => (int) env('KASHIER_RECONCILE_PENDING_WINDOW_HOURS', 72),
+    'kashier_reconcile_window_days' => (int) env('KASHIER_RECONCILE_WINDOW_DAYS', 120),
 
     // Signed evidence is written only by verification commands. The dashboard
     // reads it but can neither manufacture evidence nor start a restore.

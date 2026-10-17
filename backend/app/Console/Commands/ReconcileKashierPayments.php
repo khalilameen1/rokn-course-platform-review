@@ -16,7 +16,7 @@ final class ReconcileKashierPayments extends Command
 {
     protected $signature = 'payments:reconcile-kashier
         {--limit=100 : Maximum orders to inspect in this batch}
-        {--restart : Restart the provider scan from the first Kashier order}';
+        {--restart : Restart the provider scan from the start of the reconciliation window}';
 
     protected $description = 'Reconcile local Kashier orders with the provider and queue mismatches for review';
 

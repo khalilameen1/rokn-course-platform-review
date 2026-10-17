@@ -336,6 +336,90 @@ final class KashierReconciliationTest extends TestCase
         self::assertStringContainsString('unavailable for the entire batch', Artisan::output());
     }
 
+    public function test_sweep_polls_orders_that_can_still_change_not_ancient_history(): void
+    {
+        $recentPending = $this->pendingOrder('PKG-RECON-RECENT-PENDING');
+        $recentSettled = $this->settledOrder('PKG-RECON-RECENT-SETTLED', now()->subDays(30));
+        $ancientSettled = $this->settledOrder('PKG-RECON-ANCIENT-SETTLED', now()->subYears(2));
+        $ancientPending = $this->pendingOrder('PKG-RECON-ANCIENT-PENDING');
+        DB::table('orders')->where('id', $ancientPending->id)->update(['created_at' => now()->subDays(200)]);
+        Http::fake(['https://test-api.kashier.io/*' => Http::response([], 404)]);
+
+        $stats = app(KashierReconciliationService::class)->reconcile(100);
+
+        self::assertSame(2, $stats['checked']);
+        self::assertEqualsCanonicalizing(
+            [$recentPending->order_ref, $recentSettled->order_ref],
+            $this->requestedReferences()
+        );
+        self::assertSame(Order::FINANCIAL_SETTLED, $ancientSettled->fresh()->financial_status);
+        self::assertSame(Order::STATUS_PENDING, $ancientPending->fresh()->status);
+    }
+
+    public function test_pending_lane_is_newest_first_and_the_cursor_still_covers_the_window(): void
+    {
+        $orders = [];
+        foreach (range(1, 5) as $index) {
+            $orders[$index] = $this->pendingOrder('PKG-RECON-LANE-' . $index);
+        }
+        Http::fake(['https://test-api.kashier.io/*' => Http::response([], 404)]);
+
+        // Limit 4: two newest pending orders, then two through the cursor.
+        $first = app(KashierReconciliationService::class)->reconcile(4);
+
+        self::assertSame(4, $first['checked']);
+        self::assertSame(
+            ['PKG-RECON-LANE-5', 'PKG-RECON-LANE-4', 'PKG-RECON-LANE-1', 'PKG-RECON-LANE-2'],
+            $this->requestedReferences()
+        );
+        self::assertSame($orders[2]->id, $first['cursor']);
+
+        $second = app(KashierReconciliationService::class)->reconcile(4);
+
+        // Newest pending again; the cursor reaches the order neither lane had
+        // seen and moves past one already inspected in this run.
+        self::assertSame(
+            ['PKG-RECON-LANE-5', 'PKG-RECON-LANE-4', 'PKG-RECON-LANE-3'],
+            array_slice($this->requestedReferences(), 4)
+        );
+        self::assertSame($orders[4]->id, $second['cursor']);
+        self::assertFalse($second['wrapped']);
+
+        $third = app(KashierReconciliationService::class)->reconcile(4);
+        self::assertSame($orders[5]->id, $third['cursor']);
+        self::assertFalse($third['wrapped']);
+
+        $fourth = app(KashierReconciliationService::class)->reconcile(4);
+        self::assertTrue($fourth['wrapped']);
+        self::assertSame($orders[2]->id, $fourth['cursor']);
+        self::assertSame(1, (int) PaymentReconciliationCheckpoint::query()->value('cycles'));
+    }
+
+    /** @return list<string> */
+    private function requestedReferences(): array
+    {
+        return Http::recorded()
+            ->map(static fn (array $pair): string => rawurldecode(basename(
+                (string) parse_url($pair[0]->url(), PHP_URL_PATH)
+            )))
+            ->values()
+            ->all();
+    }
+
+    private function settledOrder(string $reference, \DateTimeInterface $createdAt): Order
+    {
+        $order = $this->pendingOrder($reference);
+        DB::table('orders')->where('id', $order->id)->update([
+            'status' => Order::STATUS_APPROVED,
+            'financial_status' => Order::FINANCIAL_SETTLED,
+            'transaction_id' => 'TXN-' . $reference,
+            'approved_at' => $createdAt,
+            'created_at' => $createdAt,
+        ]);
+
+        return $order->fresh();
+    }
+
     private function pendingOrder(string $reference): Order
     {
         return Order::query()->create([

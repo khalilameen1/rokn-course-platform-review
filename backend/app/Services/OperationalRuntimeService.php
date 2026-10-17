@@ -10,6 +10,7 @@ use App\Models\InternalSignal;
 use App\Models\OutboxEvent;
 use App\Models\ProjectFeedbackMessage;
 use App\Models\StudentNotification;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -343,29 +344,38 @@ final class OperationalRuntimeService
         ];
         if (Schema::hasTable('student_notifications')) {
             $hasPushDeadLetter = Schema::hasColumn('student_notifications', 'push_failed_at');
-            $stale = StudentNotification::query()
-                ->whereNull('push_sent_at')
-                ->when($hasPushDeadLetter, fn ($query) => $query->whereNull('push_failed_at'))
-                ->where('created_at', '<=', now()->subMinutes(15));
-            $result['stale'] = (clone $stale)->count();
-            $result['stale_affected'] = (clone $stale)->distinct()->count('user_id');
-            $result['stale_oldest_at'] = (clone $stale)->min('created_at');
-            if ($hasPushDeadLetter) {
-                $failedPushes = StudentNotification::query()
+            // One aggregate pass per signal instead of count + distinct count
+            // + min over the same rows. The actionable dead-letter filter is
+            // served by student_push_actionable_dead_letters (push_sent_at,
+            // push_failure_code, push_failed_at, user_id): NOT IN on the second
+            // column becomes ranges that skip benign codes, and the index
+            // covers the aggregate.
+            [$result['stale'], $result['stale_affected'], $result['stale_oldest_at']] = $this->countAffectedOldest(
+                StudentNotification::query()->toBase()
                     ->whereNull('push_sent_at')
-                    ->whereNotNull('push_failed_at')
-                    ->whereNotIn('push_failure_code', [
-                        'not_push_eligible',
-                        'preference_disabled',
-                        'account_inactive',
-                        'no_registered_device',
-                        'token_unbound',
-                        'delivery_window_expired',
-                    ]);
-                $result['failed_pushes'] = (clone $failedPushes)->count();
-                $result['failed_pushes_affected'] = (clone $failedPushes)
-                    ->distinct()->count('user_id');
-                $result['failed_pushes_oldest_at'] = (clone $failedPushes)->min('push_failed_at');
+                    ->when($hasPushDeadLetter, fn ($query) => $query->whereNull('push_failed_at'))
+                    ->where('created_at', '<=', now()->subMinutes(15)),
+                'created_at'
+            );
+            if ($hasPushDeadLetter) {
+                [
+                    $result['failed_pushes'],
+                    $result['failed_pushes_affected'],
+                    $result['failed_pushes_oldest_at'],
+                ] = $this->countAffectedOldest(
+                    StudentNotification::query()->toBase()
+                        ->whereNull('push_sent_at')
+                        ->whereNotIn('push_failure_code', [
+                            'not_push_eligible',
+                            'preference_disabled',
+                            'account_inactive',
+                            'no_registered_device',
+                            'token_unbound',
+                            'delivery_window_expired',
+                        ])
+                        ->whereNotNull('push_failed_at'),
+                    'push_failed_at'
+                );
             }
         }
         if (Schema::hasTable('notification_campaigns')) {
@@ -380,6 +390,26 @@ final class OperationalRuntimeService
             $result['failed_campaigns_oldest_at'] = (clone $failed)->min('failed_at');
         }
         return $result;
+    }
+
+    /**
+     * COUNT(*), COUNT(DISTINCT user_id) and MIN(column) in one statement.
+     *
+     * @return array{0:int,1:int,2:mixed}
+     */
+    private function countAffectedOldest(QueryBuilder $query, string $oldestColumn): array
+    {
+        $grammar = $query->getGrammar();
+        $row = $query->selectRaw(
+            'COUNT(*) AS aggregate_count, COUNT(DISTINCT ' . $grammar->wrap('user_id') . ') AS affected_count, '
+            . 'MIN(' . $grammar->wrap($oldestColumn) . ') AS oldest_value'
+        )->first();
+
+        return [
+            (int) ($row->aggregate_count ?? 0),
+            (int) ($row->affected_count ?? 0),
+            $row->oldest_value ?? null,
+        ];
     }
 
     /** @return array<string, mixed> */
