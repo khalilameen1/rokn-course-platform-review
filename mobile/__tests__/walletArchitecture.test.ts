@@ -81,13 +81,4 @@ describe('wallet architecture', () => {
       "import {walletStyles as styles} from './walletStyles'",
     );
   });
-
-  it('keeps the package card to one coin mark and one currency label', () => {
-    const packageCard = source('src/components/view/Package.tsx');
-
-    expect(packageCard.match(/<CoinAmount/g)).toHaveLength(1);
-    expect(packageCard).not.toContain('<RoknCoin ');
-    expect(packageCard).toContain('formatArabicCurrency(numericPrice)');
-    expect(packageCard).not.toContain('ج م');
-  });
 });

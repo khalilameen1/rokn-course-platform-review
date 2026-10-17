@@ -31,8 +31,8 @@ after asynchronous reads, before status lookup or mutation. A failed mutation
 rejects its caller but releases the queue for retry. Different products/accounts
 are independent. Recovery reads remain best effort and do not wait for mutations.
 
-The queue primitive is shared with courseAccessAttemptStore and the external
-coinCheckoutAttemptStore, but each owner has its own queue instance. The external
+The queue primitive is shared with the external coinCheckoutAttemptStore, but
+each owner has its own queue instance. The external
 checkout ledger uses one key per account (not per package: all packages occupy
 the same stored document). A stalled old-account cleanup therefore cannot block
 a new account, while same-account ledger edits remain ordered. These queues

@@ -7,8 +7,6 @@ const mockGet = jest.fn();
 const mockCaptureBoundary = jest.fn();
 const mockPackages = jest.fn();
 const mockTasks = jest.fn();
-const mockQuote = jest.fn();
-const mockPurchase = jest.fn();
 let mockBoundary = {scope: 'learner', epoch: 1};
 let mockBalance = 20;
 
@@ -44,8 +42,6 @@ jest.mock('../src/services/roknApi', () => ({
   hasSession: async () => true,
   getCoinPackages: (...args: unknown[]) => mockPackages(...args),
   getCoinTasks: (...args: unknown[]) => mockTasks(...args),
-  quoteCoursePurchase: (...args: unknown[]) => mockQuote(...args),
-  purchaseCourse: (...args: unknown[]) => mockPurchase(...args),
   getCourseDetailsSnapshot: async () => ({
     course: {id: '3', owned: false, price: 900, accessPlans: []},
   }),
@@ -154,12 +150,6 @@ describe('daily reward settlement reaches the visible wallet', () => {
     mockBalance = 20;
     mockPackages.mockResolvedValue([]);
     mockTasks.mockResolvedValue([]);
-    mockQuote.mockResolvedValue({
-      couponCode: '',
-      originalPrice: 900,
-      finalPrice: 900,
-      courseRevision: 1,
-    });
     mockCaptureBoundary.mockImplementation(async () => ({...mockBoundary}));
     mockGet.mockImplementation(async (endpoint: string) => {
       expect(endpoint).toBe('wallet');
@@ -238,7 +228,6 @@ describe('daily reward settlement reaches the visible wallet', () => {
     expect(course.commerce.rewardBalance).toBe(27);
     expect(mockGet).toHaveBeenCalledTimes(2);
     expect(mockPost).toHaveBeenCalledTimes(1);
-    expect(mockPurchase).not.toHaveBeenCalled();
   });
 
   it('emits once for joined daily callers and queues one fresh wallet/tasks read behind packages', async () => {

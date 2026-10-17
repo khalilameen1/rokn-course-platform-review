@@ -47,7 +47,6 @@ export const useWalletData = (identityKey: string, loadPackages = true) => {
   const packagesRef = useRef<CoinPackage[]>([]);
   const tasksRef = useRef<CoinTask[]>([]);
   const packagesKnownRef = useRef(false);
-  const packagesCacheInvalidatedRef = useRef(false);
   const tasksKnownRef = useRef(false);
 
   walletRef.current = wallet;
@@ -146,7 +145,6 @@ export const useWalletData = (identityKey: string, loadPackages = true) => {
     ).then(
       value => {
         if (requestOwnsData()) {
-          packagesCacheInvalidatedRef.current = false;
           packagesKnownRef.current = true;
           packagesRef.current = value;
           setPackages(value);
@@ -189,12 +187,7 @@ export const useWalletData = (identityKey: string, loadPackages = true) => {
       setWallet(cached.wallet);
       setWalletStatus(walletReadFailed ? 'error' : 'ready');
     }
-    if (
-      loadPackages &&
-      cached?.packages &&
-      !packagesKnownRef.current &&
-      !packagesCacheInvalidatedRef.current
-    ) {
+    if (loadPackages && cached?.packages && !packagesKnownRef.current) {
       packagesKnownRef.current = true;
       packagesRef.current = cached.packages;
       setPackages(cached.packages);
@@ -265,30 +258,6 @@ export const useWalletData = (identityKey: string, loadPackages = true) => {
     }
   }, [refreshAfterCurrent]);
 
-  const invalidatePackages = useCallback(
-    async (boundary: AccountSessionBoundary) => {
-      if (!ownsBoundary(boundary)) return;
-      // Rejected package terms retire older reads as well as their cache.
-      // The replacement read must not wait for either obsolete operation.
-      requestGenerationRef.current += 1;
-      refreshFlightRef.current = null;
-      queuedRefreshRef.current = null;
-      manualRefreshRef.current = null;
-      setManualRefreshing(false);
-      packagesCacheInvalidatedRef.current = true;
-      packagesKnownRef.current = false;
-      packagesRef.current = [];
-      setPackages([]);
-      setPackagesStatus('loading');
-      void saveWalletCache(boundary, {
-        version: 2,
-        ...(walletRef.current ? {wallet: walletRef.current} : {}),
-        ...(tasksKnownRef.current ? {tasks: tasksRef.current} : {}),
-      }).catch(() => undefined);
-    },
-    [ownsBoundary],
-  );
-
   useEffect(() => {
     mountedRef.current = true;
     requestGenerationRef.current += 1;
@@ -300,7 +269,6 @@ export const useWalletData = (identityKey: string, loadPackages = true) => {
     packagesRef.current = [];
     tasksRef.current = [];
     packagesKnownRef.current = false;
-    packagesCacheInvalidatedRef.current = false;
     tasksKnownRef.current = false;
     setServerSession(null);
     setWallet(null);
@@ -345,7 +313,6 @@ export const useWalletData = (identityKey: string, loadPackages = true) => {
 
   return {
     identityKey,
-    invalidatePackages,
     manualRefreshing,
     ownerReady: ownerRef.current === identityKey,
     ownsBoundary,

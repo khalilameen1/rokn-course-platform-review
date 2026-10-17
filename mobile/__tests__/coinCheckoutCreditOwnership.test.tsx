@@ -6,8 +6,6 @@ import type {WalletSnapshot} from '../src/services/roknApi';
 const mockPost = jest.fn();
 const mockOpenBrowser = jest.fn();
 const mockGetWallet = jest.fn();
-const mockQuote = jest.fn();
-const mockPurchaseCourse = jest.fn();
 const mockStorage = new Map<string, unknown>();
 const mockNavigation = {setParams: jest.fn(), dispatch: jest.fn()};
 let mockBoundary = {scope: 'learner', epoch: 1};
@@ -77,8 +75,6 @@ jest.mock('../src/services/roknApi', () => ({
     course: {id: '3', owned: false, price: 900, accessPlans: []},
   }),
   isCourseUnavailableError: () => false,
-  quoteCoursePurchase: (...args: unknown[]) => mockQuote(...args),
-  purchaseCourse: (...args: unknown[]) => mockPurchaseCourse(...args),
 }));
 jest.mock('../src/services/productAnalytics', () => ({
   trackProductEvent: jest.fn(),
@@ -184,15 +180,6 @@ describe('checkout credit survives its initiating screen', () => {
     mockOrderRef = `PKG-OWNER-${mockCase}`;
     mockBalance = 0;
     mockGetWallet.mockImplementation(async () => snapshot());
-    mockQuote.mockResolvedValue({
-      courseRevision: 1,
-      accessPlanCode: 'guided',
-      originalPrice: 600,
-      finalPrice: 600,
-      discountAmount: 0,
-      discountPercentage: 0,
-      couponCode: '',
-    });
     mockOpenBrowser.mockImplementation(async () => ({
       type: 'success',
       url: `rokn://payment-result?status=pending&order_ref=${mockOrderRef}&coins=0`,

@@ -5,16 +5,11 @@ import type {CourseDetailsRouteParams} from '../src/navigation/types';
 import {useCoursePurchase} from '../src/screens/CourseDetails/details/useCoursePurchase';
 import type {CourseDetailsData} from '../src/screens/CourseDetails/details/useCourseDetailsData';
 
-const mockLegacyQuote = jest.fn();
-const mockLegacyPurchase = jest.fn();
 jest.mock('../src/constants/distribution', () => ({
   CAN_START_COIN_CHECKOUT: true,
   CAN_REDEEM_COURSE_ACCESS_CODE: true,
 }));
-jest.mock('../src/services/roknApi', () => ({
-  quoteCoursePurchase: (...args: unknown[]) => mockLegacyQuote(...args),
-  purchaseCourse: (...args: unknown[]) => mockLegacyPurchase(...args),
-}));
+jest.mock('../src/services/roknApi', () => ({}));
 jest.mock('../src/services/productAnalytics', () => ({
   trackProductEvent: jest.fn(),
 }));
@@ -117,8 +112,6 @@ describe('course purchase quote ownership', () => {
     });
     expect(view.read().dialog.selectedPlan?.code).toBe('mentor');
     expect(view.read().dialog.dialogStep).not.toBeNull();
-    expect(mockLegacyQuote).not.toHaveBeenCalled();
-    expect(mockLegacyPurchase).not.toHaveBeenCalled();
     expect(view.setParams).toHaveBeenCalledWith(
       expect.objectContaining({
         openPurchase: false,
@@ -134,8 +127,6 @@ describe('course purchase quote ownership', () => {
       await act(() => view.read().dialog.onSelectPlan(plan));
       expect(view.read().dialog.selectedPlan?.code).toBe(plan.code);
     }
-    expect(mockLegacyQuote).not.toHaveBeenCalled();
-    expect(mockLegacyPurchase).not.toHaveBeenCalled();
     expect(view.read().dialog).not.toHaveProperty('onApplyCoupon');
     expect(view.read().dialog).not.toHaveProperty('onConfirmPurchase');
     await act(() => view.renderer.unmount());
@@ -149,7 +140,6 @@ describe('course purchase quote ownership', () => {
     expect(view.read().dialog.selectedPlan?.code).toBe('basic');
     expect(view.read().dialog.dialogStep).toBe(before);
     expect(view.setOwned).not.toHaveBeenCalled();
-    expect(mockLegacyQuote).not.toHaveBeenCalled();
     await act(() => view.renderer.unmount());
   });
 

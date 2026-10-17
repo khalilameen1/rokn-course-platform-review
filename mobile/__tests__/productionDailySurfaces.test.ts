@@ -43,10 +43,6 @@ describe('production daily surfaces', () => {
         /LOCAL_DEMO_ENABLED|isLocalDemoId|demoExperience|DEMO_/,
       );
     }
-    const access = source('src/services/api/coursePurchase.ts');
-    expect(access).not.toMatch(/remaining_balance|current_coins/);
-    expect(access).not.toContain("accessPlanCode || 'default'");
-    expect(access).toContain('access_plan_code: normalizedPlanCode');
   });
 
   it('does not let local flags grant variable-cost entitlements', () => {

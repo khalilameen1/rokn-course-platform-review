@@ -202,7 +202,6 @@ export const clearAccountScopedStorage = async (
   const keys = await AsyncStorage.getAllKeys();
   const financialRecoveryKeys = [
     '@rokn/coin-checkout-attempt/v2',
-    '@rokn/course-purchase-attempt/v2',
     '@rokn/native-store-reconciliation/v1',
   ];
   const ownedKeys = keys.filter(key => {

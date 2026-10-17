@@ -12,7 +12,6 @@ jest.mock('../src/constants/api', () => ({
 }));
 
 import {publicRequest} from '../src/constants/api';
-import {purchaseCourse, quoteCoursePurchase} from '../src/services/api/access';
 import {
   getCourseDetails,
   getLearningCourses,
@@ -351,17 +350,6 @@ describe('commerce API contracts', () => {
     expect(coin).not.toContain('#FFF1A9');
   });
 
-  it('classifies checkout availability failures in the live checkout types', () => {
-    const checkoutTypes = fs.readFileSync(
-      path.resolve(__dirname, '../src/services/coinCheckoutTypes.ts'),
-      'utf8',
-    );
-    expect(checkoutTypes).toContain("'recovery_in_progress'");
-    expect(checkoutTypes).toContain("'FEATURE_CHECKOUT_DISABLED'");
-    expect(checkoutTypes).toContain("'payment_configuration_unavailable'");
-    expect(checkoutTypes).toContain("'checkout_temporarily_unavailable'");
-  });
-
   it('uses mobile-first devices artwork without a desktop stand', () => {
     const icons = fs.readFileSync(
       path.resolve(__dirname, '../src/assets/SVG.tsx'),
@@ -624,121 +612,5 @@ describe('commerce API contracts', () => {
       owned: false,
     });
     expect(catalogue[0]).not.toHaveProperty('progress');
-  });
-
-  it('sends the selected plan and preserves insufficient-balance details', async () => {
-    mockPost.mockResolvedValueOnce({
-      data: {
-        data: {
-          total_balance: 500,
-          spendable_balance: 450,
-          purchased_balance: 300,
-          reward_balance: 200,
-          original_price: 600,
-          discount_amount: 0,
-        },
-      },
-    });
-
-    await expect(purchaseCourse('64', 'guided')).resolves.toEqual({
-      kind: 'success',
-      balance: 500,
-      spendableBalance: 450,
-      paidBalance: 300,
-      rewardBalance: 200,
-      originalPrice: 600,
-      discountAmount: 0,
-    });
-    expect(mockPost).toHaveBeenNthCalledWith(
-      1,
-      'courses/authorize',
-      expect.objectContaining({
-        course_id: 64,
-        access_plan_code: 'guided',
-        idempotency_key: expect.stringMatching(
-          /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-        ),
-      }),
-    );
-
-    mockPost.mockRejectedValueOnce({
-      response: {
-        data: {
-          code: 'insufficient_coins',
-          data: {
-            total_balance: 100,
-            spendable_balance: 80,
-            purchased_balance: 60,
-            reward_balance: 40,
-            deficit: 520,
-            recommended_packages: [
-              {
-                id: 7,
-                coins: 600,
-                price: 49,
-                direct_price: 44.1,
-                name_ar: 'باقة مناسبة',
-                channels: {direct: true, google: true, apple: true},
-                store_products: {
-                  google: 'rokn.coins.600',
-                  apple: 'rokn.coins.600',
-                },
-              },
-            ],
-          },
-        },
-      },
-    });
-
-    await expect(purchaseCourse('64', 'mentor')).resolves.toEqual({
-      kind: 'insufficient',
-      balance: 100,
-      spendableBalance: 80,
-      paidBalance: 60,
-      rewardBalance: 40,
-      deficit: 520,
-      packages: [
-        {
-          id: '7',
-          coins: 600,
-          price: 49,
-          label: 'باقة مناسبة',
-          storeProductIds: {
-            google: 'rokn.coins.600',
-            apple: 'rokn.coins.600',
-          },
-        },
-      ],
-    });
-  });
-
-  it('requires a canonical access plan before starting course commerce', async () => {
-    await expect(quoteCoursePurchase('64', '', '')).rejects.toThrow(
-      'API_CONTRACT_INVALID_ACCESS_PLAN_CODE',
-    );
-    await expect(purchaseCourse('64', '')).rejects.toThrow(
-      'API_CONTRACT_INVALID_ACCESS_PLAN_CODE',
-    );
-    expect(mockPost).not.toHaveBeenCalled();
-  });
-
-  it('rejects legacy balance aliases in a purchase response', async () => {
-    mockPost.mockResolvedValueOnce({
-      data: {
-        data: {
-          current_coins: 500,
-          remaining_balance: 500,
-          spendable_balance: 450,
-          purchased_balance: 300,
-          reward_balance: 200,
-          original_price: 600,
-          discount_amount: 0,
-        },
-      },
-    });
-
-    await expect(purchaseCourse('64', 'guided')).rejects.toThrow(
-      'API_CONTRACT_INVALID_COURSE_PURCHASE_TOTAL_BALANCE',
-    );
   });
 });

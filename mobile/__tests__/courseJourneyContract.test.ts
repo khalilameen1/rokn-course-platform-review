@@ -312,8 +312,6 @@ describe('course journey contract', () => {
     );
 
     expect(details).toContain('useCoursePurchase({');
-    expect(details).not.toContain('purchaseCourse(');
-    expect(details).not.toContain('quoteCoursePurchase(');
     expect(details).not.toContain('openCoinCheckout(');
     expect(details).not.toContain('commerceInFlightRef');
     expect(purchase).toContain('} = useCoursePurchaseFlow();');

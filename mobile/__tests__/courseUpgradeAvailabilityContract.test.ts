@@ -8,10 +8,6 @@ jest.mock('../src/constants/helpers', () => ({
   assertAccountSessionBoundary: (...args: unknown[]) =>
     mockAssertBoundary(...args),
 }));
-jest.mock('../src/services/api/courseAccessAttemptStore', () => ({
-  clearCourseUpgradeAttemptKey: jest.fn(),
-  getOrCreateCourseUpgradeAttemptKey: jest.fn(),
-}));
 
 import {getFullTrackUpgradeQuote} from '../src/services/api/courseUpgrade';
 
