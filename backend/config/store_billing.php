@@ -2,6 +2,12 @@
 
 return [
     'account_binding_key' => env('STORE_BILLING_ACCOUNT_BINDING_KEY', env('APP_KEY')),
+    // Emails of the App Review demo account and testers allowed to redeem
+    // sandbox/test purchases. Empty keeps every account eligible.
+    'test_purchase_accounts' => array_values(array_filter(array_map(
+        static fn (string $email): string => strtolower(trim($email)),
+        explode(',', (string) env('STORE_BILLING_TEST_PURCHASE_ACCOUNTS', ''))
+    ))),
     'connect_timeout_seconds' => (float) env('STORE_BILLING_CONNECT_TIMEOUT_SECONDS', 3),
     'timeout_seconds' => (float) env('STORE_BILLING_TIMEOUT_SECONDS', 12),
 

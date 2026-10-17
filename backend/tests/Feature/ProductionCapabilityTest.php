@@ -28,6 +28,7 @@ final class ProductionCapabilityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['operations.health_token' => 'test-health-token']);
 
         $androidFingerprint = implode(':', array_fill(0, 32, 'AB'));
         $firebaseCredentials = base64_encode(json_encode([
@@ -376,9 +377,26 @@ final class ProductionCapabilityTest extends TestCase
         self::assertFalse($report['capabilities']['queue']['queues']['webhooks']['ready']);
         self::assertNotNull(Cache::get('test:queue-heartbeat'));
 
-        $this->getJson('/api/health/launch-ready')
+        $this->getJson('/api/health/launch-ready', ['X-Health-Token' => 'test-health-token'])
             ->assertStatus(503)
             ->assertJsonPath('checks.queue', false);
+    }
+
+    public function test_launch_details_need_the_health_token(): void
+    {
+        $this->recordAllQueueHeartbeats();
+
+        foreach ([[], ['X-Health-Token' => 'wrong-token']] as $headers) {
+            $this->getJson('/api/health/launch-ready', $headers)
+                ->assertOk()
+                ->assertJsonPath('status', 'launch_ready')
+                ->assertJsonMissingPath('checks')
+                ->assertJsonMissingPath('optional_checks')
+                ->assertJsonMissingPath('data.mobile_release');
+        }
+        config(['operations.health_token' => '']);
+        $this->getJson('/api/health/launch-ready', ['X-Health-Token' => ''])
+            ->assertJsonMissingPath('checks');
     }
 
     public function test_complete_contract_requires_completed_heartbeat_on_every_queue(): void
@@ -415,7 +433,7 @@ final class ProductionCapabilityTest extends TestCase
             self::assertTrue($report['capabilities']['queue']['queues'][$queue]['ready']);
         }
 
-        $response = $this->getJson('/api/health/launch-ready')->assertOk();
+        $response = $this->getJson('/api/health/launch-ready', ['X-Health-Token' => 'test-health-token'])->assertOk();
         $response->assertJsonPath('status', 'launch_ready')
             ->assertJsonPath('checks.bunny_assets', true)
             ->assertJsonPath('checks.payment_kashier', true)
@@ -452,7 +470,7 @@ final class ProductionCapabilityTest extends TestCase
 
         // Worker failure blocks launch diagnostics, but must not evict every
         // web instance from a load balancer and turn degradation into outage.
-        $this->getJson('/api/health/launch-ready')
+        $this->getJson('/api/health/launch-ready', ['X-Health-Token' => 'test-health-token'])
             ->assertStatus(503)
             ->assertJsonPath('checks.queue', false);
         $this->getJson('/api/health/ready')
@@ -485,7 +503,7 @@ final class ProductionCapabilityTest extends TestCase
         self::assertFalse($report['capabilities']['bunny']['assets']['ready']);
         self::assertFalse($report['ready']);
 
-        $this->getJson('/api/health/launch-ready')
+        $this->getJson('/api/health/launch-ready', ['X-Health-Token' => 'test-health-token'])
             ->assertServiceUnavailable()
             ->assertJsonPath('checks.bunny_assets', false);
     }
@@ -499,7 +517,7 @@ final class ProductionCapabilityTest extends TestCase
 
         self::assertFalse($report['capabilities']['mail']['ready']);
         self::assertFalse($report['ready']);
-        $this->getJson('/api/health/launch-ready')
+        $this->getJson('/api/health/launch-ready', ['X-Health-Token' => 'test-health-token'])
             ->assertStatus(503)
             ->assertJsonPath('checks.mail', false);
     }
@@ -516,7 +534,7 @@ final class ProductionCapabilityTest extends TestCase
 
         self::assertFalse($report['capabilities']['push']['ready']);
         self::assertFalse($report['ready']);
-        $this->getJson('/api/health/launch-ready')
+        $this->getJson('/api/health/launch-ready', ['X-Health-Token' => 'test-health-token'])
             ->assertServiceUnavailable()
             ->assertJsonPath('checks.push', false);
     }
@@ -540,7 +558,7 @@ final class ProductionCapabilityTest extends TestCase
         self::assertFalse($report['capabilities']['social']['callbacks']['ready']);
         self::assertFalse($report['ready']);
 
-        $this->getJson('/api/health/launch-ready')
+        $this->getJson('/api/health/launch-ready', ['X-Health-Token' => 'test-health-token'])
             ->assertServiceUnavailable()
             ->assertJsonPath('checks.social_google', true)
             ->assertJsonPath('checks.social_facebook', false)
@@ -567,7 +585,7 @@ final class ProductionCapabilityTest extends TestCase
         self::assertSame(['google'], $report['capabilities']['social']['declared_providers']);
         self::assertFalse($report['capabilities']['social']['facebook']['required']);
 
-        $this->getJson('/api/health/launch-ready')
+        $this->getJson('/api/health/launch-ready', ['X-Health-Token' => 'test-health-token'])
             ->assertOk()
             ->assertJsonPath('checks.social_google', true)
             ->assertJsonMissingPath('checks.social_facebook')
@@ -589,7 +607,7 @@ final class ProductionCapabilityTest extends TestCase
         self::assertFalse($report['capabilities']['app_links']['android']['ready']);
         self::assertFalse($report['capabilities']['app_links']['apple']['ready']);
         self::assertFalse($report['ready']);
-        $this->getJson('/api/health/launch-ready')
+        $this->getJson('/api/health/launch-ready', ['X-Health-Token' => 'test-health-token'])
             ->assertServiceUnavailable()
             ->assertJsonPath('checks.app_links_android', false)
             ->assertJsonMissingPath('checks.app_links_apple')
@@ -599,7 +617,7 @@ final class ProductionCapabilityTest extends TestCase
             'app_links.android_sha256_fingerprints' => [implode(':', array_fill(0, 32, 'AB'))],
         ]);
         self::assertTrue(app(ProductionCapabilityService::class)->report()['capabilities']['app_links']['ready']);
-        $this->getJson('/api/health/launch-ready')
+        $this->getJson('/api/health/launch-ready', ['X-Health-Token' => 'test-health-token'])
             ->assertOk()
             ->assertJsonPath('checks.app_links_android', true)
             ->assertJsonMissingPath('checks.app_links_apple');
@@ -626,7 +644,7 @@ final class ProductionCapabilityTest extends TestCase
         self::assertFalse($report['capabilities']['payment']['google_play']['ready']);
         self::assertFalse($report['capabilities']['payment']['app_store']['ready']);
 
-        $this->getJson('/api/health/launch-ready')
+        $this->getJson('/api/health/launch-ready', ['X-Health-Token' => 'test-health-token'])
             ->assertOk()
             ->assertJsonPath('checks.payment_kashier', true)
             ->assertJsonMissingPath('checks.payment_google_play')
@@ -659,7 +677,7 @@ final class ProductionCapabilityTest extends TestCase
         self::assertTrue($report['capabilities']['payment']['app_store']['required']);
         self::assertTrue($report['capabilities']['payment']['app_store']['ready']);
         self::assertFalse($report['capabilities']['app_links']['ready']);
-        $this->getJson('/api/health/launch-ready')
+        $this->getJson('/api/health/launch-ready', ['X-Health-Token' => 'test-health-token'])
             ->assertServiceUnavailable()
             ->assertJsonPath('checks.payment_app_store', true)
             ->assertJsonPath('checks.app_links_apple', false);

@@ -474,6 +474,8 @@ class ProductionPreflightTest extends TestCase
                 'openrouter.default_model' => 'configured',
                 'openrouter.project_model' => 'configured',
                 'openrouter.project_gate_model' => 'configured',
+                'store_billing.account_binding_key' => 'separate-store-binding-secret',
+                'operations.health_token' => 'configured-health-token',
                 'openrouter.allowed_models' => ['configured'],
                 'openrouter.fallback_models' => [],
                 'openrouter.provider_sort' => 'latency',

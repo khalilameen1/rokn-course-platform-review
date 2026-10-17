@@ -118,6 +118,18 @@ final readonly class StorePurchaseService
         if (!in_array($environment, $allowedEnvironments, true)) {
             throw new StorePurchaseVerificationException('store_purchase_environment_invalid');
         }
+        // Apple requires production servers to accept sandbox receipts so App
+        // Review can buy; that also lets every TestFlight or license tester
+        // mint coins. Once operators list the review and tester accounts,
+        // only those accounts may redeem test purchases.
+        $testAccounts = (array) config('store_billing.test_purchase_accounts', []);
+        if (
+            $environment !== 'production'
+            && $testAccounts !== []
+            && !in_array(strtolower((string) $user->email), $testAccounts, true)
+        ) {
+            throw new StorePurchaseVerificationException('store_test_purchase_not_allowed');
+        }
         if ($verified->quantity !== 1) {
             throw new StorePurchaseVerificationException('store_purchase_quantity_unsupported');
         }

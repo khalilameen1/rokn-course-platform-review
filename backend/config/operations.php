@@ -3,6 +3,9 @@
 $recoveryEvidenceDisk = trim((string) env('RECOVERY_EVIDENCE_DISK', ''));
 
 return [
+    // Detailed launch-readiness checks name every configured provider. Like
+    // spatie/laravel-health's results endpoint, details need this secret.
+    'health_token' => (string) env('HEALTH_CHECK_TOKEN', ''),
     'queue_heartbeat_key' => env('QUEUE_HEARTBEAT_KEY', 'operations:queue-heartbeat:v1'),
     'queue_heartbeat_required_queues' => array_values(array_unique(array_filter(array_map(
         static fn (string $queue): string => trim($queue),

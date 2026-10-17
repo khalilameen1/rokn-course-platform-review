@@ -22,6 +22,9 @@ use Illuminate\Support\Facades\Http;
 
 final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGateway
 {
+    private const APPLE_RECEIPT_SIGNER_OID = '1.2.840.113635.100.6.11.1';
+    private const APPLE_WWDR_INTERMEDIATE_OID = '1.2.840.113635.100.6.2.1';
+
     public function verify(
         string $provider,
         string $productId,
@@ -419,6 +422,18 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
             );
         }
 
+        // Apple's ChainVerifier (app-store-server-library) accepts only the
+        // leaf/WWDR-intermediate/root chain and requires Apple's marker
+        // extensions; any other certificate under Apple Root CA G3 must not
+        // sign App Store transactions or server notifications.
+        if (
+            count($certificates) !== 3
+            || !$this->hasExtension($certificates[0], self::APPLE_RECEIPT_SIGNER_OID)
+            || !$this->hasExtension($certificates[1], self::APPLE_WWDR_INTERMEDIATE_OID)
+        ) {
+            throw new StorePurchaseVerificationException('apple_transaction_signature_invalid');
+        }
+
         foreach ($certificates as $index => $certificate) {
             $certificateDetails = openssl_x509_parse($certificate);
             $now = time();
@@ -451,6 +466,15 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
     public function verifyAppleSignedPayload(string $jws): array
     {
         return $this->verifiedAppleClaims($jws);
+    }
+
+    private function hasExtension(string $certificate, string $oid): bool
+    {
+        $details = openssl_x509_parse($certificate, false);
+
+        return is_array($details)
+            && is_array($details['extensions'] ?? null)
+            && array_key_exists($oid, $details['extensions']);
     }
 
     private function base64UrlDecode(string $value): string

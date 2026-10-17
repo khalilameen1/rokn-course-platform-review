@@ -7,6 +7,22 @@ distinguished_name = req_distinguished_name
 basicConstraints = critical, CA:true
 keyUsage = critical, keyCertSign, cRLSign
 
+# Apple WWDR intermediate marker checked by Apple's ChainVerifier.
+[ intermediate_ext ]
+basicConstraints = critical, CA:true, pathlen:0
+keyUsage = critical, keyCertSign, cRLSign
+1.2.840.113635.100.6.2.1 = ASN1:NULL
+
+[ unmarked_intermediate_ext ]
+basicConstraints = critical, CA:true, pathlen:0
+keyUsage = critical, keyCertSign, cRLSign
+
+# App Store receipt-signing leaf marker checked by Apple's ChainVerifier.
 [ leaf_ext ]
+basicConstraints = critical, CA:false
+keyUsage = critical, digitalSignature
+1.2.840.113635.100.6.11.1 = ASN1:NULL
+
+[ unmarked_leaf_ext ]
 basicConstraints = critical, CA:false
 keyUsage = critical, digitalSignature

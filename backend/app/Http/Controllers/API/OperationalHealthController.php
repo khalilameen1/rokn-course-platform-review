@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Services\ProductionCapabilityService;
 use App\Services\AppReleasePolicyService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -179,7 +180,7 @@ final class OperationalHealthController extends Controller
      * fails when a configured product capability is incomplete. Load
      * balancers must use /health/ready, not this endpoint.
      */
-    public function launchReady(): JsonResponse
+    public function launchReady(Request $request): JsonResponse
     {
         $report = $this->capabilities->report();
         $mobileRelease = $this->releasePolicy->launchReadiness();
@@ -249,6 +250,17 @@ final class OperationalHealthController extends Controller
 
         $status = $ready ? 'launch_ready' : 'launch_blocked';
         $time = now()->toIso8601String();
+        if (!$this->mayReadLaunchDetails($request)) {
+            // The verdict stays public for deploy gates; which provider is
+            // missing or broken is operator information.
+            return response()->json([
+                'status' => $status,
+                'success' => $ready,
+                'message' => $ready ? 'Launch checks passed' : 'Launch checks failed',
+                'data' => ['health_status' => $status, 'time' => $time],
+                'time' => $time,
+            ], $ready ? 200 : 503);
+        }
 
         return response()->json([
             'status' => $status,
@@ -265,6 +277,14 @@ final class OperationalHealthController extends Controller
             'optional_checks' => $optionalChecks,
             'time' => $time,
         ], $ready ? 200 : 503);
+    }
+
+    private function mayReadLaunchDetails(Request $request): bool
+    {
+        $token = (string) config('operations.health_token', '');
+
+        return $token !== ''
+            && hash_equals($token, (string) $request->header('X-Health-Token', ''));
     }
 
     private function databaseIsReady(): bool

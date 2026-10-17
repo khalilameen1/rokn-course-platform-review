@@ -154,6 +154,51 @@ final class StorePurchaseServiceTest extends TestCase
         self::assertSame('102.00', $order->fresh()->gateway_net_amount);
     }
 
+    public function test_listed_test_accounts_alone_redeem_sandbox_purchases(): void
+    {
+        Queue::fake();
+        $this->mock(StudentNotificationService::class, function ($mock): void {
+            $mock->shouldReceive('notifyUser')->andReturnNull()->byDefault();
+        });
+        config(['store_billing.test_purchase_accounts' => ['app-review@rokn.test']]);
+        Package::query()->create([
+            'name_ar' => 'باقة المتجر', 'name_en' => 'Store package', 'price' => 120, 'coins' => 600,
+            'google_product_id' => 'rokn.coins.600', 'google_enabled' => true,
+        ]);
+        $reviewer = $this->user('App-Review@rokn.test');
+        $stranger = $this->user('tester-link@rokn.test');
+        $gateway = $this->mock(StorePurchaseProviderGateway::class);
+        $gateway->shouldReceive('consumeGoogle')->andReturnNull();
+        $gateway->shouldReceive('verify')->andReturnUsing(
+            static fn (string $provider, string $product, string $token): VerifiedStorePurchase => new VerifiedStorePurchase(
+                provider: StorePurchase::PROVIDER_GOOGLE,
+                productId: 'rokn.coins.600',
+                externalTransactionId: 'GPA.TEST-' . $token,
+                environment: 'test',
+                currency: 'EGP',
+                grossAmount: 120,
+                auditPayload: []
+            )
+        );
+        $purchase = static fn (string $token): array => [
+            'provider' => StorePurchase::PROVIDER_GOOGLE,
+            'product_id' => 'rokn.coins.600',
+            'purchase_token' => $token,
+        ];
+
+        $this->actingAs($stranger, 'api')
+            ->postJson('/api/v1/store-purchases/verify', $purchase('stranger-token'))
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'store_test_purchase_not_allowed');
+        $this->actingAs($reviewer, 'api')
+            ->postJson('/api/v1/store-purchases/verify', $purchase('review-token'))
+            ->assertOk()
+            ->assertJsonPath('data.coins_added', 600);
+
+        self::assertSame(0, (int) $stranger->fresh()->wallet_purchased_coins);
+        self::assertSame(1, StorePurchase::query()->count());
+    }
+
     public function test_a_purchase_token_cannot_be_claimed_by_another_account(): void
     {
         Queue::fake();

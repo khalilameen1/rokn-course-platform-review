@@ -835,6 +835,15 @@ class ProductionPreflight extends Command
             ),
             'OPENROUTER_PROJECT_GATE_MODEL must be present in OPENROUTER_ALLOWED_MODELS.'
         );
+        $bindingKey = trim((string) config('store_billing.account_binding_key'));
+        $require(
+            $bindingKey !== '' && !hash_equals(trim((string) config('app.key')), $bindingKey),
+            'STORE_BILLING_ACCOUNT_BINDING_KEY must be its own secret; rotating APP_KEY must not orphan in-flight store purchases.'
+        );
+        $require(
+            trim((string) config('operations.health_token')) !== '',
+            'HEALTH_CHECK_TOKEN must be set so launch-readiness details stay private.'
+        );
         foreach ((array) config('openrouter.fallback_models', []) as $fallbackModel) {
             $require(
                 is_string($fallbackModel)

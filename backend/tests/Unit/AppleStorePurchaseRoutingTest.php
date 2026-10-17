@@ -27,36 +27,91 @@ final class AppleStorePurchaseRoutingTest extends TestCase
         Http::preventStrayRequests();
         // Disposable PKI exercises the real JWS verifier without storing or
         // loading any account key or transaction from an Apple customer.
-        $config = __DIR__ . '/../Fixtures/apple-store-signer.cnf';
-        $options = ['config' => $config, 'private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1'];
-        $rootKey = openssl_pkey_new($options);
-        $leafKey = openssl_pkey_new($options);
-        self::assertNotFalse($rootKey);
-        self::assertNotFalse($leafKey);
-        $rootRequest = openssl_csr_new(['commonName' => 'Rokn disposable root'], $rootKey, $options);
-        $leafRequest = openssl_csr_new(['commonName' => 'Rokn disposable store signer'], $leafKey, $options);
-        self::assertNotFalse($rootRequest);
-        self::assertNotFalse($leafRequest);
-        $root = openssl_csr_sign($rootRequest, null, $rootKey, 2, $options + ['x509_extensions' => 'root_ext'], 1);
-        self::assertNotFalse($root);
-        $leaf = openssl_csr_sign($leafRequest, $root, $rootKey, 1, $options + ['x509_extensions' => 'leaf_ext'], 2);
-        self::assertNotFalse($leaf);
-        self::assertTrue(openssl_pkey_export($leafKey, $privateKey, null, ['config' => $config]));
-        $this->privateKey = $privateKey;
-        $this->certificateChain = [];
-        foreach ([$leaf, $root] as $certificate) {
-            self::assertTrue(openssl_x509_export($certificate, $pem));
-            $this->certificateChain[] = str_replace(
-                ['-----BEGIN CERTIFICATE-----', '-----END CERTIFICATE-----', "\r", "\n"], '', $pem
-            );
-        }
+        [$this->privateKey, $this->certificateChain] = $this->disposableChain('leaf_ext', 'intermediate_ext');
         config([
             'store_billing.apple.bundle_id' => 'com.rokn',
             'store_billing.apple.issuer_id' => 'disposable-issuer',
             'store_billing.apple.key_id' => 'disposable-key',
             'store_billing.apple.private_key_base64' => base64_encode($this->privateKey),
-            'store_billing.apple.root_certificate_sha256' => [hash('sha256', base64_decode($this->certificateChain[1], true))],
+            'store_billing.apple.root_certificate_sha256' => [hash('sha256', base64_decode($this->certificateChain[2], true))],
         ]);
+    }
+
+    /**
+     * Leaf, WWDR-style intermediate and root, the shape Apple signs with.
+     *
+     * @return array{0: string, 1: list<string>}
+     */
+    private function disposableChain(string $leafExtensions, string $intermediateExtensions): array
+    {
+        $config = __DIR__ . '/../Fixtures/apple-store-signer.cnf';
+        $options = ['config' => $config, 'private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1'];
+        $rootKey = openssl_pkey_new($options);
+        $intermediateKey = openssl_pkey_new($options);
+        $leafKey = openssl_pkey_new($options);
+        self::assertNotFalse($rootKey);
+        self::assertNotFalse($intermediateKey);
+        self::assertNotFalse($leafKey);
+        $root = openssl_csr_sign(
+            openssl_csr_new(['commonName' => 'Rokn disposable root'], $rootKey, $options),
+            null, $rootKey, 2, $options + ['x509_extensions' => 'root_ext'], 1
+        );
+        self::assertNotFalse($root);
+        $intermediate = openssl_csr_sign(
+            openssl_csr_new(['commonName' => 'Rokn disposable intermediate'], $intermediateKey, $options),
+            $root, $rootKey, 2, $options + ['x509_extensions' => $intermediateExtensions], 2
+        );
+        self::assertNotFalse($intermediate);
+        $leaf = openssl_csr_sign(
+            openssl_csr_new(['commonName' => 'Rokn disposable store signer'], $leafKey, $options),
+            $intermediate, $intermediateKey, 1, $options + ['x509_extensions' => $leafExtensions], 3
+        );
+        self::assertNotFalse($leaf);
+        self::assertTrue(openssl_pkey_export($leafKey, $privateKey, null, ['config' => $config]));
+        $chain = [];
+        foreach ([$leaf, $intermediate, $root] as $certificate) {
+            self::assertTrue(openssl_x509_export($certificate, $pem));
+            $chain[] = str_replace(
+                ['-----BEGIN CERTIFICATE-----', '-----END CERTIFICATE-----', "\r", "\n"], '', $pem
+            );
+        }
+
+        return [$privateKey, $chain];
+    }
+
+    public static function chainsWithoutAppleMarkers(): array
+    {
+        return [
+            'leaf without receipt-signer marker' => ['unmarked_leaf_ext', 'intermediate_ext'],
+            'intermediate without WWDR marker' => ['leaf_ext', 'unmarked_intermediate_ext'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('chainsWithoutAppleMarkers')]
+    public function test_a_certificate_under_the_trusted_root_without_apple_markers_cannot_sign(
+        string $leafExtensions, string $intermediateExtensions
+    ): void {
+        [$privateKey, $chain] = $this->disposableChain($leafExtensions, $intermediateExtensions);
+        config(['store_billing.apple.root_certificate_sha256' => [hash('sha256', base64_decode($chain[2], true))]]);
+        $jws = JWT::encode([
+            'bundleId' => 'com.rokn', 'productId' => self::PRODUCT, 'transactionId' => self::TRANSACTION,
+            'originalTransactionId' => self::TRANSACTION, 'appAccountToken' => self::ACCOUNT,
+            'environment' => 'Sandbox', 'type' => 'Consumable', 'quantity' => 1,
+            'currency' => 'EGP', 'price' => 11110, 'signedDate' => time() * 1000,
+        ], $privateKey, 'ES256', null, ['x5c' => $chain]);
+
+        $this->assertRejected($jws, 'apple_transaction_signature_invalid');
+        Http::assertNothingSent();
+    }
+
+    public function test_a_two_certificate_chain_is_not_apples_signing_shape(): void
+    {
+        $jws = JWT::encode(['environment' => 'Sandbox'], $this->privateKey, 'ES256', null, [
+            'x5c' => [$this->certificateChain[0], $this->certificateChain[2]],
+        ]);
+
+        $this->assertRejected($jws, 'apple_transaction_signature_invalid');
+        Http::assertNothingSent();
     }
 
     public function test_signed_sandbox_receipt_never_depends_on_production_authorization(): void
