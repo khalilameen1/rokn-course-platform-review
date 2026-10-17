@@ -52,6 +52,7 @@ final class RepositorySecretScanner
         'ROKN_SMOKE_FIXTURE_TOKEN',
         'ROKN_SMOKE_PASSWORD',
         'NIGHTWATCH_TOKEN',
+        'HEALTH_CHECK_TOKEN',
     ];
 
     /** @var list<string> */
