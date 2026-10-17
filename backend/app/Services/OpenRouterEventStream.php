@@ -280,11 +280,13 @@ final class OpenRouterEventStream
             return;
         }
         $now = hrtime(true);
+        // Each emission is a database write per live learner. Time-throttle
+        // progress (the AI SDK pattern) so a long answer costs about one
+        // write per second, however fast the provider streams.
         if (
             !$force
             && $this->lastEmittedLength > 0
-            && $length - $this->lastEmittedLength < 48
-            && $now - $this->lastEmittedAt < 250_000_000
+            && $now - $this->lastEmittedAt < 1_000_000_000
         ) {
             return;
         }

@@ -63,6 +63,9 @@ return [
     // useful response. The durable reservation remains a separate, longer
     // accounting lease and is released by the stalled-turn reconciler.
     'queue_stale_seconds' => (int) env('OPENROUTER_QUEUE_STALE_SECONDS', 60),
+    // A chat turn that checkpointed within this window is still owned by its
+    // worker, so status polling reads it without locking recovery work.
+    'chat_poll_recovery_after_seconds' => (int) env('OPENROUTER_CHAT_POLL_RECOVERY_AFTER_SECONDS', 10),
     // A provider response is cached briefly under the same API key. This is a
     // recovery optimization for an identical request, not the correctness
     // boundary: account-level ZDR or edge eviction may disable the cache, so

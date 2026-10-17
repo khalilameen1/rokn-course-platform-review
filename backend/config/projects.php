@@ -35,7 +35,9 @@ $submissionTypes = [
 ];
 
 return [
-    'evaluation_daily_attempt_limit' => (int) env('PROJECT_EVALUATION_DAILY_ATTEMPT_LIMIT', 60),
+    // The platform pays for the submission gate. Twenty checks a day covers
+    // honest resubmission and stops a scripted loop.
+    'evaluation_daily_attempt_limit' => (int) env('PROJECT_EVALUATION_DAILY_ATTEMPT_LIMIT', 20),
     'evaluation_max_output_tokens' => 384,
     'evaluation_max_input_characters' => 60000,
     'evaluation_reserve_usd' => '0.050000',

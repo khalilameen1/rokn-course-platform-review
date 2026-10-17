@@ -328,6 +328,27 @@ final class CourseChatTurnService
 
     public function reconcileForPolling(?CourseChatTurn $turn): ?CourseChatTurn
     {
+        // A worker that checkpointed recently still owns the turn (a lease, as
+        // in queue visibility timeouts). Polling is then a plain read; locking
+        // recovery runs only once progress has gone quiet.
+        $lease = max(3, (int) config('openrouter.chat_poll_recovery_after_seconds', 10));
+        if (
+            $turn
+            && in_array($turn->status, [CourseChatTurn::QUEUED, CourseChatTurn::STREAMING], true)
+            && $turn->updated_at?->gt(now()->subSeconds($lease))
+        ) {
+            // A paid answer that already landed or settled is delivered now.
+            $usage = AiUsageEvent::query()
+                ->where('request_id', $turn->client_request_id)
+                ->where('user_id', $turn->user_id)
+                ->where('enrollment_id', $turn->enrollment_id)
+                ->where('feature', 'course_chat')
+                ->first();
+            if (!$usage || ($usage->status === 'reserved' && $this->paidCalls->landedResult($usage) === null)) {
+                return $turn;
+            }
+        }
+
         $turn = $this->reconcileTerminalUsage($turn);
         if (!$turn || !in_array($turn->status, [
             CourseChatTurn::QUEUED,
