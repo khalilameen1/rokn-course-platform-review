@@ -85,14 +85,17 @@ final readonly class LatestWatchResumeService
             ->where('user_id', $userId)
             ->whereIn('course_id', $courseAliasToCurrent->keys())
             ->whereIn('lesson_id', $lessonAliasToCurrent->keys())
-            ->select(['id', 'watched_at', 'updated_at'])
+            ->select(['id', 'watched_at'])
             ->selectRaw("{$courseCase} as canonical_course_id", $courseCaseBindings);
+        // Every write path sets watched_at and 2026_10_17_131500 backfilled
+        // legacy rows, so recency is the indexed column alone, as in
+        // WatchHistoryController.
         $ranked = DB::query()
             ->fromSub($candidates, 'resume_candidates')
             ->select(['id', 'canonical_course_id'])
             ->selectRaw(
                 'ROW_NUMBER() OVER (PARTITION BY canonical_course_id '
-                . 'ORDER BY COALESCE(watched_at, updated_at) DESC, id DESC) as resume_rank'
+                . 'ORDER BY watched_at DESC, id DESC) as resume_rank'
             );
 
         $logs = WatchingLog::query()

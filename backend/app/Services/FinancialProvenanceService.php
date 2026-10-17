@@ -24,7 +24,7 @@ final readonly class FinancialProvenanceService
 {
     public function __construct(
         private WalletService $wallet,
-        private AiEntitlementBudgetService $aiBudget
+        private CourseEnrollmentWriter $enrollments
     ) {
     }
 
@@ -531,29 +531,20 @@ final readonly class FinancialProvenanceService
             // Deactivate only the entitlement still owned by this order.
             if ($entitlementScope === 'course' && $enrollment->is_active) {
                 // This enrollment is already locked and was selected through
-                // the owning order above. Persist through the model so course
-                // catalogue aggregates are invalidated with every other
-                // enrollment transition instead of staying stale for minutes.
-                $enrollment->forceFill([
-                    'is_active' => false,
-                    'updated_at' => $enrollmentDeactivatedAt,
-                ])->save();
+                // the owning order above.
+                $this->enrollments->suspendForReversedPayment($enrollment, $enrollmentDeactivatedAt);
             }
 
             if (
                 $entitlementScope === 'plan'
                 && (int) $enrollment->access_plan_order_id === (int) $courseOrder->id
             ) {
-                $this->aiBudget->cancelOutstandingReservations(
+                $this->enrollments->reassignPlanOrder(
                     $enrollment,
-                    'plan_payment_reversed'
+                    $parentPlanOrder,
+                    'plan_payment_reversed',
+                    $planRevertedAt
                 );
-                $enrollment->forceFill([
-                    'access_plan_order_id' => $parentPlanOrder->id,
-                    'access_plan_id' => $parentPlanOrder->access_plan_id,
-                    'access_plan_snapshot' => $parentPlanOrder->access_plan_snapshot,
-                    'updated_at' => $planRevertedAt,
-                ])->save();
             }
 
             if ($entitlementScope === 'course' && $certificate) {
@@ -679,11 +670,7 @@ final readonly class FinancialProvenanceService
                         ->lockForUpdate()
                         ->first();
                     if ($restoredEnrollment) {
-                        // Persist through the model just like revocation. The
-                        // enrollment aggregate is embedded in catalogue/home
-                        // cards, and a bulk update would bypass its after-
-                        // commit revision invalidation.
-                        $restoredEnrollment->forceFill(['is_active' => true])->save();
+                        $this->enrollments->reinstateAfterRestoredPayment($restoredEnrollment);
                     }
                 }
                 if (
@@ -723,15 +710,11 @@ final readonly class FinancialProvenanceService
                         ->lockForUpdate()
                         ->first();
                     if ($enrollment) {
-                        $this->aiBudget->cancelOutstandingReservations(
+                        $this->enrollments->reassignPlanOrder(
                             $enrollment,
+                            $planOrder,
                             'plan_payment_restored'
                         );
-                        $enrollment->forceFill([
-                            'access_plan_order_id' => $planOrder->id,
-                            'access_plan_id' => $planOrder->access_plan_id,
-                            'access_plan_snapshot' => $planOrder->access_plan_snapshot,
-                        ])->save();
                     }
                 }
             }

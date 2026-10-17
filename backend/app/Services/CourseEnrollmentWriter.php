@@ -7,14 +7,16 @@ namespace App\Services;
 use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
 use App\Models\Order;
+use DateTimeInterface;
 
 /**
  * The single writer for granting or re-sourcing course access.
  *
- * Every way a learner gains access (wallet purchase, approved course order,
- * course code, paid plan upgrade) names its intent here instead of writing
- * enrollment columns itself, so the access rules for each source live in one
- * place. Callers own the transaction and hold the learner lock (the learner
+ * Every way a learner gains or loses access (wallet purchase, approved
+ * course order, course code, paid plan upgrade, and the payment reversals
+ * FinancialProvenanceService resolves) names its intent here instead of
+ * writing enrollment columns itself, so the access rules for each source live
+ * in one place. Callers own the transaction and hold the learner lock (the learner
  * is the financial aggregate); each method also locks the enrollment row.
  *
  * The per-source rules below intentionally reproduce the behaviour each flow
@@ -169,5 +171,44 @@ final readonly class CourseEnrollmentWriter
             'access_plan_snapshot' => $planSnapshot,
             'access_granted_at' => now(),
         ])->save();
+    }
+
+    /**
+     * A reversed payment suspends the course it funded. The stamped
+     * updated_at is the hold's evidence: reinstatement only reopens the row
+     * this exact suspension closed.
+     */
+    public function suspendForReversedPayment(CourseEnrollment $enrollment, DateTimeInterface $at): void
+    {
+        $enrollment->forceFill([
+            'is_active' => false,
+            'updated_at' => $at,
+        ])->save();
+    }
+
+    /** The reversal was resolved in the learner's favour. */
+    public function reinstateAfterRestoredPayment(CourseEnrollment $enrollment): void
+    {
+        $enrollment->forceFill(['is_active' => true])->save();
+    }
+
+    /**
+     * Move the enrollment's plan to another order in the same upgrade lineage
+     * (back to the parent when an upgrade payment is reversed, forward again
+     * when it is restored). Outstanding AI reservations are cancelled first
+     * because they were priced under the plan being left.
+     */
+    public function reassignPlanOrder(
+        CourseEnrollment $enrollment,
+        Order $planOrder,
+        string $reason,
+        ?DateTimeInterface $at = null
+    ): void {
+        $this->aiBudget->cancelOutstandingReservations($enrollment, $reason);
+        $enrollment->forceFill([
+            'access_plan_order_id' => $planOrder->id,
+            'access_plan_id' => $planOrder->access_plan_id,
+            'access_plan_snapshot' => $planOrder->access_plan_snapshot,
+        ] + ($at ? ['updated_at' => $at] : []))->save();
     }
 }
