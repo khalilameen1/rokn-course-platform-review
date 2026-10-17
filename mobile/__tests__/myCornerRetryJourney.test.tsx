@@ -47,7 +47,6 @@ jest.mock(
   '../src/components/VideoPlayer/courseLearning/savedFolderIndex',
   () => ({getSavedFolderOptions: async () => []}),
 );
-jest.mock('../src/components/TabBar', () => () => null);
 jest.mock('../src/components/view/HeaderWithBack', () => () => null);
 jest.mock('../src/navigation/journeyNavigation', () => ({
   openGuestLogin: jest.fn(),
@@ -190,7 +189,11 @@ describe('MyCorner recovers within the same screen', () => {
     expect(empty.props.state).toBe('empty');
     expect(empty.props.actionLabel).toBe('فتح الرئيسية');
     await act(async () => empty.props.onAction());
-    expect(mockNavigate).toHaveBeenCalledWith('Home');
+    expect(mockNavigate).toHaveBeenCalledWith(
+      'Tabs',
+      {screen: 'Home', params: undefined},
+      {pop: true},
+    );
     expect(renderer.root.findAllByType(LearningDashboardSkeleton)).toHaveLength(
       0,
     );

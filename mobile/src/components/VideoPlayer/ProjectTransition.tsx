@@ -25,6 +25,7 @@ import {
   textDirection,
 } from '../../constants/designSystem';
 import {goBackOrHome} from '../../navigation/RootNavigationHelper';
+import {openRootTab} from '../../navigation/rootRoutes';
 import type {ProjectSubmissionOutcome} from './courseLearningApi';
 import type {ProjectResolution} from './courseLearning/projectRemote';
 import type {CourseProject, SelectedProjectFile} from './types';
@@ -337,7 +338,7 @@ const ProjectTransition = ({
                         // Opens the add sheet with this project chosen and
                         // its files (or the photo picker) instead of a blank
                         // portfolio tab, like Coursera/Domestika "share project".
-                        navigation.navigate('Profile', {
+                        openRootTab(navigation, 'Profile', {
                           tab: 'portfolio',
                           addPortfolioProjectId: project.id,
                         })

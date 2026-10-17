@@ -56,7 +56,6 @@ jest.mock('../src/screens/home/HomeOverlays', () => ({
 jest.mock('../src/screens/appInitializer/StartupExperience', () => ({
   useStartupExperience: () => null,
 }));
-jest.mock('../src/components/TabBar', () => () => null);
 jest.mock('../src/components/search/SearchAssist', () => () => null);
 jest.mock('../src/assets/SVG', () => ({
   SearchIcon: () => null,

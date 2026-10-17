@@ -19,6 +19,7 @@ import {
 } from './checkoutReturn';
 import {parseRoknDestination} from './deepLinks';
 import {navigationRef} from './RootNavigationHelper';
+import {rootResetState} from './rootRoutes';
 import {
   getInitialAppUrl,
   isRoknNavigationReady,
@@ -124,13 +125,10 @@ export const useInterruptedJourneyRestore = () => {
           CommonActions.reset(
             isLogin
               ? loginReturnResetState(returnTo, 'authenticated')
-              : {
-                  index: 1,
-                  routes: [
-                    {name: 'Home' as const},
-                    {name: 'Login' as const, params: {returnTo}},
-                  ],
-                },
+              : rootResetState(
+                  {name: 'Home'},
+                  {name: 'Login', params: {returnTo}},
+                ),
           ),
         );
         if (isLogin) {
@@ -166,19 +164,7 @@ export const useInterruptedJourneyRestore = () => {
       }
 
       const returnTo = checkoutClaim.returnTo;
-      navigationRef.dispatch(
-        CommonActions.reset({
-          index: 1,
-          routes: [
-            {name: 'Home'},
-            returnTo.name === 'CourseDetails' ||
-            returnTo.name === 'Reels' ||
-            returnTo.name === 'Profile'
-              ? {name: returnTo.name, params: returnTo.params}
-              : {name: returnTo.name},
-          ],
-        }),
-      );
+      navigationRef.dispatch(CommonActions.reset(rootResetState(returnTo)));
       await acknowledgePendingCheckoutReturn(checkoutClaim).catch(
         () => undefined,
       );

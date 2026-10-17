@@ -13,7 +13,7 @@ import {
   PixelPerfect,
   sharedHorizontalVal,
 } from '../../constants/styleConstants';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {SafeAreaView, type Edge} from 'react-native-safe-area-context';
 import {Palette, useResponsiveLayout} from '../../constants/designSystem';
 
 interface containerProps {
@@ -22,6 +22,8 @@ interface containerProps {
   fullBackground?: boolean;
   showHint?: boolean;
   noPadding?: boolean;
+  /** Safe-area edges this page owns; defaults to all four. */
+  edges?: readonly Edge[];
 }
 interface contentProps {
   controls?: (scrollView: ScrollView | null) => void;
@@ -36,7 +38,17 @@ interface contentProps {
   onScrollBeginDrag?: ScrollViewProps['onScrollBeginDrag'];
   scrollEventThrottle?: number;
 }
-export const Container: FC<containerProps> = ({children, style, noPadding}) => {
+const ALL_EDGES: readonly Edge[] = ['top', 'right', 'bottom', 'left'];
+
+/** A bottom-tab page: the navigator's tab bar owns the bottom inset. */
+export const TAB_SCREEN_EDGES: readonly Edge[] = ['top', 'right', 'left'];
+
+export const Container: FC<containerProps> = ({
+  children,
+  style,
+  noPadding,
+  edges = ALL_EDGES,
+}) => {
   return (
     <View
       style={[
@@ -44,9 +56,7 @@ export const Container: FC<containerProps> = ({children, style, noPadding}) => {
         {paddingHorizontal: noPadding ? undefined : sharedHorizontalVal},
         style,
       ]}>
-      <SafeAreaView
-        edges={['top', 'right', 'bottom', 'left']}
-        style={styles.safeArea}>
+      <SafeAreaView edges={edges} style={styles.safeArea}>
         {children}
       </SafeAreaView>
     </View>

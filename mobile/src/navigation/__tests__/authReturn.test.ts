@@ -192,7 +192,7 @@ describe('saved library return', () => {
     expect(claim?.returnTo).toEqual({name: 'SavedLibrary'});
     expect(loginReturnResetState(claim?.returnTo, 'authenticated')).toEqual({
       index: 1,
-      routes: [{name: 'Home'}, {name: 'SavedLibrary'}],
+      routes: [{name: 'Tabs'}, {name: 'SavedLibrary'}],
     });
   });
 });
@@ -218,7 +218,36 @@ describe('login return navigation policy', () => {
 
     expect(loginReturnResetState(returnTo, 'authenticated')).toEqual({
       index: 1,
-      routes: [{name: 'Home'}, returnTo],
+      routes: [{name: 'Tabs'}, returnTo],
+    });
+  });
+
+  it('returns a learner to the chosen bottom tab, with Home behind it', () => {
+    expect(loginReturnResetState({name: 'Wallet'}, 'authenticated')).toEqual({
+      index: 0,
+      routes: [{name: 'Tabs', state: {index: 0, routes: [{name: 'Wallet'}]}}],
+    });
+    expect(
+      loginReturnResetState(
+        {name: 'Profile', params: {tab: 'certificates'}},
+        'authenticated',
+      ),
+    ).toEqual({
+      index: 0,
+      routes: [
+        {
+          name: 'Tabs',
+          state: {
+            index: 0,
+            routes: [{name: 'Profile', params: {tab: 'certificates'}}],
+          },
+        },
+      ],
+    });
+    // A guest who dismisses login stays on the public Home tab.
+    expect(loginReturnResetState({name: 'MyCorner'}, 'guest')).toEqual({
+      index: 0,
+      routes: [{name: 'Tabs'}],
     });
   });
 

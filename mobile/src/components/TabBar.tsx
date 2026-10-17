@@ -1,8 +1,10 @@
-import {useNavigation, useRoute} from '@react-navigation/native';
-import type {RootNavigation} from '../navigation/types';
-import React, {FC} from 'react';
+import {
+  BottomTabBarHeightCallbackContext,
+  type BottomTabBarProps,
+} from '@react-navigation/bottom-tabs';
+import {CommonActions} from '@react-navigation/native';
+import React, {FC, useContext} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {useSelector} from 'react-redux';
 
 import {useTranslation} from 'react-i18next';
 import {
@@ -12,12 +14,7 @@ import {
   SharedStyles,
 } from '../constants/styleConstants';
 
-import {
-  FullNameIcon,
-  HomeIcon,
-  MyCornerIcon,
-  RewardsIcon,
-} from '../assets/SVG';
+import {FullNameIcon, HomeIcon, MyCornerIcon, RewardsIcon} from '../assets/SVG';
 import {
   Accessibility,
   Palette,
@@ -26,131 +23,101 @@ import {
   rtlRowStyle,
 } from '../constants/designSystem';
 import {formatArabicDisplayText} from '../constants/arabicFormatting';
-import {selectRootTab} from '../navigation/journeyNavigation';
-import {extractApiToken} from '../constants/helpers';
-import type {RootState} from '../store/store';
+import type {RootTabName} from '../navigation/types';
 
-const TabBar: FC = () => {
-  const route = useRoute();
-  const active = route.name;
+const ICON_SIZE = PixelPerfect(24);
+
+/** Label key and icon of each tab, in the approved RTL tab-bar order. */
+const TAB_ITEMS: Record<
+  RootTabName,
+  {label: string; icon: (color: string) => React.ReactNode}
+> = {
+  Home: {
+    label: 'Home',
+    icon: color => (
+      <HomeIcon width={ICON_SIZE} height={ICON_SIZE} stroke={color} />
+    ),
+  },
+  MyCorner: {
+    label: 'My Corner',
+    icon: color => (
+      <MyCornerIcon width={ICON_SIZE} height={ICON_SIZE} fill={color} />
+    ),
+  },
+  Wallet: {
+    label: 'Wallet',
+    icon: color => (
+      <RewardsIcon width={ICON_SIZE} height={ICON_SIZE} stroke={color} />
+    ),
+  },
+  Profile: {
+    label: 'Me',
+    icon: color => (
+      <FullNameIcon width={ICON_SIZE} height={ICON_SIZE} stroke={color} />
+    ),
+  },
+};
+
+/**
+ * Rokn's approved bottom bar, rendered once by the bottom-tab navigator's
+ * `tabBar` prop. Press handling follows React Navigation's own BottomTabBar:
+ * emit a preventable `tabPress`, then navigate to an unfocused tab inside this
+ * navigator (the guest login gate is a `tabPress` listener in Navigation).
+ * Like the stock bar it owns the bottom and side safe-area insets.
+ */
+const TabBar: FC<BottomTabBarProps> = ({state, navigation, insets}) => {
   const {t} = useTranslation();
-  const navigation = useNavigation<RootNavigation>();
-  const authenticated = useSelector((state: RootState) =>
-    Boolean(extractApiToken(state.auth.userData)),
-  );
+  const onHeightChange = useContext(BottomTabBarHeightCallbackContext);
 
   return (
-    <View style={styles.allTabsCon}>
-      <View style={styles.tabsRow}>
-        <Pressable
-          accessibilityLabel={t('Home')}
-          accessibilityRole="tab"
-          accessibilityState={{selected: active === 'Home'}}
-          style={[styles.tabCon]}
-          onPress={() => {
-            selectRootTab(navigation, 'Home', authenticated);
-          }}>
-          <View style={styles.tabSpace}>
-            <HomeIcon
-              width={PixelPerfect(24)}
-              height={PixelPerfect(24)}
-              stroke={active === 'Home' ? Palette.primaryText : Palette.textMuted}
-            />
-          </View>
-          <Text
-            numberOfLines={2}
-            style={[
-              styles.tabName,
-              {
-                color: active === 'Home' ? Palette.primaryText : Palette.textMuted,
-              },
-            ]}>
-            {formatArabicDisplayText(String(t('Home')))}
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityLabel={t('My Corner')}
-          accessibilityRole="tab"
-          accessibilityState={{selected: active === 'MyCorner'}}
-          style={[styles.tabCon]}
-          onPress={() => {
-            selectRootTab(navigation, 'MyCorner', authenticated);
-          }}>
-          <View style={styles.tabSpace}>
-            <MyCornerIcon
-              width={PixelPerfect(24)}
-              height={PixelPerfect(24)}
-              fill={active === 'MyCorner' ? Palette.primaryText : Palette.textMuted}
-            />
-          </View>
-          <Text
-            numberOfLines={2}
-            style={[
-              styles.tabName,
-              {
-                color:
-                  active === 'MyCorner' ? Palette.primaryText : Palette.textMuted,
-              },
-            ]}>
-            {formatArabicDisplayText(String(t('My Corner')))}
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityLabel={t('Wallet')}
-          accessibilityRole="tab"
-          accessibilityState={{selected: active === 'Wallet'}}
-          style={[styles.tabCon]}
-          onPress={() => {
-            selectRootTab(navigation, 'Wallet', authenticated);
-          }}>
-          <View style={styles.tabSpace}>
-            <RewardsIcon
-              width={PixelPerfect(24)}
-              height={PixelPerfect(24)}
-              stroke={active === 'Wallet' ? Palette.primaryText : Palette.textMuted}
-            />
-          </View>
-          <Text
-            numberOfLines={2}
-            style={[
-              styles.tabName,
-              {
-                color:
-                  active === 'Wallet' ? Palette.primaryText : Palette.textMuted,
-              },
-            ]}>
-            {formatArabicDisplayText(String(t('Wallet')))}
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityLabel={t('Me')}
-          accessibilityRole="tab"
-          accessibilityState={{selected: active === 'Profile'}}
-          style={[styles.tabCon]}
-          onPress={() => {
-            selectRootTab(navigation, 'Profile', authenticated);
-          }}>
-          <View style={styles.tabSpace}>
-            <FullNameIcon
-              width={PixelPerfect(24)}
-              height={PixelPerfect(24)}
-              stroke={
-                active === 'Profile' ? Palette.primaryText : Palette.textMuted
-              }
-            />
-          </View>
-          <Text
-            numberOfLines={2}
-            style={[
-              styles.tabName,
-              {
-                color:
-                  active === 'Profile' ? Palette.primaryText : Palette.textMuted,
-              },
-            ]}>
-            {formatArabicDisplayText(String(t('Me')))}
-          </Text>
-        </Pressable>
+    <View
+      onLayout={event => onHeightChange?.(event.nativeEvent.layout.height)}
+      style={[
+        styles.safeArea,
+        {
+          paddingBottom: insets.bottom,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        },
+      ]}>
+      <View style={styles.allTabsCon}>
+        <View style={styles.tabsRow}>
+          {state.routes.map((route, index) => {
+            const item = TAB_ITEMS[route.name as RootTabName];
+            if (!item) return null;
+            const focused = state.index === index;
+            const color = focused ? Palette.primaryText : Palette.textMuted;
+            return (
+              <Pressable
+                key={route.key}
+                accessibilityLabel={t(item.label)}
+                accessibilityRole="tab"
+                accessibilityState={{selected: focused}}
+                style={[styles.tabCon]}
+                onPress={() => {
+                  const event = navigation.emit({
+                    type: 'tabPress',
+                    target: route.key,
+                    canPreventDefault: true,
+                    data: {
+                      behavior: {scrollToTop: focused, popToTop: focused},
+                    },
+                  });
+                  if (!focused && !event.defaultPrevented) {
+                    navigation.dispatch({
+                      ...CommonActions.navigate(route.name, route.params),
+                      target: state.key,
+                    });
+                  }
+                }}>
+                <View style={styles.tabSpace}>{item.icon(color)}</View>
+                <Text numberOfLines={2} style={[styles.tabName, {color}]}>
+                  {formatArabicDisplayText(String(t(item.label)))}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     </View>
   );
@@ -158,6 +125,8 @@ const TabBar: FC = () => {
 
 export default TabBar;
 const styles = StyleSheet.create({
+  // The page canvas below the bar, as when each screen's safe area held it.
+  safeArea: {backgroundColor: Palette.canvas},
   allTabsCon: {
     backgroundColor: Palette.canvasSoft,
     borderTopColor: Palette.lineSoft,

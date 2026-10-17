@@ -4,14 +4,19 @@ import {
 } from '@react-navigation/native';
 import {safeLoginReturnToFromRoute} from './authReturn';
 import type {RoknDestination} from './deepLinks';
-import type {LoginReturnTo, RootNavigation, RootStackParamList} from './types';
+import {rootResetState} from './rootRoutes';
+import type {
+  LoginReturnTo,
+  RootNavigation,
+  RootStackParamList,
+} from './types';
 
 type NavigationParams = Record<string, unknown> | undefined;
 
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 const sameLinkableDestination = (
-  name: keyof RootStackParamList,
+  name: string,
   params?: NavigationParams,
 ) => {
   if (!navigationRef.isReady()) return false;
@@ -68,18 +73,7 @@ export function openRoknDestination(destination: RoknDestination) {
     return true;
   }
   navigationRef.dispatch(
-    CommonActions.reset({
-      index: destination.name === 'Home' ? 0 : 1,
-      routes:
-        destination.name === 'Home'
-          ? [{name: 'Home'}]
-          : [
-              {name: 'Home'},
-              params
-                ? {name: destination.name, params}
-                : {name: destination.name},
-            ],
-    }),
+    CommonActions.reset(rootResetState({name: destination.name, params})),
   );
   return true;
 }
@@ -102,7 +96,7 @@ export function goBackOrHome(
     navigation.goBack();
     return;
   }
-  navigation.reset({index: 0, routes: [{name: 'Home'}]});
+  navigation.reset(rootResetState({name: 'Home'}));
 }
 
 export function reset(

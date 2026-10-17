@@ -8,8 +8,11 @@ import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {Modal, Pressable, ScrollView, Text, View} from 'react-native';
 import {RasterImage as Image} from '../../components/ui/RasterImage';
 import {SettingsIcon, ShareProfileIcon} from '../../assets/SVG';
-import TabBar from '../../components/TabBar';
-import {Container, Content} from '../../components/containers/Containers';
+import {
+  Container,
+  Content,
+  TAB_SCREEN_EDGES,
+} from '../../components/containers/Containers';
 import {
   MetaPill,
   PremiumCard,
@@ -24,6 +27,7 @@ import {DefaultAvatar} from '../../components/ui/DefaultAvatar';
 import {profileStyles as styles} from './styles';
 import {useProfileOverview} from './useProfileOverview';
 import {openGuestLogin} from '../../navigation/journeyNavigation';
+import {openRootTab} from '../../navigation/rootRoutes';
 
 const tabs: {key: ProfileTab; label: string}[] = [
   {key: 'portfolio', label: 'أعمالي'},
@@ -71,11 +75,12 @@ export default function Profile() {
   useEffect(() => {
     const requestedTab = route.params?.tab;
     // A stale route from before المحفوظات moved to ركني may still carry
-    // another tab; only the two أنا tabs are selectable.
+    // another tab; only the two أنا tabs are selectable. The أنا tab stays
+    // mounted, so each navigation request (new params) applies its tab again.
     if (requestedTab === 'portfolio' || requestedTab === 'certificates') {
       setActiveTab(requestedTab);
     }
-  }, [route.params?.tab]);
+  }, [route.params]);
 
   // One-shot request from a passed project; consumed by the gallery.
   const clearAddPortfolioProject = useCallback(
@@ -84,7 +89,7 @@ export default function Profile() {
   );
 
   return (
-    <Container noPadding>
+    <Container edges={TAB_SCREEN_EDGES} noPadding>
       <Content noPadding>
         <ResponsiveFrame>
           <HeaderWithBack
@@ -281,7 +286,7 @@ export default function Profile() {
               <Gallery
                 key={`portfolio:${identityKey}`}
                 onSubscriptions={hasSubscription =>
-                  navigation.navigate(hasSubscription ? 'MyCorner' : 'Home')
+                  openRootTab(navigation, hasSubscription ? 'MyCorner' : 'Home')
                 }
                 onSharePortfolio={
                   canSharePortfolio ? sharePortfolio : undefined
@@ -302,7 +307,6 @@ export default function Profile() {
           )}
         </ResponsiveFrame>
       </Content>
-      <TabBar />
     </Container>
   );
 }

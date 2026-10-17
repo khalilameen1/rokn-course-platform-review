@@ -40,6 +40,7 @@ import type {SettingsNavigation} from './types';
 import {configuredAppStoreUrl} from '../../services/publicLinks';
 import {clearTransientChatCache} from '../../utils/fileCache';
 import {clearPendingLoginReturnTo} from '../../navigation/authReturn';
+import {rootResetState} from '../../navigation/rootRoutes';
 import {openExternalUrlOnce} from '../../services/systemActions';
 import {revokeReauthenticationSession} from '../../services/accountDeletion';
 import {
@@ -159,7 +160,7 @@ export const useAccountSettingsActions = ({
     await rotateGuestStorageScope().catch(() => undefined);
     if (!stillLoggedOut()) return false;
     dispatch(LogOut());
-    navigation.reset({index: 0, routes: [{name: 'Home'}]});
+    navigation.reset(rootResetState({name: 'Home'}));
     return true;
   };
 
@@ -346,7 +347,7 @@ export const useAccountSettingsActions = ({
             !extractApiToken(peekSecureSession().session)
           ) {
             dispatch(LogOut());
-            navigation.reset({index: 0, routes: [{name: 'Home'}]});
+            navigation.reset(rootResetState({name: 'Home'}));
           }
         }
       } else if (reauthenticationToken) {

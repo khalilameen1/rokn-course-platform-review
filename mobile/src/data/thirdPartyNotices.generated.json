@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
   "generatedFrom": "package-lock.json production dependency closure",
-  "packageCount": 731,
-  "packagePathCount": 816,
-  "inventoryHash": "365ea9275d729ee6552302ecc30d3bfbd38513f3e3c2dc23e5498921b194f261",
+  "packageCount": 732,
+  "packagePathCount": 817,
+  "inventoryHash": "5152310e43522350552e158f45ae2c24fe802a0023e546ed39200909625ae5ed",
   "packages": [
     {
       "name": "@babel/code-frame",
@@ -2202,6 +2202,16 @@
       "declaredLicense": "MIT",
       "sourceUrl": "https://www.npmjs.com/package/%40react-native%2Fvirtualized-lists/v/0.83.10",
       "legalSource": "reviewed-metadata-fallback",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "@react-navigation/bottom-tabs",
+      "version": "7.20.0",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/%40react-navigation%2Fbottom-tabs/v/7.20.0",
+      "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
     },

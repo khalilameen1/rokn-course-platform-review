@@ -2,8 +2,11 @@ import {useNavigation} from '@react-navigation/native';
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {RefreshControl} from 'react-native';
 import {useSelector} from 'react-redux';
-import TabBar from '../components/TabBar';
-import {Container, Content} from '../components/containers/Containers';
+import {
+  Container,
+  Content,
+  TAB_SCREEN_EDGES,
+} from '../components/containers/Containers';
 import {
   ResponsiveFrame,
   SectionHeading,
@@ -14,6 +17,7 @@ import HeaderWithBack from '../components/view/HeaderWithBack';
 import {useResponsiveLayout} from '../constants/designSystem';
 import {sessionIdentityKey} from '../constants/helpers';
 import {openGuestLogin} from '../navigation/journeyNavigation';
+import {openRootTab} from '../navigation/rootRoutes';
 import type {RootNavigation} from '../navigation/types';
 import type {RootState} from '../store/store';
 import {CourseShelf} from './myCorner/CourseShelf';
@@ -78,14 +82,13 @@ export default function MyCorner() {
 
   if (!data.owned) {
     return (
-      <Container noPadding>
+      <Container edges={TAB_SCREEN_EDGES} noPadding>
         <Content noPadding>
           <ResponsiveFrame>
             <HeaderWithBack hasArrow={false} title="ركني" />
             <LearningDashboardSkeleton />
           </ResponsiveFrame>
         </Content>
-        <TabBar />
       </Container>
     );
   }
@@ -97,7 +100,7 @@ export default function MyCorner() {
   const empty = !model.courses.length;
 
   return (
-    <Container noPadding>
+    <Container edges={TAB_SCREEN_EDGES} noPadding>
       <Content
         noPadding
         refreshControl={
@@ -144,7 +147,7 @@ export default function MyCorner() {
               onAction={
                 data.dashboardError
                   ? data.reload
-                  : () => navigation.navigate('Home')
+                  : () => openRootTab(navigation, 'Home')
               }
               state={data.dashboardError ? 'error' : 'empty'}
               title={
@@ -199,7 +202,6 @@ export default function MyCorner() {
           )}
         </ResponsiveFrame>
       </Content>
-      <TabBar />
     </Container>
   );
 }

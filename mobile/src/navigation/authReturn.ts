@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {serverNowMs} from '../utils/serverClock';
 import {safeRoknRouteId} from './deepLinks';
 import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
+import {rootResetState} from './rootRoutes';
 import {
   getCurrentAccountStorageScope,
   getCurrentGuestJourneyScope,
@@ -273,18 +274,8 @@ export const resolveLoginReturnDestination = (
   return returnTo;
 };
 
-export const loginReturnResetState = (
-  value: unknown,
-  mode: LoginReturnMode,
-) => {
-  const destination = resolveLoginReturnDestination(value, mode);
-  return destination.name === 'Home'
-    ? {index: 0, routes: [{name: 'Home' as const}]}
-    : {
-        index: 1,
-        routes: [{name: 'Home' as const}, destination],
-      };
-};
+export const loginReturnResetState = (value: unknown, mode: LoginReturnMode) =>
+  rootResetState(resolveLoginReturnDestination(value, mode));
 
 export const savePendingLoginReturnTo = async (
   value: unknown,

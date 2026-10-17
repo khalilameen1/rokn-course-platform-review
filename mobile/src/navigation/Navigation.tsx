@@ -1,3 +1,7 @@
+import {
+  createBottomTabNavigator,
+  type BottomTabBarProps,
+} from '@react-navigation/bottom-tabs';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
@@ -24,7 +28,12 @@ import EditAccount from '../screens/EditAccount';
 import Feedback from '../screens/Feedback';
 import DeviceSessions from '../screens/DeviceSessions';
 import SavedLibrary from '../screens/SavedLibrary';
-import type {RootStackParamList} from './types';
+import type {
+  RootNavigation,
+  RootStackParamList,
+  RootTabParamList,
+} from './types';
+import TabBar from '../components/TabBar';
 import {
   flushPendingNotificationNavigation,
   setNotificationNavigationReady,
@@ -41,18 +50,63 @@ import {extractApiToken} from '../constants/helpers';
 import {useSelector} from 'react-redux';
 import type {RootState} from '../store/store';
 import {useStartupExperience} from '../screens/appInitializer/StartupExperience';
-import {isTabSwitchRoute} from './journeyNavigation';
+import {openGuestLogin} from './journeyNavigation';
 const Stack = createNativeStackNavigator<RootStackParamList>();
-
-// A destination chosen from the tab bar appears in place, without a push.
-const rootTabOptions = ({route}: {route: {key: string; name: string}}) =>
-  isTabSwitchRoute(route) ? {animation: 'none' as const} : {};
+const Tab = createBottomTabNavigator<RootTabParamList>();
 
 // The native splash already owns the brand while initial linking resolves.
 const NavigationFallback = () => <View style={styles.navigationFallback} />;
 const styles = StyleSheet.create({
   navigationFallback: {flex: 1, backgroundColor: '#0B1628'},
 });
+
+const renderTabBar = (props: BottomTabBarProps) => <TabBar {...props} />;
+
+type AccountGate = {authenticated: boolean; sessionReady: boolean};
+
+/**
+ * Bottom navigation keeps every visited tab mounted (lazy until first visit),
+ * like Instagram, YouTube and React Navigation's bottom-tab navigator: a tab
+ * switch keeps scroll, state and data instead of refetching. Switches are
+ * instant (`animation: 'none'`), and Android Back from another tab returns to
+ * Home before leaving the app.
+ */
+const RootTabs = ({
+  authenticated,
+  navigation,
+  sessionReady,
+}: AccountGate & {navigation: RootNavigation}) => (
+  <Tab.Navigator
+    backBehavior="initialRoute"
+    initialRouteName="Home"
+    screenListeners={({route}) => ({
+      // A guest's private tab opens the login sheet over the current tab and
+      // returns to the chosen tab after login, without mounting its content.
+      tabPress: event => {
+        if (authenticated || route.name === 'Home') return;
+        event.preventDefault();
+        openGuestLogin(navigation, {name: route.name});
+      },
+    })}
+    screenOptions={{animation: 'none', headerShown: false, lazy: true}}
+    tabBar={renderTabBar}>
+    <Tab.Screen name="Home" component={Home} />
+    <Tab.Group
+      screenLayout={({children, route}) => (
+        <AuthenticatedScreenBoundary
+          authenticated={authenticated}
+          navigation={navigation}
+          route={route}
+          sessionReady={sessionReady}>
+          {children}
+        </AuthenticatedScreenBoundary>
+      )}>
+      <Tab.Screen name="MyCorner" component={MyCorner} />
+      <Tab.Screen name="Wallet" component={Wallet} />
+      <Tab.Screen name="Profile" component={Profile} />
+    </Tab.Group>
+  </Tab.Navigator>
+);
 
 const Stacks = ({sessionReady}: {sessionReady: boolean}) => {
   const reducedMotion = useReducedMotion();
@@ -67,7 +121,16 @@ const Stacks = ({sessionReady}: {sessionReady: boolean}) => {
         headerShown: false,
         statusBarStyle: 'light',
       }}
-      initialRouteName="Home">
+      initialRouteName="Tabs">
+      <Stack.Screen name="Tabs">
+        {({navigation}) => (
+          <RootTabs
+            authenticated={authenticated}
+            navigation={navigation}
+            sessionReady={sessionReady}
+          />
+        )}
+      </Stack.Screen>
       <Stack.Screen
         name="Login"
         component={Login}
@@ -79,7 +142,6 @@ const Stacks = ({sessionReady}: {sessionReady: boolean}) => {
         }}
       />
       <Stack.Screen name="Feedback" component={Feedback} />
-      <Stack.Screen name="Home" component={Home} />
       <Stack.Screen name="Reels" component={Reels} />
       <Stack.Screen name="CourseDetails" component={CourseDetails} />
       <Stack.Screen name="AboutUs" component={AboutUs} />
@@ -98,21 +160,6 @@ const Stacks = ({sessionReady}: {sessionReady: boolean}) => {
           </AuthenticatedScreenBoundary>
         )}>
         <Stack.Screen name="EditAccount" component={EditAccount} />
-        <Stack.Screen
-          name="MyCorner"
-          component={MyCorner}
-          options={rootTabOptions}
-        />
-        <Stack.Screen
-          name="Wallet"
-          component={Wallet}
-          options={rootTabOptions}
-        />
-        <Stack.Screen
-          name="Profile"
-          component={Profile}
-          options={rootTabOptions}
-        />
         <Stack.Screen name="CourseCertificate" component={CourseCertificate} />
         <Stack.Screen name="Notifications" component={Notifications} />
         <Stack.Screen name="DeviceSessions" component={DeviceSessions} />

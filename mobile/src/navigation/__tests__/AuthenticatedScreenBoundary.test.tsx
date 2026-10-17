@@ -40,7 +40,7 @@ describe('AuthenticatedScreenBoundary', () => {
     expect(nav.reset).toHaveBeenCalledWith({
       index: 1,
       routes: [
-        {name: 'Home'},
+        {name: 'Tabs'},
         {name: 'Login', params: {returnTo: {name: 'Wallet'}}},
       ],
     });

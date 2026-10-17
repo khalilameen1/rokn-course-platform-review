@@ -12,6 +12,7 @@ import {useResponsiveLayout} from '../../constants/designSystem';
 import {sessionIdentityKey} from '../../constants/helpers';
 import {useAppForegroundState} from '../../hooks/useAppActiveState';
 import {goBackOrHome} from '../../navigation/RootNavigationHelper';
+import {openRootTab} from '../../navigation/rootRoutes';
 import type {RootNavigation, RootRoute} from '../../navigation/types';
 import {trackProductEvent} from '../../services/productAnalytics';
 import type {RootState} from '../../store/store';
@@ -315,7 +316,7 @@ export default function CourseDetails() {
         bottomInset={insets.bottom}
         isTablet={layout.isTablet}
         onClose={purchase.retention.close}
-        onOpenWallet={() => navigation.navigate('Wallet')}
+        onOpenWallet={() => openRootTab(navigation, 'Wallet')}
         owned={owned}
         retentionVisible={purchase.retention.visible}
       />

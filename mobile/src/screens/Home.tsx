@@ -12,8 +12,11 @@ import {
 import {RasterImage as Image} from '../components/ui/RasterImage';
 import {useTranslation} from 'react-i18next';
 import {NotificationIcon, SearchIcon} from '../assets/SVG';
-import TabBar from '../components/TabBar';
-import {Container, Content} from '../components/containers/Containers';
+import {
+  Container,
+  Content,
+  TAB_SCREEN_EDGES,
+} from '../components/containers/Containers';
 import {ResponsiveFrame} from '../components/ui/PremiumUI';
 import {
   Accessibility,
@@ -196,7 +199,7 @@ const Home = () => {
   );
 
   return (
-    <Container noPadding>
+    <Container edges={TAB_SCREEN_EDGES} noPadding>
       <Content
         controls={homeScroll.bind}
         noPadding
@@ -304,7 +307,6 @@ const Home = () => {
           staleNotice={staleNotice}
         />
       </Content>
-      <TabBar />
       <HomeOverlays
         campaign={engagement.campaign}
         campaignImageFailed={engagement.campaignImageFailed}

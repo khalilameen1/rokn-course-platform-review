@@ -1,24 +1,18 @@
 import {Alert} from 'react-native';
 
-import {
-  isTabSwitchRoute,
-  openGuestLogin,
-  selectRootTab,
-} from '../journeyNavigation';
+import {openGuestLogin} from '../journeyNavigation';
 import type {RootNavigation} from '../types';
 
 const navigation = () =>
   ({
-    dispatch: jest.fn(),
     getState: jest.fn(() => ({
       index: 0,
-      routes: [{key: 'home', name: 'Home'}],
+      routes: [{key: 'tabs', name: 'Tabs'}],
     })),
     navigate: jest.fn(),
-    reset: jest.fn(),
   } as unknown as RootNavigation);
 
-describe('root guest navigation', () => {
+describe('guest login entry', () => {
   let clock = Date.now() + 10_000;
 
   beforeEach(() => {
@@ -28,14 +22,13 @@ describe('root guest navigation', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it.each(['MyCorner', 'Wallet', 'Profile'] as const)(
-    'opens the login sheet directly without mounting private %s content',
+    'opens the login sheet with a return to %s and no alert',
     target => {
       const nav = navigation();
       const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
-      selectRootTab(nav, target, false);
+      openGuestLogin(nav, {name: target});
 
-      expect(nav.navigate).not.toHaveBeenCalledWith(target);
       expect(alert).not.toHaveBeenCalled();
       expect(nav.navigate).toHaveBeenCalledWith('Login', {
         returnTo: {name: target},
@@ -47,7 +40,7 @@ describe('root guest navigation', () => {
     const nav = navigation();
     jest.spyOn(nav, 'getState').mockReturnValue({
       index: 1,
-      routes: [{name: 'Home'}, {name: 'Login'}],
+      routes: [{name: 'Tabs'}, {name: 'Login'}],
     } as ReturnType<RootNavigation['getState']>);
 
     openGuestLogin(nav, {name: 'Wallet'});
@@ -55,45 +48,13 @@ describe('root guest navigation', () => {
     expect(nav.navigate).not.toHaveBeenCalled();
   });
 
-  it('opens the selected private tab for an authenticated learner', () => {
+  it('turns a double tap into one Login screen', () => {
     const nav = navigation();
-    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    jest.spyOn(Date, 'now').mockReturnValue(clock + 50_000);
 
-    selectRootTab(nav, 'Wallet', true);
+    openGuestLogin(nav, {name: 'Wallet'});
+    openGuestLogin(nav, {name: 'Wallet'});
 
-    expect(alert).not.toHaveBeenCalled();
-    expect(nav.navigate).toHaveBeenCalledWith('Wallet');
-  });
-});
-
-describe('tab bar switches', () => {
-  let clock = Date.now() + 100_000;
-  beforeEach(() => {
-    jest.spyOn(Date, 'now').mockImplementation(() => clock);
-  });
-  afterEach(() => jest.restoreAllMocks());
-
-  it('renders only the tab-bar route without a push transition', () => {
-    const nav = navigation();
-    selectRootTab(nav, 'Wallet', true);
-    expect(nav.navigate).toHaveBeenCalledWith('Wallet');
-
-    expect(isTabSwitchRoute({key: 'Wallet-tab', name: 'Wallet'})).toBe(true);
-    // Decided once per route, so its later pop is instant too.
-    expect(isTabSwitchRoute({key: 'Wallet-tab', name: 'Wallet'})).toBe(true);
-    // The same screen opened from elsewhere keeps the normal push.
-    expect(isTabSwitchRoute({key: 'Wallet-pushed', name: 'Wallet'})).toBe(
-      false,
-    );
-  });
-
-  it('does not let a stale or unrelated tap mark a later route', () => {
-    const nav = navigation();
-    selectRootTab(nav, 'Profile', true);
-    expect(isTabSwitchRoute({key: 'Wallet-other', name: 'Wallet'})).toBe(false);
-    clock += 5_000;
-    expect(isTabSwitchRoute({key: 'Profile-late', name: 'Profile'})).toBe(
-      false,
-    );
+    expect(nav.navigate).toHaveBeenCalledTimes(1);
   });
 });

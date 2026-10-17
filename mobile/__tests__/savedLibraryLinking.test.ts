@@ -22,7 +22,7 @@ describe('saved library app-link entry', () => {
       expect(roknLinking.getStateFromPath?.(path, roknLinking.config)).toEqual(
         {
           index: 1,
-          routes: [{name: 'Home'}, {name: 'SavedLibrary', path: 'saved'}],
+          routes: [{name: 'Tabs'}, {name: 'SavedLibrary', path: 'saved'}],
         },
       );
       expect(getStateFromPath).toHaveBeenCalledWith(
@@ -33,8 +33,8 @@ describe('saved library app-link entry', () => {
   );
 
   it('registers the screen path the old profile tab used to own', () => {
-    const screens = roknLinking.config?.screens as Record<string, string>;
+    const screens = roknLinking.config?.screens as Record<string, any>;
     expect(screens.SavedLibrary).toBe('saved');
-    expect(screens.Profile).toBe('profile/:tab?');
+    expect(screens.Tabs.screens.Profile).toBe('profile/:tab?');
   });
 });

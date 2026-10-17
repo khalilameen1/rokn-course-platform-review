@@ -11,6 +11,7 @@ import {
   roknDestinationKey,
   type RoknDestination,
 } from './deepLinks';
+import {rootResetState} from './rootRoutes';
 import type {RootStackParamList} from './types';
 
 let lastDeliveredDestination = '';
@@ -102,7 +103,7 @@ export const roknLinking: LinkingOptions<RootStackParamList> = {
     const destination = parseRoknDestination(path);
     if (!destination) return undefined;
     if (destination.name === 'Feedback') {
-      return {index: 1, routes: [{name: 'Home'}, destination]};
+      return rootResetState(destination);
     }
     const normalizedPath =
       destination.name === 'Home'
@@ -125,22 +126,28 @@ export const roknLinking: LinkingOptions<RootStackParamList> = {
             destination.params.reelId ? `/${destination.params.reelId}` : ''
           }`;
     const state = getNavigationStateFromPath(normalizedPath, options);
-    if (!state || destination.name === 'Home' || !state.routes?.length) {
+    // Home, Profile and Wallet resolve inside the bottom tabs, whose router
+    // keeps Home as the Back target. Other screens open above the tabs.
+    if (!state?.routes?.length || state.routes[0]?.name === 'Tabs') {
       return state;
     }
     return {
       ...state,
       index: state.routes.length,
-      routes: [{name: 'Home' as const}, ...state.routes],
+      routes: [{name: 'Tabs' as const}, ...state.routes],
     };
   },
   config: {
     screens: {
-      Home: 'home',
+      Tabs: {
+        screens: {
+          Home: 'home',
+          Profile: 'profile/:tab?',
+          Wallet: 'wallet',
+        },
+      },
       CourseDetails: 'course/:courseId',
       Reels: 'course/:courseId/watch/:reelId?',
-      Profile: 'profile/:tab?',
-      Wallet: 'wallet',
       SavedLibrary: 'saved',
       Feedback: 'support/:caseId',
     },

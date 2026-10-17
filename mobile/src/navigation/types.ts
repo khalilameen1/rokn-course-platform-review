@@ -1,4 +1,4 @@
-import type {RouteProp} from '@react-navigation/native';
+import type {NavigatorScreenParams, RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 
 export type CourseDetailsRouteParams = {
@@ -73,14 +73,9 @@ export type LoginRouteParams = {
   returnTo?: LoginReturnTo;
 };
 
-export type RootStackParamList = {
-  Login: LoginRouteParams | undefined;
-  EditAccount: undefined;
-  Feedback: {sourceScreen?: string; caseId?: string} | undefined;
+/** The four bottom-navigation destinations, in tab-bar order. */
+export type RootTabParamList = {
   Home: undefined;
-  Reels: ReelsRouteParams;
-  CourseDetails: CourseDetailsRouteParams;
-  CourseCertificate: {courseId: string};
   MyCorner: undefined;
   Wallet: {returnTo?: LoginReturnTo} | undefined;
   Profile:
@@ -90,6 +85,26 @@ export type RootStackParamList = {
         addPortfolioProjectId?: string;
       }
     | undefined;
+};
+
+export type RootTabName = keyof RootTabParamList;
+
+export const ROOT_TAB_NAMES = [
+  'Home',
+  'MyCorner',
+  'Wallet',
+  'Profile',
+] as const satisfies readonly RootTabName[];
+
+export type RootStackParamList = {
+  /** Bottom tabs; every other screen is pushed above them. */
+  Tabs: NavigatorScreenParams<RootTabParamList> | undefined;
+  Login: LoginRouteParams | undefined;
+  EditAccount: undefined;
+  Feedback: {sourceScreen?: string; caseId?: string} | undefined;
+  Reels: ReelsRouteParams;
+  CourseDetails: CourseDetailsRouteParams;
+  CourseCertificate: {courseId: string};
   AboutUs: undefined;
   PrivacyPolicy: undefined;
   TermsOfUse: undefined;
@@ -101,8 +116,15 @@ export type RootStackParamList = {
   SavedLibrary: {folderId?: string} | undefined;
 };
 
+/**
+ * Every screen a flat destination (deep link, login return, checkout return)
+ * can name. Tabs are named directly; `rootRoutes` nests them under `Tabs`.
+ */
+export type AppParamList = Omit<RootStackParamList, 'Tabs'> & RootTabParamList;
+export type AppRouteName = keyof AppParamList;
+
 export type RootNavigation = NativeStackNavigationProp<RootStackParamList>;
-export type RootRoute<RouteName extends keyof RootStackParamList> = RouteProp<
-  RootStackParamList,
+export type RootRoute<RouteName extends AppRouteName> = RouteProp<
+  AppParamList,
   RouteName
 >;

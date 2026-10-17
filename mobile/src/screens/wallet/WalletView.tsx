@@ -11,8 +11,11 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import type {RootNavigation} from '../../navigation/types';
 import {openGuestLogin} from '../../navigation/journeyNavigation';
-import TabBar from '../../components/TabBar';
-import {Container, Content} from '../../components/containers/Containers';
+import {
+  Container,
+  Content,
+  TAB_SCREEN_EDGES,
+} from '../../components/containers/Containers';
 import {ResponsiveFrame, StatusView} from '../../components/ui/PremiumUI';
 import HeaderWithBack from '../../components/view/HeaderWithBack';
 import {
@@ -54,7 +57,7 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
   const header = <HeaderWithBack hasArrow={false} title="مكافآتي" />;
   if (!ownerReady || serverSession === null) {
     return (
-      <Container noPadding>
+      <Container edges={TAB_SCREEN_EDGES} noPadding>
         <Content noPadding>
           <ResponsiveFrame>
             {header}
@@ -74,13 +77,12 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
             )}
           </ResponsiveFrame>
         </Content>
-        <TabBar />
       </Container>
     );
   }
   if (serverSession === false) {
     return (
-      <Container noPadding>
+      <Container edges={TAB_SCREEN_EDGES} noPadding>
         <Content noPadding>
           <ResponsiveFrame>
             {header}
@@ -93,12 +95,11 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
             />
           </ResponsiveFrame>
         </Content>
-        <TabBar />
       </Container>
     );
   }
   return (
-    <Container noPadding>
+    <Container edges={TAB_SCREEN_EDGES} noPadding>
       <Content
         noPadding
         refreshControl={
@@ -178,7 +179,6 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
           </Pressable>
         </ResponsiveFrame>
       </Content>
-      <TabBar />
       <RewardsDetailsSheet controller={controller} />
     </Container>
   );

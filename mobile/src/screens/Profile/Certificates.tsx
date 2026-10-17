@@ -1,6 +1,7 @@
 import {useNavigation} from '@react-navigation/native';
 import type {RootNavigation} from '../../navigation/types';
 import {openGuestLogin} from '../../navigation/journeyNavigation';
+import {openRootTab} from '../../navigation/rootRoutes';
 import React from 'react';
 import {Modal, Pressable, ScrollView, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -103,7 +104,7 @@ export default function Certificates({
               });
               return;
             }
-            navigation.navigate('Home');
+            openRootTab(navigation, 'Home');
           }}
           state="empty"
           title={

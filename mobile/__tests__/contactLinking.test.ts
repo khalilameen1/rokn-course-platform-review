@@ -16,7 +16,7 @@ describe('Contact app-link entry', () => {
       roknLinking.getStateFromPath?.('/contact', roknLinking.config),
     ).toEqual({
       index: 1,
-      routes: [{name: 'Home'}, {name: 'Feedback'}],
+      routes: [{name: 'Tabs'}, {name: 'Feedback'}],
     });
   });
 
@@ -26,7 +26,7 @@ describe('Contact app-link entry', () => {
       roknLinking.getStateFromPath?.(`support/${caseId}`, roknLinking.config),
     ).toEqual({
       index: 1,
-      routes: [{name: 'Home'}, {name: 'Feedback', params: {caseId}}],
+      routes: [{name: 'Tabs'}, {name: 'Feedback', params: {caseId}}],
     });
   });
 

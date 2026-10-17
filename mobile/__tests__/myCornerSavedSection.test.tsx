@@ -39,7 +39,6 @@ jest.mock('../src/services/roknApi', () => ({
 jest.mock('../src/components/VideoPlayer/courseLearning/savedFolderIndex', () => ({
   getSavedFolderOptions: (...args: unknown[]) => mockFolders(...args),
 }));
-jest.mock('../src/components/TabBar', () => () => null);
 jest.mock('../src/components/view/HeaderWithBack', () => () => null);
 jest.mock('../src/components/ui/RasterImage', () => ({
   RasterImage: () => null,

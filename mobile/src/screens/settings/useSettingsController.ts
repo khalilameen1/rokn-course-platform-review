@@ -7,6 +7,7 @@ import type {SettingsNavigation} from './types';
 import {useAccountSettingsActions} from './useAccountSettingsActions';
 import {useSettingsPreferences} from './useSettingsPreferences';
 import {openGuestLogin} from '../../navigation/journeyNavigation';
+import {openRootTab} from '../../navigation/rootRoutes';
 import {manageAiConsent} from '../../services/aiConsent';
 
 export const useSettingsController = () => {
@@ -50,7 +51,7 @@ export const useSettingsController = () => {
     onLogout: account.logout,
     onOpenQuality: preferences.openQualityChoice,
     onOpenReminderTime: preferences.openReminderChoice,
-    onPortfolio: () => navigation.navigate('Profile'),
+    onPortfolio: () => openRootTab(navigation, 'Profile'),
     onPrivacyPolicy: () => navigation.navigate('PrivacyPolicy'),
     onAiConsent: () => void manageAiConsent().catch(() => undefined),
     onRateApp: account.openStoreRating,
