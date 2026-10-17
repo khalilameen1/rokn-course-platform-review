@@ -28,12 +28,10 @@ import {
   mapPortfolioMutation,
   mapPortfolioProfile,
   normalizePortfolioChips,
-  PORTFOLIO_LINKS_MAX,
   PORTFOLIO_SKILLS_MAX,
   PORTFOLIO_TOOLS_MAX,
   type PortfolioItem,
   type PortfolioItemDto,
-  type PortfolioLink,
   type PortfolioMedia,
   type PortfolioProfile,
   type PortfolioUpload,
@@ -42,7 +40,6 @@ import {
 export type {
   EligibleProject,
   PortfolioItem,
-  PortfolioLink,
   PortfolioMedia,
   PortfolioProfile,
   PortfolioUpload,
@@ -146,7 +143,6 @@ export type PortfolioProfilePatch = {
   headline?: string;
   location?: string;
   skills?: string[];
-  links?: PortfolioLink[];
 };
 
 export const updatePortfolioProfile = async (
@@ -162,11 +158,6 @@ export const updatePortfolioProfile = async (
     body.portfolio_skills = normalizePortfolioChips(
       patch.skills,
       PORTFOLIO_SKILLS_MAX,
-    );
-  }
-  if (patch.links !== undefined) {
-    body.portfolio_links = patch.links.slice(0, PORTFOLIO_LINKS_MAX).map(
-      link => ({label: link.label.trim(), url: link.url.trim()}),
     );
   }
   const data = payload<unknown>(

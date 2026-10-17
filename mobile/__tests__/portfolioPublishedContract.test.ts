@@ -18,8 +18,6 @@ import {
   mapPortfolioItem,
   mapPortfolioProfile,
   normalizePortfolioChips,
-  portfolioLinkError,
-  whatsAppLinkFromPhone,
 } from '../src/services/api/portfolioContract';
 import {
   portfolioItemPatchBody,
@@ -83,22 +81,15 @@ describe('published portfolio contract (backend 510b9e76)', () => {
     ).toMatchObject({published: false, publicUrl: ''});
   });
 
-  it('maps profile skills and https contact links', () => {
+  it('maps profile skills', () => {
     expect(
       mapPortfolioProfile({
         sharing_status: 'approved',
         published: true,
         public_url: LIVE_URL,
         skills: ['تصميم', ' '],
-        links: [
-          {label: 'واتساب', url: 'https://wa.me/201012345678'},
-          {label: 'bad', url: 'http://insecure.example'},
-        ],
       }),
-    ).toMatchObject({
-      skills: ['تصميم'],
-      links: [{label: 'واتساب', url: 'https://wa.me/201012345678'}],
-    });
+    ).toMatchObject({skills: ['تصميم']});
   });
 
   it('maps project tools (skills alias), cover choice, visibility and order', () => {
@@ -157,53 +148,19 @@ describe('published portfolio contract (backend 510b9e76)', () => {
     expect(mockPost).toHaveBeenCalledWith('portfolio/9', {is_public: false});
   });
 
-  it('saves profile skills and links with the backend field names', async () => {
+  it('saves profile skills with the backend field name and no contact links', async () => {
     mockPut.mockResolvedValue({
       data: {data: {sharing_status: 'pending', published: false, skills: ['تصميم']}},
     });
     await updatePortfolioProfile({
       skills: ['تصميم', 'تصميم'],
-      links: [{label: ' واتساب ', url: 'https://wa.me/201012345678 '}],
     });
     expect(mockPut).toHaveBeenCalledWith('portfolio-profile', {
       portfolio_skills: ['تصميم'],
-      portfolio_links: [{label: 'واتساب', url: 'https://wa.me/201012345678'}],
     });
   });
 
-  it('builds the WhatsApp click-to-chat link from Egyptian numbers', () => {
-    expect(whatsAppLinkFromPhone('01012345678')).toBe('https://wa.me/201012345678');
-    expect(whatsAppLinkFromPhone('٠١٢٣٤٥٦٧٨٩٠')).toBe('https://wa.me/201234567890');
-    expect(whatsAppLinkFromPhone('+20 101 234 5678')).toBe(
-      'https://wa.me/201012345678',
-    );
-    expect(whatsAppLinkFromPhone('00201012345678')).toBe(
-      'https://wa.me/201012345678',
-    );
-    expect(whatsAppLinkFromPhone('0101234')).toBeNull();
-    expect(whatsAppLinkFromPhone('abc')).toBeNull();
-  });
-
-  it('validates contact links like the profile endpoint', () => {
-    expect(portfolioLinkError({label: 'موقعي', url: 'https://site.dev'})).toBe('');
-    expect(portfolioLinkError({label: 'موقعي', url: 'http://site.dev'})).toBe(
-      'الرابط لازم يبدأ بـ https://',
-    );
-    expect(portfolioLinkError({label: '', url: 'https://site.dev'})).toBe(
-      'اكتب اسم للرابط',
-    );
-    expect(
-      portfolioLinkError({label: 'واتساب', url: 'https://wa.me/201012345678'}),
-    ).toBe('');
-    expect(
-      portfolioLinkError({
-        label: 'واتساب',
-        url: 'https://api.whatsapp.com/send?phone=201012345678',
-      }),
-    ).toBe('');
-    expect(portfolioLinkError({label: 'واتساب', url: 'https://wa.link/abc'})).toBe(
-      'اكتب رقم واتساب صحيح',
-    );
+  it('caps profile chips', () => {
     expect(normalizePortfolioChips(['a', 'b', 'c'], 2)).toEqual(['a', 'b']);
   });
 

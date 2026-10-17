@@ -9,7 +9,6 @@ use App\Models\User;
 use App\Services\PortfolioShareIdentityService;
 use App\Services\PortfolioModerationService;
 use App\Services\SafeExternalUrl;
-use App\Support\PortfolioContactLink;
 use App\Support\RoknPublicUrl;
 use App\Support\UnicodeText;
 use Illuminate\Http\JsonResponse;
@@ -66,10 +65,6 @@ final class PortfolioProfileController extends Controller
                     if (isset($link['label']) && is_string($link['label'])) {
                         $link['label'] = UnicodeText::clean($link['label'], false);
                     }
-                    // WhatsApp click-to-chat is stored in its documented wa.me form.
-                    if (PortfolioContactLink::isWhatsApp($link['url'] ?? null)) {
-                        $link['url'] = PortfolioContactLink::normalize($link['url']) ?? $link['url'];
-                    }
 
                     return $link;
                 }, $request->input('portfolio_links')),
@@ -87,11 +82,6 @@ final class PortfolioProfileController extends Controller
                 'string',
                 'max:2000',
                 SafeExternalUrl::validationRule(),
-                static function (string $attribute, mixed $value, \Closure $fail): void {
-                    if (PortfolioContactLink::isWhatsApp($value) && PortfolioContactLink::normalize($value) === null) {
-                        $fail('اكتب رابط واتساب بالشكل https://wa.me/201xxxxxxxxx');
-                    }
-                },
             ],
         ]);
 
@@ -125,7 +115,7 @@ final class PortfolioProfileController extends Controller
             'skills' => $user->portfolio_skills ?? [],
             'links' => collect($user->portfolio_links ?? [])
                 ->map(function ($link): ?array {
-                    $safeUrl = is_array($link) ? PortfolioContactLink::normalize($link['url'] ?? null) : null;
+                    $safeUrl = SafeExternalUrl::sanitize($link['url'] ?? null);
                     if (!$safeUrl) {
                         return null;
                     }

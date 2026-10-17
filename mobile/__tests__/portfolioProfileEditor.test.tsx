@@ -19,7 +19,7 @@ const flush = async () => {
   for (let index = 0; index < 20; index += 1) await Promise.resolve();
 };
 
-describe('portfolio profile skills and contact links', () => {
+describe('portfolio profile skills', () => {
   let editor!: ReturnType<typeof usePortfolioProfileEditor>;
   let renderer: TestRenderer.ReactTestRenderer;
   const mountedRef = {current: true};
@@ -42,7 +42,6 @@ describe('portfolio profile skills and contact links', () => {
     jest.clearAllMocks();
     mockGetProfile.mockResolvedValue({
       skills: ['تصميم'],
-      links: [{label: 'Behance', url: 'https://behance.net/sara'}],
     });
     mockUpdateProfile.mockImplementation(async patch => ({
       published: true,
@@ -57,25 +56,13 @@ describe('portfolio profile skills and contact links', () => {
     await step(() => renderer.unmount());
   });
 
-  it('loads the saved lists, adds a WhatsApp button from a local number and saves', async () => {
+  it('loads the saved skills, adds new ones and saves only skills', async () => {
     expect(editor.profileEditor.skills).toEqual(['تصميم']);
     await step(() => editor.setSkillInput('موشن، مونتاج'));
     await step(() => editor.addSkill());
-    await step(() => editor.setWhatsAppInput('01012345678'));
-    await step(() => editor.addWhatsApp());
-    expect(editor.profileEditor.links[0]).toEqual({
-      label: 'واتساب',
-      url: 'https://wa.me/201012345678',
-    });
     await step(() => editor.saveProfile());
     expect(mockUpdateProfile).toHaveBeenCalledWith(
-      {
-        skills: ['تصميم', 'موشن', 'مونتاج'],
-        links: [
-          {label: 'واتساب', url: 'https://wa.me/201012345678'},
-          {label: 'Behance', url: 'https://behance.net/sara'},
-        ],
-      },
+      {skills: ['تصميم', 'موشن', 'مونتاج']},
       boundary,
     );
     expect(onProfileChange).toHaveBeenCalledWith(
@@ -84,15 +71,9 @@ describe('portfolio profile skills and contact links', () => {
     expect(editor.profileEditor.open).toBe(false);
   });
 
-  it('refuses an insecure link and a wrong WhatsApp number before saving', async () => {
-    await step(() => editor.setWhatsAppInput('0101'));
-    await step(() => editor.addWhatsApp());
-    expect(editor.profileEditor.error).toBe('اكتب رقم واتساب صحيح زي 01012345678');
-    await step(() => editor.addLink());
-    await step(() => editor.updateLink(1, {label: 'موقعي', url: 'http://me.dev'}));
+  it('removes a skill before saving', async () => {
+    await step(() => editor.removeSkill('تصميم'));
     await step(() => editor.saveProfile());
-    expect(mockUpdateProfile).not.toHaveBeenCalled();
-    expect(editor.profileEditor.error).toBe('الرابط لازم يبدأ بـ https://');
-    expect(editor.profileEditor.open).toBe(true);
+    expect(mockUpdateProfile).toHaveBeenCalledWith({skills: []}, boundary);
   });
 });

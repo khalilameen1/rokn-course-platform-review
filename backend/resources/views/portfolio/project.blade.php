@@ -50,13 +50,6 @@
     </section>
     @endif
 
-    @if(!empty($profile['links']))
-    <section>
-        <h2 style="font-size:22px;margin:0">تواصل مع {{ $profile['name'] }}</h2>
-        @include('portfolio.partials.contacts', ['links' => $profile['links'], 'name' => $profile['name']])
-    </section>
-    @endif
-
     @if(!empty($more_projects))
     <section>
         <div class="section-head"><h2>أعمال أخرى</h2><a href="{{ $profile['public_url'] }}">عرض الكل</a></div>

@@ -410,7 +410,7 @@ export const PortfolioGalleryView = ({
           accessibilityLabel="مهاراتك وروابط التواصل"
           onPress={openProfileEditor}
           style={styles.manualEntryButton}>
-          <Text style={styles.manualEntryLabel}>مهاراتك وروابطك</Text>
+          <Text style={styles.manualEntryLabel}>مهاراتك</Text>
         </Pressable>
       )}
       {loading && !projects.length ? (

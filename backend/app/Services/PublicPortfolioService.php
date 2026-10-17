@@ -10,7 +10,6 @@ use App\Models\PortfolioMedia;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
-use App\Support\PortfolioContactLink;
 use App\Support\RoknPublicUrl;
 use Illuminate\Support\Str;
 
@@ -213,7 +212,6 @@ final class PublicPortfolioService
                 'location' => $profile->portfolio_location,
                 'image_url' => $adminPreview || $sameAvatar ? $profileImageUrl : null,
                 'skills' => array_values(array_filter((array) ($profile->portfolio_skills ?? []), 'is_string')),
-                'links' => $this->contactLinks((array) ($profile->portfolio_links ?? []), $adminPreview ? null : $owner),
                 'slug' => $slug,
                 'public_url' => $adminPreview ? null : RoknPublicUrl::portfolio($slug),
                 'share_mode' => 'unlisted',
@@ -224,37 +222,6 @@ final class PublicPortfolioService
         ];
     }
 
-    /**
-     * Contact buttons from the learner's own profile links. A link removed
-     * from the profile disappears immediately even before the next review.
-     *
-     * @return list<array{label:string,url:string,type:string,type_label:string}>
-     */
-    private function contactLinks(array $links, ?User $currentOwner): array
-    {
-        $current = null;
-        if ($currentOwner) {
-            $current = collect((array) ($currentOwner->portfolio_links ?? []))
-                ->map(fn ($link) => is_array($link) ? PortfolioContactLink::normalize($link['url'] ?? null) : null)
-                ->filter()->flip()->all();
-        }
-
-        return collect($links)->map(function ($link) use ($current): ?array {
-            $url = is_array($link) ? PortfolioContactLink::normalize($link['url'] ?? null) : null;
-            if (!$url || ($current !== null && !isset($current[$url]))) {
-                return null;
-            }
-            $type = PortfolioContactLink::type($url);
-            $label = trim((string) ($link['label'] ?? ''));
-
-            return [
-                'label' => $label !== '' ? $label : PortfolioContactLink::LABELS[$type],
-                'url' => $url,
-                'type' => $type,
-                'type_label' => PortfolioContactLink::LABELS[$type],
-            ];
-        })->filter()->unique('url')->values()->all();
-    }
 
     /** Public share payloads use public slugs/UUIDs, never database keys. */
     private function projectPayload(array $entry, string $slug, bool $adminPreview, array $mediaQuery, array $credential): array

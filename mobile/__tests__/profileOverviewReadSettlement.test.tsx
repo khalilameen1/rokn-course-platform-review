@@ -81,7 +81,6 @@ const portfolio = (
   headline: '',
   location: '',
   skills: [],
-  links: [],
   published: status === 'approved',
   publishedAt: '',
   hasUnpublishedChanges: false,

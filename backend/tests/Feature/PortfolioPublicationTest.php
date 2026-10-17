@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
-/** Draft/published portfolio, share previews, project pages, badges and contact links. */
+/** Draft/published portfolio, share previews, project pages, badges. Learner contact links are not shown. */
 final class PortfolioPublicationTest extends TestCase
 {
     use RefreshDatabase;
@@ -214,32 +214,19 @@ final class PortfolioPublicationTest extends TestCase
         self::assertNull($projects['Passed project']['certificate_url']);
     }
 
-    public function test_contact_links_render_escaped_whatsapp_uses_wa_me_and_removals_apply_at_once(): void
+    public function test_public_pages_show_no_learner_contact_links(): void
     {
         $owner = $this->owner();
         $this->work($owner, 'Work');
         $this->actingAs($owner, 'api')->putJson('/api/v1/portfolio-profile', ['portfolio_links' => [
-            ['label' => '<script>alert(1)</script>', 'url' => 'https://www.behance.net/someone'],
-            ['label' => 'واتساب', 'url' => 'https://api.whatsapp.com/send?phone=201001234567&text=hi'],
-        ]])->assertOk()->assertJsonPath('data.links.1.url', 'https://wa.me/201001234567');
-        foreach (['https://chat.whatsapp.com/AbCdEf', 'javascript:alert(1)', 'http://insecure.example.com'] as $bad) {
-            $this->putJson('/api/v1/portfolio-profile', ['portfolio_links' => [['label' => 'x', 'url' => $bad]]])
-                ->assertUnprocessable();
-        }
+            ['label' => 'Behance', 'url' => 'https://www.behance.net/someone'],
+            ['label' => 'WhatsApp', 'url' => 'https://wa.me/201001234567'],
+        ]])->assertOk();
         $this->approve($owner);
 
-        $html = (string) $this->get(route('portfolio.public', $owner->portfolio_slug))->assertOk()->getContent();
-        self::assertStringContainsString('&lt;script&gt;alert(1)&lt;/script&gt;', $html);
-        self::assertStringNotContainsString('<script>alert(1)', $html);
-        self::assertStringContainsString('href="https://wa.me/201001234567"', $html);
-        self::assertStringContainsString('class="contact contact-whatsapp"', $html);
-        self::assertStringContainsString('rel="noopener noreferrer nofollow ugc"', $html);
-
-        $this->actingAs($owner->fresh(), 'api')->putJson('/api/v1/portfolio-profile', ['portfolio_links' => [
-            ['label' => 'واتساب', 'url' => 'https://wa.me/201001234567'],
-        ]])->assertOk()->assertJsonPath('data.sharing_status', 'pending');
         $this->get(route('portfolio.public', $owner->portfolio_slug))->assertOk()
-            ->assertDontSee('behance.net/someone')->assertSee('https://wa.me/201001234567', false);
+            ->assertDontSee('behance.net/someone')
+            ->assertDontSee('wa.me/201001234567');
     }
 
     public function test_cover_featured_order_and_skills_alias_follow_the_owner(): void

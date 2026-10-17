@@ -18,7 +18,6 @@
         <div><h1>{{ $profile['name'] }}</h1><p class="headline">{{ $profile['headline'] ?: 'متعلم في ركن' }}</p>@if($profile['location'])<div class="muted">{{ $profile['location'] }}</div>@endif</div>
     </div>
     @if(!empty($profile['skills']))<div class="chips">@foreach($profile['skills'] as $skill)<span class="chip">{{ $skill }}</span>@endforeach</div>@endif
-    @include('portfolio.partials.contacts', ['links' => $profile['links'] ?? [], 'name' => $profile['name']])
 </div></header>
 
 <main class="wrap">

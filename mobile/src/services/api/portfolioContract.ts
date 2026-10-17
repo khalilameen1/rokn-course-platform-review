@@ -27,14 +27,11 @@ export type EligibleProjectDto = ApiRecord & {
   module?: {title?: unknown};
 };
 
-export type PortfolioLink = {label: string; url: string};
-
 export type PortfolioProfile = {
   slug: string;
   headline: string;
   location: string;
   skills: string[];
-  links: PortfolioLink[];
   /** Live public link; present whenever an approved version is published. */
   publicUrl: string;
   published: boolean;
@@ -143,15 +140,6 @@ export const mapPortfolioProfile = (
     headline: String(value.headline || fallback.headline || ''),
     location: String(value.location || ''),
     skills: stringList(value.skills),
-    links: Array.isArray(value.links)
-      ? value.links.flatMap(link =>
-          isApiRecord(link) &&
-          typeof link.url === 'string' &&
-          /^https:\/\//i.test(link.url.trim())
-            ? [{label: String(link.label || '').trim(), url: link.url.trim()}]
-            : [],
-        )
-      : [],
     publicUrl: published ? publicUrl : '',
     published,
     publishedAt:
@@ -347,17 +335,7 @@ export const isValidPortfolioList = (
 export const PORTFOLIO_TOOLS_MAX = 20;
 export const PORTFOLIO_SKILLS_MAX = 30;
 export const PORTFOLIO_CHIP_MAX_LENGTH = 80;
-export const PORTFOLIO_LINKS_MAX = 10;
-export const PORTFOLIO_LINK_LABEL_MAX_LENGTH = 40;
 
-const latinDigits = (value: string) =>
-  value
-    .replace(/[٠-٩]/g, digit =>
-      String(digit.charCodeAt(0) - 0x0660),
-    )
-    .replace(/[۰-۹]/g, digit =>
-      String(digit.charCodeAt(0) - 0x06f0),
-    );
 
 /** Trimmed, de-duplicated chips within the server's count and length limits. */
 export const normalizePortfolioChips = (
@@ -380,33 +358,4 @@ export const normalizePortfolioChips = (
   return chips;
 };
 
-/**
- * WhatsApp's documented click-to-chat link is https://wa.me/<international
- * number without + or 0>. Egyptian mobiles written locally (01xxxxxxxxx)
- * become 201xxxxxxxxx; +20 / 0020 forms are accepted too.
- */
-export const whatsAppLinkFromPhone = (input: string): string | null => {
-  let digits = latinDigits(String(input || '')).replace(/[\s\-().]/g, '');
-  if (digits.startsWith('+')) digits = digits.slice(1);
-  else if (digits.startsWith('00')) digits = digits.slice(2);
-  else if (/^01[0125]\d{8}$/.test(digits)) digits = `20${digits.slice(1)}`;
-  return /^[1-9]\d{7,14}$/.test(digits) ? `https://wa.me/${digits}` : null;
-};
 
-/** Client-side mirror of the profile link rules: https only, <= 10 links. */
-export const portfolioLinkError = (link: PortfolioLink): string => {
-  const url = link.url.trim();
-  if (!link.label.trim()) return 'اكتب اسم للرابط';
-  if (link.label.trim().length > PORTFOLIO_LINK_LABEL_MAX_LENGTH)
-    return 'اسم الرابط طويل';
-  if (!/^https:\/\/[^\s/]+\.[^\s]+$/i.test(url) || url.length > 2000)
-    return 'الرابط لازم يبدأ بـ https://';
-  if (/^https:\/\/(?:www\.)?(?:wa\.me|wa\.link|(?:[a-z]+\.)?whatsapp\.com)\b/i.test(url)) {
-    const waMe = url.match(/^https:\/\/(?:www\.)?wa\.me\/(\d+)\/?$/i);
-    const send = url.match(/[?&]phone=\+?(\d+)/i);
-    const digits = waMe?.[1] ?? send?.[1];
-    if (!digits || !/^[1-9]\d{7,14}$/.test(digits))
-      return 'اكتب رقم واتساب صحيح';
-  }
-  return '';
-};

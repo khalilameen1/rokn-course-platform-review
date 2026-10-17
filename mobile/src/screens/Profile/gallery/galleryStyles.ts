@@ -305,11 +305,4 @@ export const galleryStyles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
   },
   editableChipLabel: {...Type.caption, ...textDirection, color: Palette.text},
-  linkRow: {
-    gap: Spacing.xs,
-    marginTop: Spacing.xs,
-    paddingBottom: Spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: Palette.lineSoft,
-  },
 });
