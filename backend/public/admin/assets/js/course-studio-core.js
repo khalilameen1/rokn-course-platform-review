@@ -83,8 +83,10 @@
             studio.classList.toggle('is-authoring-busy', busy);
             studio.inert = busyCount > 0;
             studio.querySelectorAll('button').forEach(control => {
+                // Upload stop/retry controls stay usable while an upload keeps
+                // the rest of the studio locked.
                 const uploadEscape = externalBusy && busyCount === 0
-                    && ['bunny_upload_cancel', 'bunny_upload_retry'].includes(control.id);
+                    && control.hasAttribute('data-upload-escape');
                 if (busy && !uploadEscape && !control.disabled) {
                     control.disabled = true;
                     control.dataset.studioBusyDisabled = '1';

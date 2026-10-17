@@ -1,6 +1,8 @@
 # Dashboard video upload
 
-The course studio loads three first-party modules, in dependency order, through
+The course studio loads tus-js-client 4.3.1 (`public/admin/assets/js/vendor/tus-js-client/tus.min.js`,
+published from npm by `scripts/publish-admin-vendor-assets.mjs`) and four first-party
+modules, in dependency order, through
 `resources/views/admin/course-sections/partials/bunny-direct-upload.blade.php`.
 Blade only provides authenticated owner/rejected-claim values and versioned asset
 URLs. The `RoknCourseVideoUpload` API used by the section editor is unchanged.
@@ -16,10 +18,25 @@ URLs. The `RoknCourseVideoUpload` API used by the section editor is unchanged.
   authorization so it must be renewed. The legacy key migrates only after the
   same ownership/expiry checks.
 - `course-studio-bunny-upload-transfer.js` owns one transfer: validation,
-  allocation, authorization renewal, TUS POST/HEAD/PATCH, bounded retries and
-  cancellation. It receives a records adapter, API request function and progress/
-  claim callbacks. It never reads a DOM node or browser storage. Both a fresh
-  preparation and a lost preparation response use the same allocation path.
+  allocation, authorization renewal and cancellation. The TUS protocol itself
+  (POST/HEAD/PATCH, offsets, retries) is tus-js-client's `tus.Upload`, configured
+  as Bunny documents it (https://docs.bunny.net/reference/tus-resumable-uploads):
+  endpoint, the four Authorization/Video/Library headers, `filetype`/`title`
+  metadata and retryDelays `[0, 3000, 5000, 10000, 20000, 60000, 60000]`, with
+  20 MB chunks. tus's own URL storage is off; our records keep the upload URL
+  (`uploadUrl` option). `onBeforeRequest` renews authorization, a 401/403 renews
+  and retries instead of discarding the URL, and a 120 s no-progress watchdog turns
+  a stalled XHR into a retryable error. It never reads a DOM node or browser
+  storage. Both a fresh preparation and a lost preparation response use the same
+  allocation path.
+- `course-studio-bunny-upload-queue.js` is the DOM-free multi-file queue and
+  `course-studio-reel-queue.js` its studio wiring ("رفع عدة مقاطع" per module).
+  Each file is uploaded by the transfer above and saved by the section editor's
+  `createLesson` (same store endpoint, receipt recovery and outline update as the
+  inline form). The queue runs one file at a time: an upload claim is bound to
+  the course authoring version and every save advances it, so a second
+  in-flight claim would be refused. While it runs the studio is locked except
+  the queue's own stop/retry controls (`data-upload-escape`).
 - `course-studio-bunny-upload-form.js` owns presentation, section context and
   form submission. An allocated claim is **not** a completed upload. Only a
   successful transfer or an already-completed claim supplied by the server may
@@ -41,8 +58,9 @@ cancelled attempt is still unwinding must not undo cancellation.
 
 ## Verification
 
-- `npm run test:admin-upload` runs in Backend CI and exercises records
-  and transfer without a document; the transfer tests also remove browser
+- `npm run test:admin-upload` runs in Backend CI and exercises records,
+  the queue engine and the transfer on the real tus-js-client build behind a
+  fake XMLHttpRequest, without a document; the transfer tests also remove browser
   storage. This covers expiry, identity isolation, legacy migration, bounded
   restart, preparation identity ordering and cancellation before tab readiness.
 - `node scripts/tests/bunny-direct-upload-recovery.browser.mjs` runs the real
@@ -51,6 +69,10 @@ cancelled attempt is still unwinding must not undo cancellation.
   cancellation, reload/resume, completed-claim reuse, form reset and duplicated
   tab collision handling. Set `ROKN_PLAYWRIGHT_MODULE` to a Playwright ESM entry
   when Playwright is provided by the host rather than installed locally.
+- `node scripts/tests/course-studio-reel-queue.browser.mjs` runs the studio,
+  queue and transfer modules with tus-js-client against a local API fixture:
+  sequential allocation/save, failure isolation, retry, studio lock, cancel and
+  resume. `TestsFeatureCourseReelUploadQueueTest` pins the server side.
 - Backend contracts remain in `AdminCourseSectionStateContractTest`,
   `BunnyDirectUploadLeaseTest`, `BunnyDirectUploadAuthorizationTest`,
   `BunnyUploadSafetyTest` and `TrackedAuthoringUploadRetryTest`.

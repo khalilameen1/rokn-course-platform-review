@@ -110,7 +110,6 @@ class AdminDashboardViewTest extends TestCase
         self::assertStringContainsString("RoknCourseStudio.register('outline'", $outline);
         self::assertStringContainsString("RoknCourseStudio.register('editor-coordinator'", $coordinator);
         self::assertStringContainsString("RoknCourseStudio.register('section-editor'", $sectionEditor);
-        self::assertStringContainsString("core.provide('section-editor', {openNew})", $sectionEditor);
         self::assertStringContainsString("RoknCourseStudio.register('module-editor'", $moduleEditor);
         self::assertFileDoesNotExist(dirname(__DIR__, 2).'/resources/views/admin/course-sections/create.blade.php');
         self::assertFileDoesNotExist(dirname(__DIR__, 2).'/resources/views/admin/course-sections/edit.blade.php');

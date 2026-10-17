@@ -76,7 +76,12 @@
                 const message = firstValidationMessage(payload) ||
                     (typeof payload.message === 'string' ? payload.message.trim() : '') ||
                     fallbackMessage(status);
-                throw new AdminRequestError(message, status, payload.code);
+                // Field keys let callers branch on machine-readable validation
+                // markers (e.g. bunny_video_claim_terminal) instead of text.
+                throw Object.assign(new AdminRequestError(message, status, payload.code), {
+                    fields: payload && typeof payload.errors === 'object' && payload.errors
+                        ? Object.keys(payload.errors) : [],
+                });
             }
             return payload;
         } catch (error) {

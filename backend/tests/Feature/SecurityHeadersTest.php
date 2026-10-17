@@ -27,7 +27,8 @@ final class SecurityHeadersTest extends TestCase
         self::assertStringNotContainsString("'unsafe-eval'", $policy);
         self::assertDoesNotMatchRegularExpression('/script-src[^;]*\\shttps:(?:\\s|;)/', $policy);
         self::assertStringContainsString('https://cdn.jsdelivr.net', $policy);
-        self::assertStringContainsString('https://cdn.datatables.net', $policy);
+        // DataTables left with the grades pages; its CDN is not allowed any more.
+        self::assertStringNotContainsString('https://cdn.datatables.net', $policy);
         self::assertStringContainsString('https://maps.googleapis.com', $policy);
         self::assertStringNotContainsString('fonts.googleapis.com', $policy);
         self::assertStringNotContainsString('fonts.gstatic.com', $policy);

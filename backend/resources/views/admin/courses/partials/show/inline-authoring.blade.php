@@ -89,8 +89,8 @@
                         <div class="studio-inline-upload__status">
                             <small id="bunny_upload_status">جاري تجهيز الرفع</small>
                             <div>
-                                <button type="button" id="bunny_upload_cancel">إيقاف</button>
-                                <button type="button" id="bunny_upload_retry" class="is-hidden">متابعة الرفع</button>
+                                <button type="button" id="bunny_upload_cancel" data-upload-escape>إيقاف</button>
+                                <button type="button" id="bunny_upload_retry" class="is-hidden" data-upload-escape>متابعة الرفع</button>
                             </div>
                         </div>
                     </div>

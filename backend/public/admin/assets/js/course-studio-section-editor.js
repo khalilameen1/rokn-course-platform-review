@@ -23,7 +23,9 @@
         const createUrl = form.action;
         const createReceiptUrl = String(form.dataset.createReceiptUrl || '');
         let editing = null;
-        let pendingCreateVersion = null;
+        // A create whose outcome is uncertain is retried with its original
+        // intent and version. The inline form and every queued reel keep one.
+        const formCreate = {pendingVersion: null};
 
         core.registerBusySource(() => Boolean(window.RoknCourseVideoUpload?.isBusy()));
         new MutationObserver(core.refreshBusy).observe(form, {attributes: true, attributeFilter: ['aria-busy']});
@@ -68,7 +70,7 @@
             form.dataset.sectionId = '';
             setMethod('POST');
             editing = null;
-            pendingCreateVersion = null;
+            formCreate.pendingVersion = null;
             form.elements.authoring_request_id.value = core.uuid();
             form.elements.authoring_version.value = String(core.authoringVersion);
             form.elements.module_id.value = String(moduleId);
@@ -78,8 +80,9 @@
             window.RoknCourseVideoUpload?.setSectionContext(null, mode === 'lesson');
             coordinator.markClean('section');
         };
+        const otherUploadBusy = () => Boolean(window.RoknCourseVideoUpload?.isBusy() || window.RoknCourseReelQueue?.isBusy());
         const openNew = trigger => {
-            if (window.RoknAdminRequest.mutationsAreBlocked() || window.RoknCourseVideoUpload?.isBusy()) return;
+            if (window.RoknAdminRequest.mutationsAreBlocked() || otherUploadBusy()) return;
             const moduleId = Number(trigger?.dataset.moduleId);
             const list = listFor(moduleId);
             if (!list || !coordinator.activate('section')) return;
@@ -99,7 +102,7 @@
         };
         const openExisting = trigger => {
             const payload = outline.getSection(trigger.dataset.inlineSectionEdit);
-            if (!payload || window.RoknCourseVideoUpload?.isBusy()) return;
+            if (!payload || otherUploadBusy()) return;
             const list = listFor(payload.module_id);
             const item = list?.querySelector(`.outline-item[data-section-id="${payload.id}"]`);
             if (!list || !item || !coordinator.activate('section')) return;
@@ -158,6 +161,16 @@
             item.append(icon, copy, edit);
             return item;
         };
+        const placeSection = (canonical, anchor) => {
+            const list = listFor(canonical.module_id);
+            const oldNode = document.querySelector(`.outline-item[data-section-id="${canonical.id}"]`);
+            const node = sectionNode(canonical);
+            if (oldNode) oldNode.replaceWith(node); else anchor.before(node);
+            outline.putSection(canonical);
+            outline.rebuildSectionInsertions(list);
+            outline.refreshModule(list?.closest('.outline-module'));
+            return list;
+        };
         const validSection = (response, expected) => {
             const section = response?.section;
             return response?.success === true
@@ -175,7 +188,7 @@
             409,
             'section_create_retry_available'
         );
-        const resolveUncertainCreate = async (error, intentId, expectedVersion, expectedSection) => {
+        const resolveUncertainCreate = async (error, intentId, expectedVersion, expectedSection, state) => {
             if (!['mutation_outcome_unknown', 'invalid_authoring_response'].includes(error?.code)
                 || !createReceiptUrl || !intentId) throw error;
 
@@ -186,7 +199,7 @@
                     timeout: 10000,
                 });
             } catch (_) {
-                pendingCreateVersion = expectedVersion;
+                state.pendingVersion = expectedVersion;
                 throw retryableCreateError('لم يصل تأكيد الحفظ\nاضغط حفظ مرة أخرى لاستكمال نفس المحاولة');
             }
 
@@ -208,7 +221,7 @@
                 );
             }
 
-            pendingCreateVersion = expectedVersion;
+            state.pendingVersion = expectedVersion;
             throw retryableCreateError(receipt?.state === 'processing'
                 ? 'الحفظ ما زال قيد التنفيذ\nانتظر قليلًا ثم اضغط حفظ'
                 : 'لم يكتمل الحفظ\nاضغط حفظ مرة أخرى بنفس البيانات');
@@ -233,8 +246,8 @@
             let focusNextLesson = false;
             let refreshAfterRecoveredCreate = false;
             void core.mutate(async () => {
-                const expectedVersion = creating && pendingCreateVersion !== null
-                    ? pendingCreateVersion
+                const expectedVersion = creating && formCreate.pendingVersion !== null
+                    ? formCreate.pendingVersion
                     : core.authoringVersion;
                 const body = core.authoringFormData(form, expectedVersion);
                 // Content edits do not move a section. Sibling insertions or
@@ -257,7 +270,8 @@
                         error,
                         createIntentId,
                         expectedVersion,
-                        {moduleId, type}
+                        {moduleId, type},
+                        formCreate
                     );
                     nextVersion = core.requireMutation(response, expectedVersion);
                 }
@@ -271,7 +285,7 @@
                         if (!window.RoknCourseVideoUpload?.resetAfterCommit) throw core.invalid();
                         window.RoknCourseVideoUpload.resetAfterCommit();
                     }
-                    pendingCreateVersion = null;
+                    formCreate.pendingVersion = null;
                     coordinator.markClean('section');
                     try {
                         window.sessionStorage.setItem('rokn-course-studio-save-message', 'تم حفظ العنصر');
@@ -281,13 +295,7 @@
                 }
                 core.syncVersion(nextVersion);
                 const canonical = response.section;
-                const list = listFor(canonical.module_id);
-                const oldNode = document.querySelector(`.outline-item[data-section-id="${canonical.id}"]`);
-                const node = sectionNode(canonical);
-                if (oldNode) oldNode.replaceWith(node); else outline.host.before(node);
-                outline.putSection(canonical);
-                outline.rebuildSectionInsertions(list);
-                outline.refreshModule(list?.closest('.outline-module'));
+                const list = placeSection(canonical, outline.host);
                 if (type === 'lesson') {
                     if (!window.RoknCourseVideoUpload?.resetAfterCommit) throw core.invalid();
                     window.RoknCourseVideoUpload.resetAfterCommit();
@@ -297,7 +305,7 @@
                     core.notify('تم حفظ التعديل');
                     return;
                 }
-                pendingCreateVersion = null;
+                formCreate.pendingVersion = null;
                 if (type === 'project') {
                     const actions = list?.querySelector(':scope > .outline-item-actions');
                     actions?.querySelector('[data-inline-editor-open="project"]')?.remove();
@@ -377,6 +385,64 @@
             if (event.target.closest('[data-inline-editor-close]')) close();
         });
 
-        core.provide('section-editor', {openNew});
+        // Creates one lesson from a completed upload claim with the same request,
+        // receipt recovery and outline update as the inline form. Used by the
+        // multi-reel queue; resolves {created, failure, superseded}.
+        const createLesson = ({moduleId, title, claim, intentId, state, feedback = null}) => {
+            let created = null;
+            let failure = null;
+            let superseded = false;
+            return core.mutate(async () => {
+                try {
+                    const list = listFor(moduleId);
+                    if (!list) throw core.invalid('الوحدة لم تعد موجودة\nنعيد تحميل آخر نسخة');
+                    const expectedVersion = state.pendingVersion ?? core.authoringVersion;
+                    const body = new FormData();
+                    Object.entries({
+                        authoring_request_id: intentId,
+                        authoring_version: String(expectedVersion),
+                        module_id: String(moduleId),
+                        order: String(list.querySelectorAll(':scope > .outline-item[data-section-type="lesson"]').length + 1),
+                        section_type: 'lesson',
+                        video_source_type: 'bunny',
+                        bunny_video_claim: claim,
+                        title_ar: title,
+                        is_opened: '0',
+                    }).forEach(([name, value]) => body.set(name, value));
+                    const expected = {moduleId, type: 'lesson'};
+                    let response;
+                    let nextVersion;
+                    try {
+                        response = await core.request(createUrl, {
+                            method: 'POST', headers: core.mutationHeaders(form), body, timeout: 30000,
+                        });
+                        nextVersion = core.requireMutation(response, expectedVersion);
+                        if (!validSection(response, expected)) throw core.invalid();
+                    } catch (error) {
+                        response = await resolveUncertainCreate(error, intentId, expectedVersion, expected, state);
+                        nextVersion = core.requireMutation(response, expectedVersion);
+                    }
+                    state.pendingVersion = null;
+                    created = response.section;
+                    if (Number(response.receipt_authoring_version || nextVersion) < nextVersion) {
+                        // Committed, then another tab advanced the course. This
+                        // page cannot place it safely without a full reload.
+                        superseded = true;
+                        return;
+                    }
+                    core.syncVersion(nextVersion);
+                    const project = list.querySelector(':scope > .outline-item[data-section-type="project"]');
+                    placeSection(created, project || list.querySelector(':scope > .outline-item-actions'));
+                } catch (error) {
+                    failure = error;
+                    throw error;
+                }
+            }, {
+                feedback,
+                recoverableConflictCodes: ['authoring_in_progress', 'section_create_retry_available'],
+            }).then(() => ({created, failure, superseded}));
+        };
+
+        core.provide('section-editor', {openNew, createLesson});
     });
 })(window, document);

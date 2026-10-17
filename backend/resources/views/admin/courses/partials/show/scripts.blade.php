@@ -7,6 +7,7 @@
     'course-studio-module-editor.js',
     'course-studio-details.js',
     'course-studio-attachments.js',
+    'course-studio-reel-queue.js',
     'course-studio.js',
 ] as $courseStudioFile)
     @php($courseStudioAsset = public_path('admin/assets/js/'.$courseStudioFile))

@@ -1,20 +1,22 @@
 'use strict';
 
 (function (window) {
-    // Durable resume identity, scoped to one owner, course, section, tab and file.
-    const create = ({ownerId, courseId, sectionId, currentAuthoringVersion}) => {
-        const recordVersion = 3;
-        let currentStorageKey = null;
-        const legacyStorageKey = () => `rokn:bunny-upload:${ownerId}:${courseId}:${sectionId()}`;
-        const operationId = () => {
-            if (window.crypto?.randomUUID) return window.crypto.randomUUID();
-            const bytes = new Uint8Array(16);
-            window.crypto.getRandomValues(bytes);
-            bytes[6] = (bytes[6] & 0x0f) | 0x40;
-            bytes[8] = (bytes[8] & 0x3f) | 0x80;
-            const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
-            return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-        };
+    const operationId = () => {
+        if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+        const bytes = new Uint8Array(16);
+        window.crypto.getRandomValues(bytes);
+        bytes[6] = (bytes[6] & 0x0f) | 0x40;
+        bytes[8] = (bytes[8] & 0x3f) | 0x80;
+        const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+        return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    };
+
+    // Tab identity is page-scoped: every records owner on this page (the
+    // single-section form and the multi-reel queue) shares one tab id and one
+    // BroadcastChannel, so they never probe each other as a duplicate tab.
+    const tabIdentities = new Map();
+    const tabIdentity = ownerId => {
+        if (tabIdentities.has(ownerId)) return tabIdentities.get(ownerId);
         const tabStorageKey = `rokn:bunny-upload-tab:${ownerId}`;
         let tabId = sessionStorage.getItem(tabStorageKey) || operationId();
         sessionStorage.setItem(tabStorageKey, tabId);
@@ -55,6 +57,17 @@
                 resolve();
             }, 80);
         });
+        const identity = {get tabId() { return tabId; }, ready: tabReady};
+        tabIdentities.set(ownerId, identity);
+        return identity;
+    };
+
+    // Durable resume identity, scoped to one owner, course, section, tab and file.
+    const create = ({ownerId, courseId, sectionId, currentAuthoringVersion}) => {
+        const recordVersion = 3;
+        let currentStorageKey = null;
+        const legacyStorageKey = () => `rokn:bunny-upload:${ownerId}:${courseId}:${sectionId()}`;
+        const tab = tabIdentity(ownerId);
         const fingerprint = file => [
             file.name,
             file.size,
@@ -68,7 +81,7 @@
             bytes.forEach(byte => { binary += String.fromCharCode(byte); });
             return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
         };
-        const storageKeyFor = file => `rokn:bunny-upload:${ownerId}:${courseId}:${sectionId()}:${tabId}:${fingerprintKey(file)}`;
+        const storageKeyFor = file => `rokn:bunny-upload:${ownerId}:${courseId}:${sectionId()}:${tab.tabId}:${fingerprintKey(file)}`;
 
         const readRecord = file => {
             try {
@@ -123,14 +136,14 @@
             if (currentStorageKey) {
                 localStorage.removeItem(currentStorageKey);
             } else {
-                const prefix = `rokn:bunny-upload:${ownerId}:${courseId}:${sectionId()}:${tabId}:`;
+                const prefix = `rokn:bunny-upload:${ownerId}:${courseId}:${sectionId()}:${tab.tabId}:`;
                 Object.keys(localStorage).filter(key => key.startsWith(prefix))
                     .forEach(key => localStorage.removeItem(key));
             }
             currentStorageKey = null;
         };
 
-        return Object.freeze({ready: tabReady, read: readRecord, save: saveRecord, clear: clearRecord,
+        return Object.freeze({ready: tab.ready, read: readRecord, save: saveRecord, clear: clearRecord,
             release: () => { currentStorageKey = null; }, newOperationId: operationId, fingerprint});
     };
 

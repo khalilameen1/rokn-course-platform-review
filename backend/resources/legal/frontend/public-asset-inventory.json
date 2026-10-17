@@ -70,23 +70,13 @@
       "classification": "first_party"
     },
     {
-      "path": "public/admin/assets/css/course-pdfs-form.css",
-      "sha256": "7aa69f407a8d78147e2ae0d310484974c23c27c46fcd20ac1c1f38d3ea14daea",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/course-pdfs-index.css",
-      "sha256": "18dd385203344f1b729014364acae40ecca0e7f8f9b815ac51b65b54bb0e9628",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/course-student-preview.css",
       "sha256": "23aeee83496d0739915567218b65689e492cd8934cf6f2706e8a93d882208429",
       "classification": "first_party"
     },
     {
       "path": "public/admin/assets/css/course-studio.css",
-      "sha256": "12a6e0f0c16e1907ed8359c487dd02859819176ec83a5f92a3c4dd404b098e56",
+      "sha256": "1b8887ff3d65d483623103926fd9547843908f7a3b2022b53dc61f2cf62e3bb8",
       "classification": "first_party"
     },
     {
@@ -114,36 +104,6 @@
       "sha256": "799aeb25cc0373fdee0e1b1db7ad6c2f6a0e058dfadaa3379689f583213190bd",
       "classification": "third_party",
       "family": "font-awesome"
-    },
-    {
-      "path": "public/admin/assets/css/grades-courses.css",
-      "sha256": "1fa18ad361c4d4200fd2d1c3ec54c1b3ddf76db3113f63728998ac4a641779d7",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/grades-create.css",
-      "sha256": "c486377386e0078a3a96a4fc2d1ab41a5c9032f4780ebb693b15949c234c26d4",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/grades-edit.css",
-      "sha256": "6bd537efca95dfef8ae836c9cb1210872403e266107e802e45bc480c78538514",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/grades-form.css",
-      "sha256": "f3d2dd2b2185840faed0217141c6b1e2d1a5e6b47691e20ab71a6877122bc5e3",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/grades-index.css",
-      "sha256": "0fc54d285f6c964e9f8bfd154e071019ef90fa106871b7ba3c37565f2c928d77",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/grades-theme.css",
-      "sha256": "154ea7a8b76c8f0d4eb01c13a8c0e5b9c71acc0f3aae4e3ea804f942a2e60d41",
-      "classification": "first_party"
     },
     {
       "path": "public/admin/assets/css/home-dashboard.css",
@@ -211,26 +171,6 @@
       "sha256": "08a0af9f03516172bb3d8d31eebb64510f1e7ba84881c9d99f9809a28b94374f",
       "classification": "third_party",
       "family": "themify"
-    },
-    {
-      "path": "public/admin/assets/css/urgent-tasks-inactive-students.css",
-      "sha256": "f7e27e3104f93ab459323caeac726e5aeec42d4059712e7c961d2c5aabcbac5c",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/urgent-tasks-index.css",
-      "sha256": "6c40737080edebafbca830063807c788d5c1c9db257ec386af1d9acf9e3a5d92",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/urgent-tasks-pending-orders.css",
-      "sha256": "ad8d885947c420abf9aac310cddb1f45166a637522eaf799b41f9d7753b0ea73",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/urgent-tasks-shared.css",
-      "sha256": "3325523292da263bc2bea41aab0b2358ee68c5adc3a363a6da70ee3bc790a239",
-      "classification": "first_party"
     },
     {
       "path": "public/admin/assets/css/users-editor.css",
@@ -335,23 +275,28 @@
     },
     {
       "path": "public/admin/assets/js/course-studio-bunny-upload-form.js",
-      "sha256": "d853d874f7d8f01bf6f5a262616d3759f001c37456fe511d1d2dd99dd71c0303",
+      "sha256": "9c18ba8490b0068819bd6a4cfede7302079829d9f8dde3c36a1ead5be6573df1",
       "classification": "third_party",
       "family": "uppy-control-lock"
     },
     {
+      "path": "public/admin/assets/js/course-studio-bunny-upload-queue.js",
+      "sha256": "fb48c404f29d50c72fb024be35ce844f4e58912114ec46af589dd2b3cfec6c74",
+      "classification": "first_party"
+    },
+    {
       "path": "public/admin/assets/js/course-studio-bunny-upload-records.js",
-      "sha256": "a4f883f56e642b05e309eb1a1a21c8f49178bf914b97bd1c76cb693bfa3b6fb7",
+      "sha256": "01c6dc8777d5423b93422792ca14452410862569b0f28b3ccae2cc5fa3b12636",
       "classification": "first_party"
     },
     {
       "path": "public/admin/assets/js/course-studio-bunny-upload-transfer.js",
-      "sha256": "8f7599bd493d7054adb8794c606764eea006f0db5d52be015249a0a401c683b8",
+      "sha256": "988e5f1f0635aa2e13514d1d6620732419eed0517138bde0822fa20a7bd42627",
       "classification": "first_party"
     },
     {
       "path": "public/admin/assets/js/course-studio-core.js",
-      "sha256": "555fc650cc40cf615e311d5f133aeb8d50440bf55e9f86d4eea436a213aa2303",
+      "sha256": "2acead4fec6af9c3801edb9e63e646b01e090a6fd6fa627536dd8a562aeeec45",
       "classification": "first_party"
     },
     {
@@ -366,7 +311,7 @@
     },
     {
       "path": "public/admin/assets/js/course-studio-module-editor.js",
-      "sha256": "fc1f418c0dbc5dac8361558024aa2e3e3dee6654f583c607aad3e651153e8f27",
+      "sha256": "0fd6b191ca15e402b1da31ac90fa0633b09a3ffbc63cc619170414d4adfdc6cf",
       "classification": "first_party"
     },
     {
@@ -375,8 +320,13 @@
       "classification": "first_party"
     },
     {
+      "path": "public/admin/assets/js/course-studio-reel-queue.js",
+      "sha256": "a45f6c612e33a60cac1af3f8d3cc6b5fd5aaec1ea10f0ba1a451440d545c6618",
+      "classification": "first_party"
+    },
+    {
       "path": "public/admin/assets/js/course-studio-section-editor.js",
-      "sha256": "60cdbd4c44472ecdd51e56f41fa850433968ea36bae7af6a5ae1ab2f9c158d08",
+      "sha256": "e27b6bbdbfc0bf3caf9032fcdb1fb542af75803eca275a9f30ea2f18fab9c91b",
       "classification": "first_party"
     },
     {
@@ -397,7 +347,7 @@
     },
     {
       "path": "public/admin/assets/js/request.js",
-      "sha256": "9003e267eca6c1d25802338d3a61e1580cf74bcc3c8c15657f768b5ba0383270",
+      "sha256": "c82f80332de0b26919e8660fafb681829dca6a5892c13bf6603b75dc56bb36e2",
       "classification": "first_party"
     },
     {
@@ -429,16 +379,16 @@
       "family": "sortablejs"
     },
     {
+      "path": "public/admin/assets/js/vendor/tus-js-client/tus.min.js",
+      "sha256": "8cbb1b63fccc3bba0ae73ad1deb160ce046c3750851d0c3e94921ae3ef070eb8",
+      "classification": "third_party",
+      "family": "tus-js-client"
+    },
+    {
       "path": "public/admin/assets/scss/style.css",
       "sha256": "55efe609d8ce6d4cf6bb09ab8c87ae4b6ad8015b3ab7f207ce6516b6ae62e9ee",
       "classification": "third_party",
       "family": "sufee"
-    },
-    {
-      "path": "public/admin/assets/vendor/datatables/i18n/ar.json",
-      "sha256": "2e3453f87a7d896077de11682f6a2eca8a77dc5b926315c379937c16f3a7a2ef",
-      "classification": "third_party",
-      "family": "datatables-i18n"
     },
     {
       "path": "public/assets/app-artwork/v1/coin-stack.png",
@@ -717,7 +667,7 @@
     },
     {
       "path": "public/THIRD_PARTY_NOTICES.frontend.md",
-      "sha256": "5933fc3811e35237b99c7c17bb26c24e444c05d4ad20197697f0aecac3f82f2b",
+      "sha256": "15714717a4bc7cae76fa43e03dba8c43367b588168b2754da8725224b3e3732a",
       "classification": "generated"
     },
     {

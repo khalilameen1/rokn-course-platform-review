@@ -53,6 +53,8 @@
                         @if($course->is_coming_soon)<button type="button" class="course-outline__add-module studio-authoring-control" data-inline-module-open><i class="fa fa-plus" aria-hidden="true"></i> وحدة جديدة</button>@endif
                     </div>
 
+                    @if($course->is_coming_soon)@include('admin.courses.partials.show.reel-upload-queue')@endif
+
                     @if($course->modules->isEmpty())
                         <div class="course-outline__empty" id="studioEmptyCourse"><i class="fa fa-list-alt" aria-hidden="true"></i><h3>ابدأ بأول وحدة</h3><p>أنشئ وحدة، ثم أضف داخلها المقاطع ومشروع العبور عند الحاجة.</p>@if($course->is_coming_soon)<button type="button" class="studio-authoring-control" data-inline-module-open>إضافة أول وحدة</button>@endif</div>
                         <div class="course-outline__modules" id="studioModulesList"></div>
@@ -80,6 +82,7 @@
                                             </div>
                                         @endforeach
                                         @if($course->is_coming_soon)<div class="outline-item-actions studio-authoring-control" data-module-actions="{{ $module->id }}">
+                                            <button type="button" data-reel-queue-open data-module-id="{{ $module->id }}"><i class="fa fa-upload" aria-hidden="true"></i> رفع عدة مقاطع</button>
                                             @if($module->sections->filter(fn ($section) => $section->getSectionType() === 'project')->isEmpty())
                                                 <button type="button" data-inline-editor-open="project" data-module-id="{{ $module->id }}"><i class="fa fa-briefcase" aria-hidden="true"></i> إضافة مشروع عبور اختياري</button>
                                             @else

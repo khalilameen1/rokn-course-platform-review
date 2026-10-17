@@ -16,10 +16,6 @@
 !backend/resources/vendor/
 !backend/resources/vendor/sufee/
 !backend/resources/vendor/sufee/**
-!backend/public/admin/assets/vendor/
-!backend/public/admin/assets/vendor/datatables/
-!backend/public/admin/assets/vendor/datatables/i18n/
-!backend/public/admin/assets/vendor/datatables/i18n/ar.json
 **/Pods/
 **/build/
 **/.gradle/

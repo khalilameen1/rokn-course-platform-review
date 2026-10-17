@@ -11,9 +11,10 @@ const blade = await readFile(resolve(
     backendRoot,
     'resources/views/admin/course-sections/partials/bunny-direct-upload.blade.php',
 ), 'utf8');
-const uploadModules = await Promise.all(['records', 'transfer', 'form'].map(module => readFile(
-    resolve(backendRoot, `public/admin/assets/js/course-studio-bunny-upload-${module}.js`), 'utf8',
-)));
+const uploadModules = await Promise.all([
+    'node_modules/tus-js-client/dist/tus.min.js',
+    ...['records', 'transfer', 'queue', 'form'].map(module => `public/admin/assets/js/course-studio-bunny-upload-${module}.js`),
+].map(path => readFile(resolve(backendRoot, path), 'utf8')));
 const uploadBootstrap = blade.slice(blade.lastIndexOf('<script>'))
     .replace(/^<script>\s*/, '')
     .replace(/\s*<\/script>\s*$/, '')
@@ -118,7 +119,7 @@ const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': '*',
     'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD',
-    'Access-Control-Expose-Headers': 'Location,Upload-Offset,Tus-Resumable',
+    'Access-Control-Expose-Headers': 'Location,Upload-Offset,Upload-Length,Tus-Resumable',
     'Tus-Resumable': '1.0.0',
 };
 
@@ -140,7 +141,7 @@ const openScenario = async (mode, initFailureMode = 'none') => {
     const context = await browser.newContext();
     const page = await context.newPage();
     const calls = {post: 0, head: 0, patch: 0, metadata: []};
-    let releasePendingHead;
+    let releasePending;
     await page.route('https://**/*', async route => {
         const method = route.request().method();
         if (method === 'OPTIONS') {
@@ -162,21 +163,25 @@ const openScenario = async (mode, initFailureMode = 'none') => {
         }
         if (method === 'HEAD') {
             calls.head += 1;
-            if (mode === 'cancel-head' && calls.head === 1) {
-                await new Promise(resolve => { releasePendingHead = resolve; });
-                await route.fulfill({status: 200, headers: {...corsHeaders, 'Upload-Offset': '0'}}).catch(() => {});
-                return;
-            }
-            if (['transport-retry', 'cancel-backoff'].includes(mode) && calls.head === 1) {
+            if (mode === 'cancel-backoff' && calls.head === 1) {
                 await route.abort('connectionfailed');
                 return;
             }
-            await route.fulfill({status: 200, headers: {...corsHeaders, 'Upload-Offset': '0'}});
+            await route.fulfill({status: 200, headers: {...corsHeaders, 'Upload-Offset': '0', 'Upload-Length': '4'}});
             return;
         }
         if (method === 'PATCH') {
             calls.patch += 1;
-            if (mode === 'cancel-patch-backoff' && calls.patch === 1) {
+            if (mode === 'cancel-pending' && calls.patch === 1) {
+                await new Promise(resolve => { releasePending = resolve; });
+                await route.fulfill({status: 204, headers: {...corsHeaders, 'Upload-Offset': '4'}}).catch(() => {});
+                return;
+            }
+            if (mode === 'cancel-backoff' && calls.patch === 1) {
+                await route.abort('connectionfailed');
+                return;
+            }
+            if (mode === 'cancel-patch-backoff' && calls.patch <= 2) {
                 await route.fulfill({status: 503, headers: corsHeaders});
                 return;
             }
@@ -192,32 +197,34 @@ const openScenario = async (mode, initFailureMode = 'none') => {
         context,
         page,
         calls,
-        releasePendingHead: () => releasePendingHead?.(),
+        releasePending: () => releasePending?.(),
     };
 };
 
-const waitForInitialHead = async scenario => {
-    const deadline = Date.now() + 3000;
-    while (scenario.calls.head < 1 && Date.now() < deadline) {
+const waitForCalls = async (scenario, kind, count, message) => {
+    const deadline = Date.now() + 5000;
+    while (scenario.calls[kind] < count && Date.now() < deadline) {
         await new Promise(done => setTimeout(done, 10));
     }
-    assert.equal(scenario.calls.head, 1, 'the pending HEAD must start before retiring its owner');
+    assert.equal(scenario.calls[kind], count, message);
 };
+const waitForInitialPatch = scenario => waitForCalls(scenario, 'patch', 1,
+    'the pending PATCH must start before retiring its owner');
 
 try {
     browser = await chromium.launch({channel: 'chrome', headless: true});
 
-    const locked = await openScenario('cancel-head');
+    const locked = await openScenario('cancel-pending');
     await locked.page.locator('#save').click();
     await locked.page.waitForFunction(() => window.RoknCourseVideoUpload.isBusy()
         && document.getElementById('bunny_video_claim').value !== '');
-    await waitForInitialHead(locked);
+    await waitForInitialPatch(locked);
     assert.equal(await locked.page.locator('#bunny_video').isDisabled(), true,
         'the active file cannot be replaced while its claim is being uploaded');
     assert.equal(await locked.page.locator('#section_type').isDisabled(), true);
     assert.equal(await locked.page.locator('#bunny_upload_cancel').isEnabled(), true);
     await locked.page.locator('#bunny_upload_cancel').click();
-    locked.releasePendingHead();
+    locked.releasePending();
     await locked.page.waitForFunction(() => !window.RoknCourseVideoUpload.isBusy());
     assert.equal(await locked.page.locator('#bunny_video').isEnabled(), true,
         'a stopped transfer must restore file selection');
@@ -228,17 +235,19 @@ try {
     assert.equal(await locked.page.evaluate(() => window.__submittedType), 'lesson',
         'restored type must be present in the editor FormData handoff');
     assert.equal(locked.calls.post, 1, 'resume retains the first upload instead of creating another');
+    assert.equal(locked.calls.head, 1, 'resume asks Bunny for the stored upload offset');
+    assert.equal(locked.calls.patch, 2);
     await locked.context.close();
 
-    const replaced = await openScenario('cancel-head');
+    const replaced = await openScenario('cancel-pending');
     await replaced.page.locator('#save').click();
     await replaced.page.waitForFunction(() => window.RoknCourseVideoUpload.isBusy()
         && document.getElementById('bunny_video_claim').value !== '');
-    await waitForInitialHead(replaced);
+    await waitForInitialPatch(replaced);
     // A scripted change must also retire the old presentation, even though a
     // real user cannot open the disabled file picker during this transfer.
     await selectScenarioFile(replaced.page, 'transport-retry');
-    replaced.releasePendingHead();
+    replaced.releasePending();
     await replaced.page.waitForFunction(() => !window.RoknCourseVideoUpload.isBusy());
     assert.equal(await replaced.page.evaluate(() => window.__submissionCount), 0);
     await replaced.page.locator('#bunny_upload_retry').click();
@@ -248,32 +257,31 @@ try {
     await replaced.context.close();
 
     for (const reload of [false, true]) {
-        const paused = await openScenario('cancel-head');
+        const paused = await openScenario('cancel-pending');
         await paused.page.locator('#save').click();
         await paused.page.waitForFunction(() => document.getElementById('bunny_video_claim').value !== '');
-        const deadline = Date.now() + 3000;
-        while (paused.calls.head < 1 && Date.now() < deadline) await new Promise(done => setTimeout(done, 10));
-        assert.equal(paused.calls.head, 1);
+        await waitForInitialPatch(paused);
+        assert.equal(paused.calls.head, 0);
         await paused.page.locator('#bunny_upload_cancel').click();
-        paused.releasePendingHead();
+        paused.releasePending();
         await paused.page.waitForFunction(() => !window.RoknCourseVideoUpload.isBusy());
         if (reload) {
             await paused.page.reload();
-            await selectScenarioFile(paused.page, 'cancel-head');
+            await selectScenarioFile(paused.page, 'cancel-pending');
             await paused.page.waitForFunction(() => document.getElementById('bunny_upload_status').textContent.includes('يمكن متابعة'));
         }
         await paused.page.locator('#save').click();
         await paused.page.waitForFunction(() => window.__submittedClaim === 'same-signed-claim');
-        assert.equal(paused.calls.head, 2, `Save must resume the incomplete transfer${reload ? ' after reload' : ''}`);
-        assert.equal(paused.calls.patch, 1, 'Save must upload the remaining bytes before submitting the claim');
+        assert.equal(paused.calls.head, 1, `Save must resume the incomplete transfer${reload ? ' after reload' : ''}`);
+        assert.equal(paused.calls.patch, 2, 'Save must upload the remaining bytes before submitting the claim');
         assert.equal(paused.calls.post, 1, 'Save must reuse the existing TUS upload');
         assert.equal(await paused.page.evaluate(() => window.__initCalls.length), reload ? 0 : 1);
         assert.equal(await paused.page.evaluate(() => window.__submissionCount), 1);
         // A later save retry uses the now-completed claim without reuploading.
         await paused.page.locator('#save').click();
         assert.equal(await paused.page.evaluate(() => window.__submissionCount), 2);
-        assert.equal(paused.calls.head, 2);
-        assert.equal(paused.calls.patch, 1);
+        assert.equal(paused.calls.head, 1);
+        assert.equal(paused.calls.patch, 2);
         await paused.context.close();
     }
 
@@ -306,18 +314,18 @@ try {
     assert.notEqual(await committed.page.locator('#bunny_video').getAttribute('required'), null);
     await committed.context.close();
 
-    const originalTab = await openScenario('cancel-head');
+    const originalTab = await openScenario('cancel-pending');
     await originalTab.page.locator('#save').click();
     await originalTab.page.waitForFunction(() => document.getElementById('bunny_video_claim').value !== '');
     await originalTab.page.locator('#bunny_upload_cancel').click();
-    originalTab.releasePendingHead();
+    originalTab.releasePending();
     await originalTab.page.waitForFunction(() => !window.RoknCourseVideoUpload.isBusy());
     const inheritedTabId = await originalTab.page.evaluate(() => sessionStorage.getItem('rokn:bunny-upload-tab:admin-1'));
     const duplicateTab = await originalTab.context.newPage();
     await duplicateTab.addInitScript(tabId => sessionStorage.setItem('rokn:bunny-upload-tab:admin-1', tabId), inheritedTabId);
     await duplicateTab.goto(`http://127.0.0.1:${server.address().port}/`);
     await duplicateTab.waitForFunction(tabId => sessionStorage.getItem('rokn:bunny-upload-tab:admin-1') !== tabId, inheritedTabId);
-    await selectScenarioFile(duplicateTab, 'cancel-head');
+    await selectScenarioFile(duplicateTab, 'cancel-pending');
     assert.equal(await duplicateTab.locator('#bunny_video_claim').inputValue(), '', 'a duplicated tab must not adopt the first tab upload');
     assert.equal(await duplicateTab.locator('#bunny_upload_status').textContent(), '');
     await originalTab.context.close();
@@ -374,7 +382,7 @@ try {
     await retry.page.locator('#save').click();
     await retry.page.waitForFunction(() => window.__submittedClaim === 'same-signed-claim');
     assert.equal(retry.calls.post, 2);
-    assert.equal(retry.calls.head, 2);
+    assert.equal(retry.calls.head, 0);
     assert.equal(retry.calls.patch, 1);
     assert.ok(retry.calls.metadata.every(value => value.includes(`title ${Buffer.from('المقطع الثاني').toString('base64')}`)));
     assert.equal(await retry.page.evaluate(() => window.__initCalls.length), 1, 'transport retries must not allocate another video');
@@ -383,9 +391,11 @@ try {
 
     const cancel = await openScenario('cancel-backoff');
     await cancel.page.locator('#save').click();
+    await waitForCalls(cancel, 'head', 1, 'the failed PATCH is followed by a resume HEAD');
     await cancel.page.waitForFunction(() => document.getElementById('bunny_upload_status').textContent.includes('نحاول استئناف'));
+    await cancel.page.waitForTimeout(300);
     await cancel.page.locator('#bunny_upload_cancel').click();
-    await cancel.page.waitForTimeout(900);
+    await cancel.page.waitForTimeout(3500);
     assert.equal(cancel.calls.head, 1, 'cancel must stop a pending recovery delay');
     assert.equal(await cancel.page.evaluate(() => window.__submittedClaim), null, 'cancelled upload must not submit the section later');
     assert.match(await cancel.page.locator('#bunny_upload_status').textContent(), /تم إيقاف الرفع/);
@@ -394,47 +404,45 @@ try {
     await cancel.page.waitForFunction(() => window.__submittedClaim === 'same-signed-claim');
     assert.equal(cancel.calls.post, 1);
     assert.equal(cancel.calls.head, 2);
-    assert.equal(cancel.calls.patch, 1);
+    assert.equal(cancel.calls.patch, 2);
     assert.equal(await cancel.page.evaluate(() => window.__initCalls.length), 1, 'manual resume must keep the original claim and idempotency key');
     await cancel.context.close();
 
-    const pending = await openScenario('cancel-head');
+    const pending = await openScenario('cancel-pending');
     await pending.page.locator('#save').click();
-    const headDeadline = Date.now() + 3000;
-    while (pending.calls.head < 1 && Date.now() < headDeadline) await new Promise(done => setTimeout(done, 10));
-    assert.equal(pending.calls.head, 1, 'the resumable HEAD request must start');
+    await waitForInitialPatch(pending);
     await pending.page.evaluate(() => {
         document.getElementById('bunny_upload_cancel').click();
         // Same event turn: the aborted request has not settled yet.
         document.getElementById('bunny_upload_retry').click();
     });
-    pending.releasePendingHead();
+    pending.releasePending();
     await pending.page.waitForTimeout(100);
-    assert.equal(pending.calls.patch, 0, 'cancelled HEAD must not continue into video bytes');
-    assert.equal(await pending.page.evaluate(() => window.__submittedClaim), null, 'cancelled HEAD must not submit the section later');
+    assert.equal(pending.calls.patch, 1, 'a cancelled PATCH must not continue into more video bytes');
+    assert.equal(pending.calls.head, 0);
+    assert.equal(await pending.page.evaluate(() => window.__submittedClaim), null, 'a cancelled PATCH must not submit the section later');
     await pending.page.locator('#bunny_upload_retry').click();
     await pending.page.waitForFunction(() => window.__submittedClaim === 'same-signed-claim');
     assert.equal(pending.calls.post, 1);
-    assert.equal(pending.calls.head, 2);
-    assert.equal(pending.calls.patch, 1);
+    assert.equal(pending.calls.head, 1);
+    assert.equal(pending.calls.patch, 2);
     assert.equal(await pending.page.evaluate(() => window.__initCalls.length), 1);
     await pending.context.close();
 
     const chunkBackoff = await openScenario('cancel-patch-backoff');
     await chunkBackoff.page.locator('#save').click();
-    const patchDeadline = Date.now() + 3000;
-    while (chunkBackoff.calls.patch < 1 && Date.now() < patchDeadline) await new Promise(done => setTimeout(done, 10));
-    assert.equal(chunkBackoff.calls.patch, 1, 'the first video chunk must reach Bunny');
+    await waitForCalls(chunkBackoff, 'patch', 2, 'the first retry of a 503 chunk is immediate');
+    await chunkBackoff.page.waitForTimeout(300);
     await chunkBackoff.page.locator('#bunny_upload_cancel').click();
-    await chunkBackoff.page.waitForTimeout(1100);
+    await chunkBackoff.page.waitForTimeout(3500);
     assert.equal(chunkBackoff.calls.head, 1, 'cancel must stop the PATCH recovery delay before another HEAD');
-    assert.equal(chunkBackoff.calls.patch, 1, 'cancelled PATCH recovery must not send another chunk');
+    assert.equal(chunkBackoff.calls.patch, 2, 'cancelled PATCH recovery must not send another chunk');
     assert.equal(await chunkBackoff.page.evaluate(() => window.__submittedClaim), null);
     await chunkBackoff.page.locator('#bunny_upload_retry').click();
     await chunkBackoff.page.waitForFunction(() => window.__submittedClaim === 'same-signed-claim');
     assert.equal(chunkBackoff.calls.post, 1);
     assert.equal(chunkBackoff.calls.head, 2);
-    assert.equal(chunkBackoff.calls.patch, 2);
+    assert.equal(chunkBackoff.calls.patch, 3);
     await chunkBackoff.context.close();
 
     console.log('PASS Bunny allocation continuation, transport recovery, claim reuse, cancellation, form reset, and duplicated-tab isolation');

@@ -14,21 +14,12 @@ final class AdminCourseSectionStateContractTest extends TestCase
         $service = $this->source('app/Services/BunnyDirectUploadService.php');
         $controller = $this->source('app/Http/Controllers/Admin/CourseSectionVideoUploadController.php');
 
-        $template = $this->source('resources/views/admin/course-sections/partials/bunny-direct-upload.blade.php');
-        self::assertStringContainsString('ownerId: @json((string) auth()->id()),', $template);
-        self::assertStringContainsString("@foreach(['records', 'transfer', 'form']", $template);
-        self::assertStringContainsString(
-            'rokn:bunny-upload:${ownerId}:${courseId}:${sectionId()}:${tabId}:${fingerprintKey(file)}',
-            $view
-        );
-        self::assertStringContainsString('Number(saved.version) === recordVersion', $view);
-        self::assertStringContainsString('String(saved.ownerId) === ownerId', $view);
-        self::assertStringContainsString('claimExpiresAt <= Date.now()', $view);
+        // Resume-record scoping, expiry, the single re-allocation and script
+        // loading are behaviour-tested in scripts/tests/bunny-upload-modules.test.mjs
+        // and TestsFeatureCourseReelUploadQueueTest.
         self::assertStringContainsString("'bunny_upload_claim_unavailable'", $view);
         self::assertStringContainsString("'bunny_upload_operation_unavailable'", $view);
         self::assertStringContainsString('serverRejectedClaim', $view);
-        self::assertStringContainsString('const upload = async (file, title, restartCount = 0)', $view);
-        self::assertStringContainsString('if (restartCount >= 1)', $view);
         self::assertStringNotContainsString("message || '').includes", $view);
 
         self::assertStringContainsString("'bunny_video_claim_terminal' => 'claim_unavailable'", $service);
@@ -87,8 +78,6 @@ final class AdminCourseSectionStateContractTest extends TestCase
         self::assertStringContainsString('submittingAfterUpload = false;', $view);
         self::assertStringContainsString('window.RoknCourseVideoUpload = Object.freeze({', $view);
         self::assertStringContainsString('resetAfterCommit: () => resetRuntime(true)', $view);
-        self::assertStringContainsString("}, 20000, 'تعذر بدء الرفع بسبب بطء الاتصال');", $view);
-        self::assertStringContainsString("throw Object.assign(new Error(timeoutMessage), {retryable: true});", $view);
         self::assertStringContainsString('setSectionContext: (nextSectionId, videoRequired = true) => {', $view);
         self::assertStringContainsString("form.dataset.sectionId = nextSectionId ? String(nextSectionId) : '';", $view);
         self::assertStringContainsString("fileInput.toggleAttribute('required', required);", $view);

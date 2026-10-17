@@ -162,6 +162,12 @@
             if (uploading || submittingAfterUpload) return;
             const file = fileInput.files?.[0];
             if (!file || sectionType?.value !== 'lesson') return;
+            // One upload owner at a time: a queued reel save would advance the
+            // draft revision and invalidate this form's claim.
+            if (window.RoknCourseReelQueue?.isBusy()) {
+                show("قائمة رفع المقاطع تعمل الآن\nانتظر انتهاءها ثم احفظ هذا المقطع", 0, true);
+                return;
+            }
             currentFile = file;
             const uploadSectionId = sectionId();
             uploading = true;

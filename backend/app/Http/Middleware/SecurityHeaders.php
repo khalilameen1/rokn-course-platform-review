@@ -51,8 +51,8 @@ final class SecurityHeaders
                 "form-action 'self' https://checkout.kashier.io https://*.kashier.io",
                 "img-src 'self' data: blob: https:",
                 "font-src 'self' data:",
-                "style-src 'self' 'unsafe-inline' https://cdn.datatables.net",
-                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net https://maps.googleapis.com https://maps.gstatic.com https://checkout.kashier.io https://*.kashier.io",
+                "style-src 'self' 'unsafe-inline'",
+                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://maps.googleapis.com https://maps.gstatic.com https://checkout.kashier.io https://*.kashier.io",
                 "connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://*.bunny.net https://*.bunnycdn.com https://*.b-cdn.net https://*.kashier.io",
                 "media-src 'self' blob: https:",
                 // Portfolio video frames first enter a same-origin access-checked

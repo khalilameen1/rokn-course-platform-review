@@ -1,5 +1,18 @@
 'use strict';
 
+/*
+ * Bunny Stream direct upload through tus-js-client (window.tus, shipped from
+ * public/admin/assets/js/vendor/tus-js-client/tus.min.js). The tus.Upload
+ * options follow Bunny's documented browser integration:
+ * https://docs.bunny.net/reference/tus-resumable-uploads
+ * (endpoint https://video.bunnycdn.com/tusupload, AuthorizationSignature /
+ * AuthorizationExpire / VideoId / LibraryId headers, filetype + title metadata,
+ * retryDelays [0, 3000, 5000, 10000, 20000, 60000, 60000]).
+ *
+ * Rokn owns only the parts tus does not know about: the server allocation and
+ * signed claim, short-lived authorization renewal, the resume record scoped to
+ * owner/course/section/tab/authoring revision, and Arabic messages.
+ */
 (function (window) {
     // One resumable upload lifecycle. No DOM or browser storage access.
     const create = ({records, currentAuthoringVersion, sectionId, initUrl, renewUrl, csrf,
@@ -13,14 +26,18 @@
             webm: 'video/webm',
         };
         const chunkBytes = 20 * 1024 * 1024;
-        const transportRetryDelays = [750, 1500, 3000];
+        const stallTimeoutMs = 120000;
+        const tusRetryDelays = [0, 3000, 5000, 10000, 20000, 60000, 60000];
+        const apiRetryDelays = [750, 1500, 3000];
         const resumablePreparationCodes = new Set([
             'mutation_outcome_unknown',
             'network_unavailable',
             'request_timeout',
             'bunny_upload_allocation_in_progress',
         ]);
-        let currentRequest = null;
+        let currentWait = null;
+        let currentUpload = null;
+        let rejectCurrentUpload = null;
         let stopped = false;
         let progress = 0;
         const show = (message, percent) => {
@@ -33,77 +50,25 @@
         const throwIfStopped = () => {
             if (stopped) throw cancelledError();
         };
-        const retryableStatus = status => [401, 403, 408, 425, 429].includes(Number(status || 0))
-            || Number(status || 0) >= 500;
-        const responseError = (message, status) => Object.assign(new Error(message), {
-            status,
-            retryable: retryableStatus(status),
-        });
 
         const waitBeforeRetry = delay => new Promise((resolve, reject) => {
             throwIfStopped();
-            let settled = false;
-            const request = {
-                abort: () => {
-                    if (settled) return;
-                    settled = true;
-                    window.clearTimeout(timer);
-                    if (currentRequest === request) currentRequest = null;
-                    reject(cancelledError());
-                },
-            };
             const timer = window.setTimeout(() => {
-                if (settled) return;
-                settled = true;
-                if (currentRequest === request) currentRequest = null;
+                currentWait = null;
                 resolve();
             }, delay);
-            currentRequest = request;
-            if (stopped) request.abort();
+            currentWait = () => {
+                window.clearTimeout(timer);
+                currentWait = null;
+                reject(cancelledError());
+            };
         });
 
-        const bunnyFetch = async (url, options, timeout, timeoutMessage) => {
-            throwIfStopped();
-            const controller = new AbortController();
-            const timer = window.setTimeout(() => controller.abort(), timeout);
-            currentRequest = controller;
-            try {
-                return await fetch(url, {...options, signal: controller.signal});
-            } catch (error) {
-                if (stopped) throw cancelledError();
-                if (error?.name === 'AbortError') {
-                    throw Object.assign(new Error(timeoutMessage), {retryable: true});
-                }
-                if (error instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(String(error?.message || ''))) {
-                    throw Object.assign(new Error('تعذر الاتصال بخدمة الفيديو\nتحقق من الاتصال ثم حاول مرة أخرى'), {
-                        retryable: true,
-                    });
-                }
-                throw error;
-            } finally {
-                window.clearTimeout(timer);
-                if (currentRequest === controller) currentRequest = null;
-            }
-        };
-
-        const withTransportRetry = async (operation, retryMessage, onRetry = null) => {
-            for (let attempt = 0; ; attempt += 1) {
-                throwIfStopped();
-                try {
-                    return await operation();
-                } catch (error) {
-                    if (error?.cancelled || stopped) throw cancelledError();
-                    if (!error?.retryable || attempt >= transportRetryDelays.length) throw error;
-                    onRetry?.(error);
-                    show(retryMessage, progress);
-                    await waitBeforeRetry(transportRetryDelays[attempt]);
-                }
-            }
-        };
-
+        // Rokn API calls (allocation and authorization renewal), not TUS.
         const postJson = async (url, body) => {
             const requestBody = JSON.stringify(body);
-            return withTransportRetry(async () => {
+            for (let attempt = 0; ; attempt += 1) {
+                throwIfStopped();
                 try {
                     const data = await apiRequest(url, {
                         method: 'POST',
@@ -115,15 +80,20 @@
                     });
                     return data.data || data;
                 } catch (error) {
+                    if (error?.cancelled || stopped) throw cancelledError();
                     const status = Number(error?.status || 0);
                     if (resumablePreparationCodes.has(String(error?.code || ''))
                         || status === 408 || status === 425 || status === 429 || status >= 500) {
-                        error.retryable = true;
                         error.resumablePreparation = true;
+                        if (attempt < apiRetryDelays.length) {
+                            show("انقطع الاتصال أثناء تجهيز الرفع\nنحاول متابعة نفس العملية", progress);
+                            await waitBeforeRetry(apiRetryDelays[attempt]);
+                            continue;
+                        }
                     }
                     throw error;
                 }
-            }, "انقطع الاتصال أثناء تجهيز الرفع\nنحاول متابعة نفس العملية");
+            }
         };
 
         const applyAuthorization = (record, authorization) => {
@@ -159,91 +129,91 @@
             return record.headers;
         };
 
-        const metadataValue = value => btoa(unescape(encodeURIComponent(String(value))));
-
-        const createTusUpload = async (file, record, title) => {
-            await withTransportRetry(async () => {
-                const headers = await freshAuthorization(record);
-                const response = await bunnyFetch(record.endpoint, {
-                    method: 'POST',
-                    headers: {
-                        ...headers,
-                        'Tus-Resumable': '1.0.0',
-                        'Upload-Length': String(file.size),
-                        'Upload-Metadata': `filename ${metadataValue(file.name)},filetype ${metadataValue(file.type)},title ${metadataValue(title)}`,
-                    },
-                }, 20000, 'تعذر بدء الرفع بسبب بطء الاتصال');
-                if (!response.ok) throw responseError('تعذر بدء رفع الفيديو', response.status);
-                const location = response.headers.get('Location');
-                if (!location) throw new Error('لم ترجع خدمة الفيديو رابط الرفع');
-                record.uploadUrl = new URL(location, record.endpoint).toString();
-                saveRecord(record);
-            }, 'انقطع الاتصال\nنحاول بدء الرفع مرة أخرى', error => {
-                if ([401, 403].includes(Number(error?.status || 0))) {
-                    record.authorizationExpiresAt = 0;
-                    record.authorizationDeadline = 0;
-                }
-            });
+        const statusOf = error => Number(error?.originalResponse?.getStatus?.() || 0);
+        // Provider (Bunny) failure only. Errors from our own hooks are handled
+        // before this and never reach the provider-status branches.
+        const transferError = error => {
+            const status = error?.causingError?.authorizationRejected ? 403 : statusOf(error);
+            return Object.assign(new Error(status
+                ? 'تعذر متابعة الرفع'
+                : 'تعذر الاتصال بخدمة الفيديو\nتحقق من الاتصال ثم حاول مرة أخرى'), {status, cause: error});
         };
 
-        const remoteOffset = async (record, totalSize) => {
-            return withTransportRetry(async () => {
-                const headers = await freshAuthorization(record);
-                const response = await bunnyFetch(record.uploadUrl, {
-                    method: 'HEAD',
-                    headers: {...headers, 'Tus-Resumable': '1.0.0'},
-                }, 15000, 'الاتصال بخدمة الفيديو بطيء جدًا');
-                if (response.status === 404 || response.status === 410) return null;
-                if (!response.ok) throw responseError('تعذر استئناف الرفع', response.status);
-                const rawOffset = response.headers.get('Upload-Offset');
-                const offset = rawOffset === null ? Number.NaN : Number(rawOffset);
-                if (!Number.isSafeInteger(offset) || offset < 0 || offset > totalSize) {
-                    throw new Error('حالة الرفع غير صالحة');
-                }
-                return offset;
-            }, 'انقطع الاتصال\nنحاول استئناف الرفع', error => {
-                if ([401, 403].includes(Number(error?.status || 0))) {
-                    record.authorizationExpiresAt = 0;
-                    record.authorizationDeadline = 0;
-                }
-            });
-        };
-
-        const patchChunk = (record, file, offset, headers) => new Promise((resolve, reject) => {
-            const end = Math.min(file.size, offset + chunkBytes);
-            const request = new XMLHttpRequest();
-            currentRequest = request;
-            request.open('PATCH', record.uploadUrl, true);
-            request.timeout = 120000;
-            Object.entries(headers).forEach(([name, value]) => request.setRequestHeader(name, value));
-            request.setRequestHeader('Tus-Resumable', '1.0.0');
-            request.setRequestHeader('Upload-Offset', String(offset));
-            request.setRequestHeader('Content-Type', 'application/offset+octet-stream');
-            request.upload.onprogress = event => {
-                if (!event.lengthComputable) return;
-                show(`جاري الرفع ${Math.floor(((offset + event.loaded) / file.size) * 100)}٪`, ((offset + event.loaded) / file.size) * 100);
-            };
-            request.onload = () => {
-                if (currentRequest === request) currentRequest = null;
-                if (request.status >= 200 && request.status < 300) {
-                    const nextOffset = Number(request.getResponseHeader('Upload-Offset'));
-                    if (!Number.isSafeInteger(nextOffset) || nextOffset !== end || nextOffset > file.size) {
-                        reject(new Error('حالة الرفع غير صالحة'));
-                        return;
+        const sendWithTus = (file, mime, record, title) => new Promise((resolve, reject) => {
+            throwIfStopped();
+            const upload = new window.tus.Upload(file, {
+                endpoint: record.endpoint,
+                uploadUrl: record.uploadUrl || null,
+                chunkSize: chunkBytes,
+                retryDelays: tusRetryDelays,
+                // Our records are the only resume store: they are scoped to the
+                // owner, course, section, tab and authoring revision.
+                storeFingerprintForResuming: false,
+                metadata: {filename: file.name, filetype: mime, title},
+                onBeforeRequest: async req => {
+                    try {
+                        const headers = await freshAuthorization(record);
+                        Object.entries(headers || {}).forEach(([name, value]) => req.setHeader(name, String(value)));
+                    } catch (error) {
+                        throw Object.assign(error, {roknHook: true});
                     }
-                    resolve(nextOffset);
-                } else {
-                    reject(Object.assign(new Error('تعذر متابعة الرفع'), {status: request.status}));
-                }
-            };
-            const rejectRequest = error => {
-                if (currentRequest === request) currentRequest = null;
-                reject(error);
-            };
-            request.onerror = () => rejectRequest(new Error('انقطع الاتصال أثناء الرفع'));
-            request.ontimeout = () => rejectRequest(new Error('الاتصال بطيء جدًا'));
-            request.onabort = () => rejectRequest(Object.assign(new Error('تم إيقاف الرفع'), {cancelled: true}));
-            request.send(file.slice(offset, end));
+                    // tus-js-client's XHR stack has no timeout. A request that
+                    // makes no progress for stallTimeoutMs becomes a normal network
+                    // error so tus retries and resumes. Progress re-arms the timer,
+                    // so slow but moving connections are never cut off.
+                    const xhr = req.getUnderlyingObject?.();
+                    if (xhr?.addEventListener) {
+                        let timer = null;
+                        const arm = () => {
+                            window.clearTimeout(timer);
+                            timer = window.setTimeout(() => {
+                                xhr.abort();
+                                xhr.onerror?.(new Error('stalled'));
+                            }, stallTimeoutMs);
+                        };
+                        xhr.upload?.addEventListener?.('progress', arm);
+                        xhr.addEventListener('loadend', () => window.clearTimeout(timer));
+                        arm();
+                    }
+                },
+                onAfterResponse: (_req, res) => {
+                    // An expired signature must renew and retry, not make tus
+                    // discard the resumable URL as an unknown upload.
+                    if ([401, 403].includes(res.getStatus())) {
+                        record.authorizationDeadline = 0;
+                        throw Object.assign(new Error('انتهت صلاحية إذن الرفع'), {authorizationRejected: true});
+                    }
+                },
+                // Bunny's recommended policy: stop on 4xx except 409/423. Network
+                // failures (no response) and 5xx are retried with retryDelays.
+                onShouldRetry: error => {
+                    if (stopped) return false;
+                    const cause = error?.causingError;
+                    if (cause?.roknHook) return false;
+                    const status = statusOf(error);
+                    const retry = Boolean(cause?.authorizationRejected)
+                        || status === 0 || status === 409 || status === 423 || status >= 500;
+                    if (retry) show('انقطع الاتصال\nنحاول استئناف الرفع', progress);
+                    return retry;
+                },
+                onUploadUrlAvailable: () => {
+                    if (record.uploadUrl === upload.url) return;
+                    record.uploadUrl = upload.url;
+                    saveRecord(record);
+                },
+                onProgress: (sent, total) => {
+                    const percent = total > 0 ? (sent / total) * 100 : 0;
+                    show(`جاري الرفع ${Math.floor(percent)}٪`, percent);
+                },
+                onSuccess: () => resolve(),
+                onError: error => reject(error),
+            });
+            currentUpload = upload;
+            rejectCurrentUpload = reject;
+            upload.start();
+        }).finally(() => {
+            currentUpload = null;
+            rejectCurrentUpload = null;
         });
 
         const upload = async (file, title, restartCount = 0) => {
@@ -296,52 +266,30 @@
                 saveRecord(record);
             }
             onClaim(record.claim);
-            if (!record.uploadUrl) await createTusUpload(file, record, title);
 
-            let offset = await remoteOffset(record, file.size);
+            try {
+                await sendWithTus(file, declaredMime, record, title);
+            } catch (error) {
+                if (error?.cancelled || stopped) throw cancelledError();
+                // Renewal and revision checks run in our tus hooks. Surface
+                // those errors unchanged (status/code from our API) so callers
+                // branch on their codes; they are not provider failures.
+                if (error?.causingError?.roknHook) throw error.causingError;
+                const failure = transferError(error);
+                // The provider no longer knows this video (deleted or expired):
+                // allocate once more, never loop.
+                if ([404, 410].includes(Number(failure.status || 0))) {
+                    clearRecord();
+                    if (restartCount >= 1) {
+                        throw Object.assign(new Error('تعذر استئناف الرفع\nاختر الملف وحاول مرة أخرى'), {
+                            code: 'bunny_remote_upload_unavailable',
+                        });
+                    }
+                    return upload(file, title, restartCount + 1);
+                }
+                throw failure;
+            }
             throwIfStopped();
-            if (offset === null) {
-                clearRecord();
-                if (restartCount >= 1) {
-                    throw Object.assign(new Error('تعذر استئناف الرفع\nاختر الملف وحاول مرة أخرى'), {
-                        code: 'bunny_remote_upload_unavailable',
-                    });
-                }
-                return upload(file, title, restartCount + 1);
-            }
-            if (!Number.isFinite(offset) || offset < 0 || offset > file.size) {
-                throw new Error('حالة الرفع غير صالحة');
-            }
-
-            let failures = 0;
-            while (offset < file.size) {
-                if (stopped) throw Object.assign(new Error('تم إيقاف الرفع'), {cancelled: true});
-                try {
-                    const headers = await freshAuthorization(record);
-                    offset = await patchChunk(record, file, offset, headers);
-                    failures = 0;
-                } catch (error) {
-                    if (error.cancelled || stopped) throw error;
-                    if ([401, 403].includes(Number(error.status || 0))) {
-                        record.authorizationExpiresAt = 0;
-                        record.authorizationDeadline = 0;
-                    }
-                    failures += 1;
-                    if (failures > 5) throw error;
-                    await waitBeforeRetry([1000, 2000, 5000, 10000, 20000][failures - 1]);
-                    const resumed = await remoteOffset(record, file.size);
-                    if (resumed === null) {
-                        clearRecord();
-                        if (restartCount >= 1) {
-                            throw Object.assign(new Error('تعذر استئناف الرفع\nاختر الملف وحاول مرة أخرى'), {
-                                code: 'bunny_remote_upload_unavailable',
-                            });
-                        }
-                        return upload(file, title, restartCount + 1);
-                    }
-                    offset = resumed;
-                }
-            }
 
             onClaim(record.claim);
             show('اكتمل رفع الفيديو', 100);
@@ -351,7 +299,13 @@
         return Object.freeze({upload, assertActive: throwIfStopped,
             isResumablePreparation: error => Boolean(error?.resumablePreparation)
                 || resumablePreparationCodes.has(String(error?.code || '')),
-            stop: () => { stopped = true; currentRequest?.abort(); },
+            stop: () => {
+                stopped = true;
+                currentWait?.();
+                // abort(false) keeps the remote upload so "متابعة الرفع" resumes it.
+                currentUpload?.abort(false);
+                rejectCurrentUpload?.(cancelledError());
+            },
             reset: () => { stopped = false; progress = 0; }});
     };
 

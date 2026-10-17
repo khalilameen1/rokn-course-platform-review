@@ -114,6 +114,14 @@ export const thirdPartyFamilies = [
         modifications: 'None; the active JavaScript matches the pinned 1.15.0 distribution.',
     },
     {
+        id: 'tus-js-client', name: 'tus-js-client', version: '4.3.1',
+        license: 'MIT (bundled modules: MIT and BSD-3-Clause)',
+        source: 'https://github.com/tus/tus-js-client/tree/d4aa3dee249b8a2e9fb1dcb9c2b829937bc2b108',
+        artifacts: ['public/admin/assets/js/vendor/tus-js-client/tus.min.js'],
+        legal: [['tus-js-client 4.3.1 and the modules in its browser bundle', 'resources/legal/frontend/TUS-JS-CLIENT-BUNDLED-LICENSES.txt']],
+        modifications: 'None; the npm dist/tus.min.js copied by scripts/publish-admin-vendor-assets.mjs (its source map is not published).',
+    },
+    {
         id: 'sufee', name: 'Sufee Admin Dashboard', version: '1.0.0 / commit dcae40f7', license: 'GPL-2.0-or-later file notice; upstream repository MIT notice retained',
         source: 'https://github.com/puikinsh/sufee-admin-dashboard/tree/dcae40f7d2afea4fc0e8480fa4b3558ef4d2cc38',
         artifacts: [
@@ -136,13 +144,6 @@ export const thirdPartyFamilies = [
         ],
         modifications: 'Removed unlicensed JF Flat/Helvetica fonts, selected a system font stack, removed missing decorative image references, made the animate.css import route-safe, and adapted the public main.js navigation for the current accessible shell. The retained admin portrait matches the upstream asset. Hash-bound corresponding SCSS is publicly delivered under /legal/source/sufee-1.0.0-rokn/.',
     },
-    {
-        id: 'datatables-i18n', name: 'DataTables Arabic localization', version: '1.11.5', license: 'MIT',
-        source: 'https://cdn.datatables.net/plug-ins/1.11.5/i18n/ar.json',
-        artifacts: ['public/admin/assets/vendor/datatables/i18n/ar.json'],
-        legal: [['DataTables 1.11.5', 'node_modules/datatables.net/License.txt']],
-        modifications: 'JSON formatting compacted; translated values are unchanged.',
-    },
 ];
 
 export const externalStaticAssets = [
@@ -151,30 +152,6 @@ export const externalStaticAssets = [
         url: 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js',
         integrity: 'sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ',
         legal: [['Chart.js 4.5.1', 'node_modules/chart.js/LICENSE.md']],
-    },
-    {
-        name: 'SweetAlert2', version: '11.26.25', license: 'MIT',
-        url: 'https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js',
-        integrity: 'sha384-nLoOnA/BDh8A/jxqtckg4DumuCGOBYUnNJLZdQz/zfYNp3wcjGSoWTAzgko06G/2',
-        legal: [['SweetAlert2 11.26.25', 'node_modules/sweetalert2/LICENSE']],
-    },
-    {
-        name: 'DataTables Bootstrap CSS', version: '1.11.5', license: 'MIT',
-        url: 'https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css',
-        integrity: 'sha384-JMAAyYCa30ppXdV7yVd0xvCueC8MkzDGdJhVfdB5a0cLZB632nCcG+t8jtFM/3rf',
-        legal: [['DataTables Bootstrap 1.11.5', 'node_modules/datatables.net-bs4/License.txt']],
-    },
-    {
-        name: 'DataTables core', version: '1.11.5', license: 'MIT',
-        url: 'https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js',
-        integrity: 'sha384-ficRBwtap/VLzILv81vIvgp30PoJYnlCm96tPpNYHXAf+h9SIThOZxxIzRUzbpAh',
-        legal: [['DataTables 1.11.5', 'node_modules/datatables.net/License.txt']],
-    },
-    {
-        name: 'DataTables Bootstrap JavaScript', version: '1.11.5', license: 'MIT',
-        url: 'https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js',
-        integrity: 'sha384-bX64nQ/u/Jovgh0rdhdtHy2BMWv9TOOds6b4reiVcJ0KcA76JdIxmwar1pN2NsUj',
-        legal: [['DataTables Bootstrap 1.11.5', 'node_modules/datatables.net-bs4/License.txt']],
     },
 ];
 
