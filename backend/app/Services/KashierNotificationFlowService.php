@@ -355,11 +355,18 @@ final readonly class KashierNotificationFlowService
             return $this->notificationResult('failed', $order, $orderRef, $transactionId);
         }
 
-        [$transactionId, $captureEvidence] = $this->providerOrders->captureEvidence(
-            $orderRef,
-            $transactionId,
-            $params
-        );
+        $confirmed = $this->providerOrders->captureEvidence($orderRef, $transactionId, $params);
+        if ($confirmed === null) {
+            // Status polling and scheduled reconciliation settle it once
+            // Kashier's API reports the capture.
+            Log::warning("Kashier {$source}: capture not confirmed by Kashier API; left pending", [
+                'order_ref' => $orderRef,
+                'order_id' => $order->id,
+            ]);
+
+            return $this->notificationResult('pending', $order, $orderRef, $transactionId);
+        }
+        [$transactionId, $captureEvidence] = $confirmed;
 
         try {
             $order = $this->settlements->fulfillOrder($order, $transactionId, $captureEvidence);

@@ -16,27 +16,28 @@ final readonly class KashierProviderOrderService
     }
 
     /**
+     * Kashier's order API is the only capture authority. A signed callback
+     * or webhook only tells us to look: its amount, status and transaction
+     * fields are never used to credit, because Kashier does not sign every
+     * field and the signing key also produces the learner-visible HPP hash.
+     *
      * @param array<string, mixed> $gatewayResponse
-     * @return array{0: ?string, 1: array<string, mixed>}
+     * @return array{0: ?string, 1: array<string, mixed>}|null null until Kashier confirms the capture
      */
     public function captureEvidence(
         string $orderRef,
-        ?string $transactionId,
+        ?string $notifiedTransactionId,
         array $gatewayResponse
-    ): array {
-        if ($transactionId !== null) {
-            return [$transactionId, $gatewayResponse];
-        }
-
+    ): ?array {
         $apiResponse = $this->fetch($orderRef);
         if (!$this->evidence->isCaptured($apiResponse)) {
-            return [null, $gatewayResponse];
+            return null;
         }
 
         return [
-            $this->evidence->transactionId($apiResponse),
+            $this->evidence->transactionId($apiResponse) ?? $notifiedTransactionId,
             array_merge($gatewayResponse, [
-                'verified_via' => 'kashier_api_missing_transaction_id',
+                'verified_via' => 'kashier_api',
                 'kashier_api_response' => $apiResponse,
             ]),
         ];

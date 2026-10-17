@@ -63,12 +63,24 @@ final class KashierService
             return false;
         }
 
+        // The order hash handed to the learner is the same HMAC over
+        // "/?payment=MID.order.amount.currency", which is itself a key=value
+        // string. Requiring plain field names and the redirect's own
+        // merchantOrderId stops that hash from being replayed as a callback
+        // signature. Crediting still waits for Kashier's order API.
+        if (!isset($queryParams['merchantOrderId'])) {
+            return false;
+        }
+
         $parts = [];
         foreach ($queryParams as $key => $value) {
             if ($key === 'signature' || $key === 'mode') {
                 continue;
             }
-            if (!is_scalar($value) && $value !== null) {
+            if (
+                preg_match('/\A[A-Za-z][A-Za-z0-9_]*\z/D', (string) $key) !== 1
+                || (!is_scalar($value) && $value !== null)
+            ) {
                 return false;
             }
             $parts[] = (string) $key . '=' . (string) $value;

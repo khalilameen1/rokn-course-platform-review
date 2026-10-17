@@ -149,11 +149,14 @@ final class KashierResponsibilityBoundaryTest extends TestCase
         [$transactionId, $payload] = $provider->captureEvidence($reference, null, ['callback' => true]);
         self::assertSame('TXN-PROBE', $transactionId);
         self::assertTrue($payload['callback']);
-        self::assertSame('kashier_api_missing_transaction_id', $payload['verified_via']);
-        self::assertSame(['TXN-EXISTING', ['callback' => true]], $provider->captureEvidence(
-            $reference, 'TXN-EXISTING', ['callback' => true]
-        ));
-        Http::assertSentCount(1);
+        self::assertSame('kashier_api', $payload['verified_via']);
+        // A notified transaction id never replaces the provider's own evidence.
+        [$notifiedTransactionId, $notifiedPayload] = $provider->captureEvidence(
+            $reference, 'TXN-NOTIFIED', ['callback' => true]
+        );
+        self::assertSame('TXN-PROBE', $notifiedTransactionId);
+        self::assertSame('kashier_api', $notifiedPayload['verified_via']);
+        Http::assertSentCount(2);
         self::assertSame([], $queries);
     }
 

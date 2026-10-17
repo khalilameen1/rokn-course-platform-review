@@ -444,6 +444,24 @@ class KashierPaymentTest extends TestCase
     }
 
     /**
+     * Kashier's order API is the capture authority; signed notifications alone never credit.
+     */
+    private function fakeKashierCapture(string $orderRef, string $transactionId): void
+    {
+        Http::fake([
+            'https://test-api.kashier.io/*' => Http::response([
+                'response' => [
+                    'status' => 'CAPTURED',
+                    'transactionId' => $transactionId,
+                    'merchantOrderId' => $orderRef,
+                    'amount' => self::PACKAGE_PRICE,
+                    'currency' => 'EGP',
+                ],
+            ], 200),
+        ]);
+    }
+
+    /**
      * Create a pending kashier order in the DB (pre-condition for callback/webhook tests).
      */
     private function createPendingOrder(?string $orderRef = null): Order
@@ -1220,6 +1238,7 @@ class KashierPaymentTest extends TestCase
    public function test_successful_callback_approves_order_and_credits_coins(): void
     {
         $this->createPendingOrder();
+        $this->fakeKashierCapture($this->orderRef, 'TXN-SUCCESS-001');
 
         $params = $this->buildKashierParams($this->orderRef, 'SUCCESS', 'TXN-SUCCESS-001');
 
@@ -1351,6 +1370,7 @@ class KashierPaymentTest extends TestCase
    public function test_webhook_approves_order_and_credits_coins(): void
     {
         $this->createPendingOrder();
+        $this->fakeKashierCapture($this->orderRef, 'TXN-WEBHOOK-001');
 
         $params = $this->buildKashierParams($this->orderRef, 'SUCCESS', 'TXN-WEBHOOK-001');
 
@@ -1382,6 +1402,7 @@ class KashierPaymentTest extends TestCase
    public function test_webhook_approves_order_with_dashboard_event_payload(): void
     {
         $this->createPendingOrder('PKG-TEST-WEBHOOK');
+        $this->fakeKashierCapture('PKG-TEST-WEBHOOK', 'TX-TEST-1');
 
         $payload = [
             'event' => 'pay',
@@ -1427,6 +1448,7 @@ class KashierPaymentTest extends TestCase
    public function test_webhook_accepts_kashier_signature_inside_dashboard_event_data(): void
     {
         $this->createPendingOrder('PKG-TEST-WEBHOOK-SIGNATURE');
+        $this->fakeKashierCapture('PKG-TEST-WEBHOOK-SIGNATURE', 'TX-TEST-2');
 
         $payload = [
             'event' => 'pay',
@@ -1578,6 +1600,106 @@ class KashierPaymentTest extends TestCase
         ]);
     }
 
+    public function test_payment_url_order_hash_cannot_be_replayed_as_a_webhook_signature(): void
+    {
+        $order = $this->createPendingOrder();
+        Http::fake([
+            'https://test-api.kashier.io/*' => Http::response([], 404),
+        ]);
+        $amount = number_format(self::PACKAGE_PRICE, 2, '.', '');
+        // The learner sees this hash in the hosted payment URL.
+        $orderHash = app(KashierService::class)->generateOrderHash($this->orderRef, $amount, 'EGP');
+
+        $this->postJson('/payment/webhook', [
+            '/?payment' => "MID-TEST-000.{$this->orderRef}.{$amount}.EGP",
+            'signature' => $orderHash,
+            'response' => [
+                'merchantOrderId' => $this->orderRef,
+                'paymentStatus' => 'SUCCESS',
+                'transactionId' => 'TXN-FORGED-FROM-HPP-HASH',
+                'amount' => $amount,
+                'currency' => 'EGP',
+            ],
+        ])->assertStatus(403);
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'status' => Order::STATUS_PENDING,
+            'transaction_id' => null,
+        ]);
+        self::assertSame(0, (int) $this->user->fresh()->wallet_coins);
+        self::assertSame(0, \DB::table('wallet_transactions')->count());
+    }
+
+    public function test_signed_success_is_not_credited_until_kashier_api_confirms_the_capture(): void
+    {
+        $order = $this->createPendingOrder();
+        Http::fake([
+            'https://test-api.kashier.io/*' => Http::response([
+                'response' => [
+                    'status' => 'UNPAID',
+                    'merchantOrderId' => $this->orderRef,
+                ],
+            ], 200),
+        ]);
+        $params = $this->buildKashierParams($this->orderRef, 'SUCCESS', 'TXN-NOT-AT-PROVIDER');
+
+        $this->postJson('/payment/webhook', $params)
+            ->assertStatus(202)
+            ->assertJsonPath('message', 'Payment state accepted for reconciliation');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'status' => Order::STATUS_PENDING,
+            'transaction_id' => null,
+        ]);
+        self::assertSame(0, (int) $this->user->fresh()->wallet_coins);
+        self::assertSame(0, \DB::table('wallet_transactions')->count());
+    }
+
+    public function test_signed_success_is_not_credited_while_kashier_api_is_unreachable(): void
+    {
+        $order = $this->createPendingOrder();
+        Http::fake([
+            'https://test-api.kashier.io/*' => Http::response([], 503),
+        ]);
+        $params = $this->buildKashierParams($this->orderRef, 'SUCCESS', 'TXN-API-DOWN');
+
+        $this->postJson('/payment/webhook', $params)
+            ->assertStatus(202)
+            ->assertJsonPath('message', 'Payment state accepted for reconciliation');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'status' => Order::STATUS_PENDING,
+        ]);
+        self::assertSame(0, (int) $this->user->fresh()->wallet_coins);
+    }
+
+    public function test_signed_success_uses_the_amount_reported_by_kashier_api(): void
+    {
+        $order = $this->createPendingOrder();
+        Http::fake([
+            'https://test-api.kashier.io/*' => Http::response([
+                'response' => [
+                    'status' => 'CAPTURED',
+                    'transactionId' => 'TXN-UNDERPAID',
+                    'merchantOrderId' => $this->orderRef,
+                    'amount' => 1,
+                    'currency' => 'EGP',
+                ],
+            ], 200),
+        ]);
+        // The notification claims the full price; Kashier says 1 EGP was paid.
+        $params = $this->buildKashierParams($this->orderRef, 'SUCCESS', 'TXN-UNDERPAID');
+
+        $this->postJson('/payment/webhook', $params)->assertStatus(500);
+
+        self::assertNotSame(Order::STATUS_APPROVED, $order->fresh()->status);
+        self::assertSame(0, (int) $this->user->fresh()->wallet_coins);
+        self::assertSame(0, \DB::table('wallet_transactions')->count());
+    }
+
     public function test_signed_notification_without_a_payment_status_cannot_cancel_the_order(): void
     {
         $this->createPendingOrder('PKG-MISSING-PAYMENT-STATUS');
@@ -1698,6 +1820,7 @@ class KashierPaymentTest extends TestCase
    public function test_callback_and_webhook_replay_credit_the_wallet_exactly_once(): void
     {
         $this->createPendingOrder();
+        $this->fakeKashierCapture($this->orderRef, 'TXN-CALLBACK-WEBHOOK-RACE');
         $params = $this->buildKashierParams(
             $this->orderRef,
             'SUCCESS',
@@ -1746,6 +1869,7 @@ class KashierPaymentTest extends TestCase
    public function test_replay_with_a_different_transaction_is_queued_for_review(): void
     {
         $this->createPendingOrder();
+        $this->fakeKashierCapture($this->orderRef, 'TXN-ORIGINAL-CAPTURE');
         $first = $this->buildKashierParams(
             $this->orderRef,
             'SUCCESS',
@@ -1780,6 +1904,7 @@ class KashierPaymentTest extends TestCase
             'status' => Order::STATUS_CANCELLED,
             'financial_status' => Order::FINANCIAL_CANCELLED,
         ]);
+        $this->fakeKashierCapture($this->orderRef, 'TXN-LATE-CANCELLED');
 
         $params = $this->buildKashierParams(
             $this->orderRef,
@@ -1805,6 +1930,7 @@ class KashierPaymentTest extends TestCase
     {
         $order = $this->createPendingOrder();
         $order->forceFill(['checkout_expires_at' => now()->subMinute()])->save();
+        $this->fakeKashierCapture($this->orderRef, 'TXN-LATE-EXPIRED');
 
         $params = $this->buildKashierParams(
             $this->orderRef,
@@ -1887,6 +2013,7 @@ class KashierPaymentTest extends TestCase
     public function test_a_signed_failure_cannot_quarantine_an_already_settled_capture(): void
     {
         $order = $this->createPendingOrder('PKG-SETTLED-THEN-FAILURE');
+        $this->fakeKashierCapture('PKG-SETTLED-THEN-FAILURE', 'TXN-SETTLED');
         $success = $this->buildKashierParams($order->order_ref, 'SUCCESS', 'TXN-SETTLED');
         $this->postJson('/payment/webhook', $success)->assertOk();
 

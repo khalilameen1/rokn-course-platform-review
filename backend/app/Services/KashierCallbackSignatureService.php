@@ -73,11 +73,13 @@ final readonly class KashierCallbackSignatureService
             }
         }
 
-        if (!empty($params['signature'])) {
-            return $this->validateFlat($params, $secret);
+        // Only a flat redirect query is signed field by field. A nested body is
+        // a webhook and must have matched one of the schemes above.
+        if (isset($params['data']) || array_filter($params, 'is_array') !== []) {
+            return false;
         }
 
-        return $kashier->validateSignature($this->flatten($params));
+        return $kashier->validateSignature($params);
     }
 
     private function signatureKeysQuery(array $signatureKeys, array $source): ?string
@@ -97,40 +99,5 @@ final readonly class KashierCallbackSignatureService
         }
 
         return implode('&', $pairs);
-    }
-
-    /** @return array<string,scalar|null> */
-    private function flatten(array $params): array
-    {
-        $flat = [];
-        foreach ($params as $key => $value) {
-            if (!is_array($value) && !is_object($value)) {
-                $flat[$key] = $value;
-            }
-        }
-
-        return $flat;
-    }
-
-    private function validateFlat(array $params, string $secret): bool
-    {
-        $provided = $params['signature'] ?? '';
-        if ($provided === '' || $provided === null) {
-            return false;
-        }
-
-        $excluded = ['signature', 'mode', 'hash', 'event', 'data', 'signatureKeys'];
-        $query = '';
-        foreach ($params as $key => $value) {
-            if (in_array($key, $excluded, true) || is_array($value) || is_object($value)) {
-                continue;
-            }
-            $query .= "&{$key}={$value}";
-        }
-
-        return hash_equals(
-            hash_hmac('sha256', ltrim($query, '&'), $secret, false),
-            (string) $provided
-        );
     }
 }
