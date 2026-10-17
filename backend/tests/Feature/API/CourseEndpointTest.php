@@ -152,6 +152,56 @@ class CourseEndpointTest extends ApiTestCase
             ->assertNotFound();
     }
 
+    public function test_course_details_serve_the_public_student_count_from_a_short_cache(): void
+    {
+        $enrol = function (string $email): void {
+            $studentId = (int) DB::table('users')->insertGetId([
+                'name' => $email,
+                'email' => $email,
+                'role' => 'client',
+                'active' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            DB::table('course_enrollments')->insert([
+                'user_id' => $studentId,
+                'course_id' => $this->courseId,
+                'is_active' => 1,
+                'enrolled_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        };
+        $enrol('first-student@rokn.test');
+        $expected = (int) \App\Models\Course::query()->findOrFail($this->courseId)
+            ->activeEnrollments()->count();
+        self::assertGreaterThanOrEqual(1, $expected);
+
+        $this->getJson("/api/v1/courses/{$this->courseId}/details")
+            ->assertOk()
+            ->assertJsonPath('data.metadata.students_count', $expected);
+
+        // A raw insert skips the model events that bump the catalogue revision
+        // (Eloquent writes are covered in ProductParityContractsTest), so the
+        // cached count is served without recounting on this details view.
+        $enrol('second-student@rokn.test');
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $this->getJson("/api/v1/courses/{$this->courseId}/details")
+            ->assertOk()
+            ->assertJsonPath('data.metadata.students_count', $expected);
+        self::assertFalse(collect(DB::getQueryLog())->contains(
+            fn (array $query): bool => str_contains($query['query'], 'course_enrollments')
+                && str_contains($query['query'], 'count(*)')
+        ));
+
+        // The display number converges once the short TTL lapses.
+        $this->travel(61)->seconds();
+        $this->getJson("/api/v1/courses/{$this->courseId}/details")
+            ->assertOk()
+            ->assertJsonPath('data.metadata.students_count', $expected + 1);
+    }
+
     public function test_catalog_visible_coming_soon_course_has_a_guest_details_page(): void
     {
         $teacherId = (int) DB::table('courses')->where('id', $this->courseId)->value('teacher_id');

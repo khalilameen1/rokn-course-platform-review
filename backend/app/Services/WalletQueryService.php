@@ -28,12 +28,14 @@ final readonly class WalletQueryService
             $setting = Setting::query()->first() ?? new Setting();
         }
 
-        // Every wallet writer serializes on the user row. Read the aggregate
-        // behind the same lock so the balance and ledger tail always describe
-        // one committed wallet state rather than two adjacent transactions.
+        // A read must never queue behind, or block, wallet writers, which
+        // serialize on the user row with FOR UPDATE. balances() already reads
+        // the projection and its ledger tail in one statement. Plain reads in
+        // one transaction share InnoDB's REPEATABLE READ snapshot (taken at
+        // the first read), so the recent lists describe that same committed
+        // wallet state without taking any lock.
         [$balances, $recent, $rewardRecent] = DB::transaction(function () use ($user): array {
-            $freshUser = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
-            $balances = $this->wallet->balances($freshUser);
+            $balances = $this->wallet->balances($user);
             $recent = WalletTransaction::query()
                 ->where('user_id', $user->id)
                 ->latest('id')
@@ -61,7 +63,7 @@ final readonly class WalletQueryService
                 });
 
             return [$balances, $recent, $rewardRecent];
-        }, 3);
+        });
 
         $totalBalance = $balances['total'];
         $purchasedBalance = $balances['paid'];

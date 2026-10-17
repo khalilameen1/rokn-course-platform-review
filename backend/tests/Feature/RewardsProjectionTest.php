@@ -9,7 +9,9 @@ use App\Models\User;
 use App\Models\UserCoinEarning;
 use App\Services\WalletQueryService;
 use App\Services\WalletService;
+use Illuminate\Database\Query\Grammars\MySqlGrammar;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class RewardsProjectionTest extends TestCase
@@ -37,6 +39,36 @@ final class RewardsProjectionTest extends TestCase
         self::assertSame('debit', $rewards[0]['direction']);
         self::assertSame('welcome_bonus', $rewards[1]['category']);
         self::assertSame(50, $rewards[1]['amount']);
+    }
+
+    public function test_wallet_summary_is_a_plain_snapshot_read_without_row_locks(): void
+    {
+        $user = $this->student('wallet-read@example.test');
+        app(WalletService::class)->credit($user->id, 40, 'welcome_bonus', 'welcome-read-test');
+
+        // SQLite silently drops lock clauses, so compile with the production
+        // MySQL grammar: a FOR UPDATE / LOCK IN SHARE MODE read would be
+        // visible in the log and rejected by SQLite as a syntax error.
+        $connection = DB::connection();
+        $sqliteGrammar = $connection->getQueryGrammar();
+        $connection->setQueryGrammar(new MySqlGrammar($connection));
+        $connection->enableQueryLog();
+        $connection->flushQueryLog();
+        try {
+            $snapshot = app(WalletQueryService::class)->summary($user);
+            $queries = collect($connection->getQueryLog())->pluck('query');
+        } finally {
+            $connection->setQueryGrammar($sqliteGrammar);
+        }
+
+        self::assertSame(40, $snapshot['total_balance']);
+        self::assertCount(1, $snapshot['recent_transactions']);
+        self::assertTrue($queries->isNotEmpty());
+        self::assertFalse($queries->contains(
+            fn (string $sql): bool => str_contains(strtolower($sql), 'for update')
+                || str_contains(strtolower($sql), 'lock in share mode')
+                || str_contains(strtolower($sql), 'for share')
+        ));
     }
 
     public function test_completed_tasks_remain_visible_after_the_campaign_ends_without_reopening_claims(): void

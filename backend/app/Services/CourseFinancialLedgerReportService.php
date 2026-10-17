@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\Order;
 use App\Models\WalletTransaction;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
@@ -123,63 +124,87 @@ final class CourseFinancialLedgerReportService
         ?CarbonInterface $periodStart = null,
         ?CarbonInterface $periodEnd = null
     ): Collection {
-        $query = Order::query()
-            ->whereNotNull('course_id')
-            ->whereIn('payment_method', [
+        // Aggregate in the database: one grouped statement instead of walking
+        // every wallet course order in PHP. The joined ledger row is admitted
+        // only under the exact rules of belongsToOrder(), and a debit linked
+        // to more than one live order stays unattributed, as in
+        // allocationsForOrders(). Per-order screens keep using that method.
+        $linked = '(wallet_ledger.id IS NOT NULL AND NOT EXISTS ('
+            . 'SELECT 1 FROM orders AS sibling_orders'
+            . ' WHERE sibling_orders.wallet_transaction_id = orders.wallet_transaction_id'
+            . ' AND sibling_orders.id <> orders.id'
+            . ' AND sibling_orders.deleted_at IS NULL))';
+        $coinClaim = '(orders.wallet_transaction_id IS NOT NULL'
+            . ' OR COALESCE(orders.total_coins, 0) > 0'
+            . ' OR COALESCE(orders.paid_coins, 0) > 0'
+            . ' OR COALESCE(orders.reward_coins, 0) > 0)';
+        $countsPeriod = $periodStart !== null && $periodEnd !== null;
+        $periodBindings = $countsPeriod
+            ? [$this->databaseInstant($periodStart), $this->databaseInstant($periodEnd)]
+            : [];
+
+        $rows = Order::query()
+            ->leftJoin('wallet_transactions as wallet_ledger', function ($join): void {
+                $join->on('wallet_ledger.id', '=', 'orders.wallet_transaction_id')
+                    ->on('wallet_ledger.source_id', '=', 'orders.course_id')
+                    ->on('wallet_ledger.user_id', '=', 'orders.user_id')
+                    ->where('wallet_ledger.direction', '=', WalletTransaction::DIRECTION_DEBIT)
+                    ->whereIn('wallet_ledger.category', self::DEBIT_CATEGORIES)
+                    ->where('wallet_ledger.source_type', '=', Course::class)
+                    ->where('wallet_ledger.amount', '>', 0)
+                    ->whereRaw(
+                        'wallet_ledger.amount = wallet_ledger.paid_amount + wallet_ledger.reward_amount'
+                    );
+            })
+            ->whereNotNull('orders.course_id')
+            ->whereIn('orders.payment_method', [
                 Order::PAYMENT_METHOD_WALLET,
                 Order::PAYMENT_METHOD_WALLET_COINS,
             ])
+            // The scope's unqualified columns exist only on orders, never on
+            // wallet_transactions, so they stay unambiguous after the join.
             ->financiallyEffective()
             ->when(
                 $courseIds !== null,
-                fn ($orders) => $orders->whereIn('course_id', $courseIds)
+                fn ($orders) => $orders->whereIn('orders.course_id', $courseIds)
             )
-            ->orderBy('id');
+            ->groupBy('orders.course_id')
+            // Preserve the first-seen course order of the former id-ordered walk.
+            ->orderByRaw('MIN(orders.id)')
+            ->selectRaw('orders.course_id AS course_id')
+            ->selectRaw('COUNT(*) AS total_buy_count')
+            ->selectRaw(
+                $countsPeriod
+                    ? 'SUM(CASE WHEN orders.approved_at >= ? AND orders.approved_at < ? THEN 1 ELSE 0 END)'
+                        . ' AS current_period_buy_count'
+                    : '0 AS current_period_buy_count',
+                $periodBindings
+            )
+            ->selectRaw("SUM(CASE WHEN {$linked} THEN wallet_ledger.amount ELSE 0 END) AS total_coins")
+            ->selectRaw("SUM(CASE WHEN {$linked} THEN wallet_ledger.paid_amount ELSE 0 END) AS paid_coins")
+            ->selectRaw("SUM(CASE WHEN {$linked} THEN wallet_ledger.reward_amount ELSE 0 END) AS reward_coins")
+            ->selectRaw(
+                "SUM(CASE WHEN NOT {$linked} AND {$coinClaim} THEN 1 ELSE 0 END) AS incomplete_orders"
+            )
+            ->toBase()
+            ->get();
 
-        $summary = collect();
-        $query->chunkById(500, function ($orders) use (
-            $summary,
-            $periodStart,
-            $periodEnd
-        ): void {
-            $allocations = $this->allocationsForOrders($orders);
-            foreach ($orders as $order) {
-                $courseId = (int) $order->course_id;
-                $row = $summary->get($courseId, [
-                    'total_buy_count' => 0,
-                    'current_period_buy_count' => 0,
-                    'total_coins' => 0,
-                    'paid_coins' => 0,
-                    'reward_coins' => 0,
-                    'incomplete_orders' => 0,
-                ]);
-                $allocation = $allocations->get((int) $order->id, [
-                    'total_coins' => 0,
-                    'paid_coins' => 0,
-                    'reward_coins' => 0,
-                    'complete' => false,
-                ]);
-                $row['total_buy_count']++;
-                if (
-                    $periodStart !== null
-                    && $periodEnd !== null
-                    && $order->approved_at !== null
-                    && $order->approved_at->greaterThanOrEqualTo($periodStart)
-                    && $order->approved_at->lessThan($periodEnd)
-                ) {
-                    $row['current_period_buy_count']++;
-                }
-                $row['total_coins'] += (int) $allocation['total_coins'];
-                $row['paid_coins'] += (int) $allocation['paid_coins'];
-                $row['reward_coins'] += (int) $allocation['reward_coins'];
-                if (!(bool) $allocation['complete']) {
-                    $row['incomplete_orders']++;
-                }
-                $summary->put($courseId, $row);
-            }
-        });
+        return $rows->mapWithKeys(fn (object $row): array => [(int) $row->course_id => [
+            'total_buy_count' => (int) $row->total_buy_count,
+            'current_period_buy_count' => (int) $row->current_period_buy_count,
+            'total_coins' => (int) $row->total_coins,
+            'paid_coins' => (int) $row->paid_coins,
+            'reward_coins' => (int) $row->reward_coins,
+            'incomplete_orders' => (int) $row->incomplete_orders,
+        ]]);
+    }
 
-        return $summary;
+    /** Stored timestamps use the application timezone (see config/app.php). */
+    private function databaseInstant(CarbonInterface $instant): string
+    {
+        return CarbonImmutable::instance($instant)
+            ->setTimezone((string) config('app.timezone', 'UTC'))
+            ->format('Y-m-d H:i:s');
     }
 
     private function belongsToOrder(WalletTransaction $transaction, Order $order): bool

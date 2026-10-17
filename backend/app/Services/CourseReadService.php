@@ -10,9 +10,19 @@ use App\Models\Lesson;
 use App\Models\User;
 use Closure;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 final readonly class CourseReadService
 {
+    /**
+     * Public social proof only. Keyed by the catalogue revision, which every
+     * Eloquent enrollment write bumps (InvalidatesCourseCatalogue), exactly
+     * like the catalogue pages that show the same count. The TTL bounds lag
+     * from time-based expiry and raw writes that skip model events.
+     */
+    private const ENROLLMENT_COUNT_TTL_SECONDS = 60;
+
     public function __construct(
         private CourseDurationService $duration,
         private CourseEntitlementService $courseAccess,
@@ -123,7 +133,7 @@ final readonly class CourseReadService
         }
 
         $course = $query
-            ->withCount(['ratings', 'activeEnrollments', 'sections'])
+            ->withCount(['ratings', 'sections'])
             ->withAvg('ratings', 'rating')
             ->with([
                 'photo',
@@ -148,6 +158,10 @@ final readonly class CourseReadService
                     ])->orderBy('order');
                 },
             ])->findOrFail($courseId);
+        $course->setAttribute(
+            'active_enrollments_count',
+            $this->publicActiveEnrollmentCount($course)
+        );
         $this->loadLessonMediaState($course);
         $this->duration->attach($course);
 
@@ -195,6 +209,27 @@ final readonly class CourseReadService
             'enrollment' => $enrollment,
             'access_type' => (string) $entitlement['access_type'],
         ];
+    }
+
+    /**
+     * Course::activeEnrollments() checks every enrollment's user row. Counting
+     * it on every details view is unnecessary for a display number, so it is
+     * cached per course and catalogue revision, and read directly when the
+     * cache is unavailable.
+     */
+    private function publicActiveEnrollmentCount(Course $course): int
+    {
+        $count = fn (): int => $course->activeEnrollments()->count();
+
+        try {
+            return (int) Cache::remember(
+                'course:active-enrollments:v1:' . $this->catalogue->revision() . ':' . (int) $course->id,
+                self::ENROLLMENT_COUNT_TTL_SECONDS,
+                $count
+            );
+        } catch (Throwable) {
+            return $count();
+        }
     }
 
     private function loadLessonMediaState(Course $course): void
