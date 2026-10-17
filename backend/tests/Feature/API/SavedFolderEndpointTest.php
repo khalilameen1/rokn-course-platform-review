@@ -94,7 +94,7 @@ class SavedFolderEndpointTest extends ApiTestCase
             ->assertJsonPath('data.0.lessons_count', 1);
     }
 
-    public function test_saved_folder_uses_the_first_saved_lesson_image(): void
+    public function test_saved_folder_uses_the_newest_saved_lesson_image(): void
     {
         DB::table('lessons')->where('id', 10)->update(['image' => 'lesson-cover.jpg']);
         $this->actingAs($this->user, 'api')
@@ -102,6 +102,25 @@ class SavedFolderEndpointTest extends ApiTestCase
             ->assertOk()
             ->assertJsonPath('data.0.image', url('lesson-cover.jpg'))
             ->assertJsonPath('data.0.lessons_count', 1);
+
+        $newer = DB::table('lessons')->where('id', 10)->first();
+        DB::table('lessons')->insert(array_merge((array) $newer, [
+            'id' => 11, 'title' => 'Lesson 11', 'image' => 'newest-cover.jpg',
+        ]));
+        $section = DB::table('course_sections')->where('id', $this->sectionId)->first();
+        DB::table('course_sections')->insert(array_merge((array) $section, [
+            'id' => null, 'sectionable_id' => 11, 'order' => 2, 'sort_order' => 2,
+        ]));
+        DB::table('saved_folder_lessons')->insert([
+            'saved_folder_id' => 1, 'lesson_id' => 11,
+            'created_at' => now()->addMinute(), 'updated_at' => now()->addMinute(),
+        ]);
+
+        $this->actingAs($this->user, 'api')
+            ->getJson('/api/v1/saved-folders')
+            ->assertOk()
+            ->assertJsonPath('data.0.image', url('newest-cover.jpg'))
+            ->assertJsonPath('data.0.lessons_count', 2);
     }
 
     public function test_can_create_saved_folder(): void
@@ -224,7 +243,16 @@ class SavedFolderEndpointTest extends ApiTestCase
 
         $this->actingAs($this->user, 'api')
             ->deleteJson('/api/v1/saved-folders/1/lessons/10')
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('data.already_removed', false)
+            ->assertJsonPath('data.still_saved', true);
+        $this->actingAs($this->user, 'api')
+            ->deleteJson('/api/v1/saved-folders/'.$secondFolder.'/lessons/10')
+            ->assertOk()
+            ->assertJsonPath('data.still_saved', false);
+        DB::table('saved_folder_lessons')->insert([
+            'saved_folder_id' => $secondFolder, 'lesson_id' => 10, 'created_at' => now(), 'updated_at' => now(),
+        ]);
 
         self::assertFalse(DB::table('saved_folder_lessons')
             ->where('saved_folder_id', 1)

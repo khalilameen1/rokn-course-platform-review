@@ -28,6 +28,7 @@ class SavedFolderResource extends JsonResource
 
     private function resolveFolderImage(): string
     {
+        // SavedLibraryService::folders loads only the newest saved lesson.
         $firstLesson = $this->relationLoaded('lessons')
             ? $this->lessons->first()
             : null;

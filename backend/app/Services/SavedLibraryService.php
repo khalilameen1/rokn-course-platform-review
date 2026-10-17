@@ -54,11 +54,13 @@ final class SavedLibraryService
 
         return SavedFolder::query()
             ->where('user_id', $user->id)
+            // The cover is the newest save, as in Instagram/Facebook Saved:
+            // a list shows what was just added to it, not its oldest item.
             ->with(['lessons' => function ($query) use ($relations) {
                 $query->publishedLearningGraph()
                     ->with($relations)
-                    ->orderByPivot('created_at')
-                    ->orderByPivot('id')
+                    ->orderByPivot('created_at', 'desc')
+                    ->orderByPivot('id', 'desc')
                     ->limit(1);
             }])
             ->withCount(['lessons' => fn ($query) => $query->publishedLearningGraph()])
@@ -330,11 +332,18 @@ final class SavedLibraryService
             ->delete();
     }
 
-    public function remove(User $user, int $folderId, int $lessonId): ?int
+    /**
+     * Remove the lesson from one list. still_saved tells the client whether
+     * another of the learner's lists keeps it, so the bookmark stays filled
+     * (Facebook Saved: removing from a collection is not unsaving).
+     *
+     * @return array{removed:int,still_saved:bool}|null null when the list is not the learner's
+     */
+    public function remove(User $user, int $folderId, int $lessonId): ?array
     {
         $aliases = $this->aliases($lessonId);
 
-        return DB::transaction(function () use ($user, $folderId, $aliases): ?int {
+        return DB::transaction(function () use ($user, $folderId, $aliases): ?array {
             $folder = SavedFolder::query()
                 ->whereKey($folderId)
                 ->where('user_id', $user->id)
@@ -344,10 +353,17 @@ final class SavedLibraryService
                 return null;
             }
 
-            return DB::table('saved_folder_lessons')
+            $removed = DB::table('saved_folder_lessons')
                 ->where('saved_folder_id', $folder->id)
                 ->whereIn('lesson_id', $aliases)
                 ->delete();
+            $stillSaved = DB::table('saved_folder_lessons')
+                ->join('saved_folders', 'saved_folders.id', '=', 'saved_folder_lessons.saved_folder_id')
+                ->where('saved_folders.user_id', $user->id)
+                ->whereIn('saved_folder_lessons.lesson_id', $aliases)
+                ->exists();
+
+            return ['removed' => $removed, 'still_saved' => $stillSaved];
         }, 3);
     }
 

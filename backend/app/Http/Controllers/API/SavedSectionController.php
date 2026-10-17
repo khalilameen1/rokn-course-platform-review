@@ -440,7 +440,10 @@ final class SavedSectionController extends Controller
                 'status' => 200,
                 'success' => true,
                 'message' => 'تمت إزالة المقطع',
-                'data' => ['already_removed' => $result === 0],
+                'data' => [
+                    'already_removed' => $result['removed'] === 0,
+                    'still_saved' => $result['still_saved'],
+                ],
             ]);
         } catch (\Exception $e) {
             $this->rethrowExpectedRequestException($e);
