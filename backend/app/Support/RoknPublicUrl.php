@@ -26,6 +26,11 @@ final class RoknPublicUrl
         return self::base() . '/@' . rawurlencode($slug);
     }
 
+    public static function portfolioProject(string $slug, string $projectPublicId): string
+    {
+        return self::portfolio($slug) . '/p/' . rawurlencode($projectPublicId);
+    }
+
     public static function portfolioMedia(string $slug, string $mediaPublicId): string
     {
         return self::portfolio($slug) . '/media/' . rawurlencode($mediaPublicId);

@@ -65,8 +65,14 @@ final class PortfolioMediaMutationService
             ])->save();
             $this->queueCleanup($media, 'portfolio_media_deleted');
             $media->delete();
+            if ((int) $item->cover_media_id === (int) $media->id) {
+                $item->forceFill(['cover_media_id' => null]);
+            }
             if (!$item->mediaFiles()->exists()) {
-                $item->forceFill(['is_public' => false])->save();
+                $item->forceFill(['is_public' => false]);
+            }
+            if ($item->isDirty()) {
+                $item->save();
             }
 
             return true;

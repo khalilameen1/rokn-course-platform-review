@@ -22,14 +22,20 @@ class PortfolioItemResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'public_id' => $this->public_id,
             'title' => $this->title,
             'description' => $this->description,
             'slug' => $this->slug,
             'role' => $this->role,
             'tools' => $this->tools ?? [],
+            // Same list as tools: the app shows it as the project's skills.
+            'skills' => $this->tools ?? [],
             'external_url' => SafeExternalUrl::sanitize($this->external_url),
             'completed_at' => $this->completed_at?->format('Y-m-d'),
-            'is_public' => (bool) $this->is_public,
+            // Shown on the public link once approved: finalized and not hidden.
+            'is_public' => (bool) $this->is_public && $this->hidden_at === null,
+            'is_hidden' => $this->hidden_at !== null,
+            'cover_media_id' => $this->cover_media_id ? (int) $this->cover_media_id : null,
             'upload_state' => $this->deletion_started_at
                 ? 'deleting'
                 : ((bool) $this->is_public

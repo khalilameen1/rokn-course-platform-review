@@ -102,7 +102,21 @@ Route::get('/@{slug}/media/{mediaId}', [\App\Http\Controllers\PublicPortfolioMed
     ->where('slug', '[a-z0-9-]+')
     ->whereUuid('mediaId')
     ->middleware('throttle:240,1')
+    // Cookie-free so the approved-media redirect can be cached publicly.
+    ->withoutMiddleware([
+        \App\Http\Middleware\EncryptCookies::class,
+        \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \App\Http\Middleware\VerifyCsrfToken::class,
+        \App\Http\Middleware\ApplyLocale::class,
+    ])
     ->name('portfolio.media');
+Route::get('/@{slug}/p/{projectId}', [\App\Http\Controllers\PublicPortfolioController::class, 'project'])
+    ->where('slug', '[a-z0-9-]+')
+    ->whereUuid('projectId')
+    ->middleware('throttle:60,1')
+    ->name('portfolio.project');
 Route::get('/@{slug}', [\App\Http\Controllers\PublicPortfolioController::class, 'show'])
     ->where('slug', '[a-z0-9-]+')
     ->middleware('throttle:60,1')

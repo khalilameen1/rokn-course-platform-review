@@ -52,7 +52,7 @@ class BunnyDeliveryService
     }
 
     /** Issue a thumbnail URL in the same protected Stream directory. */
-    public function videoThumbnail(string $videoGuid, string $fileName): ?array
+    public function videoThumbnail(string $videoGuid, string $fileName, int $bucketSeconds = 0): ?array
     {
         if (!$this->playbackIsSecurelyConfigured()) {
             return null;
@@ -62,7 +62,7 @@ class BunnyDeliveryService
             return null;
         }
 
-        $expiresAt = time() + $this->playbackLifetime();
+        $expiresAt = self::expiry($this->playbackLifetime(), $bucketSeconds);
         $directoryPath = "/{$videoGuid}/";
         $filePath = $directoryPath . $fileName;
 
@@ -84,14 +84,14 @@ class BunnyDeliveryService
      * @param int $expiresInSeconds URL expiration time in seconds (default 2 hours)
      * @return array|null Returns array with url and expires_at, or null on failure
      */
-    public function videoEmbed(string $videoGuid, int $expiresInSeconds = 7200): ?array
+    public function videoEmbed(string $videoGuid, int $expiresInSeconds = 7200, int $bucketSeconds = 0): ?array
     {
         if (!$this->playbackIsSecurelyConfigured()) {
             return null;
         }
 
         $libraryId = $this->configuration->getLibraryId();
-        $expiresAt = time() + $expiresInSeconds;
+        $expiresAt = self::expiry($expiresInSeconds, $bucketSeconds);
 
         // Embed-view authentication is intentionally different from Bunny
         // CDN authentication: SHA256_HEX(token key + video id + expiry).
@@ -173,10 +173,32 @@ class BunnyDeliveryService
         return $ready;
     }
 
-    /** Sign a normalized private Storage path with its own key, never the Stream key. */
-    public function storageUrl(string $filePath, int $ttl = 3600): ?string
+    /**
+     * Expiry for a signed URL. With a bucket, every request inside the same
+     * bucket gets the same expiry and therefore the same URL, so browsers and
+     * the CDN can reuse it; it stays valid for $ttl after the bucket ends.
+     */
+    public static function expiry(int $ttl, int $bucketSeconds = 0, ?int $now = null): int
     {
-        $expires = time() + max(60, (int) $ttl);
+        $now ??= time();
+        if ($bucketSeconds <= 0) {
+            return $now + $ttl;
+        }
+
+        return self::bucketEnd($bucketSeconds, $now) + $ttl;
+    }
+
+    public static function bucketEnd(int $bucketSeconds, ?int $now = null): int
+    {
+        $now ??= time();
+
+        return (intdiv($now, $bucketSeconds) + 1) * $bucketSeconds;
+    }
+
+    /** Sign a normalized private Storage path with its own key, never the Stream key. */
+    public function storageUrl(string $filePath, int $ttl = 3600, int $bucketSeconds = 0): ?string
+    {
+        $expires = self::expiry(max(60, (int) $ttl), $bucketSeconds);
         $securityKey = $this->configuration->getStorageSecurityKey();
         $hostname = $this->configuration->getStorageCdnHostname();
         if (!$hostname || !$securityKey) {

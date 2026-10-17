@@ -26,6 +26,10 @@ final class AccountPortfolioErasureService
         }
 
         $remotePortfolioCleanupPending = false;
+        // The approved public copy holds the same personal content.
+        if (Schema::hasTable('portfolio_publications')) {
+            DB::table('portfolio_publications')->where('user_id', $userId)->delete();
+        }
         if (Schema::hasTable('portfolio_items')) {
             $portfolioItemIds = DB::table('portfolio_items')->where('user_id', $userId)->pluck('id');
             if ($portfolioItemIds->isNotEmpty() && Schema::hasTable('portfolio_media')) {

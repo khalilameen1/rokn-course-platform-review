@@ -45,6 +45,12 @@ class PortfolioMedia extends Model
             $item = $media->portfolioItem()->first();
             if ($item?->is_public) PortfolioModerationService::invalidate((int) $item->user_id);
         };
+        $preserve = static function (PortfolioMedia $media): void {
+            $userId = PortfolioItem::query()->whereKey($media->portfolio_item_id)->value('user_id');
+            if ($userId) PortfolioModerationService::preserveLegacyPublication((int) $userId);
+        };
+        static::saving($preserve);
+        static::deleting($preserve);
         static::saved(function (PortfolioMedia $media) use ($invalidate): void {
             if ($media->wasRecentlyCreated || $media->wasChanged([
                 'public_id', 'file_path', 'file_type', 'content_sha256', 'caption',

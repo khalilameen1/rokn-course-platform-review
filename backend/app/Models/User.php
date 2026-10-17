@@ -25,6 +25,11 @@ class User extends Authenticatable
 
     protected static function booted(): void
     {
+        static::updating(function (User $user): void {
+            if ($user->getRawOriginal('portfolio_slug') && $user->isDirty(PortfolioReviewReadService::PROFILE_FIELDS)) {
+                PortfolioModerationService::preserveLegacyPublication((int) $user->id);
+            }
+        });
         static::updated(function (User $user): void {
             if (($user->portfolio_slug || $user->getRawOriginal('portfolio_slug'))
                 && $user->wasChanged(PortfolioReviewReadService::PROFILE_FIELDS)) {

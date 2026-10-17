@@ -28,7 +28,7 @@ final class PortfolioReviewReadOwnershipTest extends TestCase
             ->andReturnUsing(fn (string $path) => 'https://cdn.rokn.test/'.$path);
     }
 
-    public function test_readers_deny_changed_content_without_mutating_review_or_resolving_the_writer(): void
+    public function test_readers_keep_the_published_link_for_changed_content_without_mutating_review(): void
     {
         [$owner, $item] = $this->approvedWork();
         $before = $owner->getAttributes();
@@ -39,8 +39,10 @@ final class PortfolioReviewReadOwnershipTest extends TestCase
         DB::flushQueryLog();
         $reader = app(PortfolioReviewReadService::class);
         self::assertSame('pending', $reader->status($owner));
-        self::assertNull($reader->publicUrlFor($owner));
-        self::assertNull($owner->profile_deeplink);
+        // The approved publication stays live while the change waits for review.
+        self::assertSame(RoknPublicUrl::portfolio($owner->portfolio_slug), $reader->publicUrlFor($owner));
+        self::assertSame(RoknPublicUrl::portfolio($owner->portfolio_slug), $owner->profile_deeplink);
+        self::assertSame('Selected work', $reader->livePublication($owner)['projects'][0]['content']['item']['title']);
         self::assertSame('certificate', app(CertificateQrDestinationService::class)
             ->forIssuance($owner, (string) Str::uuid())['type']);
         $this->assertOnlyReadQueries();
@@ -71,7 +73,8 @@ final class PortfolioReviewReadOwnershipTest extends TestCase
         $this->approve($owner->fresh());
         $approved = $owner->fresh()->getAttributes();
 
-        self::assertSame('pending', app(PortfolioModerationService::class)->reconcile($stale));
+        // The stale model's content equals the newer publication; its guarded write is a no-op.
+        self::assertSame('approved', app(PortfolioModerationService::class)->reconcile($stale));
         self::assertSame($approved, $owner->fresh()->getAttributes());
         self::assertSame('approved', app(PortfolioReviewReadService::class)->status($owner->fresh()));
     }
@@ -120,7 +123,8 @@ final class PortfolioReviewReadOwnershipTest extends TestCase
         DB::table('portfolio_items')->where('id', $item->id)->update(['description' => 'Needs another review']);
         $public = app(PublicPortfolioService::class);
 
-        self::assertNull($public->find($owner->portfolio_slug));
+        $published = $public->find($owner->portfolio_slug);
+        self::assertNull($published['projects'][0]['description']);
         self::assertSame('pending', $owner->fresh()->portfolio_sharing_status);
         $preview = $public->adminPreview($owner);
         self::assertSame('pending', $preview['review']['status']);

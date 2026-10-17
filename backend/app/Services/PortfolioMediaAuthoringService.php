@@ -97,7 +97,7 @@ final class PortfolioMediaAuthoringService
         }
 
         $item = $this->ownedItem($user, $itemId);
-        $this->assertImage($file, 'file');
+        [$width, $height] = $this->assertImage($file, 'file');
         $fingerprint = $this->fingerprintImage($file);
         $caption = $caption !== null ? trim($caption) : null;
 
@@ -110,7 +110,9 @@ final class PortfolioMediaAuthoringService
             $file,
             $clientRequestId,
             $fingerprint,
-            $caption
+            $caption,
+            $width,
+            $height
         ): array {
             $item = $this->ownedItem($user, (int) $item->id);
             $this->assertUploadNotDeleted((int) $item->id, $clientRequestId);
@@ -150,6 +152,8 @@ final class PortfolioMediaAuthoringService
                     $fingerprint,
                     $caption,
                     $path,
+                    $width,
+                    $height,
                     &$replayed,
                     &$pathConsumed
                 ): PortfolioMedia {
@@ -195,6 +199,10 @@ final class PortfolioMediaAuthoringService
                         'original_name' => $this->originalName($file->getClientOriginalName()),
                         'sort_order' => ((int) $lockedItem->mediaFiles()->max('sort_order')) + 1,
                         'caption' => $caption,
+                        // Natural size lets public pages reserve the box and
+                        // show portrait/9:16 designs without cropping.
+                        'width' => $width,
+                        'height' => $height,
                     ]);
                     $this->consumeImage($path);
                     $pathConsumed = true;
@@ -227,7 +235,8 @@ final class PortfolioMediaAuthoringService
         }
     }
 
-    private function assertImage(UploadedFile $file, string $field): void
+    /** @return array{0:int,1:int} natural width and height */
+    private function assertImage(UploadedFile $file, string $field): array
     {
         $mimeType = (string) $file->getMimeType();
         if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/webp'], true)) {
@@ -247,6 +256,8 @@ final class PortfolioMediaAuthoringService
                 $field => ['The selected image is damaged or has unsafe dimensions.'],
             ]);
         }
+
+        return [$width, $height];
     }
 
     /** @return array{sha256:string,size:int,mime:string,file_type:string} */

@@ -193,6 +193,13 @@ class PortfolioEndpointTest extends ApiTestCase
             'id' => 1,
             'is_public' => false,
         ]);
+        // Natural size is stored so public pages render without cropping or layout shift.
+        $this->assertDatabaseHas('portfolio_media', [
+            'portfolio_item_id' => 1,
+            'file_path' => 'portfolio/new-image.webp',
+            'width' => 10,
+            'height' => 10,
+        ]);
     }
 
     public function test_can_view_portfolio_item(): void
@@ -449,7 +456,8 @@ class PortfolioEndpointTest extends ApiTestCase
         $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
         $delivery->shouldReceive('storageUrl')
             ->once()
-            ->with('portfolio/public-work.webp', 300)
+            // Approved public media: short grace past a one-hour signing bucket.
+            ->with('portfolio/public-work.webp', 600, 3600)
             ->andReturn('https://cdn.example.test/public-work');
         $this->app->instance(BunnyService::class, $bunny);
 
@@ -492,9 +500,12 @@ class PortfolioEndpointTest extends ApiTestCase
 
         $mediaResponse = $this->get($deliveryUrl);
         $mediaResponse->assertRedirect('https://cdn.example.test/public-work');
-        self::assertStringContainsString(
-            'no-store',
-            (string) $mediaResponse->headers->get('Cache-Control')
-        );
+        $cacheControl = (string) $mediaResponse->headers->get('Cache-Control');
+        self::assertStringContainsString('public', $cacheControl);
+        self::assertStringNotContainsString('no-store', $cacheControl);
+        self::assertMatchesRegularExpression('/max-age=(\d+)/', $cacheControl);
+        preg_match('/max-age=(\d+)/', $cacheControl, $maxAge);
+        self::assertLessThanOrEqual(3600, (int) $maxAge[1]);
+        self::assertEmpty($mediaResponse->headers->getCookies());
     }
 }

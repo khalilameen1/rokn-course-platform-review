@@ -92,7 +92,7 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         $this->get(route('portfolio.media', [$owner->portfolio_slug, $item->mediaFiles->first()->public_id]))->assertNotFound();
     }
 
-    public function test_edits_revoke_approval_and_old_media_routes_do_not_serve_a_replacement(): void
+    public function test_replaced_file_leaves_the_published_page_at_once_and_old_media_routes_do_not_serve_it(): void
     {
         $owner = $this->owner();
         $item = $this->work($owner);
@@ -105,7 +105,8 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         $this->get($oldUrl)->assertNotFound();
         $this->get($oldAdminMedia)->assertNotFound();
         $this->post(route('admin.portfolio-reviews.decide', $owner), $this->decision($oldPreview))->assertStatus(409);
-        $this->assertNotPublic($owner, $item);
+        // The link stays live; the project whose only approved file changed is withdrawn until review.
+        $this->assertPublishedWithout($owner, $item->title);
         $this->approve($owner);
         $newUrl = app(PublicPortfolioService::class)->find($owner->portfolio_slug)['projects'][0]['media'][0]['image_url'];
         self::assertNotSame($oldUrl, $newUrl);
@@ -148,10 +149,15 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         $item->update(['title' => $item->title]);
         self::assertSame('approved', app(PortfolioModerationService::class)->reconcileOwnerState($owner)['sharing_status']);
         $this->actingAs($owner->fresh(), 'api')->putJson('/api/v1/portfolio-profile', ['portfolio_headline' => 'عنوان جديد'])
-            ->assertOk()->assertJsonPath('data.sharing_status', 'pending')->assertJsonPath('data.public_url', null);
+            ->assertOk()->assertJsonPath('data.sharing_status', 'pending')
+            ->assertJsonPath('data.published', true)->assertJsonPath('data.has_unpublished_changes', true)
+            ->assertJsonPath('data.public_url', \App\Support\RoknPublicUrl::portfolio($owner->portfolio_slug));
+        $this->get(route('portfolio.public', $owner->portfolio_slug))->assertOk()->assertDontSee('عنوان جديد');
         $this->approve($owner);
+        $this->get(route('portfolio.public', $owner->portfolio_slug))->assertOk()->assertSee('عنوان جديد');
         $owner->fresh()->update(['name' => 'Changed account identity']);
-        self::assertNull($owner->fresh()->profile_deeplink);
+        self::assertSame('pending', $owner->fresh()->portfolio_sharing_status);
+        self::assertSame(\App\Support\RoknPublicUrl::portfolio($owner->portfolio_slug), $owner->fresh()->profile_deeplink);
         $this->approve($owner);
         $item->update(['is_featured' => true]);
         self::assertSame('pending', $owner->fresh()->portfolio_sharing_status);
@@ -168,7 +174,7 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         self::assertNull(app(PublicPortfolioService::class)->mediaForPortfolio($owner->portfolio_slug,
             $otherItem->mediaFiles->first()->public_id, (string) $preview['review']['revision'], $preview['review']['snapshot_hash']));
         DB::table('portfolio_items')->where('id', $item->id)->update(['description' => 'Unreviewed bulk edit']);
-        $this->assertNotPublic($owner, $item);
+        $this->assertPublishedWithout($owner, 'Unreviewed bulk edit');
         self::assertSame('pending', $owner->fresh()->portfolio_sharing_status);
         $this->approve($owner);
         $url = app(PublicPortfolioService::class)->find($owner->portfolio_slug)['projects'][0]['media'][0]['image_url'];
@@ -192,7 +198,7 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         $this->assertNotPublic($owner, $item);
     }
 
-    public function test_permanent_portfolio_qr_target_cannot_bypass_review_or_edit_revocation(): void
+    public function test_permanent_portfolio_qr_target_cannot_bypass_review_and_keeps_the_approved_version(): void
     {
         $owner = $this->owner();
         $item = $this->work($owner);
@@ -208,7 +214,8 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         $this->approve($owner);
         $this->get($permanentQrTarget)->assertOk()->assertSee($item->title);
         $item->update(['title' => 'New unreviewed version']);
-        $this->get($permanentQrTarget)->assertNotFound()->assertDontSee('New unreviewed version');
+        // Draft/published: the approved version keeps serving the permanent QR target.
+        $this->get($permanentQrTarget)->assertOk()->assertSee('Selected work')->assertDontSee('New unreviewed version');
         $this->approve($owner);
         $this->get($permanentQrTarget)->assertOk()->assertSee('New unreviewed version');
         self::assertSame($permanentQrTarget, app(\App\Services\CertificateQrDestinationService::class)->for($certificate)['url']);
@@ -251,6 +258,12 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         $this->get(route('portfolio.public', $owner->portfolio_slug))->assertNotFound();
         $this->getJson('/api/v1/public/portfolios/'.$owner->portfolio_slug)->assertNotFound();
         $this->get(route('portfolio.media', [$owner->portfolio_slug, $item->mediaFiles->first()->public_id]))->assertNotFound();
+    }
+
+    private function assertPublishedWithout(User $owner, string $text): void
+    {
+        $this->get(route('portfolio.public', $owner->portfolio_slug))->assertOk()->assertDontSee($text);
+        $this->getJson('/api/v1/public/portfolios/'.$owner->portfolio_slug)->assertOk()->assertDontSee($text);
     }
 
     private function owner(string $role = 'client'): User

@@ -4,17 +4,25 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use App\Services\PortfolioModerationService;
 
 class PortfolioItem extends Model
 {
     protected static function booted(): void
     {
+        static::creating(function (PortfolioItem $item): void {
+            if (!$item->public_id) $item->public_id = (string) Str::uuid();
+        });
+        // Capture a pre-publication approval before the first change moves the draft.
+        static::saving(fn (PortfolioItem $item) => PortfolioModerationService::preserveLegacyPublication((int) $item->user_id));
+        static::deleting(fn (PortfolioItem $item) => PortfolioModerationService::preserveLegacyPublication((int) $item->user_id));
         static::saved(function (PortfolioItem $item): void {
             if (($item->is_public || $item->getRawOriginal('is_public'))
                 && ($item->wasRecentlyCreated || $item->wasChanged([
                     'title', 'description', 'role', 'tools', 'external_url', 'completed_at',
                     'is_public', 'is_featured', 'sort_order', 'course_id', 'deletion_started_at',
+                    'hidden_at',
                 ]))) {
                 PortfolioModerationService::invalidate((int) $item->user_id);
             }
@@ -38,6 +46,8 @@ class PortfolioItem extends Model
         'external_url',
         'completed_at',
         'is_public',
+        'hidden_at',
+        'cover_media_id',
         'is_featured',
         'sort_order',
         'expected_media_count',
@@ -48,6 +58,8 @@ class PortfolioItem extends Model
         'tools' => 'array',
         'completed_at' => 'date',
         'is_public' => 'boolean',
+        'hidden_at' => 'datetime',
+        'cover_media_id' => 'integer',
         'is_featured' => 'boolean',
         'sort_order' => 'integer',
         'expected_media_count' => 'integer',
@@ -63,6 +75,7 @@ class PortfolioItem extends Model
     {
         return $query->available()
             ->where('is_public', true)
+            ->whereNull('hidden_at')
             ->whereHas('mediaFiles', fn ($media) => $media->available());
     }
 

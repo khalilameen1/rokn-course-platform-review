@@ -515,6 +515,10 @@ final class PortfolioController extends Controller
             'completed_at' => 'nullable|date',
             'is_featured' => 'nullable|boolean',
             'sort_order' => 'nullable|integer|min:0|max:10000',
+            // Owner visibility on the public link; false hides the project
+            // immediately without deleting it or waiting for review.
+            'is_public' => 'nullable|boolean',
+            'cover_media_id' => 'nullable|integer|min:1',
         ]);
 
         $user = auth('api')->user();
@@ -528,7 +532,21 @@ final class PortfolioController extends Controller
             abort_if(!$item, 404);
             abort_if($item->deletion_started_at !== null, 409);
 
-            $item->update($request->only([
+            $presentation = [];
+            if ($request->filled('is_public')) {
+                $presentation['hidden_at'] = $request->boolean('is_public') ? null : ($item->hidden_at ?? now());
+            }
+            if ($request->exists('cover_media_id')) {
+                $coverId = $request->filled('cover_media_id') ? $request->integer('cover_media_id') : null;
+                if ($coverId !== null && !$item->mediaFiles()->available()
+                    ->where('file_type', 'image')->whereKey($coverId)->exists()) {
+                    throw ValidationException::withMessages([
+                        'cover_media_id' => ['اختر صورة الغلاف من صور هذا المشروع'],
+                    ]);
+                }
+                $presentation['cover_media_id'] = $coverId;
+            }
+            $item->update($presentation + $request->only([
                 'title', 'description', 'role', 'tools', 'external_url', 'completed_at',
                 'is_featured', 'sort_order',
             ]) + ($request->filled('title')
@@ -585,6 +603,11 @@ final class PortfolioController extends Controller
 
     private function normalizePortfolioInput(Request $request): void
     {
+        // The app labels a project's tools as "skills"; both names write the
+        // same project field. An explicit tools list wins.
+        if (!$request->exists('tools') && $request->exists('skills')) {
+            $request->merge(['tools' => $request->input('skills')]);
+        }
         foreach (['title', 'role'] as $field) {
             if ($request->has($field) && is_string($request->input($field))) {
                 $request->merge([$field => UnicodeText::clean($request->input($field), false)]);
