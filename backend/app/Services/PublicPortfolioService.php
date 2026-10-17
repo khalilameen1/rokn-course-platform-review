@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Certificate;
 use App\Models\PortfolioItem;
 use App\Models\PortfolioMedia;
-use App\Models\Project;
-use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Support\RoknPublicUrl;
 use Illuminate\Support\Str;
@@ -23,8 +20,7 @@ final class PublicPortfolioService
     public function __construct(
         private readonly PortfolioShareIdentityService $shareIdentity,
         private readonly PortfolioModerationService $moderation,
-        private readonly PortfolioReviewReadService $reviews,
-        private readonly CourseRevisionResolver $revisions
+        private readonly PortfolioReviewReadService $reviews
     ) {
     }
 
@@ -197,9 +193,8 @@ final class PublicPortfolioService
             ];
             $entries = array_slice($entries, ($page - 1) * $perPage, $perPage);
         }
-        $credentials = $this->credentials((int) $owner->id, $entries);
         $projects = array_map(fn (array $entry): array => $this->projectPayload(
-            $entry, $slug, $adminPreview, $mediaQuery, $credentials[(int) $entry['item']->id] ?? []
+            $entry, $slug, $adminPreview, $mediaQuery
         ), $entries);
 
         // A replaced or removed avatar is never shown from an older approval.
@@ -224,7 +219,7 @@ final class PublicPortfolioService
 
 
     /** Public share payloads use public slugs/UUIDs, never database keys. */
-    private function projectPayload(array $entry, string $slug, bool $adminPreview, array $mediaQuery, array $credential): array
+    private function projectPayload(array $entry, string $slug, bool $adminPreview, array $mediaQuery): array
     {
         $content = $entry['content'];
         /** @var PortfolioItem $live */
@@ -260,8 +255,6 @@ final class PublicPortfolioService
             'completed_at' => $item->completed_at?->format('Y-m-d'),
             'is_featured' => (bool) $live->is_featured,
             'course' => $course && $course['name'] ? $course : null,
-            'verified' => (bool) ($credential['verified'] ?? false),
-            'certificate_url' => $credential['certificate_url'] ?? null,
             'cover' => $cover,
             'media' => $media,
         ];
@@ -318,62 +311,5 @@ final class PublicPortfolioService
         }
 
         return null;
-    }
-
-    /**
-     * "Reviewed in Rokn" badge: the project came from a course project that
-     * passed review; link the course certificate when it is active and valid.
-     *
-     * @return array<int,array{verified:bool,certificate_url:?string}>
-     */
-    private function credentials(int $userId, array $entries): array
-    {
-        $sources = [];
-        $courses = [];
-        foreach ($entries as $entry) {
-            $item = $entry['item'];
-            if ($item->source_project_id) {
-                $sources[(int) $item->id] = (int) $item->source_project_id;
-                $courses[(int) $item->id] = (int) ($entry['content']['item']['course_id'] ?? $item->course_id);
-            }
-        }
-        if ($sources === []) {
-            return [];
-        }
-        $equivalents = $this->revisions->equivalentEntityMap(Project::class, array_values(array_unique($sources)));
-        $projectIds = array_values(array_unique(array_merge(array_values($sources), ...array_values($equivalents))));
-        $passed = ProjectSubmission::query()->where('user_id', $userId)
-            ->whereIn('project_id', $projectIds)
-            ->where('review_status', ProjectSubmission::STATUS_PASSED)
-            ->pluck('project_id')->map(fn ($id): int => (int) $id)->flip();
-
-        $verified = [];
-        foreach ($sources as $itemId => $sourceId) {
-            foreach ($equivalents[$sourceId] ?? [$sourceId] as $projectId) {
-                if ($passed->has($projectId)) {
-                    $verified[$itemId] = true;
-                    break;
-                }
-            }
-        }
-        $courseIds = array_values(array_unique(array_filter(array_intersect_key($courses, $verified))));
-        $certificates = $courseIds === [] ? collect() : Certificate::query()
-            ->where('user_id', $userId)->whereIn('course_id', $courseIds)
-            ->where('status', 'active')->whereNull('revoked_at')
-            ->orderByDesc('generated_at')->orderByDesc('id')->get()
-            ->filter(fn (Certificate $certificate): bool => $certificate->isActiveCredential()
-                && $certificate->hasCompleteCredentialSnapshot())
-            ->unique('course_id')->keyBy('course_id');
-
-        $result = [];
-        foreach (array_keys($verified) as $itemId) {
-            $certificate = $certificates->get($courses[$itemId] ?? 0);
-            $result[$itemId] = [
-                'verified' => true,
-                'certificate_url' => $certificate ? RoknPublicUrl::certificate((string) $certificate->public_id) : null,
-            ];
-        }
-
-        return $result;
     }
 }

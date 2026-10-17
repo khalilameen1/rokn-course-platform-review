@@ -17,11 +17,9 @@
         <span>كل أعمال {{ $profile['name'] }}</span>
     </a>
     <div style="margin-top:22px">
-        @include('portfolio.partials.badge', ['project' => $project])
         <h1>{{ $project['title'] }}</h1>
         <div class="facts">
             <span>{{ $profile['name'] }}@if($profile['headline']) — {{ $profile['headline'] }}@endif</span>
-            @if($project['course'])<span>من كورس {{ $project['course']['name'] }}</span>@endif
             @if($project['role'])<span>الدور: {{ $project['role'] }}</span>@endif
             @if($completed)<span>{{ $completed }}</span>@endif
         </div>
@@ -59,7 +57,7 @@
                     @if($other['cover'] && $other['cover']['file_type'] === 'image')
                         <a class="cover" href="{{ $other['url'] }}" aria-label="{{ $other['title'] }}"><img src="{{ $other['cover']['image_url'] }}" alt="{{ $other['title'] }}" @if($other['cover']['width'] && $other['cover']['height']) width="{{ $other['cover']['width'] }}" height="{{ $other['cover']['height'] }}" @endif loading="lazy" decoding="async" onerror="this.remove()"></a>
                     @endif
-                    <div class="project-body">@include('portfolio.partials.badge', ['project' => $other])<h3><a href="{{ $other['url'] }}">{{ $other['title'] }}</a></h3></div>
+                    <div class="project-body"><h3><a href="{{ $other['url'] }}">{{ $other['title'] }}</a></h3></div>
                 </article>
             @endforeach
         </div>

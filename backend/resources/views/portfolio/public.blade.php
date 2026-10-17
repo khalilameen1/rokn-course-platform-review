@@ -71,8 +71,8 @@
                 </a>
             @endif
             <div class="project-body">
-                @include('portfolio.partials.badge', ['project' => $project])
-                @if($project['course'])<div class="eyebrow">من كورس {{ $project['course']['name'] }}</div>@endif
+                {{-- The public page presents the learner's own work, not a course record. --}}
+                @if($isAdminPreview && $project['course'])<div class="eyebrow">من كورس {{ $project['course']['name'] }}</div>@endif
                 <h3>@if($project['url'])<a href="{{ $project['url'] }}">{{ $project['title'] }}</a>@else{{ $project['title'] }}@endif</h3>
                 @if($project['role'])<div class="muted">الدور: {{ $project['role'] }}</div>@endif
                 @if($project['description'])<p class="muted {{ $isAdminPreview ? '' : 'summary' }}">{{ $project['description'] }}</p>@endif

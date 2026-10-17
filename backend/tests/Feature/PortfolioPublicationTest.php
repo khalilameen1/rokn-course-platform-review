@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Models\Certificate;
 use App\Models\Course;
 use App\Models\PortfolioItem;
 use App\Models\PortfolioMedia;
@@ -20,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
-/** Draft/published portfolio, share previews, project pages, badges. Learner contact links are not shown. */
+/** Draft/published portfolio, share previews and project pages: the learner's own work, without course labels or contact links. */
 final class PortfolioPublicationTest extends TestCase
 {
     use RefreshDatabase;
@@ -176,42 +175,26 @@ final class PortfolioPublicationTest extends TestCase
         $this->get(route('portfolio.media', [$owner->portfolio_slug, $item->mediaFiles->first()->public_id]))->assertNotFound();
     }
 
-    public function test_reviewed_in_rokn_badge_only_for_passed_projects_with_a_valid_certificate_link(): void
+    public function test_public_pages_present_the_work_without_course_or_review_labels(): void
     {
         $owner = $this->owner();
         $course = new Course();
         $course->forceFill(['tenant_id' => 1, 'name_ar' => 'كورس التصميم', 'name_en' => 'Design'])->save();
         $passedProject = Project::factory()->create();
-        $pendingProject = Project::factory()->create();
         $this->submission($owner, $passedProject, 'passed');
-        $this->submission($owner, $pendingProject, 'pending');
-        $verified = $this->work($owner, 'Passed project');
-        $verified->forceFill(['source_project_id' => $passedProject->id, 'course_id' => $course->id])->save();
-        $unverified = $this->work($owner, 'Pending project');
-        $unverified->forceFill(['source_project_id' => $pendingProject->id, 'course_id' => $course->id])->save();
-        $this->work($owner, 'Personal project');
-        $certificate = Certificate::create([
-            'public_id' => (string) Str::uuid(), 'user_id' => $owner->id, 'course_id' => $course->id,
-            'holder_name' => 'Owner', 'course_name' => 'كورس التصميم', 'certificate_text_template_key' => 'applied',
-            'certificate_text' => 'نص', 'image_path' => 'certificates/x.png', 'generated_at' => now(),
-            'status' => 'active', 'verification_level' => 'reviewed_project',
-        ]);
+        $item = $this->work($owner, 'Passed project');
+        $item->forceFill(['source_project_id' => $passedProject->id, 'course_id' => $course->id])->save();
         $this->approve($owner);
 
-        $projects = collect(app(PublicPortfolioService::class)->find($owner->portfolio_slug)['projects'])->keyBy('title');
-        self::assertTrue($projects['Passed project']['verified']);
-        self::assertSame(RoknPublicUrl::certificate($certificate->public_id), $projects['Passed project']['certificate_url']);
-        self::assertFalse($projects['Pending project']['verified']);
-        self::assertNull($projects['Pending project']['certificate_url']);
-        self::assertFalse($projects['Personal project']['verified']);
-        $html = (string) $this->get(route('portfolio.public', $owner->portfolio_slug))->assertOk()->getContent();
-        self::assertSame(1, substr_count($html, 'مشروع اتراجع في ركن'));
-        self::assertStringContainsString('href="'.e(RoknPublicUrl::certificate($certificate->public_id)).'"', $html);
-
-        $certificate->forceFill(['status' => 'revoked', 'revoked_at' => now()])->save();
-        $projects = collect(app(PublicPortfolioService::class)->find($owner->portfolio_slug)['projects'])->keyBy('title');
-        self::assertTrue($projects['Passed project']['verified']);
-        self::assertNull($projects['Passed project']['certificate_url']);
+        $project = collect(app(PublicPortfolioService::class)->find($owner->portfolio_slug)['projects'])->firstWhere('title', 'Passed project');
+        self::assertArrayNotHasKey('verified', $project);
+        self::assertArrayNotHasKey('certificate_url', $project);
+        foreach ([route('portfolio.public', $owner->portfolio_slug), $project['url']] as $url) {
+            $this->get($url)->assertOk()
+                ->assertDontSee('مشروع اتراجع في ركن')
+                ->assertDontSee('عرض الشهادة')
+                ->assertDontSee('من كورس');
+        }
     }
 
     public function test_public_pages_show_no_learner_contact_links(): void
