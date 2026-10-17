@@ -32,7 +32,10 @@ export type {SavedFolderOption} from './savedFolderIndex';
 const createFolderFlights = new Map<string, Promise<SavedFolderOption>>();
 const deleteFolderFlights = new Map<string, Promise<void>>();
 const saveMembershipFlights = new Map<string, Promise<boolean>>();
-const removeMembershipFlights = new Map<string, Promise<void>>();
+const removeMembershipFlights = new Map<
+  string,
+  Promise<{stillSaved: boolean | null}>
+>();
 const watchLaterFlights = new Map<string, Promise<boolean>>();
 
 const responseStatus = (error: unknown) =>
@@ -43,11 +46,13 @@ const responseStatus = (error: unknown) =>
       : 0,
   );
 
+/** Resolves the server response, or null when the route was already gone. */
 const deleteIdempotently = async (route: string) => {
   try {
-    await publicRequest.delete(route);
+    return await publicRequest.delete(route);
   } catch (error) {
     if (responseStatus(error) !== 404) throw error;
+    return null;
   }
 };
 
@@ -311,10 +316,64 @@ export const reconcileServerSavedLessons = async (
   return reconcileSnapshot(true);
 };
 
+export type SavedLessonFolderMembership = {
+  /** Lists of this account that hold the lesson (or one of its revisions). */
+  folderIds: string[];
+  isSaved: boolean;
+};
+
+/**
+ * Which of the learner's lists hold one lesson. Read fresh each time the save
+ * sheet opens: the membership changes on other devices and is never cached.
+ */
+export const getSavedLessonFolderMembership = async (
+  lessonId: string,
+): Promise<SavedLessonFolderMembership> => {
+  const normalizedLessonId = lessonId.trim();
+  if (!/^\d{1,18}$/.test(normalizedLessonId)) {
+    throw new Error('INVALID_SAVED_LESSON_ROUTE');
+  }
+  const accountBoundary = await captureAccountSessionBoundary();
+  const sessionAvailable = await hasSession();
+  assertAccountSessionBoundary(accountBoundary);
+  if (!sessionAvailable) {
+    throw new Error('SAVED_COLLECTIONS_AUTH_REQUIRED');
+  }
+  const response = await publicRequest.get(
+    `saved-lessons/${normalizedLessonId}/folders`,
+  );
+  assertAccountSessionBoundary(accountBoundary);
+  const payload = response?.data?.data;
+  const folders: unknown = payload?.folders;
+  if (
+    typeof payload?.is_saved !== 'boolean' ||
+    !Array.isArray(folders) ||
+    folders.some(
+      folder =>
+        !validSavedFolderOption(folder) ||
+        typeof (folder as {contains_lesson?: unknown}).contains_lesson !==
+          'boolean',
+    )
+  ) {
+    throw new Error('SAVED_LESSON_FOLDERS_CONTRACT_INVALID');
+  }
+  return {
+    folderIds: (folders as {id: unknown; contains_lesson: boolean}[])
+      .filter(folder => folder.contains_lesson)
+      .map(folder => valueAsString(folder.id)),
+    isSaved: payload.is_saved,
+  };
+};
+
+/**
+ * Removes the lesson from one list only. stillSaved is the server's answer to
+ * whether another list keeps it; null when the server did not say (an older
+ * server, or the list was already gone).
+ */
 export const removeLessonFromSavedFolder = async (
   lessonId: string,
   folderId: string,
-) => {
+): Promise<{stillSaved: boolean | null}> => {
   const normalizedLessonId = lessonId.trim();
   const normalizedFolderId = folderId.trim();
   if (!normalizedLessonId || !normalizedFolderId) {
@@ -338,18 +397,22 @@ export const removeLessonFromSavedFolder = async (
       }
       // The server commits first. A failed delete must not disappear locally and
       // then reappear on the next refresh or another device.
-      await deleteIdempotently(
+      const response = await deleteIdempotently(
         `saved-folders/${normalizedFolderId}/lessons/${normalizedLessonId}`,
       );
       assertAccountSessionBoundary(accountBoundary);
+      const reported: unknown = response?.data?.data?.still_saved;
+      const stillSaved = typeof reported === 'boolean' ? reported : null;
       await invalidateMembershipCounts(accountBoundary, normalizedFolderId);
       await acceptRemoteCacheRepair(accountBoundary, () =>
         repairSavedMembershipCache(accountBoundary, {
           kind: 'remove',
           folderId: normalizedFolderId,
           lessonId: normalizedLessonId,
+          stillSaved,
         }),
       );
+      return {stillSaved};
     },
   );
 };

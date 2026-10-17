@@ -59,7 +59,9 @@ import {
   createSavedFolderOption,
   deleteSavedFolderOption,
   getSavedFolderOptions,
+  getSavedLessonFolderMembership,
   reconcileServerSavedLessons,
+  removeLessonFromSavedFolder,
   saveLessonToFolder,
   toggleWatchLater,
 } from '../src/components/VideoPlayer/courseLearning/savedCollections';
@@ -228,4 +230,62 @@ describe('saved collection daily reliability', () => {
       savedFolderLessons: {'7': ['44']},
     });
   });
+
+  it('reads which lists hold one lesson from the lesson-folders endpoint', async () => {
+    mockPublicRequest.get.mockResolvedValueOnce({
+      data: {
+        data: {
+          lesson_id: 44,
+          is_saved: true,
+          folders: [
+            {id: 8, name: 'للمراجعة', lessons_count: 2, contains_lesson: true},
+            {id: 7, name: 'المشاهدة لاحقًا', lessons_count: 1, contains_lesson: false},
+          ],
+        },
+      },
+    });
+
+    await expect(getSavedLessonFolderMembership('44')).resolves.toEqual({
+      folderIds: ['8'],
+      isSaved: true,
+    });
+    expect(mockPublicRequest.get).toHaveBeenCalledWith(
+      'saved-lessons/44/folders',
+    );
+  });
+
+  it('rejects a lesson-folders answer without membership flags', async () => {
+    mockPublicRequest.get.mockResolvedValueOnce({
+      data: {data: {lesson_id: 44, is_saved: true, folders: [{id: 8, name: 'x'}]}},
+    });
+
+    await expect(getSavedLessonFolderMembership('44')).rejects.toThrow(
+      'SAVED_LESSON_FOLDERS_CONTRACT_INVALID',
+    );
+  });
+
+  it.each([
+    [true, ['44']],
+    [false, []],
+  ] as const)(
+    'trusts the server still_saved=%s after leaving one list',
+    async (stillSaved, savedLessons) => {
+      // The local map only knows this list; the server knows about the others.
+      mockPlayerState = {
+        savedLessons: ['44'],
+        savedFolderLessons: {'7': ['44']},
+      };
+      mockPublicRequest.delete.mockResolvedValueOnce({
+        data: {data: {already_removed: false, still_saved: stillSaved}},
+      });
+
+      await expect(removeLessonFromSavedFolder('44', '7')).resolves.toEqual({
+        stillSaved,
+      });
+      expect(mockPublicRequest.delete).toHaveBeenCalledWith(
+        'saved-folders/7/lessons/44',
+      );
+      expect(mockPlayerState).toEqual({savedLessons, savedFolderLessons: {}});
+    },
+  );
 });

@@ -33,12 +33,16 @@ export {
   createSavedFolderOption,
   deleteSavedFolderOption,
   getSavedFolderOptions,
+  getSavedLessonFolderMembership,
   reconcileServerSavedLessons,
   removeLessonFromSavedFolder,
   saveLessonToFolder,
   toggleWatchLater,
 } from './courseLearning/savedCollections';
-export type {SavedFolderOption} from './courseLearning/savedCollections';
+export type {
+  SavedFolderOption,
+  SavedLessonFolderMembership,
+} from './courseLearning/savedCollections';
 export {
   clearCurrentAccountLearningFiles,
   quiesceLearningRuntime,

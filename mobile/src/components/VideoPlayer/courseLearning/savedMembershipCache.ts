@@ -11,7 +11,13 @@ import {updatePlayerStateForScope} from './persistence';
 
 export type SavedMembershipChange =
   | {kind: 'save'; folderId: string; lessonId: string}
-  | {kind: 'remove'; folderId: string; lessonId: string}
+  | {
+      kind: 'remove';
+      folderId: string;
+      lessonId: string;
+      /** Server answer: another list still holds the lesson. */
+      stillSaved?: boolean | null;
+    }
   | {kind: 'remove-everywhere'; lessonId: string}
   | {kind: 'delete-folder'; folderId: string};
 
@@ -86,9 +92,13 @@ export const repairSavedMembershipCache = async (
       if (remainingInFolder.length)
         nextFolders[change.folderId] = remainingInFolder;
       else delete nextFolders[change.folderId];
-      const remainsSaved = Object.values(nextFolders).some(lessons =>
-        lessons.includes(change.lessonId),
-      );
+      // The local folder map can be partial; prefer the server's answer.
+      const remainsSaved =
+        change.kind === 'remove' && typeof change.stillSaved === 'boolean'
+          ? change.stillSaved
+          : Object.values(nextFolders).some(lessons =>
+              lessons.includes(change.lessonId),
+            );
       return {
         ...state,
         savedFolderLessons: nextFolders,

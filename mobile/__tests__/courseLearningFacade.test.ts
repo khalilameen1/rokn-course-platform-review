@@ -44,6 +44,8 @@ describe('course learning facade', () => {
       flushPendingPlaybackPositions: playback.flushPendingPlaybackPositions,
       getLocalLearningState: persistence.getLocalLearningState,
       getSavedFolderOptions: savedCollections.getSavedFolderOptions,
+      getSavedLessonFolderMembership:
+        savedCollections.getSavedLessonFolderMembership,
       isWatchHistoryEnabled: persistence.isWatchHistoryEnabled,
       loadCourseAssistantHistory: assistant.loadCourseAssistantHistory,
       loadCourseLearningData: mapping.loadCourseLearningData,

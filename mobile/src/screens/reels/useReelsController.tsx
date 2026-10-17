@@ -127,6 +127,7 @@ export const useReelsController = () => {
     savedLessons,
     savedLessonsVersion,
     savingLessons,
+    removeFromList,
     setSavedLessons,
     toggleSaved,
   } = useReelsSavedLessons({
@@ -590,6 +591,7 @@ export const useReelsController = () => {
     onContentOverlayVisibilityChange: handleContentOverlayVisibility,
     submitProject,
     applyReviewResolution,
+    removeFromList,
     toggleSaved,
     topInset: insets.top,
   });

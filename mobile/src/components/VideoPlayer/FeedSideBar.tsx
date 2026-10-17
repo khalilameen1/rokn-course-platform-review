@@ -41,6 +41,14 @@ interface FeedSideBarProps {
   bottomInset?: number;
   /** Resolves true when the server confirmed the save or removal. */
   onToggleSave: (folder?: SavedFolderOption | null) => Promise<boolean>;
+  /**
+   * Removes the lesson from one list only; resolves true when the server
+   * confirmed. Without it the list rows stay add-only.
+   */
+  onRemoveFromList?: (
+    folder: SavedFolderOption,
+    stillSavedElsewhere: boolean,
+  ) => Promise<boolean>;
   onBeforeOpenSave: () => boolean;
   onOpenChat: () => void;
   onOverlayVisibilityChange?: (visible: boolean) => void;
@@ -58,6 +66,7 @@ const FeedSideBar = ({
   savePending,
   bottomInset = 0,
   onToggleSave,
+  onRemoveFromList,
   onBeforeOpenSave,
   onOpenChat,
   onOverlayVisibilityChange,
@@ -109,16 +118,22 @@ const FeedSideBar = ({
     folders,
     loading: foldersLoading,
     loadError: folderLoadError,
+    membership: folderMembership,
     name: newFolderName,
     open: openSaveSheet,
+    removingFolderId,
     retryFolders,
     saveInFolder,
-    saveInWatchLater,
     setName: setNewFolderName,
+    toggleFolder,
+    toggleWatchLater,
+    watchLaterFolder,
   } = useSavedFolderPicker({
     scopeKey: saveScopeKey,
     dismiss: dismissSaveSheet,
+    lessonId: currentReel.lessonId,
     onBeforeOpen: onBeforeOpenSave,
+    onRemoveFromList,
     onToggleSave,
     present: presentSaveSheet,
   });
@@ -202,6 +217,13 @@ const FeedSideBar = ({
     }
   };
   const progress = courseLearningProgress(course.modules);
+  // Rows reflect the lists that hold the lesson once they are known; until
+  // then the watch-later row keeps the one-tap confirmation it already had.
+  const membershipKnown = Boolean(folderMembership);
+  const inWatchLater = folderMembership
+    ? Boolean(watchLaterFolder && folderMembership.has(watchLaterFolder.id))
+    : savedToWatchLater;
+  const rowsBusy = savePending || removingFolderId !== null;
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -444,37 +466,47 @@ const FeedSideBar = ({
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{
-                  disabled: savePending || savedToWatchLater,
-                  selected: savedToWatchLater,
+                  busy:
+                    !!watchLaterFolder &&
+                    removingFolderId === watchLaterFolder.id,
+                  disabled: rowsBusy || (!membershipKnown && inWatchLater),
+                  selected: inWatchLater,
                 }}
-                disabled={savePending || savedToWatchLater}
-                onPress={saveInWatchLater}
+                disabled={rowsBusy || (!membershipKnown && inWatchLater)}
+                onPress={toggleWatchLater}
                 style={({pressed}) => [
                   styles.folderRow,
                   pressed && styles.pressed,
                 ]}>
                 <Text style={styles.folderRowText}>المشاهدة لاحقًا</Text>
                 <Text style={styles.folderRowAction}>
-                  {savedToWatchLater ? 'اتحفظ' : 'حفظ'}
+                  {inWatchLater ? 'اتحفظ' : 'حفظ'}
                 </Text>
               </Pressable>
-              {folders.map(folder => (
-                <Pressable
-                  accessibilityRole="button"
-                  key={folder.id}
-                  accessibilityState={{disabled: savePending}}
-                  disabled={savePending}
-                  onPress={() => saveInFolder(folder)}
-                  style={({pressed}) => [
-                    styles.folderRow,
-                    pressed && styles.pressed,
-                  ]}>
-                  <Text style={styles.folderRowText}>{folder.name}</Text>
-                  <Text style={styles.folderRowAction}>
-                    {isSaved ? 'ضيفه' : 'حفظ'}
-                  </Text>
-                </Pressable>
-              ))}
+              {folders.map(folder => {
+                const inFolder = folderMembership?.has(folder.id) ?? false;
+                return (
+                  <Pressable
+                    accessibilityRole="button"
+                    key={folder.id}
+                    accessibilityState={{
+                      busy: removingFolderId === folder.id,
+                      disabled: rowsBusy,
+                      selected: inFolder,
+                    }}
+                    disabled={rowsBusy}
+                    onPress={() => toggleFolder(folder)}
+                    style={({pressed}) => [
+                      styles.folderRow,
+                      pressed && styles.pressed,
+                    ]}>
+                    <Text style={styles.folderRowText}>{folder.name}</Text>
+                    <Text style={styles.folderRowAction}>
+                      {inFolder ? 'اتحفظ' : isSaved ? 'ضيفه' : 'حفظ'}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           )}
           {!!folderLoadError && (
@@ -544,8 +576,8 @@ const FeedSideBar = ({
           {isSaved && (
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{disabled: savePending}}
-              disabled={savePending}
+              accessibilityState={{disabled: rowsBusy}}
+              disabled={rowsBusy}
               onPress={() => saveInFolder(null)}
               style={({pressed}) => [
                 styles.removeSaveButton,

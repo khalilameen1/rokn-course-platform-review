@@ -3,6 +3,7 @@ import {useSelector} from 'react-redux';
 import {
   createSavedFolderOption,
   getSavedFolderOptions,
+  getSavedLessonFolderMembership,
   type SavedFolderOption,
 } from '../courseLearningApi';
 import {isWatchLaterFolderName} from '../courseLearning/savedFolderNames';
@@ -13,15 +14,30 @@ import {
 } from '../../../constants/helpers';
 import type {RootState} from '../../../store/store';
 
+const REMOVE_FAILED = 'معرفناش نحدّث المحفوظات\nاتأكد من النت وجرب تاني';
+
+/**
+ * Facebook-style "Save to collection" sheet: each list row shows whether it
+ * holds the lesson and toggles that one membership. Adding keeps the existing
+ * save command (and closes the sheet); removing leaves the other lists alone.
+ */
 export function useSavedFolderPicker({
   dismiss,
+  lessonId,
   onBeforeOpen,
+  onRemoveFromList,
   onToggleSave,
   present,
   scopeKey = '',
 }: {
   dismiss: () => void;
+  /** With onRemoveFromList, the sheet reads which lists hold this lesson. */
+  lessonId?: string;
   onBeforeOpen: () => boolean;
+  onRemoveFromList?: (
+    folder: SavedFolderOption,
+    stillSavedElsewhere: boolean,
+  ) => Promise<boolean>;
   onToggleSave: (folder?: SavedFolderOption | null) => void;
   present: () => void;
   scopeKey?: string;
@@ -35,6 +51,17 @@ export function useSavedFolderPicker({
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [loadError, setLoadError] = useState('');
+  // Folder ids holding the lesson; null while unknown (rows stay add-only).
+  const [membership, setMembership] = useState<ReadonlySet<string> | null>(
+    null,
+  );
+  const [removingFolderId, setRemovingFolderId] = useState<string | null>(
+    null,
+  );
+  const removingRef = useRef(false);
+  // Bumped by every membership command so an older read cannot undo it.
+  const membershipRevisionRef = useRef(0);
+  const membershipEnabled = Boolean(lessonId && onRemoveFromList);
   const generationRef = useRef(0);
   const loadingRef = useRef(false);
   const creatingRef = useRef(false);
@@ -48,9 +75,11 @@ export function useSavedFolderPicker({
     generationRef.current += 1;
     loadingRef.current = false;
     creatingRef.current = false;
+    removingRef.current = false;
     if (mountedRef.current) {
       setLoading(false);
       setCreating(false);
+      setRemovingFolderId(null);
     }
   }, []);
 
@@ -62,6 +91,7 @@ export function useSavedFolderPicker({
     setCreating(false);
     setError('');
     setLoadError('');
+    setMembership(null);
   }, [close, ownerKey]);
 
   useEffect(() => {
@@ -91,13 +121,26 @@ export function useSavedFolderPicker({
           const boundary = await captureAccountSessionBoundary();
           if (!stillOwned(generation)) return;
           assertAccountSessionBoundary(boundary);
-          const nextFolders = await (requireFresh
-            ? getSavedFolderOptions({requireFresh: true})
-            : getSavedFolderOptions());
+          const membershipRevision = membershipRevisionRef.current;
+          const [nextFolders, nextMembership] = await Promise.all([
+            requireFresh
+              ? getSavedFolderOptions({requireFresh: true})
+              : getSavedFolderOptions(),
+            // Membership is an enhancement: when it cannot be read the rows
+            // keep their add-only behaviour instead of blocking the sheet.
+            membershipEnabled && lessonId
+              ? getSavedLessonFolderMembership(lessonId).catch(() => null)
+              : null,
+          ]);
           assertAccountSessionBoundary(boundary);
           if (stillOwned(generation)) {
             setFolders(nextFolders);
             setLoadError('');
+            if (membershipRevision === membershipRevisionRef.current) {
+              setMembership(
+                nextMembership ? new Set(nextMembership.folderIds) : null,
+              );
+            }
           }
         } catch {
           if (stillOwned(generation)) {
@@ -109,7 +152,7 @@ export function useSavedFolderPicker({
         }
       })();
     },
-    [stillOwned],
+    [lessonId, membershipEnabled, stillOwned],
   );
 
   const open = useCallback(() => {
@@ -121,6 +164,7 @@ export function useSavedFolderPicker({
     const generation = ++generationRef.current;
     setError('');
     setLoadError('');
+    setMembership(null);
     loadFolders(generation);
   }, [loadFolders, onBeforeOpen, ownerKey, present]);
 
@@ -155,12 +199,66 @@ export function useSavedFolderPicker({
     saveInFolder(watchLaterFolder);
   }, [saveInFolder, watchLaterFolder]);
 
+  const removeFromFolder = useCallback(
+    async (folder: SavedFolderOption) => {
+      const generation = visitGeneration;
+      if (
+        !onRemoveFromList ||
+        !membership?.has(folder.id) ||
+        removingRef.current ||
+        creatingRef.current ||
+        !stillOwned(generation)
+      )
+        return;
+      removingRef.current = true;
+      membershipRevisionRef.current += 1;
+      const remaining = new Set(membership);
+      remaining.delete(folder.id);
+      // Optimistic: the row flips now and is restored if the server refuses.
+      setMembership(remaining);
+      setRemovingFolderId(folder.id);
+      setError('');
+      let confirmed = false;
+      try {
+        confirmed = await onRemoveFromList(folder, remaining.size > 0);
+      } catch {
+        confirmed = false;
+      } finally {
+        if (generation === generationRef.current) removingRef.current = false;
+        if (stillOwned(generation)) {
+          setRemovingFolderId(null);
+          if (!confirmed) {
+            membershipRevisionRef.current += 1;
+            setMembership(current => new Set(current ?? []).add(folder.id));
+            setError(REMOVE_FAILED);
+          }
+        }
+      }
+    },
+    [membership, onRemoveFromList, stillOwned, visitGeneration],
+  );
+
+  /** A row that holds the lesson leaves that list; any other row adds to it. */
+  const toggleFolder = useCallback(
+    (folder: SavedFolderOption) => {
+      if (membership?.has(folder.id)) void removeFromFolder(folder);
+      else saveInFolder(folder);
+    },
+    [membership, removeFromFolder, saveInFolder],
+  );
+  const toggleWatchLater = useCallback(() => {
+    if (watchLaterFolder && membership?.has(watchLaterFolder.id)) {
+      void removeFromFolder(watchLaterFolder);
+    } else saveInWatchLater();
+  }, [membership, removeFromFolder, saveInWatchLater, watchLaterFolder]);
+
   const createAndSave = useCallback(async () => {
     const normalizedName = name.trim();
     if (
       !normalizedName ||
       creating ||
       creatingRef.current ||
+      removingRef.current ||
       !stillOwned(visitGeneration)
     )
       return;
@@ -210,11 +308,17 @@ export function useSavedFolderPicker({
     folders: visibleFolders,
     loading,
     loadError,
+    /** Folder ids holding the lesson; null when unknown. */
+    membership,
     name,
     open,
+    removingFolderId,
     retryFolders,
     saveInFolder,
     saveInWatchLater,
     setName,
+    toggleFolder,
+    toggleWatchLater,
+    watchLaterFolder,
   };
 }

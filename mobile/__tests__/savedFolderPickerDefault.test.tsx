@@ -5,6 +5,8 @@ const mockGetSavedFolderOptions = jest.fn();
 const mockCreateSavedFolderOption = jest.fn();
 const mockSaveLessonToFolder = jest.fn();
 const mockToggleWatchLater = jest.fn();
+const mockRemoveLessonFromSavedFolder = jest.fn();
+const mockGetSavedLessonFolderMembership = jest.fn();
 const mockCaptureBoundary = jest.fn();
 let mockScope = 'account-a';
 let mockEpoch = 1;
@@ -28,6 +30,10 @@ jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
     mockGetSavedFolderOptions(...args),
   saveLessonToFolder: (...args: unknown[]) => mockSaveLessonToFolder(...args),
   toggleWatchLater: (...args: unknown[]) => mockToggleWatchLater(...args),
+  removeLessonFromSavedFolder: (...args: unknown[]) =>
+    mockRemoveLessonFromSavedFolder(...args),
+  getSavedLessonFolderMembership: (...args: unknown[]) =>
+    mockGetSavedLessonFolderMembership(...args),
 }));
 
 import {useSavedFolderPicker} from '../src/components/VideoPlayer/feedSideBar/useSavedFolderPicker';
@@ -575,5 +581,248 @@ describe('saved folder default destination', () => {
     expect(mockToggleWatchLater).toHaveBeenCalledWith('44', false);
     expect(mockSaveLessonToFolder).not.toHaveBeenCalled();
     await act(async () => renderer.unmount());
+  });
+});
+
+describe('leaving one saved list from the reels owner', () => {
+  const mountOwner = async () => {
+    let saved!: ReturnType<typeof useReelsSavedLessons>;
+    const setConnectionNote = jest.fn();
+    const Harness = () => {
+      saved = useReelsSavedLessons({
+        loadedCourse: {current: {id: '3'}} as React.MutableRefObject<any>,
+        mounted: {current: true},
+        ownerGeneration: {current: 1},
+        scopeKey: 'account-a:course-3',
+        setConnectionNote,
+      });
+      return null;
+    };
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<Harness />);
+    });
+    act(() => saved.setSavedLessons(new Set(['44'])));
+    return {
+      get saved() {
+        return saved;
+      },
+      renderer,
+      setConnectionNote,
+    };
+  };
+  const reel = {lessonId: '44'} as any;
+  const folder = {id: '8', name: 'للمراجعة'};
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockScope = 'account-a';
+    mockEpoch = 1;
+    mockCaptureBoundary
+      .mockReset()
+      .mockImplementation(async () => ({epoch: mockEpoch, scope: mockScope}));
+  });
+
+  it.each([
+    ['keeps the bookmark when the server says another list holds it', true, false, true],
+    ['clears the bookmark when the server says no list holds it', false, true, false],
+    ['falls back to the loaded membership when the server does not say', null, true, true],
+  ] as const)('%s', async (_, stillSaved, hint, expected) => {
+    const removal = deferred<{stillSaved: boolean | null}>();
+    mockRemoveLessonFromSavedFolder.mockReturnValueOnce(removal.promise);
+    const view = await mountOwner();
+    let result!: Promise<boolean>;
+    await act(async () => {
+      result = view.saved.removeFromList(reel, folder, hint);
+    });
+    // Optimistic: the icon follows the sheet's membership view at once.
+    expect(view.saved.savedLessons.has('44')).toBe(hint);
+    expect(view.saved.savingLessons.has('44')).toBe(true);
+    await act(async () => {
+      removal.resolve({stillSaved});
+      await expect(result).resolves.toBe(true);
+    });
+    expect(mockRemoveLessonFromSavedFolder).toHaveBeenCalledWith('44', '8');
+    expect(mockToggleWatchLater).not.toHaveBeenCalled();
+    expect(view.saved.savedLessons.has('44')).toBe(expected);
+    expect(view.saved.savingLessons.has('44')).toBe(false);
+    expect(view.setConnectionNote).not.toHaveBeenCalled();
+    await act(async () => view.renderer.unmount());
+  });
+
+  it('restores the bookmark and reports the failure when the removal fails', async () => {
+    mockRemoveLessonFromSavedFolder.mockRejectedValueOnce(new Error('offline'));
+    const view = await mountOwner();
+    await act(async () => {
+      await expect(
+        view.saved.removeFromList(reel, folder, false),
+      ).rejects.toThrow('offline');
+    });
+    expect(view.saved.savedLessons.has('44')).toBe(true);
+    expect(view.saved.savingLessons.has('44')).toBe(false);
+    expect(view.setConnectionNote).toHaveBeenCalledWith(
+      'معرفناش نحدّث المحفوظات\nاتأكد من النت وجرب تاني',
+    );
+    await act(async () => view.renderer.unmount());
+  });
+
+  it('does not overlap a removal with another command on the same reel', async () => {
+    const removal = deferred<{stillSaved: boolean | null}>();
+    mockRemoveLessonFromSavedFolder.mockReturnValueOnce(removal.promise);
+    const view = await mountOwner();
+    let first!: Promise<boolean>;
+    await act(async () => {
+      first = view.saved.removeFromList(reel, folder, true);
+    });
+    await act(async () => {
+      await expect(view.saved.toggleSaved(reel, null)).resolves.toBe(false);
+    });
+    expect(mockToggleWatchLater).not.toHaveBeenCalled();
+    await act(async () => {
+      removal.resolve({stillSaved: true});
+      await first;
+    });
+    await act(async () => view.renderer.unmount());
+  });
+});
+
+describe('save sheet list membership', () => {
+  const mountWithMembership = async (
+    onRemoveFromList: jest.Mock<Promise<boolean>, any[]>,
+  ) => {
+    let picker!: ReturnType<typeof useSavedFolderPicker>;
+    const onToggleSave = jest.fn();
+    const dismiss = jest.fn();
+    const Harness = () => {
+      picker = useSavedFolderPicker({
+        dismiss,
+        lessonId: '44',
+        onBeforeOpen: () => true,
+        onRemoveFromList,
+        onToggleSave,
+        present: jest.fn(),
+        scopeKey: '3:44',
+      });
+      return null;
+    };
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<Harness />);
+    });
+    await act(async () => picker.open());
+    return {
+      get picker() {
+        return picker;
+      },
+      dismiss,
+      onToggleSave,
+      renderer,
+    };
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockScope = 'account-a';
+    mockEpoch = 1;
+    mockCaptureBoundary
+      .mockReset()
+      .mockImplementation(async () => ({epoch: mockEpoch, scope: mockScope}));
+    mockGetSavedFolderOptions.mockResolvedValue([
+      {id: '7', name: 'المشاهدة لاحقًا'},
+      {id: '8', name: 'للمراجعة'},
+      {id: '9', name: 'أفكار'},
+    ]);
+    mockGetSavedLessonFolderMembership.mockResolvedValue({
+      folderIds: ['7', '8'],
+      isSaved: true,
+    });
+  });
+
+  it('loads the lists that hold the lesson alongside the folder list', async () => {
+    const view = await mountWithMembership(jest.fn(async () => true));
+    expect(mockGetSavedLessonFolderMembership).toHaveBeenCalledWith('44');
+    expect(Array.from(view.picker.membership ?? [])).toEqual(['7', '8']);
+    expect(view.picker.watchLaterFolder).toEqual({
+      id: '7',
+      name: 'المشاهدة لاحقًا',
+    });
+    await act(async () => view.renderer.unmount());
+  });
+
+  it('keeps the sheet usable with add-only rows when membership cannot be read', async () => {
+    mockGetSavedLessonFolderMembership.mockRejectedValueOnce(new Error('404'));
+    const view = await mountWithMembership(jest.fn(async () => true));
+    expect(view.picker.membership).toBeNull();
+    expect(view.picker.loadError).toBe('');
+    expect(view.picker.folders).toHaveLength(2);
+    act(() => view.picker.toggleFolder(view.picker.folders[0]));
+    expect(view.onToggleSave).toHaveBeenCalledWith({id: '8', name: 'للمراجعة'});
+    await act(async () => view.renderer.unmount());
+  });
+
+  it('removes from one list in place, telling the owner another list remains', async () => {
+    const removal = deferred<boolean>();
+    const onRemoveFromList = jest.fn(() => removal.promise);
+    const view = await mountWithMembership(onRemoveFromList);
+    await act(async () => view.picker.toggleFolder({id: '8', name: 'للمراجعة'}));
+    expect(onRemoveFromList).toHaveBeenCalledWith(
+      {id: '8', name: 'للمراجعة'},
+      true,
+    );
+    expect(view.picker.membership?.has('8')).toBe(false);
+    expect(view.picker.removingFolderId).toBe('8');
+    // A second command waits for the first.
+    await act(async () => view.picker.toggleWatchLater());
+    expect(onRemoveFromList).toHaveBeenCalledTimes(1);
+    await act(async () => removal.resolve(true));
+    expect(view.picker.membership?.has('8')).toBe(false);
+    expect(view.picker.removingFolderId).toBeNull();
+    expect(view.onToggleSave).not.toHaveBeenCalled();
+    expect(view.dismiss).not.toHaveBeenCalled();
+
+    // Watch later now holds it alone: leaving it unsaves the lesson.
+    await act(async () => view.picker.toggleWatchLater());
+    expect(onRemoveFromList).toHaveBeenLastCalledWith(
+      {id: '7', name: 'المشاهدة لاحقًا'},
+      false,
+    );
+    await act(async () => view.renderer.unmount());
+  });
+
+  it('rolls the row back and explains when the removal is not confirmed', async () => {
+    const view = await mountWithMembership(jest.fn(async () => false));
+    await act(async () => view.picker.toggleFolder({id: '8', name: 'للمراجعة'}));
+    expect(view.picker.membership?.has('8')).toBe(true);
+    expect(view.picker.removingFolderId).toBeNull();
+    expect(view.picker.error).toBe(
+      'معرفناش نحدّث المحفوظات\nاتأكد من النت وجرب تاني',
+    );
+    await act(async () => view.renderer.unmount());
+  });
+
+  it('adds to a list that does not hold the lesson with the existing save', async () => {
+    const onRemoveFromList = jest.fn(async () => true);
+    const view = await mountWithMembership(onRemoveFromList);
+    act(() => view.picker.toggleFolder({id: '9', name: 'أفكار'}));
+    expect(view.onToggleSave).toHaveBeenCalledWith({id: '9', name: 'أفكار'});
+    expect(view.dismiss).toHaveBeenCalledTimes(1);
+    expect(onRemoveFromList).not.toHaveBeenCalled();
+    await act(async () => view.renderer.unmount());
+  });
+
+  it('does not let a removal that settles after closing touch the next visit', async () => {
+    const removal = deferred<boolean>();
+    const view = await mountWithMembership(jest.fn(() => removal.promise));
+    await act(async () => view.picker.toggleFolder({id: '8', name: 'للمراجعة'}));
+    act(() => view.picker.close());
+    mockGetSavedLessonFolderMembership.mockResolvedValueOnce({
+      folderIds: ['7'],
+      isSaved: true,
+    });
+    await act(async () => view.picker.open());
+    await act(async () => removal.resolve(false));
+    expect(Array.from(view.picker.membership ?? [])).toEqual(['7']);
+    expect(view.picker.error).toBe('');
+    await act(async () => view.renderer.unmount());
   });
 });

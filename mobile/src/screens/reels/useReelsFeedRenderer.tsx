@@ -75,6 +75,11 @@ type ReelsFeedActions = {
     files: SelectedProjectFile[],
     note?: string,
   ) => Promise<ProjectSubmissionOutcome>;
+  removeFromList: (
+    reel: CourseReel,
+    folder: SavedFolderOption,
+    stillSavedElsewhere: boolean,
+  ) => Promise<boolean>;
   toggleSaved: (
     reel: CourseReel,
     folder?: SavedFolderOption | null,
@@ -132,6 +137,17 @@ const ReelsFeedRow = memo(
         call(latest =>
           reel
             ? latest.toggleSaved(reel, folder).catch(() => false)
+            : undefined,
+        ) ?? Promise.resolve(false),
+      [call, reel],
+    );
+    const onRemoveFromList = useCallback(
+      (folder: SavedFolderOption, stillSavedElsewhere: boolean) =>
+        call(latest =>
+          reel
+            ? latest
+                .removeFromList(reel, folder, stillSavedElsewhere)
+                .catch(() => false)
             : undefined,
         ) ?? Promise.resolve(false),
       [call, reel],
@@ -290,6 +306,7 @@ const ReelsFeedRow = memo(
         onPlaybackSpeedChange={onPlaybackSpeedChange}
         onQualityChange={onQualityChange}
         onToggleSave={onToggleSave}
+        onRemoveFromList={onRemoveFromList}
         onBeforeOpenSave={onBeforeOpenSave}
         onOpenChat={onOpenChat}
         onOverlayVisibilityChange={onOverlayVisibilityChange}
@@ -356,6 +373,7 @@ export const useReelsFeedRenderer = ({
   submitProject,
   applyReviewResolution,
   refreshCourseEntitlements,
+  removeFromList,
   toggleSaved,
   topInset,
 }: {
@@ -416,6 +434,11 @@ export const useReelsFeedRenderer = ({
     projectId: string,
     resolution: ProjectResolution,
   ) => void;
+  removeFromList: (
+    reel: CourseReel,
+    folder: SavedFolderOption,
+    stillSavedElsewhere: boolean,
+  ) => Promise<boolean>;
   toggleSaved: (
     reel: CourseReel,
     folder?: SavedFolderOption | null,
@@ -437,6 +460,7 @@ export const useReelsFeedRenderer = ({
     preview,
     previewCount,
     refreshCourseEntitlements,
+    removeFromList,
     requestPlaybackManifest,
     scheduleDelayedAction,
     scrollToIndex,

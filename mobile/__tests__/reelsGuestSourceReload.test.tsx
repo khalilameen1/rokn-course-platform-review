@@ -147,6 +147,7 @@ it.each([
         setChatVisible: noop,
         onContentOverlayVisibilityChange: noop,
         submitProject: jest.fn(),
+        removeFromList: jest.fn(),
         toggleSaved: jest.fn(),
         topInset: 0,
       });

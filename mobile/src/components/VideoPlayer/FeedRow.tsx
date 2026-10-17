@@ -49,6 +49,14 @@ interface FeedRowProps {
   onQualityChange: (quality: VideoQuality) => void;
   /** Resolves true when the server confirmed the save or removal. */
   onToggleSave: (folder?: SavedFolderOption | null) => Promise<boolean>;
+  /**
+   * Removes the lesson from one list only; resolves true when the server
+   * confirmed. Without it the save sheet keeps its add-only rows.
+   */
+  onRemoveFromList?: (
+    folder: SavedFolderOption,
+    stillSavedElsewhere: boolean,
+  ) => Promise<boolean>;
   onBeforeOpenSave: () => boolean;
   onOpenChat: () => void;
   onOverlayVisibilityChange?: (scopeKey: string, visible: boolean) => void;
@@ -87,6 +95,7 @@ const FeedRow = ({
   onPlaybackSpeedChange,
   onQualityChange,
   onToggleSave,
+  onRemoveFromList,
   onBeforeOpenSave,
   onOpenChat,
   onOverlayVisibilityChange,
@@ -330,6 +339,7 @@ const FeedRow = ({
               savePending={savePending}
               bottomInset={bottomInset}
               onToggleSave={onToggleSave}
+              onRemoveFromList={onRemoveFromList}
               onBeforeOpenSave={onBeforeOpenSave}
               onOpenChat={onOpenChat}
               onOverlayVisibilityChange={setSidebarOverlayVisible}

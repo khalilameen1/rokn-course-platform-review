@@ -239,9 +239,10 @@ describe('saved folder cache metadata round-trip', () => {
           true,
         );
       } else if (operation === 'remove') {
-        await expect(
-          removeLessonFromSavedFolder('11', '7'),
-        ).resolves.toBeUndefined();
+        // This server response carries no still_saved answer.
+        await expect(removeLessonFromSavedFolder('11', '7')).resolves.toEqual({
+          stillSaved: null,
+        });
         expect(removeSavedLessonFromCache).toHaveBeenCalledTimes(1);
       } else {
         await expect(toggleWatchLater('11', true)).resolves.toBe(false);
