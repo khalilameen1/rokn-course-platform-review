@@ -290,6 +290,23 @@ final class PlaybackManifestService
             }
         }
 
+        // Sideloaded WebVTT next to the HLS source. The player also honours
+        // subtitle renditions declared in the master playlist; these cover a
+        // playlist that does not declare them.
+        $captionTracks = [];
+        foreach ((array) data_get($state->manifest, 'captions', []) as $caption) {
+            $language = (string) ($caption['language'] ?? '');
+            $file = $this->delivery->videoCaption((string) $lesson->bunny_video_id, $language, $expiresInSeconds);
+            if ($file !== null) {
+                $captionTracks[] = [
+                    'url' => $file['url'],
+                    'language' => $language,
+                    'label' => (string) ($caption['label'] ?? '') ?: ($language === 'ar' ? 'العربية' : $language),
+                    'kind' => 'captions',
+                ];
+            }
+        }
+
         return [
             'playback_session_id' => $session->id,
             'lesson_id' => $lesson->id,
@@ -308,6 +325,7 @@ final class PlaybackManifestService
             'playback_reason' => $playbackReason,
             'network_policy' => $networkPolicy,
             'media_status' => $state->status,
+            'caption_tracks' => $captionTracks,
         ];
     }
 

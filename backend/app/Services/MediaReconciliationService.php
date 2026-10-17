@@ -281,6 +281,7 @@ final class MediaReconciliationService
                 'height' => $details['height'] ?? null,
                 'available_resolutions' => $resolutions->all(),
                 'thumbnail_file_name' => $details['thumbnailFileName'] ?? null,
+                'captions' => BunnyService::captionTracks($details),
             ],
             'last_error_code' => $failed ? 'provider_encode_failed' : null,
         ]);

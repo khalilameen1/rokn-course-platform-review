@@ -76,6 +76,45 @@ final class LearnerLockOrderTest extends ApiTestCase
         );
     }
 
+    public function test_manifest_sideloads_the_reconciled_caption_tracks(): void
+    {
+        (require database_path('migrations/2026_08_11_020000_add_integrity_state_to_lesson_media_states.php'))->up();
+        DB::table('lessons')->where('id', 10)->update([
+            'video_source_type' => 'bunny',
+            'bunny_video_id' => 'video-guid-10',
+        ]);
+        DB::table('lesson_media_states')->insert([
+            'lesson_id' => 10,
+            'provider' => 'bunny',
+            'provider_media_id' => 'video-guid-10',
+            'status' => 'ready',
+            'integrity_status' => 'healthy',
+            'last_reconciled_at' => now(),
+            'duration_seconds' => 25,
+            'manifest' => json_encode(['captions' => [['language' => 'ar', 'label' => '']]]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $delivery->shouldReceive('videoPlayback')->andReturn([
+            'url' => 'https://vz-test.b-cdn.net/video-guid-10/playlist.m3u8?token=signed',
+            'expires_at' => now()->addHour()->toIso8601String(),
+        ]);
+        $delivery->shouldReceive('videoCaption')->once()
+            ->with('video-guid-10', 'ar', Mockery::type('int'))
+            ->andReturn(['url' => 'https://vz-test.b-cdn.net/video-guid-10/captions/ar.vtt?token=signed']);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
+
+        $manifest = app(PlaybackManifestService::class)->issue($this->user, Lesson::query()->findOrFail(10));
+
+        self::assertSame([[
+            'url' => 'https://vz-test.b-cdn.net/video-guid-10/captions/ar.vtt?token=signed',
+            'language' => 'ar',
+            'label' => 'العربية',
+            'kind' => 'captions',
+        ]], $manifest['caption_tracks']);
+    }
+
     public function test_first_completion_locks_learner_before_sharing_the_course(): void
     {
         $session = $this->enrolledTwoLessonCourse();

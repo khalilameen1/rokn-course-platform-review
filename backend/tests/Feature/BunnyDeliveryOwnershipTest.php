@@ -106,6 +106,16 @@ final class BunnyDeliveryOwnershipTest extends TestCase
         self::assertStringEndsWith('/' . self::GUID . '/thumbnail.jpg', $thumbnail['url']);
         self::assertStringContainsString('token_path=' . rawurlencode('/' . self::GUID . '/'), $thumbnail['url']);
         self::assertNull($delivery->videoThumbnail(self::GUID, 'invalid?.jpg'));
+
+        // Bunny Stream serves captions under the same signed directory.
+        $caption = $delivery->videoCaption(self::GUID, 'ar', 1800);
+        self::assertNotNull($caption);
+        self::assertStringEndsWith('/' . self::GUID . '/captions/ar.vtt', $caption['url']);
+        self::assertStringContainsString('token_path=' . rawurlencode('/' . self::GUID . '/'), $caption['url']);
+        $expires = strtotime($caption['expires_at']);
+        self::assertGreaterThanOrEqual($before + 1800, $expires);
+        self::assertNull($delivery->videoCaption(self::GUID, '../x'));
+        self::assertNull($delivery->videoCaption(self::GUID, 'ara'));
     }
 
     #[DataProvider('incompleteStreamConfiguration')]
@@ -116,6 +126,7 @@ final class BunnyDeliveryOwnershipTest extends TestCase
         self::assertNull($delivery->videoPlayback(self::GUID));
         self::assertNull($delivery->videoEmbed(self::GUID));
         self::assertNull($delivery->videoThumbnail(self::GUID, 'thumbnail.jpg'));
+        self::assertNull($delivery->videoCaption(self::GUID, 'ar'));
     }
 
     public static function incompleteStreamConfiguration(): array

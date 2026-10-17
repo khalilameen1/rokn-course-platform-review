@@ -51,6 +51,34 @@ class BunnyDeliveryService
         ];
     }
 
+    /**
+     * A caption file Bunny Stream serves at /{guid}/captions/{lang}.vtt, signed
+     * with the same directory token and lifetime as the HLS source.
+     */
+    public function videoCaption(string $videoGuid, string $language, ?int $expiresInSeconds = null): ?array
+    {
+        if (!$this->playbackIsSecurelyConfigured() || preg_match('/^[a-z]{2}$/', $language) !== 1) {
+            return null;
+        }
+        $cdnHostname = $this->configuration->getCdnHostname();
+        if (!$cdnHostname) {
+            return null;
+        }
+
+        $expiresAt = time() + $this->playbackLifetime($expiresInSeconds);
+        $directoryPath = "/{$videoGuid}/";
+
+        return [
+            'url' => $this->generateSignedDirectoryUrl(
+                $cdnHostname,
+                "{$directoryPath}captions/{$language}.vtt",
+                $directoryPath,
+                $expiresAt
+            ),
+            'expires_at' => date('c', $expiresAt),
+        ];
+    }
+
     /** Issue a thumbnail URL in the same protected Stream directory. */
     public function videoThumbnail(string $videoGuid, string $fileName, int $bucketSeconds = 0): ?array
     {

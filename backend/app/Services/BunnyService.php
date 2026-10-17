@@ -260,6 +260,28 @@ class BunnyService
     }
 
     /**
+     * Caption tracks from Bunny's Get Video response ("captions": [{srclang,
+     * label}]), uploaded or auto-transcribed. Only two-letter languages are
+     * kept: that is what both native players accept as a sideloaded WebVTT.
+     *
+     * @return list<array{language:string,label:string}>
+     */
+    public static function captionTracks(array $details): array
+    {
+        $tracks = [];
+        foreach ((array) ($details['captions'] ?? []) as $caption) {
+            $language = strtolower(trim((string) (is_array($caption) ? ($caption['srclang'] ?? '') : '')));
+            if (preg_match('/^[a-z]{2}$/', $language) !== 1 || isset($tracks[$language])) {
+                continue;
+            }
+            $label = trim((string) ($caption['label'] ?? ''));
+            $tracks[$language] = ['language' => $language, 'label' => mb_substr($label, 0, 60)];
+        }
+
+        return array_values($tracks);
+    }
+
+    /**
      * GET /videos/{id} VideoModelStatus, not webhook notification Status.
      * https://github.com/BunnyWay/bunny-stream-android/blob/main/bunny-stream-api/src/main/java/net/bunny/api/model/VideoModelStatus.kt
      * Webhooks use a separate event enum (for example, event 3 is Finished,

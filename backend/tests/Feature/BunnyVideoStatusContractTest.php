@@ -46,6 +46,12 @@ final class BunnyVideoStatusContractTest extends TestCase
                 'encodeProgress' => 100,
                 'availableResolutions' => '720p,480p',
                 'thumbnailFileName' => 'thumbnail.jpg',
+                'captions' => [
+                    ['srclang' => 'AR', 'label' => 'العربية'],
+                    ['srclang' => 'ar', 'label' => 'duplicate'],
+                    ['srclang' => 'en-US', 'label' => 'not a two-letter tag'],
+                    'malformed',
+                ],
             ],
             'http_status' => 200,
         ]);
@@ -66,6 +72,7 @@ final class BunnyVideoStatusContractTest extends TestCase
         $state = $health->probe($lesson);
         self::assertSame($expected, $state->status);
         self::assertSame($status, $state->manifest['status']);
+        self::assertSame([['language' => 'ar', 'label' => 'العربية']], $state->manifest['captions']);
         self::assertSame($expected === 'failed' ? 'provider_encode_failed' : null, $state->last_error_code);
         Http::assertNothingSent();
     }
