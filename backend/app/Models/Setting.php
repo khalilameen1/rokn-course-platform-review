@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Services\PublicAppSettingsService;
 use Illuminate\Support\Facades\Cache;
 use App\Support\AfterCommitCacheInvalidation;
+use App\Support\DatabaseCapabilities;
 use Throwable;
 class Setting extends Model
 {
@@ -17,6 +18,15 @@ class Setting extends Model
         'public-packages:v2',
         'wallet:public-settings:v2',
     ];
+
+    private const RUNTIME_CONFIG_CACHE_PREFIX = 'settings:runtime-config:v1:';
+
+    /**
+     * Bounded even though every Eloquent write invalidates it: a reader that
+     * loaded the old row just before a save's after-commit forget could
+     * otherwise republish the stale projection indefinitely.
+     */
+    private const RUNTIME_CONFIG_TTL_SECONDS = 600;
 
     private const DEFAULT_COIN_RULES_AR = "استخدم عملات ركن عند شراء الكورسات والخدمات داخل التطبيق\nتظهر لك القيمة المتاحة قبل تأكيد الشراء";
     private const DEFAULT_COIN_RULES_EN = "Use Rokn Coins for courses and services inside the app\nYou will see the available amount before confirming a purchase";
@@ -143,9 +153,63 @@ class Setting extends Model
             foreach (self::DERIVED_CACHE_KEYS as $key) {
                 Cache::forget($key);
             }
+            Cache::forget(self::runtimeConfigCacheKey());
         };
 
         AfterCommitCacheInvalidation::run($forget, static fn (Throwable $exception) => report($exception));
+    }
+
+    /**
+     * The `settings.*` config projection the HTTP kernel loads on every
+     * request. Cached like spatie/laravel-settings: read through the
+     * application cache, forgotten by the model's saved/deleted events and
+     * namespaced by the schema cache version so migrations that write the
+     * settings table directly are never masked by an older projection.
+     *
+     * @return array<string, mixed>
+     */
+    public static function runtimeConfig(): array
+    {
+        try {
+            $key = self::runtimeConfigCacheKey();
+            $cached = Cache::get($key);
+            if (is_array($cached)) {
+                return $cached;
+            }
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return self::loadRuntimeConfig() ?? [];
+        }
+
+        $config = self::loadRuntimeConfig();
+        if ($config === null) {
+            // Fresh install or code ahead of its migration: never cache.
+            return [];
+        }
+
+        try {
+            Cache::put($key, $config, self::RUNTIME_CONFIG_TTL_SECONDS);
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+
+        return $config;
+    }
+
+    private static function runtimeConfigCacheKey(): string
+    {
+        return self::RUNTIME_CONFIG_CACHE_PREFIX . DatabaseCapabilities::cacheVersion();
+    }
+
+    /** @return array<string, mixed>|null null when the table is not migrated yet */
+    private static function loadRuntimeConfig(): ?array
+    {
+        if (!DatabaseCapabilities::hasTable('settings')) {
+            return null;
+        }
+
+        return self::query()->first()?->toArray() ?? [];
     }
 
     /**

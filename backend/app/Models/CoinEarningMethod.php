@@ -6,7 +6,7 @@ use App\Services\PublicAppSettingsService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\Facades\Schema;
+use App\Support\DatabaseCapabilities;
 
 class CoinEarningMethod extends Model
 {
@@ -17,8 +17,8 @@ class CoinEarningMethod extends Model
     public static function bootSoftDeletes(): void
     {
         if (
-            Schema::hasTable('coin_earning_methods')
-            && Schema::hasColumn('coin_earning_methods', 'deleted_at')
+            DatabaseCapabilities::hasTable('coin_earning_methods')
+            && DatabaseCapabilities::hasColumn('coin_earning_methods', 'deleted_at')
         ) {
             static::addGlobalScope(new SoftDeletingScope);
         }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\AppVersion;
+use App\Support\DatabaseCapabilities;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
@@ -86,7 +87,7 @@ final class AppReleasePolicyService
     public function activeVersions(string $platform, ?string $channel): Collection
     {
         try {
-            if (!Schema::hasTable('app_versions')) {
+            if (!DatabaseCapabilities::hasTable('app_versions')) {
                 return collect();
             }
 

@@ -7,7 +7,7 @@ namespace App\Http\Middleware;
 use App\Auth\Totp;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
+use App\Support\DatabaseCapabilities;
 
 final class RequireAdminMfa
 {
@@ -25,7 +25,7 @@ final class RequireAdminMfa
             403
         );
 
-        if (!Schema::hasColumns('users', [
+        if (!DatabaseCapabilities::hasColumns('users', [
             'admin_totp_secret',
             'admin_totp_confirmed_at',
             'admin_totp_last_used_step',

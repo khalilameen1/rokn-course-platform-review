@@ -6,13 +6,13 @@ namespace App\Services;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+use App\Support\DatabaseCapabilities;
 
 final class RateLimitObservabilityService
 {
     public function record(Request $request, string $bucketKey, int $retryAfter): void
     {
-        if (!Schema::hasTable('rate_limit_events')) {
+        if (!DatabaseCapabilities::hasTable('rate_limit_events')) {
             return;
         }
 

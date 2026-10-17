@@ -8,7 +8,7 @@ use App\Services\AdminAuthoringCreateIntentService;
 use App\Support\PrivacyFingerprint;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
+use App\Support\DatabaseCapabilities;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -64,7 +64,7 @@ final class AuditAdminMutation
         $draftConsumed = $this->consumeDraftReceipt($request, $response);
 
         try {
-            if (!Schema::hasTable('admin_audit_logs') || !$request->user()) {
+            if (!DatabaseCapabilities::hasTable('admin_audit_logs') || !$request->user()) {
                 return $response;
             }
 
@@ -161,7 +161,7 @@ final class AuditAdminMutation
         }
         $request->session()->put('admin_authoring_draft_receipts', $receipts);
         try {
-            if ($request->user() && Schema::hasTable('admin_authoring_draft_receipts')) {
+            if ($request->user() && DatabaseCapabilities::hasTable('admin_authoring_draft_receipts')) {
                 DB::table('admin_authoring_draft_receipts')->insertOrIgnore([
                     'receipt' => $draftReceipt,
                     'actor_id' => $request->user()->id,

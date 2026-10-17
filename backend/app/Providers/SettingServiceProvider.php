@@ -4,7 +4,6 @@ namespace App\Providers;
 
 use App\Models\Setting;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Throwable;
 
@@ -45,15 +44,10 @@ class SettingServiceProvider extends ServiceProvider
         }
 
         try {
-            if (!Schema::hasTable('settings')) {
-                return;
-            }
-
-            $setting = Setting::first();
-            if ($setting) {
-                foreach ($setting->toArray() as $key => $value) {
-                    Config::set('settings.'.$key, $value);
-                }
+            // Cached projection invalidated by Setting saved/deleted events;
+            // a cache hit costs no information_schema or settings query.
+            foreach (Setting::runtimeConfig() as $key => $value) {
+                Config::set('settings.'.$key, $value);
             }
         } catch (Throwable $exception) {
             // Readiness performs its own database check and will return a
