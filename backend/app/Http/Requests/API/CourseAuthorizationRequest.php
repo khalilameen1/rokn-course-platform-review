@@ -35,7 +35,9 @@ class CourseAuthorizationRequest extends FormRequest
             'course_id' => 'required|exists:courses,id',
             'access_plan_code' => 'required|string|in:basic,guided,mentor',
             'coupon_code' => 'nullable|string|min:3|max:50',
-            'expected_price' => 'nullable|integer|min:0|max:100000000',
+            // A wallet debit is bound to the total the learner reviewed, exactly
+            // like course-checkouts and the plan-upgrade purchase.
+            'expected_price' => 'required|integer|min:0|max:100000000',
             'expected_course_revision' => 'nullable|integer|min:1',
             'idempotency_key' => [
                 'nullable',

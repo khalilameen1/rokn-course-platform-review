@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\CourseCheckoutRejected;
 use App\Support\UnicodeText;
 
 use App\Models\Coupon;
@@ -34,16 +35,19 @@ final class CourseCouponService
             ];
         }
 
-        $query = Coupon::query()->whereRaw('UPPER(code) = ?', [$normalized]);
+        // Same contract as course codes: the model stores the normalized
+        // identifier under a unique index, so this is one indexed row lookup
+        // (and, when locking, one locked row instead of a scanned range).
+        $query = Coupon::query()->where('code', $normalized);
         if ($lockForUpdate) {
             $query->lockForUpdate();
         }
         $coupon = $query->first();
         if (!$coupon || !$coupon->isAvailableAt(now())) {
-            throw new \DomainException('coupon_invalid');
+            throw new CourseCheckoutRejected(CourseCheckoutRejected::COUPON_INVALID);
         }
         if ($coupon->course_id !== null && (int) $coupon->course_id !== $courseId) {
-            throw new \DomainException('coupon_not_applicable');
+            throw new CourseCheckoutRejected(CourseCheckoutRejected::COUPON_NOT_APPLICABLE);
         }
 
         $alreadyUsed = CouponRedemption::query()
@@ -51,14 +55,14 @@ final class CourseCouponService
             ->where('user_id', $userId)
             ->exists();
         if ($alreadyUsed) {
-            throw new \DomainException('coupon_already_used');
+            throw new CourseCheckoutRejected(CourseCheckoutRejected::COUPON_ALREADY_USED);
         }
         if (
             $coupon->max_redemptions !== null
             && CouponRedemption::query()->where('coupon_id', $coupon->id)->count()
                 >= (int) $coupon->max_redemptions
         ) {
-            throw new \DomainException('coupon_quota_reached');
+            throw new CourseCheckoutRejected(CourseCheckoutRejected::COUPON_QUOTA_REACHED);
         }
 
         $percentage = max(1, min(100, (int) $coupon->balance));
@@ -69,7 +73,7 @@ final class CourseCouponService
         $maximumDiscount = min($promotion['remaining'], max(0, $price - min($price, max(0, $minimumPaidCoins))));
         $discount = min($calculatedDiscount, $maximumDiscount);
         if ($discount <= 0) {
-            throw new \DomainException('coupon_not_applicable');
+            throw new CourseCheckoutRejected(CourseCheckoutRejected::COUPON_NOT_APPLICABLE);
         }
 
         return [

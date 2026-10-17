@@ -20,6 +20,7 @@ class Order extends Model
         'access_plan_id',
         'access_plan_snapshot',
         'parent_order_id',
+        'purpose',
         'package_id',
         'package_coins',
         'course_code_id',
@@ -112,6 +113,14 @@ class Order extends Model
     const PAYMENT_METHOD_APP_STORE = 'app_store';
 
     public const KASHIER_CHECKOUT_TTL_MINUTES = 30;
+
+    /** Write-once order intent; null is an ordinary course or package order. */
+    public const PURPOSE_COURSE_PLAN_UPGRADE = 'course_plan_upgrade';
+
+    public function isCoursePlanUpgrade(): bool
+    {
+        return $this->purpose === self::PURPOSE_COURSE_PLAN_UPGRADE;
+    }
 
     /** The purchased snapshot, never the package's current catalogue terms. */
     public function packageCoinAmount(): int
@@ -277,7 +286,7 @@ class Order extends Model
         });
 
         static::updating(function (Order $order): void {
-            foreach (['total_coins', 'paid_coins', 'reward_coins', 'package_coins', 'checkout_request_key', 'checkout_expires_at', 'access_plan_id', 'access_plan_snapshot', 'parent_order_id'] as $field) {
+            foreach (['total_coins', 'paid_coins', 'reward_coins', 'package_coins', 'checkout_request_key', 'checkout_expires_at', 'access_plan_id', 'access_plan_snapshot', 'parent_order_id', 'purpose'] as $field) {
                 // Allocation is written once with the course order and is an
                 // accounting fact, not editable dashboard metadata.
                 if ($order->getOriginal($field) !== null && $order->isDirty($field)) {

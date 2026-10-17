@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\CourseCheckoutRejected;
 use App\Models\Bill;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\CouponRedemption;
 use App\Models\Order;
-use App\Services\AiEntitlementBudgetService;
 use App\Services\CourseAccessPlanService;
 use App\Services\CourseCouponService;
 use App\Services\FinancialProvenanceService;
@@ -24,7 +24,7 @@ final class CoursePurchaseAction
         private readonly FinancialEntitlementHoldReadService $holds,
         private readonly CourseAccessPlanService $plans,
         private readonly CourseCouponService $coupons,
-        private readonly AiEntitlementBudgetService $aiBudget) {}
+        private readonly CourseEnrollmentWriter $enrollments) {}
 
     public function execute(
         \App\Models\User $user,
@@ -41,7 +41,7 @@ final class CoursePurchaseAction
         $holds = $this->holds;
         $planService = $this->plans;
         $coupons = $this->coupons;
-        $aiBudget = $this->aiBudget;
+        $enrollments = $this->enrollments;
         return DB::transaction(function () use (
                 $user,
                 $course,
@@ -50,7 +50,7 @@ final class CoursePurchaseAction
                 $holds,
                 $planService,
                 $coupons,
-                $aiBudget,
+                $enrollments,
                 $requestedPlanCode,
                 $requestedCouponCode,
                 $clientIdempotencyKey,
@@ -66,11 +66,7 @@ final class CoursePurchaseAction
                 \App\Models\User::query()->lockForUpdate()->findOrFail($user->id);
                 $lockedCourse = Course::query()->sharedLock()->findOrFail($course->id);
 
-                $existingEnrollment = CourseEnrollment::query()
-                    ->where('user_id', $user->id)
-                    ->where('course_id', $lockedCourse->id)
-                    ->lockForUpdate()
-                    ->first();
+                $existingEnrollment = $enrollments->lockedFor((int) $user->id, (int) $lockedCourse->id);
 
                 if ($clientIdempotencyKey !== null) {
                     $replayedOrder = Order::query()
@@ -87,7 +83,7 @@ final class CoursePurchaseAction
                             $requestedCouponCode,
                             $expectedPrice
                         )) {
-                            throw new \DomainException('checkout_idempotency_conflict');
+                            throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_IDEMPOTENCY_CONFLICT);
                         }
                         if (!$existingEnrollment) {
                             throw new \LogicException('Committed course order has no enrollment.');
@@ -97,7 +93,7 @@ final class CoursePurchaseAction
                             || !$existingEnrollment->isActive()
                             || $holds->enrollmentHasActiveHold($existingEnrollment, ['course'])
                         ) {
-                            throw new \DomainException('course_purchase_not_effective');
+                            throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_PURCHASE_NOT_EFFECTIVE);
                         }
 
                         return [
@@ -120,7 +116,7 @@ final class CoursePurchaseAction
                             && !$existingEnrollment->order->isFinanciallyEffective())
                         || $holds->enrollmentHasActiveHold($existingEnrollment, ['course'])
                     ) {
-                        throw new \DomainException('course_access_under_review');
+                        throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_ACCESS_UNDER_REVIEW);
                     }
                     $currentTerms = $planService->termsForEnrollment($existingEnrollment);
                     $currentPlanCode = strtolower(trim((string) ($currentTerms['code'] ?? '')));
@@ -147,11 +143,11 @@ final class CoursePurchaseAction
                 }
 
                 if (!$lockedCourse->isAvailableForNewPurchase()) {
-                    throw new \DomainException('course_not_available');
+                    throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_NOT_AVAILABLE);
                 }
                 if ($expectedCourseRevision !== null
                     && $expectedCourseRevision !== $this->publishedRevision($lockedCourse)) {
-                    throw new \DomainException('course_terms_changed');
+                    throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_TERMS_CHANGED);
                 }
 
                 $selectedPlan = $planService->selectedPlan($lockedCourse, $requestedPlanCode);
@@ -182,7 +178,7 @@ final class CoursePurchaseAction
                 );
                 $finalAmount = (int) $couponQuote['final'];
                 if ($expectedPrice !== null && $expectedPrice !== $finalAmount) {
-                    throw new \DomainException('course_price_changed');
+                    throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_PRICE_CHANGED);
                 }
 
                 $order = Order::create([
@@ -283,24 +279,15 @@ final class CoursePurchaseAction
                     ]);
                 }
 
-                $enrollment = $existingEnrollment ?: new CourseEnrollment([
-                    'user_id' => $user->id,
-                    'course_id' => $lockedCourse->id,
-                ]);
-                if ($existingEnrollment) {
-                    // A repurchase starts a fresh AI entitlement cycle.
-                    $aiBudget->resetForNewPurchase($existingEnrollment);
-                }
-                $enrollment->fill([
-                    'order_id' => $order->id,
-                    'access_plan_order_id' => $order->id,
-                    'access_plan_id' => $selectedPlan->id,
-                    'access_plan_snapshot' => $planSnapshot,
-                    'enrolled_at' => $enrollment->enrolled_at ?: now(),
-                    'expires_at' => null,
-                    'is_active' => true,
-                    'access_granted_at' => now(),
-                ])->save();
+                // A repurchase starts a fresh AI entitlement cycle.
+                $enrollment = $enrollments->grantPurchasedPlan(
+                    $existingEnrollment,
+                    (int) $user->id,
+                    (int) $lockedCourse->id,
+                    $order,
+                    $selectedPlan,
+                    $planSnapshot
+                );
 
                 return [
                     'enrollment' => $enrollment,

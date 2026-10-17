@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\KashierCheckoutConflict;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\User;
@@ -198,13 +199,13 @@ final readonly class KashierCheckoutFlowService
             return $this->responses->make(false, 'راجع تفاصيل الاشتراك قبل الدفع', [], 409,
                 'course_checkout_changed');
         } catch (\UnexpectedValueException $exception) {
-            $pendingCheckout = $exception->getMessage() === 'A previous payment is still pending confirmation.';
-            $packageUnavailable = $exception->getMessage()
-                === 'This package is not available for checkout.';
-            $packageTermsChanged = in_array($exception->getMessage(), [
-                'Package terms changed before checkout.',
-                'Checkout idempotency key was replayed with different package terms.',
-            ], true);
+            // Branch on the typed reason, never on the diagnostic message.
+            $reason = $exception instanceof KashierCheckoutConflict
+                ? $exception->reason
+                : KashierCheckoutConflict::IDEMPOTENCY_CONFLICT;
+            $pendingCheckout = $reason === KashierCheckoutConflict::PENDING_CHECKOUT_EXISTS;
+            $packageUnavailable = $reason === KashierCheckoutConflict::PACKAGE_NOT_AVAILABLE;
+            $packageTermsChanged = $reason === KashierCheckoutConflict::PACKAGE_TERMS_CHANGED;
             $pendingOrder = $pendingCheckout
                 ? Order::query()
                     ->where('user_id', $user->id)
@@ -259,13 +260,7 @@ final readonly class KashierCheckoutFlowService
                             : "تغيّر طلب الدفع أثناء التنفيذ\nأعد المحاولة")),
                 [],
                 409,
-                $pendingCheckout
-                    ? 'pending_checkout_exists'
-                    : ($packageUnavailable
-                        ? 'package_not_available'
-                        : ($packageTermsChanged
-                            ? 'package_terms_changed'
-                            : 'checkout_idempotency_conflict'))
+                $reason
             );
         } catch (\Throwable $exception) {
             Log::error('Kashier order creation failed', [

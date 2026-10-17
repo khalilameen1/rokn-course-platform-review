@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\CourseCheckoutRejected;
 use App\Models\Course;
 use App\Models\CourseCheckout;
 use App\Models\CourseEnrollment;
@@ -66,9 +67,9 @@ final readonly class CourseCheckoutService
             if (!$this->stillValid($user, $checkout, true)) return $this->stop($checkout, 'reconfirm_required', 'checkout_terms_changed');
             if (CourseCheckout::query()->where('user_id', $user->id)->awaitingSettlement()
                 ->where('id', '!=', $checkout->id)->exists()) {
-                throw new \DomainException('checkout_already_pending');
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_ALREADY_PENDING);
             }
-            if ($checkout->terms['deficit'] > 0 && !$checkout->package_id) throw new \DomainException('checkout_package_required');
+            if ($checkout->terms['deficit'] > 0 && !$checkout->package_id) throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_PACKAGE_REQUIRED);
             $checkout->forceFill(['status' => 'pending_payment', 'authorized_at' => now()])->save();
             $this->productEvents->recordCourseCheckoutTransition($user, $checkout, 'purchase_started');
             return $this->fulfillLocked($user, $checkout);
@@ -100,9 +101,9 @@ final readonly class CourseCheckoutService
             $user = User::query()->lockForUpdate()->findOrFail($user->id);
             $checkout = $this->locked($user, $id);
             if ((int) $purchase->user_id !== (int) $user->id || $purchase->provider !== $checkout->channel
-                || (int) $purchase->package_id !== (int) $checkout->package_id) throw new \DomainException('checkout_funding_mismatch');
+                || (int) $purchase->package_id !== (int) $checkout->package_id) throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
             $profile = data_get($purchase->provider_payload, 'checkout_profile_id');
-            if (is_string($profile) && $profile !== '' && !hash_equals($id, $profile)) throw new \DomainException('checkout_funding_mismatch');
+            if (is_string($profile) && $profile !== '' && !hash_equals($id, $profile)) throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
             if (in_array($checkout->status, ['completed', 'cancelled', 'expired', 'reconfirm_required'], true)) return $this->payload($checkout);
             $audit = $purchase->provider_payload ?? [];
             $occurred = null;
@@ -131,7 +132,7 @@ final readonly class CourseCheckoutService
             }
             if ($checkout->channel !== 'direct' || $checkout->status !== 'pending_payment'
                 || !$checkout->authorized_at || $order->created_at->lt($checkout->authorized_at)
-                || $checkout->expires_at->isPast()) throw new \DomainException('checkout_funding_mismatch');
+                || $checkout->expires_at->isPast()) throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
             $this->attachFunding($checkout, $order);
             return $this->fulfillLocked($user, $checkout);
         }, 3);
@@ -159,7 +160,7 @@ final readonly class CourseCheckoutService
             || ($checkout->channel === 'direct' && (int) round((float) $order->final_amount * 100)
                 !== (int) round((float) ($package['direct_price'] ?? 0) * 100))
             || ($checkout->funding_order_id && (int) $checkout->funding_order_id !== (int) $order->id)
-            || CourseCheckout::query()->where('funding_order_id', $order->id)->where('id', '!=', $checkout->id)->exists()) throw new \DomainException('checkout_funding_mismatch');
+            || CourseCheckout::query()->where('funding_order_id', $order->id)->where('id', '!=', $checkout->id)->exists()) throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
         if (!$checkout->funding_order_id) $checkout->forceFill(['funding_order_id' => $order->id])->save();
     }
 
@@ -196,7 +197,8 @@ final readonly class CourseCheckoutService
             $checkout->forceFill(['course_order_id' => $result['order']->id, 'status' => 'completed', 'completed_at' => now(), 'error_code' => null])->save();
             $this->productEvents->recordCourseCheckoutTransition($user, $checkout, 'purchase_completed');
         } catch (\DomainException $exception) {
-            return $this->stop($checkout, 'reconfirm_required', $exception->getMessage());
+            // Persist a stable code; model/ledger guard prose is never stored.
+            return $this->stop($checkout, 'reconfirm_required', CourseCheckoutRejected::codeFor($exception));
         } catch (\Illuminate\Validation\ValidationException) {
             return $this->stop($checkout, 'reconfirm_required', 'course_terms_changed');
         }

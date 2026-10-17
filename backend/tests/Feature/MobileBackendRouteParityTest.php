@@ -62,7 +62,6 @@ final class MobileBackendRouteParityTest extends TestCase
         yield 'course redemption' => ['POST', 'course-codes/redeem'];
         yield 'course chat' => ['POST', 'courses/1/chat'];
         yield 'full track quote' => ['GET', 'courses/1/full-track-upgrade'];
-        yield 'full track purchase' => ['POST', 'courses/1/full-track-upgrade'];
         yield 'learning dashboard' => ['GET', 'learning/courses'];
         yield 'profile read' => ['GET', 'user/profile'];
         yield 'profile update' => ['PUT', 'user/profile'];

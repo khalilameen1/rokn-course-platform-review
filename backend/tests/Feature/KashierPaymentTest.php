@@ -1231,6 +1231,40 @@ class KashierPaymentTest extends TestCase
         self::assertSame(1, Order::query()->where('user_id', $this->user->id)->count());
     }
 
+    public function test_checkout_conflicts_map_typed_reasons_to_the_mobile_error_codes(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/v1/payment/initiate', [
+                'package_id' => $this->package->id,
+                'expected_amount' => self::PACKAGE_PRICE + 1,
+                'idempotency_key' => 'typed-reason-terms-changed-0001',
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'package_terms_changed');
+
+        $this->package->forceFill(['is_active' => false])->save();
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/v1/payment/initiate', [
+                'package_id' => $this->package->id,
+                'idempotency_key' => 'typed-reason-unavailable-0001',
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'package_not_available');
+
+        self::assertSame(0, Order::query()->where('user_id', $this->user->id)->count());
+    }
+
+    public function test_checkout_conflict_reason_is_independent_of_its_diagnostic_message(): void
+    {
+        $conflict = new \App\Exceptions\KashierCheckoutConflict(
+            \App\Exceptions\KashierCheckoutConflict::PENDING_CHECKOUT_EXISTS,
+            'Any reworded diagnostic text'
+        );
+
+        self::assertInstanceOf(\UnexpectedValueException::class, $conflict);
+        self::assertSame('pending_checkout_exists', $conflict->reason);
+    }
+
     // =========================================================================
     // 2. CALLBACK (Kashier redirects WebView here)
     // =========================================================================

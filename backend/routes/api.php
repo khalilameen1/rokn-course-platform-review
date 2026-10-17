@@ -209,12 +209,8 @@ $registerCourseApiRoutes = function () {
                     ->middleware(['product.feature:ai_chat', 'ai.consent', 'throttle:20,1']);
                 Route::get('ai-input-attachments/{attachment}', [\App\Http\Controllers\API\ProjectController::class, 'showInputAttachment'])
                     ->middleware('throttle:60,1');
-                Route::get('courses/{course}/chat-upgrade', [\App\Http\Controllers\API\CourseChatUpgradeController::class, 'quote']);
-                Route::post('courses/{course}/chat-upgrade', [\App\Http\Controllers\API\CourseChatUpgradeController::class, 'purchase'])
-                    ->middleware(['product.feature:checkout', 'throttle:6,1']);
+                // Upgrade offer quote only; upgrades are bought via course-checkouts (mode=upgrade).
                 Route::get('courses/{course}/full-track-upgrade', [\App\Http\Controllers\API\CourseChatUpgradeController::class, 'quote']);
-                Route::post('courses/{course}/full-track-upgrade', [\App\Http\Controllers\API\CourseChatUpgradeController::class, 'purchase'])
-                    ->middleware(['product.feature:checkout', 'throttle:6,1']);
 
 
                 Route::get('courses/{courseId}/progress', [\App\Http\Controllers\API\CourseController::class,'getCourseProgress']);

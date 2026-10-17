@@ -220,17 +220,6 @@ class CourseEnrollment extends Model
     }
 
     /**
-     * Grant access to the course.
-     */
-    public function grantAccess()
-    {
-        $this->update([
-            'is_active' => true,
-            'access_granted_at' => now()
-        ]);
-    }
-
-    /**
      * Revoke access to the course.
      */
     public function revokeAccess()

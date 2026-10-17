@@ -19,6 +19,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Models\WalletDebitAllocation;
 use App\Models\WalletTransaction;
+use App\Services\CoursePlanUpgradeAction;
 use App\Services\FinancialProvenanceService;
 use App\Services\FinancialAnomalyService;
 use App\Services\WalletService;
@@ -140,6 +141,7 @@ final class CourseRewardContributionCapTest extends TestCase
             ->postJson('/api/v1/courses/authorize', [
                 'course_id' => $course->id,
                 'access_plan_code' => CourseAccessPlan::BASIC,
+                'expected_price' => 40,
                 'idempotency_key' => $baseKey,
             ])
             ->assertOk()
@@ -152,6 +154,7 @@ final class CourseRewardContributionCapTest extends TestCase
             ->postJson('/api/v1/courses/authorize', [
                 'course_id' => $course->id,
                 'access_plan_code' => CourseAccessPlan::BASIC,
+                'expected_price' => 40,
                 'idempotency_key' => $baseKey,
             ])
             ->assertOk()
@@ -162,16 +165,10 @@ final class CourseRewardContributionCapTest extends TestCase
 
         $this->creditReward($user, 40);
         $guidedKey = 'test-course-guided-upgrade-0001';
-        $this->actingAs($user, 'api')
-            ->postJson("/api/v1/courses/{$course->id}/full-track-upgrade", [
-                'target_plan_code' => CourseAccessPlan::GUIDED,
-                'expected_price' => 40,
-                'idempotency_key' => $guidedKey,
-            ])
-            ->assertOk()
-            ->assertJsonPath('data.amount_deducted', 40)
-            ->assertJsonPath('data.allocation.paid_coins', 40)
-            ->assertJsonPath('data.allocation.reward_coins', 0);
+        $guided = $this->upgrade($user, $course, CourseAccessPlan::GUIDED, 40, $guidedKey);
+        self::assertSame(40, $guided['amount']);
+        self::assertSame(40, (int) $guided['order']->paid_coins);
+        self::assertSame(0, (int) $guided['order']->reward_coins);
 
         $this->creditReward($user, 40);
         Package::query()->firstOrFail()->update([
@@ -220,26 +217,14 @@ final class CourseRewardContributionCapTest extends TestCase
 
         $this->creditPaid($user, 122);
         $mentorKey = 'test-course-mentor-upgrade-0001';
-        $this->actingAs($user, 'api')
-            ->postJson("/api/v1/courses/{$course->id}/full-track-upgrade", [
-                'target_plan_code' => CourseAccessPlan::MENTOR,
-                'expected_price' => 150,
-                'idempotency_key' => $mentorKey,
-            ])
-            ->assertOk()
-            ->assertJsonPath('data.amount_deducted', 150)
-            ->assertJsonPath('data.allocation.paid_coins', 150)
-            ->assertJsonPath('data.allocation.reward_coins', 0);
+        $mentor = $this->upgrade($user, $course, CourseAccessPlan::MENTOR, 150, $mentorKey);
+        self::assertSame(150, $mentor['amount']);
+        self::assertSame(150, (int) $mentor['order']->paid_coins);
+        self::assertSame(0, (int) $mentor['order']->reward_coins);
 
-        $this->actingAs($user, 'api')
-            ->postJson("/api/v1/courses/{$course->id}/full-track-upgrade", [
-                'target_plan_code' => CourseAccessPlan::MENTOR,
-                'expected_price' => 150,
-                'idempotency_key' => $mentorKey,
-            ])
-            ->assertOk()
-            ->assertJsonPath('data.idempotent_replay', true)
-            ->assertJsonPath('data.amount_deducted', 0);
+        $replay = $this->upgrade($user, $course, CourseAccessPlan::MENTOR, 150, $mentorKey);
+        self::assertTrue($replay['idempotent_replay']);
+        self::assertSame(0, $replay['amount']);
 
         $orders = Order::query()
             ->where('user_id', $user->id)
@@ -289,27 +274,20 @@ final class CourseRewardContributionCapTest extends TestCase
         $this->actingAs($user, 'api')->postJson('/api/v1/courses/authorize', [
             'course_id' => $course->id,
             'access_plan_code' => 'basic',
+            'expected_price' => 40,
             'idempotency_key' => 'paid-floor-base-purchase-0001',
         ])->assertOk()->assertJsonPath('data.allocation.reward_coins', 8);
 
-        $this->actingAs($user, 'api')->postJson("/api/v1/courses/{$course->id}/full-track-upgrade", [
-            'target_plan_code' => 'guided',
-            'expected_price' => 40,
-            'idempotency_key' => 'paid-floor-guided-upgrade-0001',
-        ])->assertOk()
-            ->assertJsonPath('data.allocation.paid_coins', 40)
-            ->assertJsonPath('data.allocation.reward_coins', 0)
-            ->assertJsonPath('data.financial_review_required', false);
+        $guided = $this->upgrade($user, $course, 'guided', 40, 'paid-floor-guided-upgrade-0001');
+        self::assertSame(40, (int) $guided['order']->paid_coins);
+        self::assertSame(0, (int) $guided['order']->reward_coins);
+        self::assertTrue($this->allowsVariableCostFeatures($user, $course));
 
         $this->creditPaid($user, 32);
-        $this->actingAs($user, 'api')->postJson("/api/v1/courses/{$course->id}/full-track-upgrade", [
-            'target_plan_code' => 'mentor',
-            'expected_price' => 150,
-            'idempotency_key' => 'paid-floor-mentor-upgrade-0001',
-        ])->assertOk()
-            ->assertJsonPath('data.allocation.paid_coins', 150)
-            ->assertJsonPath('data.allocation.reward_coins', 0)
-            ->assertJsonPath('data.financial_review_required', false);
+        $mentor = $this->upgrade($user, $course, 'mentor', 150, 'paid-floor-mentor-upgrade-0001');
+        self::assertSame(150, (int) $mentor['order']->paid_coins);
+        self::assertSame(0, (int) $mentor['order']->reward_coins);
+        self::assertTrue($this->allowsVariableCostFeatures($user, $course));
 
         self::assertSame(222, app(WalletService::class)->coursePaidContribution(
             (int) $user->id,
@@ -371,6 +349,7 @@ final class CourseRewardContributionCapTest extends TestCase
             ->postJson('/api/v1/courses/authorize', [
                 'course_id' => $course->id,
                 'access_plan_code' => CourseAccessPlan::BASIC,
+                'expected_price' => 40,
                 'idempotency_key' => 'disabled-course-plan-purchase-0001',
             ])
             ->assertStatus(422)
@@ -477,6 +456,19 @@ final class CourseRewardContributionCapTest extends TestCase
             ->where('user_id', $mentorOwner->id)
             ->where('course_id', $course->id)
             ->count());
+    }
+
+    /** @return array<string, mixed> */
+    private function upgrade(User $user, Course $course, string $planCode, int $price, string $key): array
+    {
+        return app(CoursePlanUpgradeAction::class)->execute($user, $course, $planCode, $key, $price, null);
+    }
+
+    private function allowsVariableCostFeatures(User $user, Course $course): bool
+    {
+        return app(FinancialAnomalyService::class)->allowsVariableCostFeatures(
+            CourseEnrollment::query()->where('user_id', $user->id)->where('course_id', $course->id)->firstOrFail()
+        );
     }
 
     private function user(): User

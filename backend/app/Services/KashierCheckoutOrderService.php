@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\CourseCheckoutRejected;
+use App\Exceptions\KashierCheckoutConflict;
 use App\Models\CourseCheckout;
 use App\Models\Order;
 use App\Models\Package;
@@ -50,7 +52,7 @@ final readonly class KashierCheckoutOrderService
             if ($courseCheckout && ($courseCheckout->channel !== 'direct'
                 || !$courseCheckout->authorized_at
                 || (int) $courseCheckout->package_id !== (int) $package->id)) {
-                throw new \DomainException('checkout_funding_mismatch');
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
             }
 
             $existing = null;
@@ -67,7 +69,8 @@ final readonly class KashierCheckoutOrderService
                         || $existing->payment_method !== Order::PAYMENT_METHOD_KASHIER
                     )
                 ) {
-                    throw new \UnexpectedValueException(
+                    throw new KashierCheckoutConflict(
+                        KashierCheckoutConflict::IDEMPOTENCY_CONFLICT,
                         'Checkout idempotency key was reused for another package.'
                     );
                 }
@@ -88,7 +91,7 @@ final readonly class KashierCheckoutOrderService
 
             if ($existing) {
                 if ($courseCheckout && (int) $courseCheckout->funding_order_id !== (int) $existing->id) {
-                    throw new \DomainException('checkout_funding_mismatch');
+                    throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
                 }
                 if (
                     ($expectedAmount !== null
@@ -97,7 +100,8 @@ final readonly class KashierCheckoutOrderService
                     || ($expectedCoins !== null
                         && (int) $existing->package_coins !== $expectedCoins)
                 ) {
-                    throw new \UnexpectedValueException(
+                    throw new KashierCheckoutConflict(
+                        KashierCheckoutConflict::PACKAGE_TERMS_CHANGED,
                         'Checkout idempotency key was replayed with different package terms.'
                     );
                 }
@@ -122,7 +126,7 @@ final readonly class KashierCheckoutOrderService
 
             if ($courseCheckout && ($courseCheckout->status !== 'pending_payment'
                 || $courseCheckout->quoteHasExpired() || $courseCheckout->funding_order_id)) {
-                throw new \DomainException('checkout_funding_mismatch');
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
             }
 
             if (
@@ -131,7 +135,8 @@ final readonly class KashierCheckoutOrderService
                 || (float) $package->price <= 0
                 || (int) $package->coins <= 0
             ) {
-                throw new \UnexpectedValueException(
+                throw new KashierCheckoutConflict(
+                    KashierCheckoutConflict::PACKAGE_NOT_AVAILABLE,
                     'This package is not available for checkout.'
                 );
             }
@@ -144,7 +149,8 @@ final readonly class KashierCheckoutOrderService
                 ->latest('id')
                 ->first();
             if ($otherPendingCheckout) {
-                throw new \UnexpectedValueException(
+                throw new KashierCheckoutConflict(
+                    KashierCheckoutConflict::PENDING_CHECKOUT_EXISTS,
                     'A previous payment is still pending confirmation.'
                 );
             }
@@ -158,14 +164,15 @@ final readonly class KashierCheckoutOrderService
             $coins = (int) ($funding['coins'] ?? $package->coins);
             if ($coins < 1 || $baseAmount <= 0 || $finalAmount <= 0
                 || ($courseCheckout && (int) ($funding['id'] ?? 0) !== (int) $package->id)) {
-                throw new \DomainException('checkout_funding_mismatch');
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
             }
             if (
                 ($expectedAmount !== null
                     && (int) round($finalAmount * 100) !== (int) round($expectedAmount * 100))
                 || ($expectedCoins !== null && $coins !== $expectedCoins)
             ) {
-                throw new \UnexpectedValueException(
+                throw new KashierCheckoutConflict(
+                    KashierCheckoutConflict::PACKAGE_TERMS_CHANGED,
                     'Package terms changed before checkout.'
                 );
             }

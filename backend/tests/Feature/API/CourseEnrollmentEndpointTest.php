@@ -26,6 +26,31 @@ class CourseEnrollmentEndpointTest extends ApiTestCase
         );
     }
 
+    public function test_course_authorization_requires_the_reviewed_price(): void
+    {
+        $this->withoutMiddleware(RequireProductFeature::class)
+            ->actingAs($this->user, 'api')
+            ->postJson('/api/v1/courses/authorize', [
+                'course_id' => $this->courseId,
+                'access_plan_code' => 'basic',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['expected_price']);
+    }
+
+    public function test_retired_legacy_upgrade_purchase_endpoints_are_absent(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/v1/courses/' . $this->courseId . '/full-track-upgrade', [])
+            ->assertStatus(405);
+        $this->actingAs($this->user, 'api')
+            ->getJson('/api/v1/courses/' . $this->courseId . '/chat-upgrade')
+            ->assertNotFound();
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/v1/courses/' . $this->courseId . '/chat-upgrade', [])
+            ->assertNotFound();
+    }
+
     public function test_retired_manual_payment_methods_endpoint_is_absent(): void
     {
         $this->actingAs($this->user, 'api')

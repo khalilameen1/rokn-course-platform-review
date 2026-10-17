@@ -26,6 +26,7 @@ use App\Services\ProductEventService;
 use App\Services\WalletService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -786,7 +787,8 @@ final class CourseCheckoutServiceTest extends TestCase
         [$user, $course] = $this->fixture(1000, 500);
         $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
         $this->actingAs($user, 'api')->postJson('/api/v1/courses/authorize', [
-            'course_id' => $course->id, 'access_plan_code' => 'basic', 'idempotency_key' => 'legacy-new-policy-0001',
+            'course_id' => $course->id, 'access_plan_code' => 'basic', 'expected_price' => 400,
+            'idempotency_key' => 'legacy-new-policy-0001',
         ])->assertOk()->assertJsonPath('data.reward_contribution_cap_per_course', 80)
             ->assertJsonPath('data.reward_contribution_remaining_for_course', 0);
         $this->getJson('/api/v1/courses/'.$course->id.'/full-track-upgrade?target_plan_code=guided')
@@ -1064,9 +1066,13 @@ final class CourseCheckoutServiceTest extends TestCase
         $balance = (int) $user->fresh()->wallet_coins;
         $this->actingAs($user, 'api')->getJson('/api/v1/courses/'.$course->id.'/full-track-upgrade?target_plan_code=mentor')
             ->assertStatus(409)->assertJsonPath('code', 'full_track_upgrade_paid_floor_unfunded');
-        $this->postJson('/api/v1/courses/'.$course->id.'/full-track-upgrade', [
-            'target_plan_code' => 'mentor', 'expected_price' => 100, 'idempotency_key' => 'unfunded-upgrade-test-0001',
-        ])->assertStatus(409)->assertJsonPath('code', 'full_track_upgrade_paid_floor_unfunded');
+        try {
+            app(\App\Services\CoursePlanUpgradeAction::class)
+                ->execute($user->fresh(), $course, 'mentor', 'unfunded-upgrade-test-0001', 100, null);
+            self::fail('An unfunded paid floor must refuse the upgrade.');
+        } catch (\App\Exceptions\CourseCheckoutRejected $exception) {
+            self::assertSame(\App\Exceptions\CourseCheckoutRejected::FULL_TRACK_UPGRADE_PAID_FLOOR_UNFUNDED, $exception->reason);
+        }
         $this->postJson('/api/v1/course-checkouts', ['course_id' => $course->id, 'access_plan_code' => 'mentor', 'mode' => 'upgrade', 'channel' => 'google'])
             ->assertStatus(409)->assertJsonPath('code', 'full_track_upgrade_paid_floor_unfunded');
         self::assertSame($balance, (int) $user->fresh()->wallet_coins);
@@ -1146,6 +1152,225 @@ final class CourseCheckoutServiceTest extends TestCase
         $other->forceFill(['active' => false])->save();
         self::assertSame('reconfirm_required', $service->authorize($other, $otherQuote['id'])['status']);
         self::assertSame(700, (int) $other->fresh()->wallet_coins);
+    }
+
+    public function test_coupon_lookup_is_an_indexed_equality_on_the_stored_normalized_code(): void
+    {
+        [$user, $course, $service] = $this->fixture(1000, 0);
+        $coupon = Coupon::query()->forceCreate(['name_ar' => 'Discount', 'name_en' => 'Discount',
+            'code' => " half\u{200F}price\u{0665} ", 'balance' => 50, 'active' => true]);
+        self::assertSame('HALFPRICE5', $coupon->fresh()->code);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $quote = $service->create($user, $this->input($course) + ['coupon_code' => 'halfprice5']);
+        $couponSql = collect(DB::getQueryLog())->pluck('query')
+            ->filter(fn (string $sql): bool => str_contains($sql, 'coupons'))->implode("\n");
+        DB::disableQueryLog();
+
+        self::assertSame(80, $quote['discount_amount']);
+        self::assertSame('HALFPRICE5', $quote['coupon_code']);
+        self::assertSame(50, $quote['coupon_discount_percentage']);
+        self::assertStringNotContainsStringIgnoringCase('upper(', $couponSql);
+        self::assertTrue(Schema::hasIndex('coupons', 'coupons_code_unique'));
+
+        $this->expectException(\Illuminate\Database\UniqueConstraintViolationException::class);
+        Coupon::query()->forceCreate(['name_ar' => 'Copy', 'name_en' => 'Copy',
+            'code' => 'HalfPrice5', 'balance' => 10, 'active' => true]);
+    }
+
+    public function test_upgrade_order_is_identified_by_its_purpose_not_its_note(): void
+    {
+        [$user, $course, $service] = $this->fixture(2000, 0);
+        $base = $service->create($user, $this->input($course));
+        self::assertSame('completed', $service->authorize($user, $base['id'])['status']);
+        $baseOrder = Order::query()->where('checkout_request_key', 'course-checkout:'.$base['id'])->firstOrFail();
+        self::assertNull($baseOrder->purpose);
+
+        $action = app(\App\Services\CoursePlanUpgradeAction::class);
+        $first = $action->execute($user->fresh(), $course, 'guided', 'upgrade-purpose-test-0001', 250, null);
+        self::assertSame(Order::PURPOSE_COURSE_PLAN_UPGRADE, $first['order']->fresh()->purpose);
+
+        // Support may annotate an order; that must not change what it is.
+        DB::table('orders')->where('id', $first['order']->id)->update(['notes' => 'Edited by support']);
+        $replay = $action->execute($user->fresh(), $course, 'guided', 'upgrade-purpose-test-0001', 250, null);
+        self::assertTrue($replay['idempotent_replay']);
+        self::assertSame((int) $first['order']->id, (int) $replay['order']->id);
+
+        // A purchase order reusing the key is never mistaken for an upgrade.
+        $this->creditPaid($user, 250);
+        try {
+            $action->execute($user->fresh(), $course, 'mentor', 'course-checkout:'.$base['id'], 250, null);
+            self::fail('A purchase order key must not replay as an upgrade.');
+        } catch (\App\Exceptions\CourseCheckoutRejected $exception) {
+            self::assertSame(\App\Exceptions\CourseCheckoutRejected::CHECKOUT_IDEMPOTENCY_CONFLICT, $exception->reason);
+        }
+
+        $this->expectException(\LogicException::class);
+        $first['order']->fresh()->forceFill(['purpose' => 'something_else'])->save();
+    }
+
+    public function test_exact_direct_funding_rounds_a_small_shortfall_up_to_the_minimum_cash_charge(): void
+    {
+        config(['kashier.minimum_course_funding_amount' => 20]);
+        [$user, $course, $service] = $this->fixture(20, 200);
+        $package = $this->storePackage(900);
+        // 11.11 EGP less the default 10% direct discount = 10.00 EGP per 900 coins.
+        $package->forceFill(['direct_enabled' => true, 'price' => '11.11'])->save();
+        $quote = $service->create($user, array_replace($this->input($course), [
+            'channel' => 'direct', 'funding_mode' => 'exact_shortfall',
+        ]));
+        self::assertSame(300, $quote['deficit']);
+        self::assertSame(1800, $quote['selected_package']['coins']);
+        self::assertSame(300, $quote['selected_package']['shortfall_coins']);
+        self::assertEquals(20.0, $quote['selected_package']['direct_price']);
+        self::assertSame(1500, $quote['remaining_purchased_balance']);
+
+        $service->authorize($user, $quote['id']);
+        $order = app(\App\Services\KashierCheckoutOrderService::class)->beginCheckout(
+            $user, $package, 'minimum-course-funding-0001', 20.0, 1800, $quote['id']
+        )['order'];
+        self::assertSame(1800, $order->packageCoinAmount());
+        self::assertSame('20.00', $order->final_amount);
+        $service->bindFundingOrder($user, $quote['id'], $order);
+        app(\App\Services\OrderLifecycleService::class)->approve($order, null, null, true);
+
+        self::assertSame('completed', $service->resume($user, $quote['id'])['status']);
+        // The course debited only its shortfall; the rest is ordinary paid credit.
+        self::assertSame(1500, (int) $user->fresh()->wallet_purchased_coins);
+        self::assertSame(120, (int) $user->fresh()->wallet_reward_coins);
+
+        $pricing = app(\App\Services\PackageChannelPricingService::class);
+        self::assertSame(5000, $pricing->courseFundingPayload($package->fresh()->forceFill(['direct_enabled' => true]), 5000)['coins']);
+    }
+
+    public function test_minimum_cash_charge_never_changes_store_package_funding(): void
+    {
+        config(['kashier.minimum_course_funding_amount' => 20]);
+        [$user, $course, $service] = $this->fixture(0, 200);
+        $package = $this->storePackage(350);
+        $quote = $service->create($user, $this->input($course) + ['package_id' => $package->id]);
+        self::assertSame(350, $quote['selected_package']['coins']);
+        self::assertArrayNotHasKey('shortfall_coins', $quote['selected_package']);
+        self::assertEquals(100.0, $quote['selected_package']['price']);
+    }
+
+    public function test_enrollment_writer_preserves_each_access_source_rule(): void
+    {
+        [$user, $course, $service] = $this->fixture(3000, 0);
+        $writer = app(\App\Services\CourseEnrollmentWriter::class);
+
+        // Wallet purchase: the paid plan and both order lineages.
+        $base = $service->create($user, $this->input($course));
+        $service->authorize($user, $base['id']);
+        $enrollment = CourseEnrollment::query()->where('user_id', $user->id)->firstOrFail();
+        $baseOrderId = (int) $enrollment->order_id;
+        self::assertSame($baseOrderId, (int) $enrollment->access_plan_order_id);
+        self::assertSame('basic', $enrollment->access_plan_snapshot['code']);
+
+        // Upgrade: plan lineage only; AI usage is not reset.
+        $usage = \App\Models\AiEntitlementUsage::query()->create(['enrollment_id' => $enrollment->id,
+            'feature' => 'course_chat', 'used_requests' => 3, 'reserved_requests' => 0, 'used_tokens' => 0,
+            'reserved_tokens' => 0, 'used_cost_usd' => 0, 'reserved_cost_usd' => 0]);
+        $upgrade = $service->create($user, ['course_id' => $course->id, 'access_plan_code' => 'guided', 'mode' => 'upgrade', 'channel' => 'google']);
+        $service->authorize($user, $upgrade['id']);
+        $enrollment->refresh();
+        self::assertSame($baseOrderId, (int) $enrollment->order_id);
+        self::assertNotSame($baseOrderId, (int) $enrollment->access_plan_order_id);
+        self::assertSame('guided', $enrollment->access_plan_snapshot['code']);
+        self::assertTrue($usage->exists && \App\Models\AiEntitlementUsage::query()->whereKey($usage->id)->exists());
+        $planOrderId = (int) $enrollment->access_plan_order_id;
+        $grantedAt = $enrollment->access_granted_at->toIso8601String();
+
+        // Approved non-wallet course order: learning order only, first grant time kept.
+        $this->travel(5)->minutes();
+        $manual = Order::query()->create(['user_id' => $user->id, 'course_id' => $course->id,
+            'payment_method' => Order::PAYMENT_METHOD_ONLINE, 'amount' => 0, 'discount_amount' => 0,
+            'final_amount' => 0, 'status' => Order::STATUS_PENDING, 'financial_status' => Order::FINANCIAL_PENDING]);
+        app(\App\Services\OrderLifecycleService::class)->approve($manual);
+        $enrollment->refresh();
+        self::assertSame((int) $manual->id, (int) $enrollment->order_id);
+        self::assertSame($planOrderId, (int) $enrollment->access_plan_order_id);
+        self::assertSame('guided', $enrollment->access_plan_snapshot['code']);
+        self::assertSame($grantedAt, $enrollment->access_granted_at->toIso8601String());
+
+        // Course code: free access, paid plan never carried over, AI rows kept.
+        $codeOrder = Order::query()->create(['user_id' => $user->id, 'course_id' => $course->id,
+            'payment_method' => Order::PAYMENT_METHOD_COURSE_CODE, 'amount' => 0, 'discount_amount' => 0,
+            'final_amount' => 0, 'status' => Order::STATUS_APPROVED, 'financial_status' => Order::FINANCIAL_SETTLED,
+            'approved_at' => now()]);
+        $grant = DB::transaction(fn (): array => $writer->grantCourseCode((int) $user->id, (int) $course->id, $codeOrder));
+        self::assertFalse($grant['created']);
+        $enrollment->refresh();
+        self::assertSame((int) $codeOrder->id, (int) $enrollment->order_id);
+        self::assertNull($enrollment->access_plan_order_id);
+        self::assertNull($enrollment->access_plan_id);
+        self::assertNull($enrollment->access_plan_snapshot);
+        self::assertTrue(\App\Models\AiEntitlementUsage::query()->whereKey($usage->id)->exists());
+
+        // Wallet repurchase over an inactive row starts a fresh AI cycle.
+        $enrollment->forceFill(['is_active' => false])->save();
+        $repurchase = app(\App\Services\CoursePurchaseAction::class)->execute(
+            $user->fresh(), $course, 'basic', 'writer-repurchase-test-0001', 400, null
+        );
+        $enrollment->refresh();
+        self::assertTrue($enrollment->is_active);
+        self::assertSame((int) $repurchase['order']->id, (int) $enrollment->order_id);
+        self::assertSame((int) $repurchase['order']->id, (int) $enrollment->access_plan_order_id);
+        self::assertSame('basic', $enrollment->access_plan_snapshot['code']);
+        self::assertFalse(\App\Models\AiEntitlementUsage::query()->where('enrollment_id', $enrollment->id)->exists());
+        self::assertSame(1, CourseEnrollment::query()->where('user_id', $user->id)->count());
+
+        // A first course-code grant creates the row without a plan.
+        $other = $this->user();
+        $otherOrder = Order::query()->create(['user_id' => $other->id, 'course_id' => $course->id,
+            'payment_method' => Order::PAYMENT_METHOD_COURSE_CODE, 'amount' => 0, 'discount_amount' => 0,
+            'final_amount' => 0, 'status' => Order::STATUS_APPROVED, 'financial_status' => Order::FINANCIAL_SETTLED,
+            'approved_at' => now()]);
+        $created = DB::transaction(fn (): array => $writer->grantCourseCode((int) $other->id, (int) $course->id, $otherOrder));
+        self::assertTrue($created['created']);
+        self::assertNull($created['enrollment']->access_plan_id);
+        self::assertTrue((bool) $created['enrollment']->is_active);
+    }
+
+    public function test_legacy_purchase_quote_uses_checkout_terms_and_matches_the_debit(): void
+    {
+        [$user, $course] = $this->fixture(1000, 0);
+        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $course->accessPlans()->where('code', 'basic')->update(['minimum_paid_coins' => 400]);
+        Coupon::query()->forceCreate(['name_ar' => 'Discount', 'name_en' => 'Discount', 'code' => 'HALFPRICE', 'balance' => 50, 'active' => true]);
+        // Earlier paid coins on this course lower the remaining paid floor;
+        // the old inline quote ignored them and under-quoted the discount.
+        $prior = app(WalletService::class)->debit((int) $user->id, 100, 'course_purchase', $this->key('prior-paid'), $course, [], 0);
+        Order::query()->create(['user_id' => $user->id, 'course_id' => $course->id,
+            'payment_method' => Order::PAYMENT_METHOD_WALLET_COINS, 'wallet_transaction_id' => $prior->id,
+            'amount' => 100, 'discount_amount' => 0, 'final_amount' => 100, 'total_coins' => 100,
+            'paid_coins' => 100, 'reward_coins' => 0, 'status' => Order::STATUS_APPROVED,
+            'financial_status' => Order::FINANCIAL_SETTLED, 'approved_at' => now()]);
+
+        $this->actingAs($user, 'api')->postJson('/api/v1/courses/purchase-quote', [
+            'course_id' => $course->id, 'access_plan_code' => 'basic', 'coupon_code' => 'halfprice',
+        ])->assertOk()
+            ->assertJsonPath('data.course_revision', 1)
+            ->assertJsonPath('data.access_plan_code', 'basic')
+            ->assertJsonPath('data.original_price', 400)
+            ->assertJsonPath('data.discount_amount', 80)
+            ->assertJsonPath('data.final_price', 320)
+            ->assertJsonPath('data.coupon.code', 'HALFPRICE')
+            ->assertJsonPath('data.coupon.discount_percentage', 50);
+
+        $this->postJson('/api/v1/courses/purchase-quote', [
+            'course_id' => $course->id, 'access_plan_code' => 'basic', 'expected_course_revision' => 9,
+        ])->assertStatus(409)->assertJsonPath('code', 'course_terms_changed');
+
+        $this->postJson('/api/v1/courses/authorize', [
+            'course_id' => $course->id, 'access_plan_code' => 'basic', 'coupon_code' => 'HALFPRICE',
+            'expected_price' => 320, 'idempotency_key' => 'legacy-quote-parity-0001',
+        ])->assertOk()->assertJsonPath('data.amount_deducted', 320)->assertJsonPath('data.discount_amount', 80);
+
+        $this->postJson('/api/v1/courses/purchase-quote', [
+            'course_id' => $course->id, 'access_plan_code' => 'basic',
+        ])->assertStatus(409)->assertJsonPath('code', 'course_access_changed');
     }
 
     private function input(Course $course): array

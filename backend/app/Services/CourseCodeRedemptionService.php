@@ -7,7 +7,6 @@ namespace App\Services;
 use App\Exceptions\CourseCodeUnavailable;
 use App\Models\Course;
 use App\Models\CourseCode;
-use App\Models\CourseEnrollment;
 use App\Models\CourseGrantClaim;
 use App\Models\User;
 use App\Support\CourseCodeRedemptionResult;
@@ -24,7 +23,8 @@ final class CourseCodeRedemptionService
         private readonly CourseCodeEligibilityService $eligibility,
         private readonly CourseCodeReceiptService $receipts,
         private readonly CourseEntitlementService $access,
-        private readonly StudentNotificationService $notifications
+        private readonly StudentNotificationService $notifications,
+        private readonly CourseEnrollmentWriter $enrollments
     ) {
     }
 
@@ -84,21 +84,10 @@ final class CourseCodeRedemptionService
                 }
                 $code->increment('used_count');
                 $order = $this->receipts->ensureWithinRedemption($learner, $code, $course);
-                $enrollment = CourseEnrollment::query()->where('user_id', $learner->id)
-                    ->where('course_id', $course->id)->first();
-                if ($enrollment) {
-                    // A new valid code may re-source an ineffective old purchase.
-                    // Completion facts stay intact; paid capabilities do not carry over.
-                    $enrollment->forceFill([
-                        'order_id' => $order->id, 'access_plan_order_id' => null,
-                        'access_plan_id' => null, 'access_plan_snapshot' => null,
-                        'is_active' => true, 'access_granted_at' => now(), 'expires_at' => null,
-                    ])->save();
-                } else {
-                    CourseEnrollment::query()->create([
-                        'user_id' => $learner->id, 'course_id' => $course->id, 'order_id' => $order->id,
-                        'enrolled_at' => now(), 'is_active' => true, 'access_granted_at' => now(),
-                    ]);
+                // A new valid code may re-source an ineffective old purchase.
+                // Completion facts stay intact; paid capabilities do not carry over.
+                $grant = $this->enrollments->grantCourseCode((int) $learner->id, (int) $course->id, $order);
+                if ($grant['created']) {
                     $this->notifyEnrollment($learner, $code, $course, (int) $order->id);
                 }
 

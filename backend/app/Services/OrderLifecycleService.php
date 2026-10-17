@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Bill;
-use App\Models\CourseEnrollment;
 use App\Models\Order;
 use App\Models\OrderFinancialEvent;
 use App\Models\User;
@@ -16,7 +15,8 @@ final readonly class OrderLifecycleService
 {
     public function __construct(
         private WalletService $wallet,
-        private FinancialProvenanceService $provenance
+        private FinancialProvenanceService $provenance,
+        private CourseEnrollmentWriter $enrollments
     ) {
     }
 
@@ -426,22 +426,6 @@ final readonly class OrderLifecycleService
         }, 3);
     }
 
-    public function reconcile(Order $order): Order
-    {
-        $fresh = $order->fresh();
-        if ($fresh->status === Order::STATUS_APPROVED && !$fresh->reversed_at) {
-            return $this->approve($fresh, $fresh->approved_by, $fresh->notes);
-        }
-        if ($fresh->status === Order::STATUS_REJECTED) {
-            return $this->rejectPending($fresh, null, $fresh->notes);
-        }
-        if ($fresh->status === Order::STATUS_CANCELLED) {
-            return $this->cancelPending($fresh, null, $fresh->notes);
-        }
-
-        return $fresh;
-    }
-
     /** Credit a verified Rokn-side service failure without falsifying the cash receipt. */
     public function compensateCourseOrder(
         Order $order,
@@ -521,45 +505,6 @@ final readonly class OrderLifecycleService
             );
 
             return $locked->fresh();
-        }, 3);
-    }
-
-    public function expectedBillStatus(Order $order): string
-    {
-        // A transaction-identity conflict quarantines future finance actions,
-        // but it does not erase the already captured receipt. Bills follow the
-        // cash receipt; entitlement checks remain stricter through
-        // isFinanciallyEffective(). A real reversal always stamps reversed_at.
-        if (
-            $order->status === Order::STATUS_APPROVED
-            && $order->reversed_at === null
-            && in_array($order->financial_status, [
-                Order::FINANCIAL_SETTLED,
-                Order::FINANCIAL_REVIEW_REQUIRED,
-            ], true)
-        ) {
-            return Bill::PAYMENT_STATUS_PAID;
-        }
-
-        return $order->status === Order::STATUS_PENDING
-            ? Bill::PAYMENT_STATUS_PENDING
-            : Bill::PAYMENT_STATUS_CANCELLED;
-    }
-
-    public function reconcileBill(Bill $bill): Bill
-    {
-        return DB::transaction(function () use ($bill): Bill {
-            // Every other lifecycle transition locks order before bill. Keep
-            // the same order here so dashboard reconciliation cannot deadlock
-            // a provider callback that is settling or reversing this order.
-            $order = Order::query()->lockForUpdate()->findOrFail($bill->order_id);
-            Bill::query()
-                ->whereKey($bill->id)
-                ->where('order_id', $order->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            return $this->syncBill($order, $this->expectedBillStatus($order));
         }, 3);
     }
 
@@ -649,21 +594,7 @@ final readonly class OrderLifecycleService
             throw new \DomainException('Course order is incomplete and cannot be approved.');
         }
 
-        $enrollment = CourseEnrollment::query()
-            ->where('user_id', $order->user_id)
-            ->where('course_id', $order->course_id)
-            ->lockForUpdate()
-            ->first() ?: new CourseEnrollment([
-                'user_id' => $order->user_id,
-                'course_id' => $order->course_id,
-                'enrolled_at' => now(),
-            ]);
-        $enrollment->forceFill([
-            'order_id' => $order->id,
-            'is_active' => true,
-            'access_granted_at' => $enrollment->access_granted_at ?: now(),
-            'expires_at' => null,
-        ])->save();
+        $this->enrollments->grantApprovedOrder($order);
     }
 
     private function syncBill(Order $order, string $status): Bill

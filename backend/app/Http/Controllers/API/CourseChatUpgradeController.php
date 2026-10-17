@@ -4,32 +4,26 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API;
 
-use App\Exceptions\InsufficientWalletBalanceException;
-use App\Exceptions\FinancialProvenanceException;
+use App\Exceptions\CourseCheckoutRejected;
 use App\Http\Controllers\Controller;
-use App\Models\Bill;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
-use App\Models\Order;
 use App\Models\Package;
-use App\Models\Setting;
 use App\Models\User;
 use App\Services\CourseEntitlementService;
 use App\Services\CourseAccessPlanService;
 use App\Services\CoursePlanUpgradeEligibilityService;
-use App\Services\FinancialAnomalyService;
-use App\Services\FinancialProvenanceService;
 use App\Services\PackageChannelPricingService;
 use App\Services\WalletService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
- * Upgrades an existing enrolment to its next paid service plan. The legacy
- * route name and response codes remain stable for older mobile builds.
+ * Quotes the upgrade of an existing enrolment to its next paid service plan
+ * for the shipped upgrade offer sheet. Purchasing an upgrade goes through
+ * course-checkouts (mode=upgrade) and CoursePlanUpgradeAction.
  */
 final class CourseChatUpgradeController extends Controller
 {
@@ -116,7 +110,7 @@ final class CourseChatUpgradeController extends Controller
 
                 $price = $this->upgradePrice($paidCourse, $enrollment, $targetPlan, $plans);
                 if ($price === null) {
-                    throw new \DomainException('full_track_upgrade_not_priced');
+                    throw new CourseCheckoutRejected(CourseCheckoutRejected::FULL_TRACK_UPGRADE_NOT_PRICED);
                 }
 
                 return [
@@ -131,10 +125,11 @@ final class CourseChatUpgradeController extends Controller
                 ];
             }, 3);
         } catch (\DomainException $exception) {
-            if ($exception->getMessage() === 'full_track_upgrade_paid_floor_unfunded') {
+            $code = CourseCheckoutRejected::codeFor($exception);
+            if ($code === CourseCheckoutRejected::FULL_TRACK_UPGRADE_PAID_FLOOR_UNFUNDED) {
                 return $this->error('full_track_upgrade_paid_floor_unfunded', 'الترقية غير متاحة بالسعر الحالي', 409);
             }
-            if ($exception->getMessage() === 'full_track_upgrade_not_priced') {
+            if ($code === CourseCheckoutRejected::FULL_TRACK_UPGRADE_NOT_PRICED) {
                 return $this->error(
                     'full_track_upgrade_not_priced',
                     'لم يحدد سعر الترقية لهذا الكورس',
@@ -171,130 +166,6 @@ final class CourseChatUpgradeController extends Controller
             'success' => true,
             'message' => 'تم تحميل فرق الترقية',
             'data' => $quote['payload'],
-        ]);
-    }
-
-    public function purchase(
-        Request $request,
-        Course $course,
-        CourseEntitlementService $access,
-        WalletService $wallet,
-        FinancialProvenanceService $provenance,
-        FinancialAnomalyService $financialRisk,
-        CourseAccessPlanService $plans
-    ): JsonResponse
-    {
-        $user = auth('api')->user();
-        if (!$request->filled('idempotency_key') && $request->hasHeader('Idempotency-Key')) {
-            $request->merge(['idempotency_key' => $request->header('Idempotency-Key')]);
-        }
-        $validated = $request->validate([
-            // The target is part of the commercial intent. Inferring "next"
-            // on a retry could advance twice if the first response was lost.
-            'target_plan_code' => 'required|string|in:guided,mentor',
-            // Bind the debit to the quote the learner actually reviewed. A
-            // moderator price edit between quote and tap must never result in
-            // a silent higher (or different) wallet debit.
-            'expected_price' => 'required|integer|min:0|max:100000000',
-            'expected_course_revision' => 'nullable|integer|min:1',
-            'idempotency_key' => [
-                'nullable',
-                'string',
-                'min:16',
-                'max:140',
-                'regex:/^[A-Za-z0-9][A-Za-z0-9._:-]{15,139}$/',
-            ],
-        ]);
-        $requestedCode = isset($validated['target_plan_code'])
-            ? strtolower(trim((string) $validated['target_plan_code']))
-            : null;
-        $clientIdempotencyKey = isset($validated['idempotency_key'])
-            ? (string) $validated['idempotency_key']
-            : null;
-        $expectedPrice = (int) $validated['expected_price'];
-        $expectedCourseRevision = isset($validated['expected_course_revision'])
-            ? (int) $validated['expected_course_revision']
-            : null;
-
-        try {
-            $result = app(\App\Services\CoursePlanUpgradeAction::class)->execute(
-                $user, $course, $requestedCode, $clientIdempotencyKey,
-                $expectedPrice, $expectedCourseRevision
-            );
-        } catch (InsufficientWalletBalanceException $exception) {
-            $enrollment = $access->activeEnrollmentFor((int) $user->id, (int) $course->id);
-            $paidCourse = $enrollment
-                ? ($enrollment->loadMissing('course')->course ?: $course)
-                : $course;
-            $targetPlan = $enrollment
-                ? $this->targetPlan($paidCourse, $enrollment, $plans, $requestedCode)
-                : null;
-            $price = ($enrollment ? $this->upgradePrice($paidCourse, $enrollment, $targetPlan, $plans) : null)
-                ?? max(0, $exception->required);
-
-            return response()->json([
-                'status' => 400,
-                'success' => false,
-                'code' => 'insufficient_coins',
-                'message' => 'رصيدك لا يكفي',
-                'data' => $this->quotePayload($user->fresh(), $paidCourse, $price, $wallet, $targetPlan),
-            ], 400);
-        } catch (FinancialProvenanceException $exception) {
-            report($exception);
-            return $this->error(
-                'financial_provenance_unavailable',
-                "تعذّر إكمال الترقية الآن\nلم يتغير رصيدك",
-                409
-            );
-        } catch (\DomainException $exception) {
-            $code = $exception->getMessage();
-            return $this->error(
-                $code,
-                match ($code) {
-                    'course_price_changed' => "تغيّر السعر\nراجع الإجمالي قبل الشراء",
-                    'course_terms_changed' => "تغيّرت تفاصيل الفئة\nراجعها قبل الترقية",
-                    'course_access_under_review' =>
-                        "هذه العملية قيد المراجعة\nلم يُخصم رصيد جديد",
-                    default => 'الترقية غير متاحة لهذه الفئة',
-                },
-                $code === 'course_access_required' ? 403 : 409
-            );
-        }
-
-        $payload = $this->quotePayload(
-            $user->fresh(),
-            $result['course'],
-            (int) $result['amount'],
-            $wallet,
-            $result['plan'] ?? null
-        );
-        $payload['already_upgraded'] = (bool) $result['already_upgraded'];
-        $resultTerms = is_array($result['plan_terms'] ?? null) ? $result['plan_terms'] : [];
-        $payload['chat_available'] = (bool) ($resultTerms['chat_enabled'] ?? false);
-        $payload['certificate_available'] = (bool) ($resultTerms['certificate_enabled'] ?? true);
-        $payload['amount_deducted'] = (int) $result['amount'];
-        $payload['order_id'] = $result['order']->id ?? null;
-        $payload['idempotent_replay'] = (bool) ($result['idempotent_replay'] ?? false);
-        $payload['allocation'] = [
-            'total_coins' => (int) ($result['order']->total_coins ?? 0),
-            'paid_coins' => (int) ($result['order']->paid_coins ?? 0),
-            'reward_coins' => (int) ($result['order']->reward_coins ?? 0),
-            'spend_policy' => 'reward_first_with_paid_floor',
-        ];
-        $enrollment = $access->activeEnrollmentFor(
-            (int) $user->id,
-            (int) $result['course']->id
-        );
-        $payload['financial_review_required'] = $enrollment
-            ? !$financialRisk->allowsVariableCostFeatures($enrollment)
-            : true;
-
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'code' => $result['already_upgraded'] ? 'full_track_already_available' : 'full_track_upgrade_complete',
-            'message' => 'تم تفعيل الفئة المختارة',
-            'data' => $payload,
         ]);
     }
 
@@ -392,31 +263,6 @@ final class CourseChatUpgradeController extends Controller
                     ->map(fn (Package $package): array => $this->packagePricing->packagePayload($package))
                 : [],
         ];
-    }
-
-    private function isSameUpgradeReplay(
-        Order $order,
-        int $courseId,
-        ?string $targetPlanCode,
-        int $expectedPrice
-    ): bool
-    {
-        if (
-            (int) $order->course_id !== $courseId
-            || $order->package_id !== null
-            || $order->payment_method !== Order::PAYMENT_METHOD_WALLET_COINS
-            || $order->status !== Order::STATUS_APPROVED
-            || !str_starts_with((string) $order->notes, 'Course access-plan upgrade from order #')
-        ) {
-            return false;
-        }
-
-        if ((int) $order->final_amount !== $expectedPrice) {
-            return false;
-        }
-
-        return $targetPlanCode === null
-            || (string) data_get($order->access_plan_snapshot, 'code') === $targetPlanCode;
     }
 
     private function publishedRevision(Course $course): int

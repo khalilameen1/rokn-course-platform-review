@@ -46,7 +46,9 @@ class Coupon extends Model
 
     public function setCodeAttribute($value): void
     {
-        $this->attributes['code'] = UnicodeText::identifier($value);
+        // Checkout matches this exact value through the unique `code` index.
+        $normalized = UnicodeText::identifier($value);
+        $this->attributes['code'] = $normalized !== '' ? $normalized : null;
     }
 
     public function customers()

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\CourseCheckoutRejected;
 use App\Models\Bill;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
@@ -23,7 +24,8 @@ final class CoursePlanUpgradeAction
         private readonly WalletService $wallet, private readonly FinancialProvenanceService $provenance,
         private readonly FinancialEntitlementHoldReadService $holds,
         private readonly CourseAccessPlanService $plans,
-        private readonly CoursePlanUpgradeEligibilityService $upgrades) {}
+        private readonly CoursePlanUpgradeEligibilityService $upgrades,
+        private readonly CourseEnrollmentWriter $enrollments) {}
 
     public function execute(User $user, Course $course, string $requestedCode,
         ?string $clientIdempotencyKey, int $expectedPrice,
@@ -50,7 +52,7 @@ final class CoursePlanUpgradeAction
                 User::query()->lockForUpdate()->findOrFail($user->id);
                 $entitlement = $access->entitlementFor((int) $user->id, (int) $course->id);
                 if (!$entitlement['has_learning_access']) {
-                    throw new \DomainException('course_access_required');
+                    throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_ACCESS_REQUIRED);
                 }
                 $eligibleEnrollment = $access->activeEnrollmentFor(
                     (int) $user->id,
@@ -71,7 +73,7 @@ final class CoursePlanUpgradeAction
                         (int) $enrollment->id
                     )
                 ) {
-                    throw new \DomainException('full_track_upgrade_not_available');
+                    throw new CourseCheckoutRejected(CourseCheckoutRejected::FULL_TRACK_UPGRADE_NOT_AVAILABLE);
                 }
                 // A section can route to an enrollment on its parent course.
                 // Buyers share the paid-course lock, while authoring takes it
@@ -97,7 +99,7 @@ final class CoursePlanUpgradeAction
                             $requestedCode,
                             $expectedPrice
                         )) {
-                            throw new \DomainException('checkout_idempotency_conflict');
+                            throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_IDEMPOTENCY_CONFLICT);
                         }
                         if (
                             !$replayedOrder->isFinanciallyEffective()
@@ -106,7 +108,7 @@ final class CoursePlanUpgradeAction
                                 ['course', 'chat', 'plan']
                             )
                         ) {
-                            throw new \DomainException('course_access_under_review');
+                            throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_ACCESS_UNDER_REVIEW);
                         }
 
                         return [
@@ -133,7 +135,7 @@ final class CoursePlanUpgradeAction
                 }
                 if ($expectedCourseRevision !== null
                     && $expectedCourseRevision !== $this->publishedRevision($paidCourse)) {
-                    throw new \DomainException('course_terms_changed');
+                    throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_TERMS_CHANGED);
                 }
                 $targetPlan = $this->targetPlan(
                     $paidCourse,
@@ -153,10 +155,10 @@ final class CoursePlanUpgradeAction
                 }
                 $price = $this->upgradePrice($paidCourse, $enrollment, $targetPlan, $plans);
                 if ($price === null) {
-                    throw new \DomainException('full_track_upgrade_not_priced');
+                    throw new CourseCheckoutRejected(CourseCheckoutRejected::FULL_TRACK_UPGRADE_NOT_PRICED);
                 }
                 if ($price !== $expectedPrice) {
-                    throw new \DomainException('course_price_changed');
+                    throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_PRICE_CHANGED);
                 }
 
                 $targetCode = (string) $targetPlan->code;
@@ -183,7 +185,7 @@ final class CoursePlanUpgradeAction
                         $targetCode,
                         $expectedPrice
                     )) {
-                        throw new \DomainException('checkout_idempotency_conflict');
+                        throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_IDEMPOTENCY_CONFLICT);
                     }
                     if (
                         !$replayedOrder->isFinanciallyEffective()
@@ -192,7 +194,7 @@ final class CoursePlanUpgradeAction
                             ['course', 'chat', 'plan']
                         )
                     ) {
-                        throw new \DomainException('course_access_under_review');
+                        throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_ACCESS_UNDER_REVIEW);
                     }
 
                     return [
@@ -216,6 +218,7 @@ final class CoursePlanUpgradeAction
                     'user_id' => $user->id,
                     'course_id' => $paidCourse->id,
                     'parent_order_id' => $originalOrderId ?: null,
+                    'purpose' => Order::PURPOSE_COURSE_PLAN_UPGRADE,
                     'access_plan_id' => $targetPlan->id,
                     'access_plan_snapshot' => $planSnapshot,
                     'checkout_request_key' => $checkoutKey,
@@ -283,12 +286,7 @@ final class CoursePlanUpgradeAction
                 ]);
 
                 // Keep learning and plan-upgrade order lineage independent.
-                $enrollment->forceFill([
-                    'access_plan_order_id' => $order->id,
-                    'access_plan_id' => $targetPlan->id,
-                    'access_plan_snapshot' => $planSnapshot,
-                    'access_granted_at' => now(),
-                ])->save();
+                $this->enrollments->applyPlanUpgrade($enrollment, $order, $targetPlan, $planSnapshot);
 
                 return [
                     'already_upgraded' => false,
@@ -334,7 +332,7 @@ final class CoursePlanUpgradeAction
             || $order->package_id !== null
             || $order->payment_method !== Order::PAYMENT_METHOD_WALLET_COINS
             || $order->status !== Order::STATUS_APPROVED
-            || !str_starts_with((string) $order->notes, 'Course access-plan upgrade from order #')
+            || !$order->isCoursePlanUpgrade()
         ) {
             return false;
         }

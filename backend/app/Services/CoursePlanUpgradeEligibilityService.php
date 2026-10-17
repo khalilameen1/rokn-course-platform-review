@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\CourseCheckoutRejected;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
@@ -30,13 +31,13 @@ final readonly class CoursePlanUpgradeEligibilityService
         if ($this->legacyPaidEnrollment($enrollment)) return null;
         $available = $this->higherPlans($course, $this->plans->termsForEnrollment($enrollment) ?? []);
         if ($this->holds->enrollmentHasActiveHold($enrollment, ['course', 'chat', 'plan'])) {
-            throw new \DomainException('course_access_under_review');
+            throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_ACCESS_UNDER_REVIEW);
         }
         if ($requestedCode !== null) {
             $target = $available->firstWhere('code', $requestedCode);
-            if (!$target) throw new \DomainException('full_track_upgrade_not_available');
+            if (!$target) throw new CourseCheckoutRejected(CourseCheckoutRejected::FULL_TRACK_UPGRADE_NOT_AVAILABLE);
             if ($requiredFeature !== null && !$this->supportsFeature($course, $target, $requiredFeature, $enrollment)) {
-                throw new \DomainException('checkout_feature_unavailable');
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FEATURE_UNAVAILABLE);
             }
         } else {
             $target = $this->availablePlans($course, $enrollment, $requiredFeature)->first();
@@ -75,7 +76,7 @@ final readonly class CoursePlanUpgradeEligibilityService
         $difference = max(0, (int) $targetPlan->price_coins - (int) ($current['price_coins'] ?? 0));
         $remainingPaidFloor = max(0, (int) $targetPlan->minimum_paid_coins
             - $this->wallet->coursePaidContribution((int) $enrollment->user_id, (int) $course->id));
-        if ($remainingPaidFloor > $difference) throw new \DomainException('full_track_upgrade_paid_floor_unfunded');
+        if ($remainingPaidFloor > $difference) throw new CourseCheckoutRejected(CourseCheckoutRejected::FULL_TRACK_UPGRADE_PAID_FLOOR_UNFUNDED);
 
         return $difference;
     }

@@ -6,10 +6,12 @@ namespace App\Http\Controllers\API;
 
 use App\Support\StudentNotificationIntent;
 
+use App\Exceptions\CourseCheckoutRejected;
 use App\Exceptions\FinancialProvenanceException;
 use App\Exceptions\InsufficientWalletBalanceException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\API\CourseAuthorizationRequest;
+use App\Http\Requests\API\CoursePurchaseQuoteRequest;
 use App\Models\Bill;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
@@ -18,6 +20,7 @@ use App\Models\Order;
 use App\Models\Package;
 use App\Models\Setting;
 use App\Services\CourseAccessPlanService;
+use App\Services\CourseCheckoutQuoteService;
 use App\Services\CourseCouponService;
 use App\Services\FinancialAnomalyService;
 use App\Services\FinancialProvenanceService;
@@ -38,10 +41,14 @@ final class CoursePurchaseController extends Controller
     {
     }
 
+    /**
+     * Legacy purchase quote kept for the shipped course-details screen. The
+     * terms come from the same CourseCheckoutQuoteService that prices
+     * course-checkouts, so this total always equals what authorize debits.
+     */
     public function quote(
-        CourseAuthorizationRequest $request,
-        CourseAccessPlanService $planService,
-        CourseCouponService $coupons
+        CoursePurchaseQuoteRequest $request,
+        CourseCheckoutQuoteService $quotes
     ): JsonResponse {
         $user = auth('api')->user();
         $expectedCourseRevision = $request->filled('expected_course_revision')
@@ -49,61 +56,38 @@ final class CoursePurchaseController extends Controller
             : null;
 
         try {
-            $quoteData = DB::transaction(function () use (
-                $request,
-                $user,
-                $planService,
-                $coupons,
-                $expectedCourseRevision
-            ): array {
-                // Shared course locks let many learners quote concurrently but
-                // serialize them against the exclusive lock used by authoring.
-                // Plan capabilities therefore cannot change between checking
-                // the published revision and reading the selected plan.
+            $terms = DB::transaction(function () use ($request, $user, $quotes, $expectedCourseRevision): array {
+                // Revision first, as before: a superseded screen re-reads its
+                // plans before any coupon decision is shown to the learner.
                 $course = Course::query()->sharedLock()->findOrFail($request->course_id);
-                if (!$course->isAvailableForNewPurchase()) {
-                    throw new \DomainException('course_not_available');
-                }
                 if ($expectedCourseRevision !== null
                     && $expectedCourseRevision !== $this->publishedRevision($course)) {
-                    throw new \DomainException('course_terms_changed');
+                    throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_TERMS_CHANGED);
                 }
 
-                $plan = $planService->selectedPlan(
-                    $course,
-                    strtolower(trim((string) $request->input('access_plan_code')))
-                );
-                $price = max(0, (int) $plan->price_coins);
-                $minimumPaid = max(0, (int) $plan->minimum_paid_coins);
-                $quote = $coupons->quote(
-                    (int) $user->id,
-                    (int) $course->id,
-                    $price,
-                    $minimumPaid,
-                    $request->input('coupon_code')
-                );
-
-                return compact('course', 'plan', 'price', 'quote');
+                return $quotes->calculate($user, [
+                    'course_id' => (int) $course->id,
+                    'access_plan_code' => strtolower(trim((string) $request->input('access_plan_code'))),
+                    'coupon_code' => $request->input('coupon_code'),
+                    // Pricing only: no funding package is bound by this quote.
+                    'channel' => 'direct',
+                ], true, false);
             }, 3);
-            $course = $quoteData['course'];
-            $plan = $quoteData['plan'];
-            $price = $quoteData['price'];
-            $quote = $quoteData['quote'];
 
             return response()->json([
                 'status' => 200,
                 'success' => true,
                 'message' => 'تم حساب الإجمالي',
                 'data' => [
-                    'course_id' => (int) $course->id,
-                    'course_revision' => $this->publishedRevision($course),
-                    'access_plan_code' => $plan->code,
-                    'original_price' => $price,
-                    'discount_amount' => (int) $quote['discount'],
-                    'final_price' => (int) $quote['final'],
-                    'coupon' => $quote['coupon'] ? [
-                        'code' => $quote['code'],
-                        'discount_percentage' => (int) $quote['percentage'],
+                    'course_id' => (int) $terms['course_id'],
+                    'course_revision' => (int) $terms['course_revision'],
+                    'access_plan_code' => $terms['access_plan_code'],
+                    'original_price' => (int) $terms['original_price'],
+                    'discount_amount' => (int) $terms['discount_amount'],
+                    'final_price' => (int) $terms['final_price'],
+                    'coupon' => $terms['coupon_code'] !== null ? [
+                        'code' => $terms['coupon_code'],
+                        'discount_percentage' => (int) $terms['coupon_discount_percentage'],
                     ] : null,
                 ],
             ]);
@@ -118,22 +102,24 @@ final class CoursePurchaseController extends Controller
                 'data' => null,
             ], 422);
         } catch (\DomainException $exception) {
-            $code = $exception->getMessage();
+            $code = CourseCheckoutRejected::codeFor($exception);
+            $status = in_array($code, CourseCheckoutRejected::COUPON_REJECTIONS, true) ? 422 : 409;
 
             return response()->json([
-                'status' => in_array($code, ['course_not_available', 'course_terms_changed'], true) ? 409 : 422,
+                'status' => $status,
                 'success' => false,
                 'code' => $code,
                 'message' => match ($code) {
-                    'course_not_available' => 'هذا الكورس غير متاح للشراء الآن',
-                    'course_terms_changed' => "تغيّرت تفاصيل الفئة\nراجعها قبل الشراء",
-                    'coupon_already_used' => 'استخدمت هذا الكود من قبل',
-                    'coupon_not_applicable' => 'لا ينطبق الخصم على هذه الفئة',
-                    'coupon_quota_reached' => 'اكتمل عدد مرات استخدام هذا الكود',
-                    default => 'الكود غير صحيح أو انتهت صلاحيته',
+                    CourseCheckoutRejected::COURSE_TERMS_CHANGED => "تغيّرت تفاصيل الفئة\nراجعها قبل الشراء",
+                    CourseCheckoutRejected::COURSE_ACCESS_CHANGED => "الكورس مضاف إلى حسابك بالفعل\nحدّث الصفحة",
+                    CourseCheckoutRejected::COUPON_ALREADY_USED => 'استخدمت هذا الكود من قبل',
+                    CourseCheckoutRejected::COUPON_NOT_APPLICABLE => 'لا ينطبق الخصم على هذه الفئة',
+                    CourseCheckoutRejected::COUPON_QUOTA_REACHED => 'اكتمل عدد مرات استخدام هذا الكود',
+                    CourseCheckoutRejected::COUPON_INVALID => 'الكود غير صحيح أو انتهت صلاحيته',
+                    default => 'هذا الكورس غير متاح للشراء الآن',
                 },
                 'data' => null,
-            ], in_array($code, ['course_not_available', 'course_terms_changed'], true) ? 409 : 422);
+            ], $status);
         }
     }
 
@@ -153,9 +139,7 @@ final class CoursePurchaseController extends Controller
             ? (string) $request->input('idempotency_key')
             : null;
         $requestedCouponCode = $coupons->normalize($request->input('coupon_code'));
-        $expectedPrice = $request->filled('expected_price')
-            ? $request->integer('expected_price')
-            : null;
+        $expectedPrice = $request->integer('expected_price');
         $expectedCourseRevision = $request->filled('expected_course_revision')
             ? $request->integer('expected_course_revision')
             : null;
@@ -251,13 +235,8 @@ final class CoursePurchaseController extends Controller
                 'data' => null,
             ], 422);
         } catch (\DomainException $exception) {
-            $code = $exception->getMessage();
-            $couponFailure = in_array($code, [
-                'coupon_invalid',
-                'coupon_already_used',
-                'coupon_not_applicable',
-                'coupon_quota_reached',
-            ], true);
+            $code = CourseCheckoutRejected::codeFor($exception);
+            $couponFailure = in_array($code, CourseCheckoutRejected::COUPON_REJECTIONS, true);
 
             return response()->json([
                 'status' => $couponFailure ? 422 : 409,
@@ -402,32 +381,5 @@ final class CoursePurchaseController extends Controller
         return max(1, (int) (
             $course->last_published_authoring_version ?: $course->authoring_version
         ));
-    }
-
-    private function isSamePurchaseReplay(
-        Order $order,
-        int $courseId,
-        string $requestedPlanCode,
-        ?string $requestedCouponCode,
-        ?int $expectedPrice
-    ): bool
-    {
-        if (
-            (int) $order->course_id !== $courseId
-            || $order->package_id !== null
-            || $order->payment_method !== Order::PAYMENT_METHOD_WALLET_COINS
-            || $order->status !== Order::STATUS_APPROVED
-        ) {
-            return false;
-        }
-
-        if (!hash_equals((string) $order->coupon_code, (string) $requestedCouponCode)) {
-            return false;
-        }
-        if ($expectedPrice !== null && (int) $order->final_amount !== $expectedPrice) {
-            return false;
-        }
-
-        return (string) data_get($order->access_plan_snapshot, 'code') === $requestedPlanCode;
     }
 }

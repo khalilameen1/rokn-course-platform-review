@@ -348,7 +348,7 @@ class ProductionPreflight extends Command
             ],
             'orders' => [
                 'user_id', 'course_id', 'access_plan_id', 'access_plan_snapshot',
-                'parent_order_id', 'package_id', 'package_coins', 'course_code_id',
+                'parent_order_id', 'purpose', 'package_id', 'package_coins', 'course_code_id',
                 'coupon_id', 'coupon_code', 'payment_method', 'payment_method_id',
                 'payment_screenshot', 'order_ref', 'checkout_request_key',
                 'wallet_transaction_id', 'checkout_expires_at', 'transaction_id',

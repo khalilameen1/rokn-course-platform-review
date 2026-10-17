@@ -1,0 +1,153 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services;
+
+use App\Models\CourseAccessPlan;
+use App\Models\CourseEnrollment;
+use App\Models\Order;
+
+/**
+ * The single writer for granting or re-sourcing course access.
+ *
+ * Every way a learner gains access (wallet purchase, approved course order,
+ * course code, paid plan upgrade) names its intent here instead of writing
+ * enrollment columns itself, so the access rules for each source live in one
+ * place. Callers own the transaction and hold the learner lock (the learner
+ * is the financial aggregate); each method also locks the enrollment row.
+ *
+ * The per-source rules below intentionally reproduce the behaviour each flow
+ * had before this writer existed. See the method docs for the differences.
+ */
+final readonly class CourseEnrollmentWriter
+{
+    public function __construct(private AiEntitlementBudgetService $aiBudget)
+    {
+    }
+
+    public function lockedFor(int $userId, int $courseId): ?CourseEnrollment
+    {
+        return CourseEnrollment::query()
+            ->where('user_id', $userId)
+            ->where('course_id', $courseId)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    /**
+     * Wallet purchase. The purchased plan becomes the enrollment's plan and
+     * order lineage; re-buying over an existing row starts a fresh AI
+     * entitlement cycle and restarts access_granted_at.
+     *
+     * @param array<string, mixed> $planSnapshot
+     */
+    public function grantPurchasedPlan(
+        ?CourseEnrollment $existing,
+        int $userId,
+        int $courseId,
+        Order $order,
+        CourseAccessPlan $plan,
+        array $planSnapshot
+    ): CourseEnrollment {
+        $enrollment = $existing ?: new CourseEnrollment([
+            'user_id' => $userId,
+            'course_id' => $courseId,
+        ]);
+        if ($existing) {
+            $this->aiBudget->resetForNewPurchase($existing);
+        }
+        $enrollment->fill([
+            'order_id' => $order->id,
+            'access_plan_order_id' => $order->id,
+            'access_plan_id' => $plan->id,
+            'access_plan_snapshot' => $planSnapshot,
+            'enrolled_at' => $enrollment->enrolled_at ?: now(),
+            'expires_at' => null,
+            'is_active' => true,
+            'access_granted_at' => now(),
+        ])->save();
+
+        return $enrollment;
+    }
+
+    /**
+     * An approved course order outside the wallet flow (OrderLifecycleService
+     * approve). Only the learning order is re-sourced: plan fields and the AI
+     * budget are left as they are, and the first access_granted_at is kept.
+     */
+    public function grantApprovedOrder(Order $order): CourseEnrollment
+    {
+        $enrollment = $this->lockedFor((int) $order->user_id, (int) $order->course_id)
+            ?: new CourseEnrollment([
+                'user_id' => $order->user_id,
+                'course_id' => $order->course_id,
+                'enrolled_at' => now(),
+            ]);
+        $enrollment->forceFill([
+            'order_id' => $order->id,
+            'is_active' => true,
+            'access_granted_at' => $enrollment->access_granted_at ?: now(),
+            'expires_at' => null,
+        ])->save();
+
+        return $enrollment;
+    }
+
+    /**
+     * Free course-code access. A paid plan never carries over to a code
+     * grant (plan fields are cleared); completion facts and the AI budget rows
+     * are kept. Which plan a code should grant is an owner decision; today it
+     * grants none.
+     *
+     * @return array{enrollment: CourseEnrollment, created: bool}
+     */
+    public function grantCourseCode(int $userId, int $courseId, Order $order): array
+    {
+        $enrollment = $this->lockedFor($userId, $courseId);
+        if ($enrollment) {
+            $enrollment->forceFill([
+                'order_id' => $order->id,
+                'access_plan_order_id' => null,
+                'access_plan_id' => null,
+                'access_plan_snapshot' => null,
+                'is_active' => true,
+                'access_granted_at' => now(),
+                'expires_at' => null,
+            ])->save();
+
+            return ['enrollment' => $enrollment, 'created' => false];
+        }
+
+        $enrollment = CourseEnrollment::query()->create([
+            'user_id' => $userId,
+            'course_id' => $courseId,
+            'order_id' => $order->id,
+            'enrolled_at' => now(),
+            'is_active' => true,
+            'access_granted_at' => now(),
+        ]);
+
+        return ['enrollment' => $enrollment, 'created' => true];
+    }
+
+    /**
+     * Paid plan upgrade of an already active enrollment. Learning lineage
+     * (order_id), activity, expiry and the AI budget rows stay untouched.
+     *
+     * @param array<string, mixed> $planSnapshot
+     */
+    public function applyPlanUpgrade(
+        CourseEnrollment $enrollment,
+        Order $order,
+        CourseAccessPlan $plan,
+        array $planSnapshot
+    ): void {
+        $enrollment->forceFill([
+            'access_plan_order_id' => $order->id,
+            'access_plan_id' => $plan->id,
+            'access_plan_snapshot' => $planSnapshot,
+            'access_granted_at' => now(),
+        ])->save();
+    }
+}

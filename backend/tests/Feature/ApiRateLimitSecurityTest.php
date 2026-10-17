@@ -41,15 +41,6 @@ final class ApiRateLimitSecurityTest extends TestCase
         }
     }
 
-    public function test_same_purchase_action_aliases_cannot_double_the_limit(): void
-    {
-        for ($attempt = 1; $attempt <= 6; $attempt++) {
-            $this->numericRequest('POST', '/api/v1/courses/'.$attempt.'/chat-upgrade');
-        }
-        $this->expectException(ThrottleRequestsException::class);
-        $this->numericRequest('POST', '/api/v1/courses/99/full-track-upgrade');
-    }
-
     private function numericRequest(string $method, string $url): \Symfony\Component\HttpFoundation\Response
     {
         $request = Request::create($url, $method);
