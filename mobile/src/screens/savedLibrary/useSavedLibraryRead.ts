@@ -23,8 +23,17 @@ export function useSavedLibraryRead(
   identityKey: string,
   snapshot: SavedLibrarySnapshot,
   restoreMutationActivity: () => void,
+  initialFolderId?: string,
 ) {
-  const [activeFolderId, setActiveFolderId] = useState('all');
+  // The requested list belongs to the account that opened the screen; any
+  // later account starts from all saved lessons.
+  const openingRef = useRef({
+    identityKey,
+    folderId: initialFolderId?.trim() || 'all',
+  });
+  const [activeFolderId, setActiveFolderId] = useState(
+    openingRef.current.folderId,
+  );
   const [serverSession, setServerSession] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -44,7 +53,11 @@ export function useSavedLibraryRead(
     loadGenerationRef.current += 1;
     loadingMoreRef.current = false;
     snapshot.clear();
-    setActiveFolderId('all');
+    setActiveFolderId(
+      identityKey === openingRef.current.identityKey
+        ? openingRef.current.folderId
+        : 'all',
+    );
     setServerSession(null);
     setNextPage(null);
     setError('');

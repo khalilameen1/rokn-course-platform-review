@@ -1,52 +1,74 @@
 import {useFocusEffect} from '@react-navigation/native';
 import {useCallback, useEffect, useRef, useState} from 'react';
 
+// The folder index alone, not the player runtime behind courseLearningApi.
+import {
+  getSavedFolderOptions,
+  type SavedFolderOption,
+} from '../../components/VideoPlayer/courseLearning/savedFolderIndex';
+import {isWatchLaterFolderName} from '../../components/VideoPlayer/courseLearning/savedFolderNames';
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
 } from '../../constants/helpers';
 import {useAppForegroundState} from '../../hooks/useAppActiveState';
-import {getSavedLessonsPage, type SavedLesson} from '../../services/roknApi';
-
-export const SAVED_PREVIEW_LIMIT = 3;
 
 export type SavedPreviewStatus = 'loading' | 'ready' | 'error';
 
+export type SavedCollection = {
+  id: string;
+  name: string;
+  /** Undefined when the server only has its generic folder placeholder. */
+  coverUrl?: string;
+  /** Undefined while a confirmed save has invalidated the cached count. */
+  lessonsCount?: number;
+  watchLater: boolean;
+};
+
+// SavedFolderResource covers a list with its first saved lesson's thumbnail
+// and falls back to this asset. ركني draws its own folder tile instead.
+const PLACEHOLDER_COVER = /\/images\/default-folder\.png(?:[?#]|$)/i;
+
 /**
- * The saved API lists the most recently saved lessons first and expands one
- * row per folder membership. The preview shows each lesson once.
+ * The saved-folders read already carries each list's name, lesson count and
+ * cover, so ركني needs no per-list request. "المشاهدة لاحقًا" leads, as
+ * Instagram's "All posts" does; the rest keep the server's newest-first order
+ * because the API does not report when a list was last used.
  */
-export const latestSavedLessons = (
-  lessons: SavedLesson[],
-  limit = SAVED_PREVIEW_LIMIT,
-) => {
-  const seen = new Set<string>();
-  const latest: SavedLesson[] = [];
-  for (const lesson of lessons) {
-    if (seen.has(lesson.id)) continue;
-    seen.add(lesson.id);
-    latest.push(lesson);
-    if (latest.length === limit) break;
-  }
-  return latest;
+export const savedCollections = (
+  folders: SavedFolderOption[],
+): SavedCollection[] => {
+  const collections = folders.map(folder => ({
+    id: folder.id,
+    name: folder.name,
+    coverUrl:
+      folder.imageUrl && !PLACEHOLDER_COVER.test(folder.imageUrl)
+        ? folder.imageUrl
+        : undefined,
+    lessonsCount: folder.lessonsCount,
+    watchLater: isWatchLaterFolderName(folder.name),
+  }));
+  return [
+    ...collections.filter(collection => collection.watchLater),
+    ...collections.filter(collection => !collection.watchLater),
+  ];
 };
 
 /**
- * First page of the saved library for ركني. It reads through the same
- * account-scoped request and offline cache as the full library, so both
- * screens agree and no second cache exists.
+ * The learner's saved lists for ركني. It reads through the same account-scoped
+ * folder index and offline cache as the full library and the player sheet.
  */
 export const useSavedPreview = (identityKey: string, enabled: boolean) => {
   const appIsActive = useAppForegroundState();
   const ownerRef = useRef(identityKey);
-  const [lessons, setLessons] = useState<SavedLesson[]>([]);
+  const [collections, setCollections] = useState<SavedCollection[]>([]);
   const [status, setStatus] = useState<SavedPreviewStatus>('loading');
   const reloadRef = useRef<(() => void) | null>(null);
   const reload = useCallback(() => reloadRef.current?.(), []);
 
   useEffect(() => {
     ownerRef.current = identityKey;
-    setLessons([]);
+    setCollections([]);
     setStatus('loading');
   }, [identityKey]);
 
@@ -65,14 +87,14 @@ export const useSavedPreview = (identityKey: string, enabled: boolean) => {
         void (async () => {
           try {
             const boundary = await captureAccountSessionBoundary();
-            const page = await getSavedLessonsPage(1);
+            const folders = await getSavedFolderOptions();
             assertAccountSessionBoundary(boundary);
             if (!owns()) return;
-            setLessons(latestSavedLessons(page.lessons));
+            setCollections(savedCollections(folders));
             setStatus('ready');
           } catch {
             if (!owns()) return;
-            // Keep rows already shown; a failed refresh does not empty them.
+            // Keep cards already shown; a failed refresh does not empty them.
             setStatus(current => (current === 'ready' ? current : 'error'));
           }
         })();
@@ -86,5 +108,5 @@ export const useSavedPreview = (identityKey: string, enabled: boolean) => {
     }, [appIsActive, enabled, identityKey]),
   );
 
-  return {lessons, reload, status};
+  return {collections, reload, status};
 };

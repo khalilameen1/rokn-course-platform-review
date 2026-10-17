@@ -5,15 +5,13 @@ import {
   getSavedFolderOptions,
   type SavedFolderOption,
 } from '../courseLearningApi';
+import {isWatchLaterFolderName} from '../courseLearning/savedFolderNames';
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
   sessionIdentityKey,
 } from '../../../constants/helpers';
 import type {RootState} from '../../../store/store';
-
-const watchLaterName = (value: string) =>
-  value.trim().toLocaleLowerCase('ar') === 'المشاهدة لاحقًا';
 
 export function useSavedFolderPicker({
   dismiss,
@@ -103,7 +101,7 @@ export function useSavedFolderPicker({
           }
         } catch {
           if (stillOwned(generation)) {
-            setLoadError('تعذّر تحميل قوائمك');
+            setLoadError('معرفناش نحمّل قوائمك');
           }
         } finally {
           if (generation === generationRef.current) loadingRef.current = false;
@@ -147,8 +145,12 @@ export function useSavedFolderPicker({
     [close, dismiss, onToggleSave, stillOwned, visitGeneration],
   );
 
-  const watchLaterFolder = folders.find(folder => watchLaterName(folder.name));
-  const visibleFolders = folders.filter(folder => !watchLaterName(folder.name));
+  const watchLaterFolder = folders.find(folder =>
+    isWatchLaterFolderName(folder.name),
+  );
+  const visibleFolders = folders.filter(
+    folder => !isWatchLaterFolderName(folder.name),
+  );
   const saveInWatchLater = useCallback(() => {
     saveInFolder(watchLaterFolder);
   }, [saveInFolder, watchLaterFolder]);
@@ -192,7 +194,7 @@ export function useSavedFolderPicker({
       saveInFolder(created);
     } catch {
       if (stillOwned(generation)) {
-        setError('تعذّر إنشاء القائمة\nتحقق من الاتصال ثم حاول مرة أخرى');
+        setError('معرفناش نعمل القائمة\nاتأكد من النت وجرب تاني');
       }
     } finally {
       if (generation === generationRef.current) creatingRef.current = false;

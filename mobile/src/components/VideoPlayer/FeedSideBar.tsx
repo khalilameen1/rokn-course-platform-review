@@ -27,7 +27,9 @@ import CourseIndexModule from './feedSideBar/CourseIndexModule';
 import {feedSideBarStyles as styles} from './feedSideBar/styles';
 import {useAttachmentPrompt} from './feedSideBar/useAttachmentPrompt';
 import {useSavedFolderPicker} from './feedSideBar/useSavedFolderPicker';
+import {useOneTapSave} from './feedSideBar/useOneTapSave';
 import {CopyIcon} from '../ui/CopyIcon';
+import {ActionSnackbar} from '../ui/ActionSnackbar';
 import {useFocusedOverlayBack} from './useFocusedOverlayBack';
 
 interface FeedSideBarProps {
@@ -37,7 +39,8 @@ interface FeedSideBarProps {
   isSaved: boolean;
   savePending: boolean;
   bottomInset?: number;
-  onToggleSave: (folder?: SavedFolderOption | null) => void;
+  /** Resolves true when the server confirmed the save or removal. */
+  onToggleSave: (folder?: SavedFolderOption | null) => Promise<boolean>;
   onBeforeOpenSave: () => boolean;
   onOpenChat: () => void;
   onOverlayVisibilityChange?: (visible: boolean) => void;
@@ -97,6 +100,7 @@ const FeedSideBar = ({
       currentTime,
       present: presentAttachments,
     });
+  const saveScopeKey = `${course.id}:${currentFeedKey}`;
   const {
     close: closeSavedFolderPicker,
     createAndSave,
@@ -112,12 +116,31 @@ const FeedSideBar = ({
     saveInWatchLater,
     setName: setNewFolderName,
   } = useSavedFolderPicker({
-    scopeKey: `${course.id}:${currentFeedKey}`,
+    scopeKey: saveScopeKey,
     dismiss: dismissSaveSheet,
     onBeforeOpen: onBeforeOpenSave,
     onToggleSave,
     present: presentSaveSheet,
   });
+  const {
+    confirmationKey,
+    dismissConfirmation,
+    saveToWatchLater,
+    savedToWatchLater,
+  } = useOneTapSave({
+    isSaved,
+    onBeforeSave: onBeforeOpenSave,
+    onToggleSave,
+    scopeKey: saveScopeKey,
+  });
+  const openCollections = useCallback(() => {
+    dismissConfirmation();
+    openSaveSheet();
+  }, [dismissConfirmation, openSaveSheet]);
+  const pressSave = useCallback(() => {
+    if (isSaved) openCollections();
+    else void saveToWatchLater();
+  }, [isSaved, openCollections, saveToWatchLater]);
 
   const reportSheetState = useCallback(
     (sheet: 'index' | 'save' | 'attachment', visible: boolean) => {
@@ -212,8 +235,25 @@ const FeedSideBar = ({
         onOpenAttachments={openAttachments}
         onOpenChat={onOpenChat}
         onOpenIndex={() => indexSheetRef.current?.present()}
-        onOpenSave={openSaveSheet}
+        onPressSave={pressSave}
+        onLongPressSave={openCollections}
       />
+
+      {confirmationKey !== null && (
+        <ActionSnackbar
+          key={confirmationKey}
+          actionHint="يفتح قوائمك"
+          actionLabel="غيّر"
+          message="اتحفظ في المشاهدة لاحقًا"
+          onAction={openCollections}
+          onDismiss={dismissConfirmation}
+          style={[
+            styles.saveConfirmation,
+            compact && styles.saveConfirmationCompact,
+            {bottom: (compact ? 34 : 48) + bottomInset},
+          ]}
+        />
+      )}
 
       <BottomSheetModal
         ref={indexSheetRef}
@@ -395,7 +435,7 @@ const FeedSideBar = ({
           contentContainerStyle={styles.saveSheetContent}>
           <Text style={styles.sheetEyebrow}>المحفوظات</Text>
           <Text accessibilityRole="header" style={styles.saveSheetTitle}>
-            أين تريد حفظ المقطع
+            تحفظه فين؟
           </Text>
           {foldersLoading && !folderLoadError ? (
             <ActivityIndicator color={Palette.primaryTint} style={styles.folderLoader} />
@@ -403,15 +443,20 @@ const FeedSideBar = ({
             <View style={styles.folderList}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{disabled: savePending}}
-                disabled={savePending}
+                accessibilityState={{
+                  disabled: savePending || savedToWatchLater,
+                  selected: savedToWatchLater,
+                }}
+                disabled={savePending || savedToWatchLater}
                 onPress={saveInWatchLater}
                 style={({pressed}) => [
                   styles.folderRow,
                   pressed && styles.pressed,
                 ]}>
                 <Text style={styles.folderRowText}>المشاهدة لاحقًا</Text>
-                <Text style={styles.folderRowAction}>حفظ</Text>
+                <Text style={styles.folderRowAction}>
+                  {savedToWatchLater ? 'اتحفظ' : 'حفظ'}
+                </Text>
               </Pressable>
               {folders.map(folder => (
                 <Pressable
@@ -426,7 +471,7 @@ const FeedSideBar = ({
                   ]}>
                   <Text style={styles.folderRowText}>{folder.name}</Text>
                   <Text style={styles.folderRowAction}>
-                    {isSaved ? 'إضافة' : 'حفظ'}
+                    {isSaved ? 'ضيفه' : 'حفظ'}
                   </Text>
                 </Pressable>
               ))}
@@ -439,7 +484,7 @@ const FeedSideBar = ({
               </Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="إعادة تحميل قوائم الحفظ"
+                accessibilityLabel="حمّل قوائمك تاني"
                 accessibilityState={{
                   busy: foldersLoading,
                   disabled: foldersLoading || folderBusy,
@@ -451,7 +496,7 @@ const FeedSideBar = ({
                   pressed && styles.pressed,
                 ]}>
                 <Text style={styles.folderRetryText}>
-                  {foldersLoading ? 'جارٍ التحديث' : 'إعادة المحاولة'}
+                  {foldersLoading ? 'بنحمّل' : 'جرب تاني'}
                 </Text>
               </Pressable>
             </View>
@@ -463,7 +508,7 @@ const FeedSideBar = ({
           )}
           <View style={styles.newFolderRow}>
             <TextInput
-              accessibilityLabel="اسم القائمة الجديدة"
+              accessibilityLabel="اسم قائمة جديدة"
               maxLength={60}
               onChangeText={setNewFolderName}
               onSubmitEditing={() => void createAndSave()}
@@ -490,7 +535,9 @@ const FeedSideBar = ({
               {folderBusy ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.createFolderButtonText}>إنشاء وحفظ</Text>
+                <Text style={styles.createFolderButtonText}>
+                  اعمل قائمة واحفظ
+                </Text>
               )}
             </Pressable>
           </View>
@@ -504,7 +551,7 @@ const FeedSideBar = ({
                 styles.removeSaveButton,
                 pressed && styles.pressed,
               ]}>
-              <Text style={styles.removeSaveText}>إزالة من المحفوظات</Text>
+              <Text style={styles.removeSaveText}>شيله من المحفوظات</Text>
             </Pressable>
           )}
         </BottomSheetScrollView>

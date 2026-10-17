@@ -78,7 +78,7 @@ type ReelsFeedActions = {
   toggleSaved: (
     reel: CourseReel,
     folder?: SavedFolderOption | null,
-  ) => Promise<unknown>;
+  ) => Promise<boolean>;
 };
 
 /**
@@ -125,11 +125,15 @@ const ReelsFeedRow = memo(
     // Stable per feed item: these callbacks read the latest controller
     // actions at call time (React's "effect event" pattern) instead of
     // capturing per-render closures that defeat FeedRow's memo.
+    // The controller owns failure feedback; the row only learns whether the
+    // command was confirmed so it can show a success confirmation.
     const onToggleSave = useCallback(
       (folder?: SavedFolderOption | null) =>
-        call(latest => {
-          if (reel) latest.toggleSaved(reel, folder).catch(() => undefined);
-        }),
+        call(latest =>
+          reel
+            ? latest.toggleSaved(reel, folder).catch(() => false)
+            : undefined,
+        ) ?? Promise.resolve(false),
       [call, reel],
     );
     const onBeforeOpenSave = useCallback(
@@ -415,7 +419,7 @@ export const useReelsFeedRenderer = ({
   toggleSaved: (
     reel: CourseReel,
     folder?: SavedFolderOption | null,
-  ) => Promise<unknown>;
+  ) => Promise<boolean>;
   topInset: number;
 }) => {
   const latestActions: ReelsFeedActions = {

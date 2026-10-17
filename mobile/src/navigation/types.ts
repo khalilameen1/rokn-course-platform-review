@@ -97,7 +97,8 @@ export type RootStackParamList = {
   Notifications: undefined;
   Settings: undefined;
   DeviceSessions: undefined;
-  SavedLibrary: undefined;
+  /** Optional list to open, e.g. from a ركني collection card. */
+  SavedLibrary: {folderId?: string} | undefined;
 };
 
 export type RootNavigation = NativeStackNavigationProp<RootStackParamList>;

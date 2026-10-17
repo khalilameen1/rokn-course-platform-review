@@ -385,7 +385,7 @@ describe('saved folder default destination', () => {
     });
     expect(view.picker.name).toBe('للمراجعة');
     expect(view.picker.creating).toBe(false);
-    expect(view.picker.error).toContain('تعذّر إنشاء القائمة');
+    expect(view.picker.error).toContain('معرفناش نعمل القائمة');
     expect(view.onToggleSave).not.toHaveBeenCalled();
     await act(async () => {
       await view.picker.createAndSave();
@@ -436,7 +436,7 @@ describe('saved folder default destination', () => {
     const view = await mountPicker();
     await act(async () => view.picker.open());
     act(() => view.picker.setName('قائمتي'));
-    expect(view.picker.loadError).toBe('تعذّر تحميل قوائمك');
+    expect(view.picker.loadError).toBe('معرفناش نحمّل قوائمك');
     expect(view.picker.error).toBe('');
 
     await act(async () => {
@@ -444,7 +444,7 @@ describe('saved folder default destination', () => {
       view.picker.retryFolders();
     });
     expect(view.picker.loading).toBe(true);
-    expect(view.picker.loadError).toBe('تعذّر تحميل قوائمك');
+    expect(view.picker.loadError).toBe('معرفناش نحمّل قوائمك');
     expect(mockGetSavedFolderOptions.mock.calls).toEqual([
       [],
       [{requireFresh: true}],
@@ -479,7 +479,7 @@ describe('saved folder default destination', () => {
     await act(async () => view.picker.retryFolders());
     expect(view.picker.folders).toEqual([{id: '8', name: 'للمراجعة'}]);
     expect(view.picker.name).toBe('قائمتي');
-    expect(view.picker.loadError).toBe('تعذّر تحميل قوائمك');
+    expect(view.picker.loadError).toBe('معرفناش نحمّل قوائمك');
     expect(view.picker.loading).toBe(false);
     expect(view.onToggleSave).not.toHaveBeenCalled();
     await act(async () => view.renderer.unmount());
@@ -493,7 +493,7 @@ describe('saved folder default destination', () => {
     await act(async () => view.picker.createAndSave());
     act(() => view.picker.retryFolders());
     expect(view.picker.loadError).toBe('');
-    expect(view.picker.error).toContain('تعذّر إنشاء القائمة');
+    expect(view.picker.error).toContain('معرفناش نعمل القائمة');
     expect(mockGetSavedFolderOptions).toHaveBeenCalledTimes(1);
     expect(mockCreateSavedFolderOption).toHaveBeenCalledTimes(1);
     await act(async () => view.renderer.unmount());

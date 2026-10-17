@@ -212,13 +212,13 @@ describe('attachment row preparation feedback', () => {
   });
 
   it('shows one read retry inside the picker and disables it during reload or creation', async () => {
-    mockFolderReadError = 'تعذّر تحميل قوائمك';
+    mockFolderReadError = 'معرفناش نحمّل قوائمك';
     await act(async () => renderer.update(render()));
     const retry = () =>
       renderer.root.findAll(
         node =>
           typeof node.props.onPress === 'function' &&
-          node.props.accessibilityLabel === 'إعادة تحميل قوائم الحفظ',
+          node.props.accessibilityLabel === 'حمّل قوائمك تاني',
       );
     expect(retry()).toHaveLength(1);
     expect(retry()[0].props.disabled).toBe(false);
@@ -231,7 +231,7 @@ describe('attachment row preparation feedback', () => {
       disabled: true,
     });
     expect(
-      retry()[0].findAll(node => node.props.children === 'جارٍ التحديث').length,
+      retry()[0].findAll(node => node.props.children === 'بنحمّل').length,
     ).toBeGreaterThan(0);
     mockFolderLoading = false;
     mockFolderCreating = true;

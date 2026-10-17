@@ -47,7 +47,8 @@ interface FeedRowProps {
   bottomInset: number;
   onPlaybackSpeedChange: (speed: number) => void;
   onQualityChange: (quality: VideoQuality) => void;
-  onToggleSave: (folder?: SavedFolderOption | null) => void;
+  /** Resolves true when the server confirmed the save or removal. */
+  onToggleSave: (folder?: SavedFolderOption | null) => Promise<boolean>;
   onBeforeOpenSave: () => boolean;
   onOpenChat: () => void;
   onOverlayVisibilityChange?: (scopeKey: string, visible: boolean) => void;

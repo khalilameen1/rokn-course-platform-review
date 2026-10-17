@@ -24,7 +24,7 @@ export const styles = StyleSheet.create({
     backgroundColor: Palette.surface,
     alignItems: 'stretch',
   },
-  // Same surface, radius and inset as courseCard so saved lessons read as
+  // Same surface, radius and inset as courseCard so the saved hint reads as
   // one more ركني card, not as the flat full-library list.
   savedCard: {
     marginTop: Spacing.md,
@@ -34,7 +34,6 @@ export const styles = StyleSheet.create({
     backgroundColor: Palette.surface,
     overflow: 'hidden',
   },
-  savedRow: {backgroundColor: 'transparent', minHeight: 96, paddingVertical: Spacing.sm},
   savedHint: {
     ...Type.caption,
     ...textDirection,
@@ -65,6 +64,15 @@ export const styles = StyleSheet.create({
     aspectRatio: 1.6,
     borderRadius: Radius.sm,
     resizeMode: 'cover',
+  },
+  // A saved list without a lesson thumbnail: the cover's frame, one glyph.
+  collectionTile: {
+    width: '100%',
+    aspectRatio: 1.6,
+    borderRadius: Radius.sm,
+    backgroundColor: Palette.surfaceRaised,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   courseCopy: {flex: 1, minWidth: 0, paddingTop: Spacing.sm},
   courseTitle: {

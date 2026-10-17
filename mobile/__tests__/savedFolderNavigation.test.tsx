@@ -99,7 +99,7 @@ describe('saved folder navigation during scoped reads', () => {
       const status = renderer.root.findAll(
         item => item.type === ('StatusView' as unknown),
       )[0];
-      expect(status.props.title).toBe('لا توجد مقاطع في هذه القائمة');
+      expect(status.props.title).toBe('القائمة دي فاضية');
     } finally {
       await act(async () => renderer.unmount());
     }
@@ -168,7 +168,7 @@ describe('saved folder navigation during scoped reads', () => {
         item => item.type === ('StatusView' as unknown),
       )[0];
       expect(status.props.state).toBe('empty');
-      expect(status.props.title).toBe('لا توجد مقاطع محفوظة');
+      expect(status.props.title).toBe('لسه مفيش حاجة محفوظة');
       const notice = renderer.root.findByProps({
         accessibilityLabel: 'إعادة تحميل المحفوظات والقوائم',
       });

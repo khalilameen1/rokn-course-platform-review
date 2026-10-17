@@ -1,5 +1,5 @@
 import React from 'react';
-import {Pressable, Text, View, type StyleProp, type ViewStyle} from 'react-native';
+import {Pressable, Text, View} from 'react-native';
 import {PlayInSavedVideosIcon} from '../../assets/SVG';
 import {RasterImage as Image} from '../../components/ui/RasterImage';
 import {
@@ -14,17 +14,15 @@ type Props = {
   onPress: () => void;
   /** Row-level action, such as removal in the full library. */
   trailing?: React.ReactNode;
-  /** Host surface overrides, e.g. rows inside a ركني card. */
-  style?: StyleProp<ViewStyle>;
 };
 
-/** One saved lesson row, shared by the full library and the ركني preview. */
-export const SavedLessonRow = ({item, onPress, trailing, style}: Props) => (
+/** One saved lesson row in the full library. */
+export const SavedLessonRow = ({item, onPress, trailing}: Props) => (
   <Pressable
     accessibilityLabel={`تشغيل ${item.title}`}
     accessibilityRole="button"
     onPress={onPress}
-    style={({pressed}) => [styles.row, style, pressed && styles.pressed]}>
+    style={({pressed}) => [styles.row, pressed && styles.pressed]}>
     <View style={styles.thumbWrap}>
       <Image
         progressiveRenderingEnabled

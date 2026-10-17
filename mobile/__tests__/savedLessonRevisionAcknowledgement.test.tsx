@@ -84,7 +84,7 @@ describe('saved reel acknowledgement after publication', () => {
         await act(async () => {
           await expect(
             controller.toggleSaved({lessonId: '10'} as CourseReel, folder),
-          ).resolves.toBeUndefined();
+          ).resolves.toBe(true);
         });
         expect(controller.savedLessons.has('10')).toBe(true);
         expect(controller.savingLessons.size).toBe(0);

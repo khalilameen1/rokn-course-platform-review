@@ -56,13 +56,17 @@ export const useReelsSavedLessons = ({
     setSavingLessons(new Set());
   }, [scopeKey]);
 
+  /** Resolves true only when the server confirmed this owner's command. */
   const toggleSaved = useCallback(
-    async (reel: CourseReel, folder?: SavedFolderOption | null) => {
+    async (
+      reel: CourseReel,
+      folder?: SavedFolderOption | null,
+    ): Promise<boolean> => {
       const ownerCourseId = loadedCourse.current?.id;
-      if (!ownerCourseId) return;
+      if (!ownerCourseId) return false;
       const operationGeneration = ownerGeneration.current;
       const operationKey = `${operationGeneration}:${ownerCourseId}:${reel.lessonId}`;
-      if (pendingRef.current.has(operationKey)) return;
+      if (pendingRef.current.has(operationKey)) return false;
       pendingRef.current.add(operationKey);
       setSavingLessons(current => new Set(current).add(reel.lessonId));
       const currentlySaved = savedLessonsRef.current.has(reel.lessonId);
@@ -96,7 +100,7 @@ export const useReelsSavedLessons = ({
       };
       try {
         boundary = await captureAccountSessionBoundary();
-        if (loadedCourse.current?.id !== ownerCourseId) return;
+        if (loadedCourse.current?.id !== ownerCourseId) return false;
         reflectSaved(shouldSave);
         optimisticApplied = true;
         if (folder) {
@@ -105,18 +109,17 @@ export const useReelsSavedLessons = ({
           await toggleWatchLater(reel.lessonId, folder === null);
         }
         assertAccountSessionBoundary(boundary);
-        if (!stillOwned()) return;
+        if (!stillOwned()) return false;
         // A background saved-state read may have landed while the write was
         // pending. The confirmed command owns this reel's final bookmark state.
         reflectSaved(shouldSave);
+        return true;
       } catch (error) {
         if (stillOwned()) {
           if (optimisticApplied) {
             reflectSaved(currentlySaved);
           }
-          setConnectionNote(
-            'تعذّر تحديث المحفوظات\nتحقق من الاتصال ثم حاول مرة أخرى',
-          );
+          setConnectionNote('معرفناش نحدّث المحفوظات\nاتأكد من النت وجرب تاني');
         }
         throw error;
       } finally {

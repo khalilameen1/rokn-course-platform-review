@@ -24,8 +24,8 @@ describe('production daily surfaces', () => {
     expect(savedRead).toContain('captureAccountSessionBoundary()');
     expect(savedRead).toContain('assertAccountSessionBoundary(boundary)');
     expect(savedRead).toContain('dataOwnerRef.current !== identityKey');
-    expect(saved).toContain(
-      'useSavedLibraryRead(identityKey, snapshot, restoreMutationActivity)',
+    expect(saved).toMatch(
+      /useSavedLibraryRead\(\s*identityKey,\s*snapshot,\s*restoreMutationActivity,/,
     );
     expect(saved).toContain('!operation.isCurrent()');
   });

@@ -15,7 +15,6 @@ import {useResponsiveLayout} from '../constants/designSystem';
 import {sessionIdentityKey} from '../constants/helpers';
 import {openGuestLogin} from '../navigation/journeyNavigation';
 import type {RootNavigation} from '../navigation/types';
-import type {SavedLesson} from '../services/roknApi';
 import type {RootState} from '../store/store';
 import {CourseShelf} from './myCorner/CourseShelf';
 import {buildMyCornerModel, type LearningResumeTarget} from './myCorner/model';
@@ -62,12 +61,8 @@ export default function MyCorner() {
     (target: LearningResumeTarget) => navigation.navigate('Reels', target),
     [navigation],
   );
-  const openSavedLesson = useCallback(
-    (lesson: SavedLesson) =>
-      navigation.navigate('Reels', {
-        courseId: lesson.courseId,
-        lessonId: lesson.id,
-      }),
+  const openSavedCollection = useCallback(
+    (folderId: string) => navigation.navigate('SavedLibrary', {folderId}),
     [navigation],
   );
   const openSavedLibrary = useCallback(
@@ -172,10 +167,10 @@ export default function MyCorner() {
 
           {data.serverSession === true && (
             <SavedPreview
+              collections={saved.collections}
               hasCourses={!empty}
-              lessons={saved.lessons}
               onOpenAll={openSavedLibrary}
-              onOpenLesson={openSavedLesson}
+              onOpenCollection={openSavedCollection}
               status={saved.status}
             />
           )}

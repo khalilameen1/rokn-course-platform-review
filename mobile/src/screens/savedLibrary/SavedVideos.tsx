@@ -16,7 +16,11 @@ import {SavedLessonRow} from './SavedLessonRow';
 import {savedLibraryStyles as styles} from './styles';
 import {useSavedLibrary} from './useSavedLibrary';
 
-export default function SavedVideos() {
+export default function SavedVideos({
+  initialFolderId,
+}: {
+  initialFolderId?: string;
+}) {
   const navigation = useNavigation<RootNavigation>();
   const {
     actionError,
@@ -48,7 +52,7 @@ export default function SavedVideos() {
     showCreateFolder,
     toggleCreateFolder,
     visibleSaved,
-  } = useSavedLibrary();
+  } = useSavedLibrary(initialFolderId);
 
   if (
     !identityOwned ||
@@ -72,7 +76,7 @@ export default function SavedVideos() {
         description={error}
         onAction={() => retry()}
         state="error"
-        title="تعذّر تحميل المحفوظات"
+        title="معرفناش نحمّل المحفوظات"
       />
     );
   }
@@ -245,19 +249,19 @@ export default function SavedVideos() {
           description={error}
           onAction={() => retry()}
           state="error"
-          title="تعذّر تحميل المحفوظات"
+          title="معرفناش نحمّل المحفوظات"
         />
       ) : !saved.length && activeFolderId === 'all' ? (
         <StatusView
-          description="اضغط حفظ أثناء المشاهدة واختر القائمة المناسبة"
+          description="اضغط احفظ وانت بتتفرج وهيتحفظ هنا"
           state="empty"
-          title="لا توجد مقاطع محفوظة"
+          title="لسه مفيش حاجة محفوظة"
         />
       ) : !visibleSaved.length ? (
         <StatusView
-          description="اختر هذه القائمة عند الضغط على حفظ"
+          description="بعد ما تحفظ درس اضغط غيّر واختار القائمة دي"
           state="empty"
-          title="لا توجد مقاطع في هذه القائمة"
+          title="القائمة دي فاضية"
         />
       ) : null}
 

@@ -205,7 +205,7 @@ it.each(
       return response(null);
     });
     const view = await mountCourse();
-    let changing: Promise<void> | undefined;
+    let changing: Promise<boolean> | undefined;
     try {
       expect(api.get).toHaveBeenCalledWith('saved-lessons/state', {
         params: {lesson_ids: ['44']},

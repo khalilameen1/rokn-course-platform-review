@@ -34,7 +34,7 @@ type SavedMutationFlight = {
   identityKey: string;
 };
 
-export function useSavedLibrary() {
+export function useSavedLibrary(initialFolderId?: string) {
   const storedUser = useSelector((state: RootState) => state.auth.userData);
   const identityKey = sessionIdentityKey(storedUser);
 
@@ -99,7 +99,12 @@ export function useSavedLibrary() {
     serverSession,
     restoreFolderSelection,
     reportFolderReadError,
-  } = useSavedLibraryRead(identityKey, snapshot, restoreMutationActivity);
+  } = useSavedLibraryRead(
+    identityKey,
+    snapshot,
+    restoreMutationActivity,
+    initialFolderId,
+  );
 
   const createFolder = useCallback(async () => {
     const name = newFolderName.trim();

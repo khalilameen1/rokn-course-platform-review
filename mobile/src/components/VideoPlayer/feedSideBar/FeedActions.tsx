@@ -8,8 +8,9 @@ import {
 } from 'react-native';
 import Svg, {Path} from 'react-native-svg';
 import {formatArabicNumber} from '../../../constants/arabicFormatting';
-import {Accessibility, Palette, Type} from '../../../constants/designSystem';
+import {Accessibility, Type} from '../../../constants/designSystem';
 import {Fonts} from '../../../constants/styleConstants';
+import {BookmarkIcon} from '../../ui/BookmarkIcon';
 
 const ChatIcon = () => (
   <Svg width={28} height={28} viewBox="0 0 28 28">
@@ -25,18 +26,6 @@ const ChatIcon = () => (
       stroke="#fff"
       strokeWidth={2.6}
       strokeLinecap="round"
-    />
-  </Svg>
-);
-
-const BookmarkIcon = ({filled}: {filled: boolean}) => (
-  <Svg width={28} height={28} viewBox="0 0 28 28">
-    <Path
-      d="M7 5.2c0-1 .8-1.8 1.8-1.8h10.4c1 0 1.8.8 1.8 1.8v19.4l-7-4.3-7 4.3V5.2Z"
-      fill={filled ? Palette.primary : 'rgba(0,0,0,0)'}
-      stroke="#fff"
-      strokeWidth={1.8}
-      strokeLinejoin="round"
     />
   </Svg>
 );
@@ -57,6 +46,7 @@ export const AttachmentIcon = () => (
 const FeedActionButton = ({
   label,
   onPress,
+  onLongPress,
   children,
   active,
   compact,
@@ -64,6 +54,7 @@ const FeedActionButton = ({
 }: {
   label: string;
   onPress: () => void;
+  onLongPress?: () => void;
   children: React.ReactNode;
   active?: boolean;
   compact?: boolean;
@@ -80,6 +71,7 @@ const FeedActionButton = ({
       compact && styles.actionCompact,
       disabled && styles.actionDisabled,
     ]}
+    onLongPress={onLongPress}
     onPress={onPress}>
     <View
       style={[
@@ -115,7 +107,10 @@ type FeedActionsProps = {
   onOpenAttachments: () => void;
   onOpenChat: () => void;
   onOpenIndex: () => void;
-  onOpenSave: () => void;
+  /** Saves to the default list, or opens the lists when already saved. */
+  onPressSave: () => void;
+  /** Opens the lists directly, for choosing a list before saving. */
+  onLongPressSave: () => void;
 };
 
 const FeedActions = ({
@@ -130,7 +125,8 @@ const FeedActions = ({
   onOpenAttachments,
   onOpenChat,
   onOpenIndex,
-  onOpenSave,
+  onPressSave,
+  onLongPressSave,
 }: FeedActionsProps) => {
   // Latched per picture band so the switch cannot oscillate with its layout.
   const [avoidedBand, setAvoidedBand] = useState<number | null>(null);
@@ -157,11 +153,12 @@ const FeedActions = ({
         <ChatIcon />
       </FeedActionButton>
       <FeedActionButton
-        label={savePending ? 'جارٍ الحفظ' : isSaved ? 'محفوظ' : 'احفظ'}
+        label={savePending ? 'بيتحفظ' : isSaved ? 'محفوظ' : 'احفظ'}
         active={isSaved}
         compact={compact}
         disabled={savePending}
-        onPress={onOpenSave}>
+        onLongPress={onLongPressSave}
+        onPress={onPressSave}>
         {savePending ? (
           <ActivityIndicator color="#FFFFFF" size="small" />
         ) : (

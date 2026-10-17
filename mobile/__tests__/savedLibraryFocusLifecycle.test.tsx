@@ -113,10 +113,10 @@ const refocus = () => {
   mockFocusCleanup = mockFocusEffect?.() || undefined;
 };
 
-const mountLibrary = async () => {
+const mountLibrary = async (initialFolderId?: string) => {
   let library!: ReturnType<typeof useSavedLibrary>;
   const Harness = () => {
-    library = useSavedLibrary();
+    library = useSavedLibrary(initialFolderId);
     return null;
   };
   let renderer!: TestRenderer.ReactTestRenderer;
@@ -175,6 +175,40 @@ describe('saved library focus lifecycle', () => {
         lessons: [{...page(1).lessons[0], folderId, folderName: 'قائمتي'}],
       }),
     );
+  });
+
+  it('opens on the list a ركني card asked for and reads only that list', async () => {
+    mockGetSavedLessonsPage.mockResolvedValue(page(1));
+    const view = await mountLibrary('7');
+    try {
+      expect(view.current.activeFolderId).toBe('7');
+      expect(mockGetSavedFolderLessonsPage).toHaveBeenCalledWith('7', 1);
+      expect(mockGetSavedLessonsPage).not.toHaveBeenCalled();
+      expect(view.current.visibleSaved.map(item => item.folderId)).toEqual([
+        '7',
+      ]);
+      // A later account does not inherit the previous learner's list.
+      mockUser = {id: 2, api_token: 'other-token'};
+      await act(async () => {
+        view.renderer.update(<view.Harness />);
+        await flush();
+      });
+      expect(view.current.activeFolderId).toBe('all');
+    } finally {
+      act(() => view.renderer.unmount());
+    }
+  });
+
+  it('opens on all saved lessons without a requested list', async () => {
+    mockGetSavedLessonsPage.mockResolvedValue(page(1));
+    const view = await mountLibrary();
+    try {
+      expect(view.current.activeFolderId).toBe('all');
+      expect(mockGetSavedLessonsPage).toHaveBeenCalledWith(1);
+      expect(mockGetSavedFolderLessonsPage).not.toHaveBeenCalled();
+    } finally {
+      act(() => view.renderer.unmount());
+    }
   });
 
   it('retries folder reads remotely, keeps lessons on repeated failure, and restores offline fallback on refocus', async () => {

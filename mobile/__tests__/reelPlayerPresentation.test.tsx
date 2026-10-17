@@ -292,7 +292,8 @@ describe('feed action rail', () => {
         onOpenAttachments={jest.fn()}
         onOpenChat={jest.fn()}
         onOpenIndex={jest.fn()}
-        onOpenSave={jest.fn()}
+        onPressSave={jest.fn()}
+        onLongPressSave={jest.fn()}
       />,
     );
 

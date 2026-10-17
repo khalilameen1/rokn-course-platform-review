@@ -10,10 +10,10 @@ import {settleWithin} from '../../../utils/settleWithin';
 import {ownerKey, singleFlight} from './savedCollectionConcurrency';
 import {
   invalidateFolderList,
-  normalizedFolderName,
   requireSavedFolderList,
   validSavedFolderOption,
 } from './savedFolderIndex';
+import {isWatchLaterFolderName, WATCH_LATER_FOLDER_NAME} from './savedFolderNames';
 import {valueAsString} from './shared';
 
 const WATCH_LATER_FOLDER_KEY = '@rokn/watch-later-folder-id/v2';
@@ -101,13 +101,12 @@ export const ensureWatchLaterFolder = async (
       assertAccountSessionBoundary(accountBoundary);
       const folderPayload = response?.data?.data;
       const folders = requireSavedFolderList(folderPayload);
-      let folder = folders.find(item => {
-        const name = normalizedFolderName(valueAsString(item?.name));
-        return name === normalizedFolderName('المشاهدة لاحقًا');
-      });
+      let folder = folders.find(item =>
+        isWatchLaterFolderName(valueAsString(item?.name)),
+      );
       if (!folder) {
         const created = await publicRequest.post('saved-folders', {
-          name: 'المشاهدة لاحقًا',
+          name: WATCH_LATER_FOLDER_NAME,
           client_request_id: secureRandomUuid(),
         });
         assertAccountSessionBoundary(accountBoundary);

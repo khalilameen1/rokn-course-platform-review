@@ -50,8 +50,7 @@ export type SavedFolderOption = {
   lessonsCount?: number;
 };
 
-export const normalizedFolderName = (value: string) =>
-  value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('ar');
+export {normalizedFolderName} from './savedFolderNames';
 
 export const mapSavedFolder = (folder: SavedFolderDto): SavedFolderOption => ({
   id: valueAsString(folder.id),

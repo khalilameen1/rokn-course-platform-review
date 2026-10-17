@@ -42,6 +42,11 @@ jest.mock('../src/services/roknApi', () => ({
   getCachedLearningDashboard: () => mockCached(),
   getLearningDashboard: () => mockGet(),
 }));
+// The saved lists below the courses have their own suite.
+jest.mock(
+  '../src/components/VideoPlayer/courseLearning/savedFolderIndex',
+  () => ({getSavedFolderOptions: async () => []}),
+);
 jest.mock('../src/components/TabBar', () => () => null);
 jest.mock('../src/components/view/HeaderWithBack', () => () => null);
 jest.mock('../src/navigation/journeyNavigation', () => ({

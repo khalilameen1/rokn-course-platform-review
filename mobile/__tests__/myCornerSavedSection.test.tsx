@@ -1,15 +1,12 @@
 import React from 'react';
 import {RefreshControl, Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
-import type {
-  LearningDashboard,
-  SavedLesson,
-  SavedLessonsPage,
-} from '../src/services/roknApi';
+import type {SavedFolderOption} from '../src/components/VideoPlayer/courseLearning/savedFolderIndex';
+import type {LearningDashboard} from '../src/services/roknApi';
 
 const mockNavigate = jest.fn();
 const mockGet = jest.fn();
-const mockSavedPage = jest.fn();
+const mockFolders = jest.fn();
 let mockAuthenticated = true;
 let mockBoundary = {scope: 'learner', epoch: 1};
 
@@ -38,14 +35,15 @@ jest.mock('../src/services/roknApi', () => ({
   hasSession: async () => mockAuthenticated,
   getCachedLearningDashboard: async () => null,
   getLearningDashboard: () => mockGet(),
-  getSavedLessonsPage: (...args: unknown[]) => mockSavedPage(...args),
+}));
+jest.mock('../src/components/VideoPlayer/courseLearning/savedFolderIndex', () => ({
+  getSavedFolderOptions: (...args: unknown[]) => mockFolders(...args),
 }));
 jest.mock('../src/components/TabBar', () => () => null);
 jest.mock('../src/components/view/HeaderWithBack', () => () => null);
 jest.mock('../src/components/ui/RasterImage', () => ({
   RasterImage: () => null,
 }));
-jest.mock('../src/assets/SVG', () => ({PlayInSavedVideosIcon: () => null}));
 jest.mock('../src/navigation/journeyNavigation', () => ({
   openGuestLogin: jest.fn(),
 }));
@@ -53,9 +51,9 @@ jest.mock('react-native-linear-gradient', () => 'LinearGradient');
 
 import MyCorner from '../src/screens/MyCorner';
 import {SectionHeading} from '../src/components/ui/PremiumUI';
+import {CourseArtwork} from '../src/components/ui/CourseArtwork';
 import {CourseShelf} from '../src/screens/myCorner/CourseShelf';
 import {SavedPreview} from '../src/screens/myCorner/SavedPreview';
-import {SavedLessonRow} from '../src/screens/savedLibrary/SavedLessonRow';
 
 const course: LearningDashboard['courses'][number] = {
   id: '3',
@@ -81,22 +79,12 @@ const dashboardWith = (
   activityDays: [],
   currentStreakDays: 0,
 });
-const lesson = (id: string, folderId = '1'): SavedLesson => ({
-  id,
-  folderId,
-  folderName: 'أراجعها',
-  courseId: '3',
-  title: `درس ${id}`,
-  courseTitle: 'كورس التصميم',
-  duration: '01:30',
-});
-const page = (lessons: SavedLesson[]): SavedLessonsPage => ({
-  lessons,
-  page: 1,
-  hasMore: false,
-  total: lessons.length,
-  fromCache: false,
-});
+const folder = (
+  id: string,
+  name: string,
+  lessonsCount?: number,
+  imageUrl?: string,
+): SavedFolderOption => ({id, name, lessonsCount, imageUrl});
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>(accept => {
@@ -112,17 +100,27 @@ const savedHeading = (renderer: TestRenderer.ReactTestRenderer) =>
     .find(node => node.props.title === 'محفوظاتك');
 const hasText = (renderer: TestRenderer.ReactTestRenderer, text: string) =>
   renderer.root.findAllByType(Text).some(node => node.props.children === text);
-const rowIds = (renderer: TestRenderer.ReactTestRenderer) =>
+// One node per card: the composite that owns the button props.
+const cards = (renderer: TestRenderer.ReactTestRenderer) =>
   renderer.root
-    .findAllByType(SavedLessonRow)
-    .map(row => (row.props.item as SavedLesson).id);
+    .findByType(SavedPreview)
+    .findAll(
+      node =>
+        typeof node.type !== 'string' &&
+        node.props.accessibilityRole === 'button' &&
+        typeof node.props.accessibilityLabel === 'string' &&
+        typeof node.props.onPress === 'function',
+      {deep: false},
+    );
+const cardLabels = (renderer: TestRenderer.ReactTestRenderer) =>
+  cards(renderer).map(card => card.props.accessibilityLabel);
 
-describe('ركني saved section', () => {
+describe('ركني saved collections', () => {
   let renderer: TestRenderer.ReactTestRenderer;
   beforeEach(() => {
     mockNavigate.mockReset();
     mockGet.mockReset().mockResolvedValue(dashboardWith([course]));
-    mockSavedPage.mockReset();
+    mockFolders.mockReset();
     mockAuthenticated = true;
     mockBoundary = {scope: 'learner', epoch: 1};
   });
@@ -130,37 +128,56 @@ describe('ركني saved section', () => {
     if (renderer) await act(async () => renderer.unmount());
   });
 
-  it('shows the latest three saved lessons right under the courses and opens them', async () => {
-    // One lesson saved in two lists arrives as two membership rows.
-    mockSavedPage.mockResolvedValue(
-      page([
-        lesson('11'),
-        lesson('11', '2'),
-        lesson('12'),
-        lesson('13'),
-        lesson('14'),
-      ]),
-    );
+  it('shows watch later first, then the learner lists, with counts and covers', async () => {
+    mockFolders.mockResolvedValue([
+      folder('8', 'أفكار تصميم', 3, 'https://cdn.example/cover.jpg'),
+      folder('5', 'المشاهدة لاحقًا', 1),
+      folder('9', 'مراجعة', 12, 'https://rokn.example/images/default-folder.png'),
+      folder('4', 'قائمة فاضية', 0),
+    ]);
     await act(async () => {
       renderer = TestRenderer.create(<MyCorner />);
     });
 
-    expect(mockSavedPage).toHaveBeenCalledTimes(1);
-    expect(mockSavedPage).toHaveBeenCalledWith(1);
+    expect(mockFolders).toHaveBeenCalledTimes(1);
     // Directly under the courses, above the later progress sections.
     expect(headings(renderer)).toEqual([
       'استكمل من مكانك',
       'محفوظاتك',
       'نشاطك هذا الأسبوع',
     ]);
-    expect(rowIds(renderer)).toEqual(['11', '12', '13']);
+    expect(cardLabels(renderer)).toEqual([
+      'المشاهدة لاحقًا، درس واحد',
+      'أفكار تصميم، ٣ دروس',
+      'مراجعة، ١٢ درس',
+      'قائمة فاضية، مفيش دروس',
+    ]);
+    expect(hasText(renderer, '٣ دروس')).toBe(true);
+    // Only a real lesson thumbnail is a cover; the server placeholder and
+    // empty lists get the folder tile.
+    const covers = renderer.root
+      .findByType(SavedPreview)
+      .findAllByType(CourseArtwork);
+    expect(covers).toHaveLength(1);
+    expect(covers[0].props.source).toEqual({uri: 'https://cdn.example/cover.jpg'});
+  });
 
-    await act(async () =>
-      renderer.root.findAllByType(SavedLessonRow)[1].props.onPress(),
-    );
-    expect(mockNavigate).toHaveBeenLastCalledWith('Reels', {
-      courseId: '3',
-      lessonId: '12',
+  it('opens the library on the tapped list and keeps an unfiltered entry', async () => {
+    mockFolders.mockResolvedValue([
+      folder('5', 'المشاهدة لاحقًا', 2),
+      folder('8', 'أفكار تصميم', 3),
+    ]);
+    await act(async () => {
+      renderer = TestRenderer.create(<MyCorner />);
+    });
+
+    await act(async () => cards(renderer)[1].props.onPress());
+    expect(mockNavigate).toHaveBeenLastCalledWith('SavedLibrary', {
+      folderId: '8',
+    });
+    await act(async () => cards(renderer)[0].props.onPress());
+    expect(mockNavigate).toHaveBeenLastCalledWith('SavedLibrary', {
+      folderId: '5',
     });
 
     const heading = savedHeading(renderer);
@@ -169,33 +186,47 @@ describe('ركني saved section', () => {
     expect(mockNavigate).toHaveBeenLastCalledWith('SavedLibrary');
   });
 
-  it('renders nothing for the section until the first saved read settles', async () => {
-    const saved = deferred<SavedLessonsPage>();
-    mockSavedPage.mockReturnValue(saved.promise);
+  it('omits a count the cache no longer knows instead of showing zero', async () => {
+    mockFolders.mockResolvedValue([folder('8', 'أفكار تصميم')]);
+    await act(async () => {
+      renderer = TestRenderer.create(<MyCorner />);
+    });
+    expect(cardLabels(renderer)).toEqual(['أفكار تصميم']);
+  });
+
+  it('renders nothing for the section until the first read settles', async () => {
+    const read = deferred<SavedFolderOption[]>();
+    mockFolders.mockReturnValue(read.promise);
     await act(async () => {
       renderer = TestRenderer.create(<MyCorner />);
     });
     expect(renderer.root.findAllByType(CourseShelf)).toHaveLength(1);
     expect(savedHeading(renderer)).toBeUndefined();
 
-    await act(async () => saved.resolve(page([lesson('11')])));
+    await act(async () => read.resolve([folder('5', 'المشاهدة لاحقًا', 1)]));
     expect(savedHeading(renderer)).toBeDefined();
-    expect(rowIds(renderer)).toEqual(['11']);
+    expect(cardLabels(renderer)).toEqual(['المشاهدة لاحقًا، درس واحد']);
   });
 
-  it('shows a one-line hint when the learner has courses but nothing saved', async () => {
-    mockSavedPage.mockResolvedValue(page([]));
-    await act(async () => {
-      renderer = TestRenderer.create(<MyCorner />);
-    });
-    expect(savedHeading(renderer)?.props.actionLabel).toBe('عرض الكل');
-    expect(hasText(renderer, 'احفظ أي درس وهتلاقيه هنا')).toBe(true);
-    expect(rowIds(renderer)).toEqual([]);
-  });
+  it.each([
+    ['no lists', []],
+    ['only an empty watch later list', [folder('5', 'المشاهدة لاحقًا', 0)]],
+  ])(
+    'shows a one-line hint when the learner has courses and %s',
+    async (_case, folders) => {
+      mockFolders.mockResolvedValue(folders);
+      await act(async () => {
+        renderer = TestRenderer.create(<MyCorner />);
+      });
+      expect(savedHeading(renderer)?.props.actionLabel).toBe('عرض الكل');
+      expect(hasText(renderer, 'احفظ أي درس وهتلاقيه هنا')).toBe(true);
+      expect(cards(renderer)).toHaveLength(0);
+    },
+  );
 
   it('hides the section when there are no courses and nothing saved', async () => {
     mockGet.mockResolvedValue(dashboardWith([]));
-    mockSavedPage.mockResolvedValue(page([]));
+    mockFolders.mockResolvedValue([]);
     await act(async () => {
       renderer = TestRenderer.create(<MyCorner />);
     });
@@ -204,44 +235,51 @@ describe('ركني saved section', () => {
   });
 
   it('keeps the full-library entry when the first read fails', async () => {
-    mockSavedPage.mockRejectedValue(new Error('offline'));
+    mockFolders.mockRejectedValue(new Error('offline'));
     await act(async () => {
       renderer = TestRenderer.create(<MyCorner />);
     });
     expect(savedHeading(renderer)?.props.actionLabel).toBe('عرض الكل');
     expect(hasText(renderer, 'احفظ أي درس وهتلاقيه هنا')).toBe(false);
+    expect(cards(renderer)).toHaveLength(0);
   });
 
-  it('does not read or show saved lessons while signed out', async () => {
+  it('does not read or show saved lists while signed out', async () => {
     mockAuthenticated = false;
     await act(async () => {
       renderer = TestRenderer.create(<MyCorner />);
     });
-    expect(mockSavedPage).not.toHaveBeenCalled();
+    expect(mockFolders).not.toHaveBeenCalled();
     expect(renderer.root.findAllByType(SavedPreview)).toHaveLength(0);
   });
 
-  it('drops a saved read that finishes after the account changed', async () => {
-    const saved = deferred<SavedLessonsPage>();
-    mockSavedPage.mockReturnValue(saved.promise);
+  it('drops a read that finishes after the account changed', async () => {
+    const read = deferred<SavedFolderOption[]>();
+    mockFolders.mockReturnValue(read.promise);
     await act(async () => {
       renderer = TestRenderer.create(<MyCorner />);
     });
     mockBoundary = {scope: 'learner', epoch: 2};
-    await act(async () => saved.resolve(page([lesson('11')])));
-    expect(rowIds(renderer)).toEqual([]);
+    await act(async () => read.resolve([folder('5', 'المشاهدة لاحقًا', 1)]));
+    expect(cards(renderer)).toHaveLength(0);
   });
 
-  it('refreshes saved lessons with pull to refresh', async () => {
-    mockSavedPage.mockResolvedValue(page([lesson('11')]));
+  it('refreshes the lists with pull to refresh', async () => {
+    mockFolders.mockResolvedValue([folder('5', 'المشاهدة لاحقًا', 1)]);
     await act(async () => {
       renderer = TestRenderer.create(<MyCorner />);
     });
-    mockSavedPage.mockResolvedValue(page([lesson('15'), lesson('11')]));
+    mockFolders.mockResolvedValue([
+      folder('5', 'المشاهدة لاحقًا', 2),
+      folder('8', 'أفكار تصميم', 1),
+    ]);
     await act(async () => {
       renderer.root.findByType(RefreshControl).props.onRefresh();
     });
-    expect(mockSavedPage).toHaveBeenCalledTimes(2);
-    expect(rowIds(renderer)).toEqual(['15', '11']);
+    expect(mockFolders).toHaveBeenCalledTimes(2);
+    expect(cardLabels(renderer)).toEqual([
+      'المشاهدة لاحقًا، درسين',
+      'أفكار تصميم، درس واحد',
+    ]);
   });
 });

@@ -245,5 +245,8 @@ export const feedSideBarStyles = StyleSheet.create({
     marginTop: 5,
   },
   removeSaveText: {color: '#F28B91', fontFamily: Fonts.medium, fontSize: 12},
+  // Over the caption column, clear of the action rail and the timeline.
+  saveConfirmation: {position: 'absolute', left: 16, right: 82, zIndex: 40},
+  saveConfirmationCompact: {left: 12, right: 70},
   pressed: {opacity: 0.75},
 });
