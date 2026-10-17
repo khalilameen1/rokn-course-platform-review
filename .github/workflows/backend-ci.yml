@@ -247,6 +247,9 @@ jobs:
       - name: Verify frozen reconciled baseline and forward-only tail
         run: php scripts/verify-migration-upgrade.php --evidence=storage/app/migration-upgrade-evidence.json
 
+      - name: Verify merged migrations are unchanged (Flyway-style checksums)
+        run: php scripts/lock-migrations.php
+
       - name: Verify Redis connection
         run: php artisan tinker --execute="cache()->store('redis')->put('ci:redis', 'ok', 30); throw_unless(cache()->store('redis')->get('ci:redis') === 'ok');"
 
