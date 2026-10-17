@@ -24,6 +24,7 @@ return [
     // the same rate and the surplus stays in the wallet as paid coins.
     // Disabled (0) by default: mobile/src/services/api/courseCheckout.ts still
     // rejects an exact_shortfall package whose coins differ from the deficit.
-    // Enable (e.g. 20) only after a mobile release accepts coins >= deficit.
+    // Owner decision (2026-10-17): 20 EGP in production (.env examples); the
+    // code default stays 0 so fixtures keep exact-shortfall arithmetic.
     'minimum_course_funding_amount' => (float) env('KASHIER_MINIMUM_COURSE_FUNDING_EGP', 0),
 ];

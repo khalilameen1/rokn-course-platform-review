@@ -1294,7 +1294,7 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame('guided', $enrollment->access_plan_snapshot['code']);
         self::assertSame($grantedAt, $enrollment->access_granted_at->toIso8601String());
 
-        // Course code: free access, paid plan never carried over, AI rows kept.
+        // Course code: free access on the lowest (basic) plan, paid plan never carried over, AI rows kept.
         $codeOrder = Order::query()->create(['user_id' => $user->id, 'course_id' => $course->id,
             'payment_method' => Order::PAYMENT_METHOD_COURSE_CODE, 'amount' => 0, 'discount_amount' => 0,
             'final_amount' => 0, 'status' => Order::STATUS_APPROVED, 'financial_status' => Order::FINANCIAL_SETTLED,
@@ -1303,9 +1303,9 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertFalse($grant['created']);
         $enrollment->refresh();
         self::assertSame((int) $codeOrder->id, (int) $enrollment->order_id);
-        self::assertNull($enrollment->access_plan_order_id);
-        self::assertNull($enrollment->access_plan_id);
-        self::assertNull($enrollment->access_plan_snapshot);
+        self::assertSame((int) $codeOrder->id, (int) $enrollment->access_plan_order_id);
+        self::assertSame('basic', $enrollment->access_plan_snapshot['code']);
+        self::assertNotNull($enrollment->access_plan_id);
         self::assertTrue(\App\Models\AiEntitlementUsage::query()->whereKey($usage->id)->exists());
 
         // Wallet repurchase over an inactive row starts a fresh AI cycle.
@@ -1321,7 +1321,7 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertFalse(\App\Models\AiEntitlementUsage::query()->where('enrollment_id', $enrollment->id)->exists());
         self::assertSame(1, CourseEnrollment::query()->where('user_id', $user->id)->count());
 
-        // A first course-code grant creates the row without a plan.
+        // A first course-code grant creates the row on the basic plan.
         $other = $this->user();
         $otherOrder = Order::query()->create(['user_id' => $other->id, 'course_id' => $course->id,
             'payment_method' => Order::PAYMENT_METHOD_COURSE_CODE, 'amount' => 0, 'discount_amount' => 0,
@@ -1329,7 +1329,7 @@ final class CourseCheckoutServiceTest extends TestCase
             'approved_at' => now()]);
         $created = DB::transaction(fn (): array => $writer->grantCourseCode((int) $other->id, (int) $course->id, $otherOrder));
         self::assertTrue($created['created']);
-        self::assertNull($created['enrollment']->access_plan_id);
+        self::assertSame('basic', $created['enrollment']->access_plan_snapshot['code']);
         self::assertTrue((bool) $created['enrollment']->is_active);
     }
 

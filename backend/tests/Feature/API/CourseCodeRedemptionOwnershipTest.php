@@ -45,8 +45,10 @@ final class CourseCodeRedemptionOwnershipTest extends ApiTestCase
         $walletEntries = DB::table('wallet_transactions')->count();
         $response = $this->redeem()->assertOk()
             ->assertJsonPath('data.access_type', 'scholarship')
+            // A code grants the course's basic plan, so access follows its terms:
+            // the fixture's basic plan has no chat but allows projects.
             ->assertJsonPath('data.chat_available', false)
-            ->assertJsonPath('data.projects_available', false)
+            ->assertJsonPath('data.projects_available', true)
             ->assertJsonPath('data.certificate_available', false)
             ->assertJsonPath('data.learning_access', true);
         self::assertSame($this->courseId, $response->json('data.course.id'));
@@ -118,8 +120,8 @@ final class CourseCodeRedemptionOwnershipTest extends ApiTestCase
             ->assertJsonPath('data.chat_available', false);
         $enrollment->refresh();
         self::assertNotSame((int) $order->id, (int) $enrollment->order_id);
-        self::assertNull($enrollment->access_plan_order_id);
-        self::assertNull($enrollment->access_plan_snapshot);
+        self::assertSame((int) $enrollment->order_id, (int) $enrollment->access_plan_order_id);
+        self::assertSame('basic', $enrollment->access_plan_snapshot['code']);
         self::assertSame(2, (int) $enrollment->completed_curriculum_revision);
         self::assertSame(Order::FINANCIAL_CHARGEBACK, $order->fresh()->financial_status);
         self::assertSame(1, CourseEnrollment::query()->count());

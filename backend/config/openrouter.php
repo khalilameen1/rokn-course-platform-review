@@ -28,10 +28,11 @@ return [
     'timeout_seconds' => (int) env('OPENROUTER_TIMEOUT_SECONDS', 45),
     'connect_timeout_seconds' => (int) env('OPENROUTER_CONNECT_TIMEOUT_SECONDS', 5),
     'provider_sort' => env('OPENROUTER_PROVIDER_SORT', 'latency'),
-    // Do not reduce the live-chat provider pool unless compliance explicitly
-    // requires it. The public policy already describes provider processing;
-    // launch reliability needs OpenRouter's full multi-provider failover.
-    'provider_data_collection' => env('OPENROUTER_PROVIDER_DATA_COLLECTION', 'allow'),
+    // Learner uploads and submissions go only to providers that neither
+    // retain nor train on them (owner decision, 2026-10-17). The allowed
+    // models are Anthropic's, whose API endpoints satisfy this, so the live
+    // provider pool is not reduced in practice.
+    'provider_data_collection' => env('OPENROUTER_PROVIDER_DATA_COLLECTION', 'deny'),
     'provider_zdr' => filter_var(
         env('OPENROUTER_PROVIDER_ZDR', false),
         FILTER_VALIDATE_BOOL

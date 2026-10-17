@@ -34,14 +34,16 @@ class CourseCodeEndpointTest extends ApiTestCase
             ->assertOk()
             ->assertJsonPath('data.learning_access', true)
             ->assertJsonPath('data.access_type', 'scholarship')
+            // A code grants the course's basic plan; the fixture's basic plan
+            // has no chat but allows projects.
             ->assertJsonPath('data.chat_available', false)
-            ->assertJsonPath('data.projects_available', false)
+            ->assertJsonPath('data.projects_available', true)
             ->assertJsonPath('data.certificate_available', false);
         $this->actingAs($this->user, 'api')->postJson('/api/v1/course-codes/redeem', $input)
             ->assertOk()
             ->assertJsonPath('data.already_enrolled', true)
             ->assertJsonPath('data.learning_access', true)
-            ->assertJsonPath('data.projects_available', false);
+            ->assertJsonPath('data.projects_available', true);
         $this->assertDatabaseHas('course_codes', ['code' => 'TESTCODE', 'used_count' => 1]);
         $this->assertDatabaseHas('orders', [
             'user_id' => $this->user->id,

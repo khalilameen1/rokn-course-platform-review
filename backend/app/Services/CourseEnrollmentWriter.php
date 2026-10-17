@@ -22,8 +22,10 @@ use App\Models\Order;
  */
 final readonly class CourseEnrollmentWriter
 {
-    public function __construct(private AiEntitlementBudgetService $aiBudget)
-    {
+    public function __construct(
+        private AiEntitlementBudgetService $aiBudget,
+        private CourseAccessPlanService $plans
+    ) {
     }
 
     public function lockedFor(int $userId, int $courseId): ?CourseEnrollment
@@ -95,22 +97,27 @@ final readonly class CourseEnrollmentWriter
     }
 
     /**
-     * Free course-code access. A paid plan never carries over to a code
-     * grant (plan fields are cleared); completion facts and the AI budget rows
-     * are kept. Which plan a code should grant is an owner decision; today it
-     * grants none.
+     * Free course-code access grants the course's lowest plan (owner decision,
+     * 2026-10-17): its terms are captured as a receipt exactly like a purchase,
+     * so chat, projects and certificate follow what that plan allows. A paid
+     * plan never carries over to a code grant; completion facts and the AI
+     * budget rows are kept. A course that publishes no plan is still opened,
+     * watch-only, as before.
      *
      * @return array{enrollment: CourseEnrollment, created: bool}
      */
     public function grantCourseCode(int $userId, int $courseId, Order $order): array
     {
+        $plan = $this->lowestPlanFor($courseId);
+        $planFields = [
+            'access_plan_order_id' => $plan ? $order->id : null,
+            'access_plan_id' => $plan?->id,
+            'access_plan_snapshot' => $plan ? $this->plans->snapshot($plan, now()) : null,
+        ];
         $enrollment = $this->lockedFor($userId, $courseId);
         if ($enrollment) {
-            $enrollment->forceFill([
+            $enrollment->forceFill($planFields + [
                 'order_id' => $order->id,
-                'access_plan_order_id' => null,
-                'access_plan_id' => null,
-                'access_plan_snapshot' => null,
                 'is_active' => true,
                 'access_granted_at' => now(),
                 'expires_at' => null,
@@ -119,7 +126,7 @@ final readonly class CourseEnrollmentWriter
             return ['enrollment' => $enrollment, 'created' => false];
         }
 
-        $enrollment = CourseEnrollment::query()->create([
+        $enrollment = CourseEnrollment::query()->create($planFields + [
             'user_id' => $userId,
             'course_id' => $courseId,
             'order_id' => $order->id,
@@ -129,6 +136,19 @@ final readonly class CourseEnrollmentWriter
         ]);
 
         return ['enrollment' => $enrollment, 'created' => true];
+    }
+
+    /** The course's "basic" plan, else its first active plan by sort order. */
+    private function lowestPlanFor(int $courseId): ?CourseAccessPlan
+    {
+        $plans = CourseAccessPlan::query()
+            ->where('course_id', $courseId)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        return $plans->firstWhere('code', 'basic') ?? $plans->first();
     }
 
     /**
