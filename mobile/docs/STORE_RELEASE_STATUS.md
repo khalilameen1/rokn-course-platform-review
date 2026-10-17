@@ -149,6 +149,32 @@ This is not acceptance of a native binary, launcher masks on a device, an iOS
 archive, deployment or store submission. Those remain outstanding alongside
 the real backup/restore gate. No full test suite was repeated for this asset unit.
 
+### Dependency remediation and renewed acceptance — 2026-10-18
+
+Two of the four audit roots are now patched instead of accepted:
+
+- `@grpc/grpc-js` 1.9.16 -> **1.14.5** through an npm `overrides` entry
+  (the maintainer's fixed line for GHSA-m9gg-hp2v-232j / GHSA-f596-whhp-79r4).
+  Firestore's `~1.9.0` range is overridden, as the 2026-10-05 note anticipated.
+  The native Metro graph still excludes Firestore, so the override changes only
+  tooling/web closures.
+- `decode-uri-component` and `query-string` are **gone**: react-navigation
+  core 7.23 replaced query-string with its own parser. `@react-navigation/native`
+  is now 7.5.0 and `native-stack` 7.20.0 (core 7.23.0, elements 2.9.44,
+  routers 7.6.4), resolved with `npm install --before=2026-10-04` so nothing
+  younger than two weeks entered the lock. An override to decode-uri-component
+  0.5 was rejected: it is ESM-only and query-string 7 `require`s it.
+  New dependency `standard-navigation@0.0.8` (react-navigation org, MIT,
+  no license file in the tarball) joined the reviewed absence allowlist.
+
+`braces` (<=3.0.3) and `node-forge` (<=1.4.0) still have no patched release.
+`production-audit-risk-acceptance.json` was regenerated from the live
+`npm audit --omit=dev` report for the new lock: 36 entries, all chains of
+those two roots, expiring **2026-10-31 21:00 UTC**. Verified with Node 24.19.0 /
+npm 10.9.3: `audit:release`, `test:release-scripts` (143/143), `licenses:check`,
+`licenses:native:portable-check`, `tsc`, `eslint` and the full jest suite.
+No native build, device run or store upload was performed for this change.
+
 ### Delegated dependency-risk decision — 2026-10-05
 
 After disclosure of the temporary restore-resource cost and the remaining

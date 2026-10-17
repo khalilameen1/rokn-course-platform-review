@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
   "generatedFrom": "package-lock.json production dependency closure",
-  "packageCount": 733,
-  "packagePathCount": 818,
-  "inventoryHash": "205743d3ad47b1fbef49229342a46435e53b09be04bdb2f22b3285752cb2debf",
+  "packageCount": 731,
+  "packagePathCount": 816,
+  "inventoryHash": "365ea9275d729ee6552302ecc30d3bfbd38513f3e3c2dc23e5498921b194f261",
   "packages": [
     {
       "name": "@babel/code-frame",
@@ -1747,12 +1747,12 @@
     },
     {
       "name": "@grpc/grpc-js",
-      "version": "1.9.16",
+      "version": "1.14.5",
       "license": "Apache-2.0",
       "declaredLicense": "Apache-2.0",
-      "sourceUrl": "https://www.npmjs.com/package/%40grpc%2Fgrpc-js/v/1.9.16",
+      "sourceUrl": "https://www.npmjs.com/package/%40grpc%2Fgrpc-js/v/1.14.5",
       "legalSource": "package-root",
-      "legalFileCount": 1,
+      "legalFileCount": 3,
       "apacheNotice": "not-published"
     },
     {
@@ -1761,6 +1761,16 @@
       "license": "Apache-2.0",
       "declaredLicense": "Apache-2.0",
       "sourceUrl": "https://www.npmjs.com/package/%40grpc%2Fproto-loader/v/0.7.15",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": "not-published"
+    },
+    {
+      "name": "@grpc/proto-loader",
+      "version": "0.8.1",
+      "license": "Apache-2.0",
+      "declaredLicense": "Apache-2.0",
+      "sourceUrl": "https://www.npmjs.com/package/%40grpc%2Fproto-loader/v/0.8.1",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": "not-published"
@@ -1911,6 +1921,16 @@
       "license": "MIT",
       "declaredLicense": "MIT",
       "sourceUrl": "https://www.npmjs.com/package/%40jridgewell%2Ftrace-mapping/v/0.3.31",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "@js-sdsl/ordered-map",
+      "version": "4.4.2",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/%40js-sdsl%2Fordered-map/v/4.4.2",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
@@ -2187,50 +2207,50 @@
     },
     {
       "name": "@react-navigation/core",
-      "version": "7.13.7",
+      "version": "7.23.0",
       "license": "MIT",
       "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/%40react-navigation%2Fcore/v/7.13.7",
+      "sourceUrl": "https://www.npmjs.com/package/%40react-navigation%2Fcore/v/7.23.0",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
     },
     {
       "name": "@react-navigation/elements",
-      "version": "2.9.3",
+      "version": "2.9.44",
       "license": "MIT",
       "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/%40react-navigation%2Felements/v/2.9.3",
+      "sourceUrl": "https://www.npmjs.com/package/%40react-navigation%2Felements/v/2.9.44",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
     },
     {
       "name": "@react-navigation/native-stack",
-      "version": "7.9.0",
+      "version": "7.20.0",
       "license": "MIT",
       "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/%40react-navigation%2Fnative-stack/v/7.9.0",
+      "sourceUrl": "https://www.npmjs.com/package/%40react-navigation%2Fnative-stack/v/7.20.0",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
     },
     {
       "name": "@react-navigation/native",
-      "version": "7.1.26",
+      "version": "7.5.0",
       "license": "MIT",
       "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/%40react-navigation%2Fnative/v/7.1.26",
+      "sourceUrl": "https://www.npmjs.com/package/%40react-navigation%2Fnative/v/7.5.0",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
     },
     {
       "name": "@react-navigation/routers",
-      "version": "7.5.3",
+      "version": "7.6.4",
       "license": "MIT",
       "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/%40react-navigation%2Frouters/v/7.5.3",
+      "sourceUrl": "https://www.npmjs.com/package/%40react-navigation%2Frouters/v/7.6.4",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
@@ -3536,16 +3556,6 @@
       "apacheNotice": null
     },
     {
-      "name": "decode-uri-component",
-      "version": "0.2.2",
-      "license": "MIT",
-      "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/decode-uri-component/v/0.2.2",
-      "legalSource": "package-root",
-      "legalFileCount": 1,
-      "apacheNotice": null
-    },
-    {
       "name": "deepmerge",
       "version": "4.3.1",
       "license": "MIT",
@@ -4121,16 +4131,6 @@
       "license": "MIT",
       "declaredLicense": "MIT",
       "sourceUrl": "https://www.npmjs.com/package/fill-range/v/7.1.1",
-      "legalSource": "package-root",
-      "legalFileCount": 1,
-      "apacheNotice": null
-    },
-    {
-      "name": "filter-obj",
-      "version": "1.1.0",
-      "license": "MIT",
-      "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/filter-obj/v/1.1.0",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
@@ -5956,16 +5956,6 @@
       "apacheNotice": null
     },
     {
-      "name": "query-string",
-      "version": "7.1.3",
-      "license": "MIT",
-      "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/query-string/v/7.1.3",
-      "legalSource": "package-root",
-      "legalFileCount": 1,
-      "apacheNotice": null
-    },
-    {
       "name": "range-parser",
       "version": "1.2.1",
       "license": "MIT",
@@ -6037,10 +6027,10 @@
     },
     {
       "name": "react-is",
-      "version": "19.2.3",
+      "version": "19.3.0",
       "license": "MIT",
       "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/react-is/v/19.2.3",
+      "sourceUrl": "https://www.npmjs.com/package/react-is/v/19.3.0",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
@@ -6616,16 +6606,6 @@
       "apacheNotice": null
     },
     {
-      "name": "split-on-first",
-      "version": "1.1.0",
-      "license": "MIT",
-      "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/split-on-first/v/1.1.0",
-      "legalSource": "package-root",
-      "legalFileCount": 1,
-      "apacheNotice": null
-    },
-    {
       "name": "stack-utils",
       "version": "2.0.6",
       "license": "MIT",
@@ -6656,6 +6636,16 @@
       "apacheNotice": null
     },
     {
+      "name": "standard-navigation",
+      "version": "0.0.8",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/standard-navigation/v/0.0.8",
+      "legalSource": "reviewed-metadata-fallback",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
       "name": "statuses",
       "version": "1.5.0",
       "license": "MIT",
@@ -6682,16 +6672,6 @@
       "declaredLicense": "Unlicense",
       "sourceUrl": "https://www.npmjs.com/package/stream-buffers/v/2.2.0",
       "legalSource": "reviewed-metadata-fallback",
-      "legalFileCount": 1,
-      "apacheNotice": null
-    },
-    {
-      "name": "strict-uri-encode",
-      "version": "2.0.0",
-      "license": "MIT",
-      "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/strict-uri-encode/v/2.0.0",
-      "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
     },

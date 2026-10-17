@@ -223,6 +223,7 @@ const LEGAL_FILE_ABSENCE_ALLOWLIST = new Set([
   'ob1@0.83.7',
   'ob1@0.83.8',
   'react-devtools-core@6.1.5',
+  'standard-navigation@0.0.8',
   'stream-buffers@2.2.0',
   'structured-headers@0.4.1',
   'tr46@0.0.3',
