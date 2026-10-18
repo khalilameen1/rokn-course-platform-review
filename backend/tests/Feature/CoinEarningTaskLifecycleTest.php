@@ -16,10 +16,12 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Tests\Support\RecordsRowLocks;
 use Tests\TestCase;
 
 final class CoinEarningTaskLifecycleTest extends TestCase
 {
+    use RecordsRowLocks;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -70,6 +72,69 @@ final class CoinEarningTaskLifecycleTest extends TestCase
         self::assertSame(1, StudentNotification::query()
             ->where('delivery_key', 'coins-claimed:'.$user->id.':'.$method->id)
             ->count());
+    }
+
+    public function test_start_and_claim_lock_the_learner_before_the_attempt_and_a_quota_campaign(): void
+    {
+        $user = $this->student('reward-lock-order@rokn.test');
+        $token = $user->generateApiToken();
+        $unlimited = $this->method('lock-order-unlimited', 11);
+        $limited = $this->method('lock-order-limited', 13);
+        $limited->forceFill(['total_claim_limit' => 5])->save();
+
+        $start = null;
+        $startLocks = $this->recordLocks(function () use ($token, $unlimited, &$start): void {
+            $start = $this->withToken($token)->postJson('/api/v1/coin-earning-methods/'.$unlimited->id.'/start');
+        });
+        $start->assertOk()
+            ->assertJsonPath('message', 'المهمة جاهزة')
+            ->assertJsonPath('data.task_state', 'ready_to_claim');
+        self::assertSame(['users:update'], $startLocks);
+
+        $claim = null;
+        $claimLocks = $this->recordLocks(function () use ($token, $unlimited, &$claim): void {
+            $claim = $this->withToken($token)->postJson('/api/v1/claim-coins', ['method_id' => $unlimited->id]);
+        });
+        $claim->assertOk()->assertJsonPath('data.earned_amount', 11);
+        self::assertSame('users:update', $claimLocks[0]);
+        self::assertSame('user_coin_task_attempts:update', $claimLocks[1]);
+        // An unlimited campaign has no shared aggregate to serialize on.
+        self::assertNotContains('coin_earning_methods:update', $claimLocks);
+
+        $limitedClaim = null;
+        $limitedLocks = $this->recordLocks(function () use ($token, $limited, &$limitedClaim): void {
+            $limitedClaim = $this->withToken($token)->postJson('/api/v1/claim-coins', ['method_id' => $limited->id]);
+        });
+        $limitedClaim->assertOk()->assertJsonPath('data.earned_amount', 13);
+        self::assertSame(
+            ['users:update', 'user_coin_task_attempts:update', 'coin_earning_methods:update'],
+            array_slice($limitedLocks, 0, 3)
+        );
+    }
+
+    public function test_a_refused_claim_keeps_its_stable_code_and_writes_nothing(): void
+    {
+        $user = $this->student('reward-refused@rokn.test');
+        $token = $user->generateApiToken();
+        $method = $this->method('refused-reward', 17);
+        $method->forceFill(['verification_delay_seconds' => 600])->save();
+
+        $this->withToken($token)
+            ->postJson('/api/v1/coin-earning-methods/'.$method->id.'/start')
+            ->assertOk()
+            ->assertJsonPath('data.task_state', 'started');
+        $this->withToken($token)
+            ->postJson('/api/v1/claim-coins', ['method_id' => $method->id])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'claim_not_ready')
+            ->assertJsonPath('retryable', false)
+            ->assertJsonPath('message', 'لم تكتمل المهمة بعد');
+        $this->assertDatabaseMissing('wallet_transactions', ['user_id' => $user->id]);
+        $this->assertDatabaseHas('user_coin_task_attempts', [
+            'user_id' => $user->id,
+            'coin_earning_method_id' => $method->id,
+            'status' => 'started',
+        ]);
     }
 
     public function test_dashboard_activation_controls_discovery_and_stops_unclaimed_rewards(): void

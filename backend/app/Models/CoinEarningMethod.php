@@ -5,9 +5,18 @@ namespace App\Models;
 use App\Services\PublicAppSettingsService;
 use App\Support\DatabaseCapabilities;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
+/**
+ * @property int|null $total_claim_limit
+ * @property string|null $campaign_key
+ * @property int $user_earnings_count withCount('userEarnings')
+ * @property bool $completed_by_learner withExists on the learner's earnings
+ * @property bool $is_consumed learner catalogue state, not a column
+ * @property string $task_state learner catalogue state, not a column
+ */
 class CoinEarningMethod extends Model
 {
     use SoftDeletes;
@@ -125,7 +134,8 @@ class CoinEarningMethod extends Model
             && (int) $this->coins_amount > 0;
     }
 
-    public function userEarnings()
+    /** @return HasMany<UserCoinEarning, $this> */
+    public function userEarnings(): HasMany
     {
         return $this->hasMany(UserCoinEarning::class, 'coin_earning_method_id');
     }

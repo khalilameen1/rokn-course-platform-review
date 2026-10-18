@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property int $version
+ */
 final class CourseRating extends Model
 {
     use HasFactory, InvalidatesCourseCatalogue, SoftDeletes;

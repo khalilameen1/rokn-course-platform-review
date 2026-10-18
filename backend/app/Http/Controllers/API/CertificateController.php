@@ -9,6 +9,7 @@ use App\Http\Resources\CertificateResource;
 use App\Jobs\RecoverPendingCertificate;
 use App\Models\Certificate;
 use App\Models\Course;
+use App\Services\ApiResponseService;
 use App\Services\CertificateEligibilityService;
 use App\Services\CertificateService;
 use App\Support\DurableJobDispatch;
@@ -20,7 +21,8 @@ final class CertificateController extends Controller
 {
     public function __construct(
         private readonly CertificateService $certificates,
-        private readonly CertificateEligibilityService $eligibility
+        private readonly CertificateEligibilityService $eligibility,
+        private readonly ApiResponseService $responses
     ) {}
 
     /**
@@ -31,12 +33,7 @@ final class CertificateController extends Controller
         $user = auth('api')->user();
 
         if (! $user) {
-            return response()->json([
-                'status' => 401,
-                'success' => false,
-                'message' => 'سجّل الدخول أولًا',
-                'data' => null,
-            ], 401);
+            return $this->responses->error('سجّل الدخول أولًا', 401);
         }
 
         // Revoked credentials stay in the owner's contract even though the
@@ -50,12 +47,7 @@ final class CertificateController extends Controller
             ->each(fn (Certificate $certificate) => $certificate->setRelation('user', $user)
             );
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل الشهادات',
-            'data' => CertificateResource::collection($certificates),
-        ]);
+        return $this->responses->success(CertificateResource::collection($certificates), 'تم تحميل الشهادات');
     }
 
     /** Read an already-issued credential without producing side effects. */
@@ -63,12 +55,7 @@ final class CertificateController extends Controller
     {
         $user = auth('api')->user();
         if (! $user) {
-            return response()->json([
-                'status' => 401,
-                'success' => false,
-                'message' => 'سجّل الدخول أولًا',
-                'data' => null,
-            ], 401);
+            return $this->responses->error('سجّل الدخول أولًا', 401);
         }
 
         $certificate = Certificate::query()
@@ -77,22 +64,10 @@ final class CertificateController extends Controller
             ->first();
         $certificate?->setRelation('user', $user);
         if (! $certificate) {
-            return response()->json([
-                'status' => 404,
-                'success' => false,
-                'code' => 'certificate_not_issued',
-                'message' => 'لم تصدر الشهادة بعد',
-                'data' => null,
-            ], 404);
+            return $this->responses->error('لم تصدر الشهادة بعد', 404, null, ['code' => 'certificate_not_issued']);
         }
         if (! $certificate->isActiveCredential()) {
-            return response()->json([
-                'status' => 410,
-                'success' => false,
-                'code' => 'certificate_revoked',
-                'message' => 'هذه الشهادة ملغاة',
-                'data' => null,
-            ], 410);
+            return $this->responses->error('هذه الشهادة ملغاة', 410, null, ['code' => 'certificate_revoked']);
         }
         if (! $certificate->hasCompleteCredentialSnapshot()) {
             return $this->invalidSnapshotResponse();
@@ -103,12 +78,7 @@ final class CertificateController extends Controller
             return $this->pendingResponse($certificate);
         }
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل الشهادة',
-            'data' => new CertificateResource($certificate),
-        ]);
+        return $this->responses->success(new CertificateResource($certificate), 'تم تحميل الشهادة');
     }
 
     /** Issue a new certificate or recover its pending artifact. */
@@ -117,12 +87,7 @@ final class CertificateController extends Controller
         $user = auth('api')->user();
 
         if (! $user) {
-            return response()->json([
-                'status' => 401,
-                'success' => false,
-                'message' => 'سجّل الدخول أولًا',
-                'data' => null,
-            ], 401);
+            return $this->responses->error('سجّل الدخول أولًا', 401);
         }
 
         $certificate = Certificate::where('user_id', $user->id)
@@ -132,13 +97,7 @@ final class CertificateController extends Controller
 
         if ($certificate) {
             if (! $certificate->isActiveCredential()) {
-                return response()->json([
-                    'status' => 410,
-                    'success' => false,
-                    'code' => 'certificate_revoked',
-                    'message' => 'هذه الشهادة ملغاة',
-                    'data' => null,
-                ], 410);
+                return $this->responses->error('هذه الشهادة ملغاة', 410, null, ['code' => 'certificate_revoked']);
             }
             if (! $certificate->hasCompleteCredentialSnapshot()) {
                 return $this->invalidSnapshotResponse();
@@ -149,71 +108,33 @@ final class CertificateController extends Controller
                 return $this->pendingResponse($certificate);
             }
 
-            return response()->json([
-                'status' => 200,
-                'success' => true,
-                'message' => 'تم تحميل الشهادة',
-                'data' => new CertificateResource($certificate),
-            ]);
+            return $this->responses->success(new CertificateResource($certificate), 'تم تحميل الشهادة');
         }
 
         $course = Course::find($courseId);
         if (! $course) {
-            return response()->json([
-                'status' => 404,
-                'success' => false,
-                'message' => 'الكورس غير متاح',
-                'data' => null,
-            ], 404);
+            return $this->responses->error('الكورس غير متاح', 404);
         }
 
         $eligibility = $this->eligibility->for($user, $course);
         if ($eligibility['reason'] === 'entitlement_inactive') {
-            return response()->json([
-                'status' => 403,
-                'success' => false,
-                'message' => 'هذا الكورس غير مضاف إلى حسابك',
-                'data' => null,
-            ], 403);
+            return $this->responses->error('هذا الكورس غير مضاف إلى حسابك', 403);
         }
         if (! $eligibility['included']) {
-            return response()->json([
-                'status' => 402,
-                'success' => false,
-                'code' => 'certificate_upgrade_required',
-                'message' => 'الشهادة غير متاحة ضمن اشتراكك الحالي',
-                'data' => [
-                    'learning_access' => true,
-                    'certificate_available' => false,
-                    'upgrade_endpoint' => "/api/v1/courses/{$courseId}/full-track-upgrade",
-                ],
-            ], 402);
+            return $this->responses->error('الشهادة غير متاحة ضمن اشتراكك الحالي', 402, [
+                'learning_access' => true,
+                'certificate_available' => false,
+                'upgrade_endpoint' => "/api/v1/courses/{$courseId}/full-track-upgrade",
+            ], ['code' => 'certificate_upgrade_required']);
         }
         if ($eligibility['reason'] === 'financial_review') {
-            return response()->json([
-                'status' => 409,
-                'success' => false,
-                'code' => 'certificate_financial_review_required',
-                'message' => "إصدار الشهادة متوقف مؤقتًا\nنعالج عملية الدفع المرتبطة بها",
-                'data' => null,
-            ], 409);
+            return $this->responses->error("إصدار الشهادة متوقف مؤقتًا\nنعالج عملية الدفع المرتبطة بها", 409, null, ['code' => 'certificate_financial_review_required']);
         }
         if ($eligibility['reason'] === 'course_unavailable') {
-            return response()->json([
-                'status' => 404,
-                'success' => false,
-                'message' => 'الكورس غير متاح',
-                'data' => null,
-            ], 404);
+            return $this->responses->error('الكورس غير متاح', 404);
         }
         if (! $eligibility['available']) {
-            return response()->json([
-                'status' => 403,
-                'success' => false,
-                'code' => 'certificate_'.$eligibility['reason'],
-                'message' => "أكمل المطلوب أولًا\nثم اطلب الشهادة",
-                'data' => null,
-            ], 403);
+            return $this->responses->error("أكمل المطلوب أولًا\nثم اطلب الشهادة", 403, null, ['code' => 'certificate_'.$eligibility['reason']]);
         }
 
         $request->validate([
@@ -221,13 +142,7 @@ final class CertificateController extends Controller
         ]);
         $holderName = UnicodeText::clean($request->input('holder_name'), false);
         if (UnicodeText::graphemeLength($holderName) < 2) {
-            return response()->json([
-                'status' => 422,
-                'success' => false,
-                'code' => 'certificate_holder_name_invalid',
-                'message' => 'اكتب الاسم الذي سيظهر على الشهادة',
-                'data' => null,
-            ], 422);
+            return $this->responses->error('اكتب الاسم الذي سيظهر على الشهادة', 422, null, ['code' => 'certificate_holder_name_invalid']);
         }
 
         $certificate = $this->certificates->generate(
@@ -258,12 +173,7 @@ final class CertificateController extends Controller
                 return $this->pendingResponse($pending);
             }
 
-            return response()->json([
-                'status' => 500,
-                'success' => false,
-                'message' => "تعذّر إصدار الشهادة الآن\nحاول مرة أخرى",
-                'data' => null,
-            ], 500);
+            return $this->responses->error("تعذّر إصدار الشهادة الآن\nحاول مرة أخرى", 500);
         }
 
         if (! $certificate->hasStoredArtifact()) {
@@ -272,12 +182,7 @@ final class CertificateController extends Controller
             return $this->pendingResponse($certificate);
         }
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم إصدار الشهادة',
-            'data' => new CertificateResource($certificate),
-        ]);
+        return $this->responses->success(new CertificateResource($certificate), 'تم إصدار الشهادة');
     }
 
     private function queueGeneration(Certificate $certificate): void
@@ -296,13 +201,7 @@ final class CertificateController extends Controller
 
     private function invalidSnapshotResponse(): JsonResponse
     {
-        return response()->json([
-            'status' => 409,
-            'success' => false,
-            'code' => 'certificate_snapshot_invalid',
-            'message' => "تعذّر تحميل الشهادة الآن\nتواصل مع الدعم",
-            'data' => null,
-        ], 409);
+        return $this->responses->error("تعذّر تحميل الشهادة الآن\nتواصل مع الدعم", 409, null, ['code' => 'certificate_snapshot_invalid']);
     }
 
     /**
@@ -313,19 +212,13 @@ final class CertificateController extends Controller
     {
         $courseId = (int) $certificate->course_id;
 
-        return response()->json([
-            'status' => 202,
-            'success' => true,
-            'code' => 'certificate_generating',
-            'message' => 'نجهّز شهادتك الآن',
-            'data' => [
-                'public_id' => (string) $certificate->public_id,
-                'course_id' => $courseId,
-                'status' => 'generating',
-                'ready' => false,
-                'poll_after_seconds' => 3,
-                'status_endpoint' => "/api/v1/certificates/{$courseId}",
-            ],
-        ], 202);
+        return $this->responses->success([
+            'public_id' => (string) $certificate->public_id,
+            'course_id' => $courseId,
+            'status' => 'generating',
+            'ready' => false,
+            'poll_after_seconds' => 3,
+            'status_endpoint' => "/api/v1/certificates/{$courseId}",
+        ], 'نجهّز شهادتك الآن', 202, ['code' => 'certificate_generating']);
     }
 }

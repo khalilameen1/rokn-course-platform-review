@@ -5,6 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property string|null $playback_session_id
+ * @property int|null $last_playback_sequence
+ */
 class WatchingLog extends Model
 {
     use HasFactory;

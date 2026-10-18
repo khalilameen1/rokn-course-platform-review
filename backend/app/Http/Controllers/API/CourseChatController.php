@@ -15,6 +15,7 @@ use App\Models\CourseChatTurn;
 use App\Services\AiEntitlementBudgetService;
 use App\Services\AiFailurePolicy;
 use App\Services\AiInputAttachmentService;
+use App\Services\ApiResponseService;
 use App\Services\CourseAccessPlanService;
 use App\Services\CourseChatAdmissionService;
 use App\Services\CourseChatPromptContextService;
@@ -40,7 +41,8 @@ final class CourseChatController extends Controller
         private readonly CourseChatRequestService $requests,
         private readonly CourseChatAdmissionService $admission,
         private readonly CourseChatPromptContextService $promptContext,
-        private readonly AiFailurePolicy $failurePolicy
+        private readonly AiFailurePolicy $failurePolicy,
+        private readonly ApiResponseService $responses
     ) {}
 
     public function sendForCourse(
@@ -80,42 +82,22 @@ final class CourseChatController extends Controller
             abort(404);
         }
         if ($result['state'] === 'not_included') {
-            return response()->json([
-                'status' => 403,
-                'success' => false,
-                'code' => 'chat_attachments_not_included',
-                'message' => 'المرفقات غير متاحة في فئتك الحالية',
-            ], 403);
+            return $this->responses->error('المرفقات غير متاحة في فئتك الحالية', 403, null, ['code' => 'chat_attachments_not_included']);
         }
         if ($result['state'] === 'unsupported') {
-            return response()->json([
-                'status' => 422,
-                'success' => false,
-                'code' => 'attachment_type_unsupported',
-                'message' => 'صيغة الملف غير مدعومة',
-            ], 422);
+            return $this->responses->error('صيغة الملف غير مدعومة', 422, null, ['code' => 'attachment_type_unsupported']);
         }
         if ($result['state'] === 'identity_conflict') {
-            return response()->json([
-                'status' => 409,
-                'success' => false,
-                'code' => 'attachment_identity_conflict',
-                'message' => 'تعذر استكمال رفع هذا الملف',
-            ], 409);
+            return $this->responses->error('تعذر استكمال رفع هذا الملف', 409, null, ['code' => 'attachment_identity_conflict']);
         }
         $attachment = $result['attachment'];
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم رفع الملف',
-            'data' => [
-                'id' => (string) $attachment->public_id,
-                'name' => (string) $attachment->original_file_name,
-                'mime_type' => (string) $attachment->mime_type,
-                'size_bytes' => (int) $attachment->size_bytes,
-            ],
-        ]);
+        return $this->responses->success([
+            'id' => (string) $attachment->public_id,
+            'name' => (string) $attachment->original_file_name,
+            'mime_type' => (string) $attachment->mime_type,
+            'size_bytes' => (int) $attachment->size_bytes,
+        ], 'تم رفع الملف');
     }
 
     public function history(Request $request, CourseEntitlementService $access): JsonResponse
@@ -129,24 +111,14 @@ final class CourseChatController extends Controller
         $user = auth('api')->user();
         $course = Course::query()->findOrFail((int) $validated['course_id']);
         if (! $course->isPublishedForLearning() || ! $access->hasLearningAccess($user->id, $course->id)) {
-            return response()->json([
-                'status' => 404,
-                'success' => false,
-                'message' => 'المحادثة غير متاحة',
-                'data' => null,
-            ], 404);
+            return $this->responses->error('المحادثة غير متاحة', 404);
         }
 
         $lessonId = null;
         if (isset($validated['lesson_id'])) {
             $lesson = $this->promptContext->currentLesson((int) $validated['lesson_id'], $course);
             if (! $lesson) {
-                return response()->json([
-                    'status' => 422,
-                    'success' => false,
-                    'message' => 'المقطع لا ينتمي إلى هذا الكورس',
-                    'data' => null,
-                ], 422);
+                return $this->responses->error('المقطع لا ينتمي إلى هذا الكورس', 422);
             }
             $lessonId = (int) $lesson->id;
         }
@@ -229,15 +201,10 @@ final class CourseChatController extends Controller
             })
             ->values();
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل المحادثة',
-            'data' => [
-                'messages' => $messages,
-                'next_cursor' => $page->nextCursor()?->encode(),
-            ],
-        ]);
+        return $this->responses->success([
+            'messages' => $messages,
+            'next_cursor' => $page->nextCursor()?->encode(),
+        ], 'تم تحميل المحادثة');
     }
 
     /** Lightweight polling path for a turn already admitted to the AI queue. */
@@ -258,19 +225,14 @@ final class CourseChatController extends Controller
         $turn = $this->turns->reconcileForPolling($turn) ?? $turn;
 
         if ($turn->status === CourseChatTurn::COMPLETED) {
-            return response()->json([
-                'status' => 200,
-                'success' => true,
-                'message' => 'تم استلام الرد',
-                'data' => [
-                    'message' => (string) $turn->answer,
-                    'unavailable' => false,
-                    'can_retry' => false,
-                    'retry_after_seconds' => 0,
-                    'client_request_id' => (string) $turn->client_request_id,
-                    'turn_status' => CourseChatTurn::COMPLETED,
-                ],
-            ]);
+            return $this->responses->success([
+                'message' => (string) $turn->answer,
+                'unavailable' => false,
+                'can_retry' => false,
+                'retry_after_seconds' => 0,
+                'client_request_id' => (string) $turn->client_request_id,
+                'turn_status' => CourseChatTurn::COMPLETED,
+            ], 'تم استلام الرد');
         }
 
         if (in_array($turn->status, [CourseChatTurn::QUEUED, CourseChatTurn::STREAMING], true)) {
@@ -278,24 +240,18 @@ final class CourseChatController extends Controller
                 ? trim((string) $turn->answer)
                 : '';
 
-            return response()->json([
-                'status' => 200,
-                'success' => true,
-                'code' => 'chat_answer_in_progress',
-                'message' => 'نجهز إجابتك الآن',
-                'data' => [
-                    'message' => $partial !== ''
-                        ? $partial
-                        : "نجهز إجابتك الآن\nستظهر خلال لحظات",
-                    'partial' => $partial !== '',
-                    'unavailable' => false,
-                    'can_retry' => true,
-                    'retry_after_seconds' => $partial !== '' ? 1 : 2,
-                    'poll_window_seconds' => $this->pollWindowSeconds(),
-                    'client_request_id' => (string) $turn->client_request_id,
-                    'turn_status' => (string) $turn->status,
-                ],
-            ]);
+            return $this->responses->success([
+                'message' => $partial !== ''
+                    ? $partial
+                    : "نجهز إجابتك الآن\nستظهر خلال لحظات",
+                'partial' => $partial !== '',
+                'unavailable' => false,
+                'can_retry' => true,
+                'retry_after_seconds' => $partial !== '' ? 1 : 2,
+                'poll_window_seconds' => $this->pollWindowSeconds(),
+                'client_request_id' => (string) $turn->client_request_id,
+                'turn_status' => (string) $turn->status,
+            ], 'نجهز إجابتك الآن', 200, ['code' => 'chat_answer_in_progress']);
         }
 
         if ($turn->status === CourseChatTurn::CANCELLED) {
@@ -306,24 +262,18 @@ final class CourseChatController extends Controller
         $failure = $this->failurePolicy->describe($failureCode);
         $failedAnswer = $this->failedAnswerText($turn);
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'code' => $failureCode,
-            'message' => 'لم تكتمل الإجابة',
-            'data' => [
-                'message' => $failedAnswer ?? ($failure['can_retry']
-                    ? "لم تكتمل الإجابة السابقة\nأرسل السؤال مرة أخرى"
-                    : 'تعذّر تأكيد نتيجة الإجابة السابقة'),
-                'partial' => $failedAnswer !== null,
-                'unavailable' => true,
-                'failure_category' => $failure['category'],
-                'can_retry' => $failure['can_retry'],
-                'retry_after_seconds' => $failure['retry_after_seconds'],
-                'client_request_id' => (string) $turn->client_request_id,
-                'turn_status' => (string) $turn->status,
-            ],
-        ]);
+        return $this->responses->success([
+            'message' => $failedAnswer ?? ($failure['can_retry']
+                ? "لم تكتمل الإجابة السابقة\nأرسل السؤال مرة أخرى"
+                : 'تعذّر تأكيد نتيجة الإجابة السابقة'),
+            'partial' => $failedAnswer !== null,
+            'unavailable' => true,
+            'failure_category' => $failure['category'],
+            'can_retry' => $failure['can_retry'],
+            'retry_after_seconds' => $failure['retry_after_seconds'],
+            'client_request_id' => (string) $turn->client_request_id,
+            'turn_status' => (string) $turn->status,
+        ], 'لم تكتمل الإجابة', 200, ['code' => $failureCode]);
     }
 
     /** Preserve a safe streamed checkpoint without presenting it as complete. */
@@ -354,18 +304,15 @@ final class CourseChatController extends Controller
                 default => 'provider_call_in_progress',
             };
 
-        return response()->json([
-            'status' => $cancelled ? 200 : 409,
-            'success' => $cancelled,
-            'code' => $code,
-            'message' => $cancelled
-                ? 'تم الإيقاف'
-                : match ($state) {
-                    'not_cancellable' => 'اكتمل الرد بالفعل',
-                    'terminal' => 'انتهت المحاولة بالفعل',
-                    default => 'بدأ تجهيز الرد بالفعل',
-                },
-        ], $cancelled ? 200 : 409);
+        if ($cancelled) {
+            return $this->responses->success(null, 'تم الإيقاف', 200, ['code' => $code]);
+        }
+
+        return $this->responses->error(match ($state) {
+            'not_cancellable' => 'اكتمل الرد بالفعل',
+            'terminal' => 'انتهت المحاولة بالفعل',
+            default => 'بدأ تجهيز الرد بالفعل',
+        }, 409, null, ['code' => $code]);
     }
 
     private function send(
@@ -383,35 +330,17 @@ final class CourseChatController extends Controller
 
         $user = auth('api')->user();
         if (! $course->isPublishedForLearning()) {
-            return response()->json([
-                'status' => 404,
-                'success' => false,
-                'code' => 'course_not_available',
-                'message' => 'هذا الكورس غير متاح الآن',
-                'data' => null,
-            ], 404);
+            return $this->responses->error('هذا الكورس غير متاح الآن', 404, null, ['code' => 'course_not_available']);
         }
         if (! $access->hasLearningAccess($user->id, $course->id)) {
-            return response()->json([
-                'status' => 403,
-                'success' => false,
-                'code' => 'course_access_required',
-                'message' => 'افتح الكورس أولًا لإرسال سؤالك',
-                'data' => null,
-            ], 403);
+            return $this->responses->error('افتح الكورس أولًا لإرسال سؤالك', 403, null, ['code' => 'course_access_required']);
         }
         $chatEnrollment = $access->activeChatEnrollmentFor(
             (int) $user->id,
             (int) $course->id
         );
         if (! $chatEnrollment) {
-            return response()->json([
-                'status' => 403,
-                'success' => false,
-                'code' => 'chat_upgrade_required',
-                'message' => "اشتراكك لا يشمل الشات\nقم بترقية اشتراكك وادفع فرق السعر فقط",
-                'data' => null,
-            ], 403);
+            return $this->responses->error("اشتراكك لا يشمل الشات\nقم بترقية اشتراكك وادفع فرق السعر فقط", 403, null, ['code' => 'chat_upgrade_required']);
         }
 
         $attachmentIds = array_values($validated['attachment_ids'] ?? []);
@@ -421,22 +350,10 @@ final class CourseChatController extends Controller
             $question = 'راجع المرفق';
         }
         if ($question === '') {
-            return response()->json([
-                'status' => 422,
-                'success' => false,
-                'code' => 'empty_chat_message',
-                'message' => 'اكتب سؤالك الأول',
-                'data' => null,
-            ], 422);
+            return $this->responses->error('اكتب سؤالك الأول', 422, null, ['code' => 'empty_chat_message']);
         }
         if (UnicodeText::graphemeLength($question) > 1600) {
-            return response()->json([
-                'status' => 422,
-                'success' => false,
-                'code' => 'chat_message_too_long',
-                'message' => 'الرسالة أطول من الحد المتاح',
-                'data' => null,
-            ], 422);
+            return $this->responses->error('الرسالة أطول من الحد المتاح', 422, null, ['code' => 'chat_message_too_long']);
         }
 
         $clientRequestId = (string) ($validated['client_request_id'] ?? Str::uuid());
@@ -453,13 +370,7 @@ final class CourseChatController extends Controller
         if (! empty($validated['lesson_id'])) {
             $lesson = $this->promptContext->currentLesson((int) $validated['lesson_id'], $course);
             if (! $lesson) {
-                return response()->json([
-                    'status' => 422,
-                    'success' => false,
-                    'code' => 'lesson_course_mismatch',
-                    'message' => 'المقطع المختار لا ينتمي إلى هذا الكورس',
-                    'data' => null,
-                ], 422);
+                return $this->responses->error('المقطع المختار لا ينتمي إلى هذا الكورس', 422, null, ['code' => 'lesson_course_mismatch']);
             }
             $currentStepTitle = (string) $lesson->title;
             $currentStepDescription = UnicodeText::limit(
@@ -481,25 +392,14 @@ final class CourseChatController extends Controller
             ? $this->accessPlans->termsForEnrollment($enrollment)
             : null;
         if (! $enrollment || ! $planTerms) {
-            return response()->json([
-                'status' => 403,
-                'success' => false,
-                'code' => 'chat_upgrade_required',
-                'message' => "اشتراكك لا يشمل الشات\nقم بترقية اشتراكك وادفع فرق السعر فقط",
-                'data' => null,
-            ], 403);
+            return $this->responses->error("اشتراكك لا يشمل الشات\nقم بترقية اشتراكك وادفع فرق السعر فقط", 403, null, ['code' => 'chat_upgrade_required']);
         }
         $attachmentContract = $this->requests->attachmentContract($planTerms);
         if ($attachmentIds !== [] && (
             ! $attachmentContract['enabled']
             || count($attachmentIds) > $attachmentContract['max_files']
         )) {
-            return response()->json([
-                'status' => 403,
-                'success' => false,
-                'code' => 'chat_attachments_not_included',
-                'message' => 'المرفقات غير متاحة في فئتك الحالية',
-            ], 403);
+            return $this->responses->error('المرفقات غير متاحة في فئتك الحالية', 403, null, ['code' => 'chat_attachments_not_included']);
         }
         $admission = $this->admission->admit(
             $user, $course, $enrollment, isset($lesson) ? (int) $lesson->id : null,
@@ -514,11 +414,9 @@ final class CourseChatController extends Controller
             return $this->terminalFailureResponse($turn, $clientRequestId);
         }
         if ($admission->state === 'identity_conflict') {
-            return response()->json([
-                'status' => 409, 'success' => false,
+            return $this->responses->error('تعذر استكمال هذا الطلب', 409, null, [
                 'code' => 'chat_request_identity_conflict',
-                'message' => 'تعذر استكمال هذا الطلب', 'data' => null,
-            ], 409);
+            ]);
         }
         if (in_array($admission->state, ['in_progress', 'streaming'], true)) {
             $turn = $turn?->fresh() ?? $turn;
@@ -724,19 +622,14 @@ final class CourseChatController extends Controller
         string $answer,
         string $clientRequestId
     ): JsonResponse {
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم استلام الرد',
-            'data' => [
-                'message' => $answer,
-                'unavailable' => false,
-                'can_retry' => false,
-                'retry_after_seconds' => 0,
-                'client_request_id' => $clientRequestId,
-                'turn_status' => 'completed',
-            ],
-        ]);
+        return $this->responses->success([
+            'message' => $answer,
+            'unavailable' => false,
+            'can_retry' => false,
+            'retry_after_seconds' => 0,
+            'client_request_id' => $clientRequestId,
+            'turn_status' => 'completed',
+        ], 'تم استلام الرد');
     }
 
     private function gracefulUnavailable(
@@ -755,26 +648,20 @@ final class CourseChatController extends Controller
             ? ['category' => 'in_progress', 'can_retry' => true, 'retry_after_seconds' => max(1, $retryAfter)]
             : $this->failurePolicy->describe($code);
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'code' => $code,
-            'message' => $inProgress ? 'نجهز إجابتك الآن' : 'تعذّر الرد الآن',
-            'data' => [
-                'message' => $message,
-                'unavailable' => ! $inProgress,
-                'failure_category' => $failure['category'],
-                'can_retry' => $failure['can_retry'],
-                'retry_after_seconds' => $inProgress
-                    ? max(1, $retryAfter)
-                    : $failure['retry_after_seconds'],
-                'poll_window_seconds' => $inProgress
-                    ? $this->pollWindowSeconds()
-                    : null,
-                'client_request_id' => $clientRequestId,
-                'turn_status' => $turnStatus,
-            ],
-        ]);
+        return $this->responses->success([
+            'message' => $message,
+            'unavailable' => ! $inProgress,
+            'failure_category' => $failure['category'],
+            'can_retry' => $failure['can_retry'],
+            'retry_after_seconds' => $inProgress
+                ? max(1, $retryAfter)
+                : $failure['retry_after_seconds'],
+            'poll_window_seconds' => $inProgress
+                ? $this->pollWindowSeconds()
+                : null,
+            'client_request_id' => $clientRequestId,
+            'turn_status' => $turnStatus,
+        ], $inProgress ? 'نجهز إجابتك الآن' : 'تعذّر الرد الآن', 200, ['code' => $code]);
     }
 
     private function terminalFailureResponse(
@@ -802,20 +689,14 @@ final class CourseChatController extends Controller
 
     private function cancelledResponse(CourseChatTurn $turn): JsonResponse
     {
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'code' => (string) ($turn->error_code ?: 'learner_cancelled'),
+        return $this->responses->success([
             'message' => 'تم إيقاف الرد',
-            'data' => [
-                'message' => 'تم إيقاف الرد',
-                'unavailable' => false,
-                'can_retry' => false,
-                'retry_after_seconds' => 0,
-                'client_request_id' => (string) $turn->client_request_id,
-                'turn_status' => CourseChatTurn::CANCELLED,
-            ],
-        ]);
+            'unavailable' => false,
+            'can_retry' => false,
+            'retry_after_seconds' => 0,
+            'client_request_id' => (string) $turn->client_request_id,
+            'turn_status' => CourseChatTurn::CANCELLED,
+        ], 'تم إيقاف الرد', 200, ['code' => (string) ($turn->error_code ?: 'learner_cancelled')]);
     }
 
     /** Keep the foreground owner alive until the worker or stale-turn repair can decide. */

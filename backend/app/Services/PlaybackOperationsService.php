@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\PlaybackSession;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -12,7 +13,8 @@ use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 /**
- * Privacy-safe read model for video operations.
+ * Privacy-safe read model for video operations, and the operator's one
+ * action on it: ending a stale session.
  *
  * This service deliberately never selects a learner identifier, diagnostics,
  * signed source URL, IP address, or device identifier. Operators need failure
@@ -76,6 +78,39 @@ final class PlaybackOperationsService
 
             return $empty;
         }
+    }
+
+    /**
+     * End one session that stopped reporting, recorded like a player stop so
+     * it lands in the same rollup.
+     *
+     * @return 'ended'|'already_ended'|'still_active'|'missing'
+     */
+    public function terminateStale(string $sessionId): string
+    {
+        return DB::transaction(function () use ($sessionId): string {
+            /** @var PlaybackSession|null $locked */
+            $locked = PlaybackSession::query()
+                ->lockForUpdate()
+                ->find($sessionId);
+            if (! $locked) {
+                return 'missing';
+            }
+            if ($locked->ended_at) {
+                return 'already_ended';
+            }
+            if (! $this->isStale($locked)) {
+                return 'still_active';
+            }
+
+            $locked->forceFill([
+                'ended_at' => now(),
+                'event_type' => 'stop',
+                'end_reason' => 'admin_stale_termination',
+            ])->save();
+
+            return 'ended';
+        }, 3);
     }
 
     public function isStale(object $session, ?Carbon $at = null): bool

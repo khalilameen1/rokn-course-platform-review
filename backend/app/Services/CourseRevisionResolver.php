@@ -9,6 +9,7 @@ use App\Models\CourseAuthoringRevision;
 use App\Models\CourseSection;
 use App\Models\Lesson;
 use App\Models\PlaybackSession;
+use App\Models\Project;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -216,6 +217,54 @@ final class CourseRevisionResolver
         }
 
         return $aliases;
+    }
+
+    /**
+     * The reload contract for a project read or submitted against an archived
+     * course revision, or null while its course is the live publication.
+     *
+     * @return array{course_id:int,source_project_id:int,current_project_id:?int,current_section_id:?int,published_revision:int,reload_endpoint:string}|null
+     */
+    public function projectRevisionChange(Project $project): ?array
+    {
+        $course = $project->getRelationValue('section')?->course;
+        if (! $course || ! $course->is_coming_soon) {
+            return null;
+        }
+        $revision = $this->activeArchiveForCourse($course);
+        if (! $revision) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($project, $revision): array {
+            // Resolve mapping, ownership and version from one publication.
+            // Otherwise a second publish can move the mapped project into an
+            // archive during this read and falsely present it as deleted.
+            $canonical = $revision->canonicalCourse()->sharedLock()->firstOrFail();
+            $currentProjectId = $this->currentEntityId(Project::class, (int) $project->id);
+            $currentProject = $currentProjectId
+                ? Project::query()->find($currentProjectId)
+                : null;
+            $currentSection = $currentProject?->getRelationValue('section');
+            // A chain can end at an intermediate archive when a later publish
+            // deletes/retypes the project. Only a surviving canonical owner is a
+            // draft-review destination; this identity does not grant access to it.
+            if (! $currentSection || (int) $currentSection->course_id !== (int) $canonical->id) {
+                $currentProject = null;
+                $currentSection = null;
+            }
+
+            return [
+                'course_id' => (int) $canonical->id,
+                'source_project_id' => (int) $project->id,
+                'current_project_id' => $currentProject ? (int) $currentProject->id : null,
+                'current_section_id' => $currentSection ? (int) $currentSection->id : null,
+                'published_revision' => (int) (
+                    $canonical->last_published_authoring_version ?: $canonical->authoring_version
+                ),
+                'reload_endpoint' => "/api/v1/courses/{$canonical->id}/details",
+            ];
+        }, 3);
     }
 
     public function currentEntityId(string $entityType, int $historicalId): ?int

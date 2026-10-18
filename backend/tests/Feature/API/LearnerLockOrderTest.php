@@ -11,23 +11,18 @@ use App\Services\BunnyDeliveryService;
 use App\Services\CourseCompletionService;
 use App\Services\PlaybackManifestService;
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Events\QueryExecuted;
-use Illuminate\Database\Query\Builder;
-use Illuminate\Database\Query\Grammars\SQLiteGrammar;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Mockery;
+use Tests\Support\RecordsRowLocks;
 
-/**
- * SQLite compiles no row locks, so these tests swap in a grammar that marks
- * each locking read with a trailing SQL comment and record the lock type and
- * table in execution order. MySQL/PostgreSQL compile the same builder calls
- * to FOR UPDATE and LOCK IN SHARE MODE / FOR SHARE.
- */
+/** Learner write paths take the user, then the shared course, then other rows. */
 final class LearnerLockOrderTest extends ApiTestCase
 {
+    use RecordsRowLocks;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -238,6 +233,64 @@ final class LearnerLockOrderTest extends ApiTestCase
         self::assertNotContains('courses:update', $again);
     }
 
+    public function test_heartbeat_locks_the_learner_then_its_session_then_the_resume_row(): void
+    {
+        $session = $this->enrolledTwoLessonCourse();
+        $this->actingAs($this->user, 'api');
+
+        $response = null;
+        $locks = $this->recordLocks(function () use ($session, &$response): void {
+            $response = $this->sample($session, 1, 0);
+        });
+
+        $response->assertOk()
+            ->assertJsonPath('data.recorded', true)
+            ->assertJsonPath('data.tracking_enabled', true);
+        self::assertSame('users:update', $locks[0]);
+        $sessionLock = array_search('playback_sessions:update', $locks, true);
+        $resumeLock = array_search('watching_logs:update', $locks, true);
+        self::assertIsInt($sessionLock);
+        self::assertIsInt($resumeLock);
+        self::assertGreaterThan($sessionLock, $resumeLock);
+        self::assertSame('watching_logs:update', $locks[array_key_last($locks)]);
+        self::assertNotContains('courses:update', $locks);
+
+        // A replayed sequence is acknowledged from the durable session without
+        // a second credit and still takes the learner lock first.
+        $replay = null;
+        $replayLocks = $this->recordLocks(function () use ($session, &$replay): void {
+            $replay = $this->sample($session, 1, 0);
+        });
+        $replay->assertOk()->assertJsonPath('data.duplicate', true);
+        self::assertSame('users:update', $replayLocks[0]);
+    }
+
+    public function test_rating_locks_learner_then_course_then_rating_and_delete_skips_the_course(): void
+    {
+        $this->enrolledTwoLessonCourse();
+        DB::table('lesson_watch_evidence')->insert([
+            'user_id' => $this->user->id, 'lesson_id' => 10, 'course_section_id' => $this->sectionId,
+            'duration_seconds' => 25, 'verified_seconds' => 25, 'last_position_seconds' => 25,
+            'last_heartbeat_at' => now(), 'completed_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $url = '/api/v1/courses/'.$this->courseId.'/rate';
+        $this->actingAs($this->user, 'api');
+
+        $rated = null;
+        $rateLocks = $this->recordLocks(function () use ($url, &$rated): void {
+            $rated = $this->postJson($url, ['rating' => 4, 'version' => 0]);
+        });
+        $rated->assertOk()->assertJsonPath('data.version', 1)->assertJsonPath('data.ratings_count', 1);
+        self::assertSame(['users:update', 'courses:update', 'course_ratings:update'], $rateLocks);
+
+        $removed = null;
+        $removeLocks = $this->recordLocks(function () use ($url, &$removed): void {
+            $removed = $this->deleteJson($url, ['version' => 1]);
+        });
+        $removed->assertOk()->assertJsonPath('data.version', 2)->assertJsonPath('data.rating', null);
+        self::assertSame(['users:update', 'course_ratings:update'], $removeLocks);
+    }
+
     private function enrolledTwoLessonCourse(): PlaybackSession
     {
         DB::table('course_enrollments')->insert([
@@ -318,43 +371,5 @@ final class LearnerLockOrderTest extends ApiTestCase
             'duration_seconds' => 25,
             'event_type' => 'heartbeat',
         ]);
-    }
-
-    /** @return list<string> "table:update" or "table:shared" in execution order */
-    private function recordLocks(callable $callback): array
-    {
-        $connection = DB::connection();
-        $original = $connection->getQueryGrammar();
-        $connection->setQueryGrammar(new class($connection) extends SQLiteGrammar
-        {
-            protected function compileLock(Builder $query, $value)
-            {
-                if (is_string($value)) {
-                    return $value;
-                }
-
-                return $value ? '/* lock:update */' : '/* lock:shared */';
-            }
-        });
-        $locks = [];
-        $recording = true;
-        DB::listen(function (QueryExecuted $query) use (&$locks, &$recording): void {
-            if (
-                $recording
-                && preg_match('/\/\* lock:(update|shared) \*\/\s*$/', $query->sql, $lock)
-                && preg_match('/\sfrom\s+"([a-z_]+)"/', $query->sql, $table)
-            ) {
-                $locks[] = $table[1].':'.$lock[1];
-            }
-        });
-
-        try {
-            $callback();
-        } finally {
-            $recording = false;
-            $connection->setQueryGrammar($original);
-        }
-
-        return $locks;
     }
 }

@@ -9,10 +9,13 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Tests\Support\RecordsRowLocks;
 use Tests\TestCase;
 
 final class MediaOperationsTest extends TestCase
 {
+    use RecordsRowLocks;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -110,6 +113,46 @@ final class MediaOperationsTest extends TestCase
         self::assertStringNotContainsString('user_id', $serialized);
         self::assertStringNotContainsString('source_host', $serialized);
         self::assertStringNotContainsString('diagnostics', $serialized);
+    }
+
+    public function test_terminating_a_stale_session_ends_only_a_silent_open_session_under_its_row_lock(): void
+    {
+        config(['playback.stale_after_minutes' => 5]);
+        Schema::table('playback_sessions', function (Blueprint $table): void {
+            $table->timestamps();
+        });
+        $stale = (string) Str::uuid();
+        $active = (string) Str::uuid();
+        $ended = (string) Str::uuid();
+        $row = fn (string $id, int $user, $heartbeat, $endedAt): array => [
+            'id' => $id, 'user_id' => $user, 'lesson_id' => 10,
+            'started_at' => now()->subMinutes(30), 'last_heartbeat_at' => $heartbeat,
+            'ended_at' => $endedAt, 'event_type' => 'heartbeat',
+        ];
+        DB::table('playback_sessions')->insert([
+            $row($stale, 91, now()->subMinutes(25), null),
+            $row($active, 92, now()->subSeconds(20), null),
+            $row($ended, 93, now()->subMinutes(20), now()->subMinutes(20)),
+        ]);
+        $operations = app(PlaybackOperationsService::class);
+
+        $result = null;
+        $locks = $this->recordLocks(function () use ($operations, $stale, &$result): void {
+            $result = $operations->terminateStale($stale);
+        });
+
+        self::assertSame('ended', $result);
+        self::assertSame(['playback_sessions:update'], $locks);
+        $terminated = DB::table('playback_sessions')->where('id', $stale)->first();
+        self::assertNotNull($terminated->ended_at);
+        self::assertSame('stop', $terminated->event_type);
+        self::assertSame('admin_stale_termination', $terminated->end_reason);
+
+        self::assertSame('still_active', $operations->terminateStale($active));
+        self::assertNull(DB::table('playback_sessions')->where('id', $active)->value('ended_at'));
+        self::assertSame('already_ended', $operations->terminateStale($ended));
+        self::assertSame('already_ended', $operations->terminateStale($stale));
+        self::assertSame('missing', $operations->terminateStale((string) Str::uuid()));
     }
 
     public function test_playback_operations_routes_are_admin_only_and_mutations_are_audited(): void

@@ -6,6 +6,7 @@ use App\Traits\InvalidatesCourseCatalogue;
 use App\Traits\ResolvesLocalizedAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Lesson extends Model
 {
@@ -94,7 +95,8 @@ class Lesson extends Model
             ->withTimestamps();
     }
 
-    public function mediaState()
+    /** @return HasOne<LessonMediaState, $this> */
+    public function mediaState(): HasOne
     {
         return $this->hasOne(LessonMediaState::class);
     }

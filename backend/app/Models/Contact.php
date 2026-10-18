@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property string|null $request_fingerprint
+ */
 class Contact extends Model
 {
     public const TYPE_ACCOUNT_DELETION = 'account_deletion';

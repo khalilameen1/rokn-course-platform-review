@@ -357,6 +357,49 @@ final class EngagementExperienceTest extends TestCase
             ->assertJsonPath('data.task_id', (string) $preferred->id);
     }
 
+    public function test_next_offer_only_promises_a_task_that_fits_the_remaining_reward_room(): void
+    {
+        $user = $this->student('reward-room-offer@rokn.test');
+        $token = $user->generateApiToken();
+        Setting::query()->firstOrCreate([])->forceFill(['reward_balance_cap' => 15])->save();
+        // Earlier in dashboard order, but larger than the remaining room.
+        CoinEarningMethod::query()->create([
+            'title_ar' => 'مهمة أكبر من المتاح',
+            'title_en' => 'Too large',
+            'coins_amount' => 20,
+            'action_key' => 'room_too_large',
+            'requires_external_visit' => false,
+            'verification_delay_seconds' => 0,
+            'sort_order' => -2,
+            'is_active' => true,
+            'is_repeatable' => false,
+        ]);
+        $fits = CoinEarningMethod::query()->create([
+            'title_ar' => 'مهمة مناسبة',
+            'title_en' => 'Fits',
+            'coins_amount' => 10,
+            'action_key' => 'room_fits',
+            'requires_external_visit' => false,
+            'verification_delay_seconds' => 0,
+            'sort_order' => -1,
+            'is_active' => true,
+            'is_repeatable' => false,
+        ]);
+
+        $this->withToken($token)
+            ->getJson('/api/v1/engagement/next')
+            ->assertOk()
+            ->assertJsonPath('data.task_id', (string) $fits->id);
+
+        // Once the reward bucket has less room than any task, no offer is made.
+        Setting::query()->firstOrFail()->forceFill(['reward_balance_cap' => 5])->save();
+        $this->withToken($token)
+            ->getJson('/api/v1/engagement/next')
+            ->assertOk()
+            ->assertJsonPath('data', null)
+            ->assertJsonPath('message', 'لا توجد رسالة الآن');
+    }
+
     public function test_task_audit_receipt_is_unique_per_user_and_method(): void
     {
         $user = $this->student('unique-task-receipt@rokn.test');

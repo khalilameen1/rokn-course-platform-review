@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Services\ApiResponseService;
 use App\Services\StreakService;
 use Illuminate\Http\JsonResponse;
 
@@ -13,26 +14,17 @@ final class StreakController extends Controller
     /**
      * Get streak data for the authenticated user.
      */
-    public function index(): JsonResponse
+    public function index(ApiResponseService $responses): JsonResponse
     {
         $user = auth('api')->user();
 
         if (! $user) {
-            return response()->json([
-                'status' => 401,
-                'success' => false,
-                'message' => 'سجّل الدخول أولًا',
-                'data' => null,
-            ], 401);
+            return $responses->error('سجّل الدخول أولًا', 401);
         }
 
-        $data = StreakService::getStreakDataForUser($user->id);
-
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل الاستمرارية',
-            'data' => $data,
-        ]);
+        return $responses->success(
+            StreakService::getStreakDataForUser($user->id),
+            'تم تحميل الاستمرارية'
+        );
     }
 }

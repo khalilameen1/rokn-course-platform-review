@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\API;
 
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -101,6 +102,29 @@ class HomeEndpointTest extends ApiTestCase
             'email' => 'student@example.test',
             'phone' => '',
         ]);
+    }
+
+    public function test_contact_retry_is_a_replay_and_a_reused_request_id_with_new_content_conflicts(): void
+    {
+        $message = [
+            'client_request_id' => '6f1c2b8e-3d4a-4c5b-9e6f-7a8b9c0d1e2f',
+            'name' => 'Retry Student',
+            'email' => 'Retry@Example.test',
+            'message' => 'Please help me resume my course.',
+        ];
+
+        $this->postJson('/api/v1/contact', $message)->assertCreated()
+            ->assertJsonPath('data.request_id', $message['client_request_id'])
+            ->assertJsonPath('data.replayed', false);
+        $this->postJson('/api/v1/contact', $message)->assertOk()
+            ->assertJsonPath('status', 200)
+            ->assertJsonPath('data.replayed', true);
+        $this->postJson('/api/v1/contact', ['message' => 'A different message entirely.'] + $message)
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'conflict');
+
+        self::assertSame(1, DB::table('contacts')->where('client_request_id', $message['client_request_id'])->count());
+        $this->assertDatabaseHas('contacts', ['email' => 'retry@example.test']);
     }
 
     public function test_unknown_public_content_page_returns_not_found(): void
