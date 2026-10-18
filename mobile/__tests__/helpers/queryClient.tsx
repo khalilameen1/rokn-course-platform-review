@@ -6,7 +6,10 @@ import {
 } from '@tanstack/react-query';
 import React, {type ReactNode} from 'react';
 import {roknQueryClientConfig} from '../../src/services/query/queryClient';
-import {attachQueryPersistence} from '../../src/services/query/queryPersistence';
+import {
+  attachQueryPersistence,
+  getQueryPersistence,
+} from '../../src/services/query/queryPersistence';
 import {RoknQueryProvider} from '../../src/services/query/RoknQueryProvider';
 
 // TanStack batches observer notifications with setTimeout(0). Many suites use
@@ -16,13 +19,27 @@ notifyManager.setScheduler(callback => {
   void Promise.resolve().then(callback);
 });
 
+const testClients = new Set<QueryClient>();
+
+// Explicit query gcTime overrides the client default. Unmounted catalogue
+// observers therefore leave two-hour timers unless their owning cache is
+// cleared. Dispose persistence first so teardown cannot create new writes.
+// https://tanstack.com/query/latest/docs/framework/react/guides/testing
+afterAll(() => {
+  for (const client of testClients) {
+    getQueryPersistence(client)?.dispose();
+    client.clear();
+  }
+  testClients.clear();
+});
+
 /**
  * TanStack Query testing guide: a fresh client per test, retries off, and an
  * infinite gcTime so a cache entry never disappears between assertions.
  */
 export const createTestQueryClient = () => {
   const config = roknQueryClientConfig();
-  return new QueryClient({
+  const client = new QueryClient({
     ...config,
     defaultOptions: {
       ...config.defaultOptions,
@@ -33,6 +50,8 @@ export const createTestQueryClient = () => {
       },
     },
   });
+  testClients.add(client);
+  return client;
 };
 
 export const queryWrapper = (client: QueryClient = createTestQueryClient()) => {
