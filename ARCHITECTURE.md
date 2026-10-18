@@ -62,6 +62,16 @@ Repairs, remaps and backfills run on write paths, signals, jobs or migrations.
 `database/migration-lock.json` checksums every merged migration.
 - Reference: Flyway checksums. Enforced by: `MigrationLockTest`.
 
+### B9. Proven libraries over hand-written mechanisms
+A protocol, algorithm or format parser that a widely adopted library
+implements is used from that library (TUS: tus-js-client on both the
+dashboard and the app; TOTP: pragmarx/google2fa, the engine Laravel Fortify
+uses; Word: PhpWord; images: Intervention Image 4; money: Brick\Math via
+`App\Support\Money`). Rokn code keeps only what is Rokn's (authorization,
+account boundaries, limits, copy). A library that is end of life or that
+loses data silently (PhpPresentation dropped text runs) is not "proven" and
+is replaced by the spec-defined minimum, documented where it happens.
+
 ### B8. Static analysis and style
 Larastan (PHPStan for Laravel) at the configured level with a baseline that may
 only shrink; Laravel Pint for formatting.
@@ -136,12 +146,15 @@ Counts of code that still follows a second way. Each may only go down.
 | B6 | GET endpoints that write | 7 | 2 (public portfolio page and admin preview call `PortfolioModerationService::reconcile`) |
 | B8 | Larastan baseline entries | 1550 | 1218 |
 | B8 | Eloquent relations without a return type | 205 | 0 |
-| M1 | Read domains outside TanStack Query | 8 | 3 (saved library, profile overview, portfolio gallery) |
+| M1 | Read domains outside TanStack Query | 8 | 0 |
 | M2 | Feature-owned offline queues outside `durableOutbox` | 5 | 0 |
 | M3 | Files calling HTTP outside `services/` | 8 | 0 |
 | M3 | Files touching AsyncStorage outside `services/`, `constants/`, `utils/` | 11 | 0 |
 | M5 | Standard-Arabic retry copy ("حاول مرة أخرى") in the app | 132 | 3 (the app's own "سنحاول مرة أخرى" notice) |
 | Tests | Backend test files that read source text | 29 | 0 |
+| B9 | Hand-written implementations of a protocol or algorithm a proven library provides (TUS upload in the app, TOTP/Base32, OOXML text extraction) | 3 | 0 |
+| B9 | EGP arithmetic outside `App\Support\Money` (float round/compare sites) | 31 | 0 |
+| B9 | Libraries past end of life (Intervention Image 2) | 1 | 0 |
 
 Dashboard JSON endpoints (course studio, uploads) answer `public/admin/assets/js/request.js`'s
 own contract and are outside B2's learner-API scope.
