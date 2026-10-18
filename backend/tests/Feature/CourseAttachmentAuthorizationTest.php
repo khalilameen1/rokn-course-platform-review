@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Auth\Totp;
 use App\Models\Course;
 use App\Models\CoursePdf;
 use App\Models\User;
+use App\Services\AdminMfaService;
 use App\Services\CoursePublishingService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -182,7 +182,7 @@ final class CourseAttachmentAuthorizationTest extends TestCase
         $this->actingAs($actor, 'web')->withSession([
             'admin_mfa_verified_user_id' => $actor->id,
             'admin_mfa_verified_at' => time(),
-            'admin_mfa_secret_fingerprint' => app(Totp::class)->secretFingerprint($secret),
+            'admin_mfa_secret_fingerprint' => app(AdminMfaService::class)->secretFingerprint($secret),
         ]);
     }
 

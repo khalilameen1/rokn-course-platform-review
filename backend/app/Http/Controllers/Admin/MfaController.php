@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Auth\Totp;
+use App\Auth\TwoFactorAuthenticationProvider;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AdminMfaService;
@@ -20,7 +20,7 @@ class MfaController extends Controller
     private const GENERIC_ERROR = 'The verification code is invalid or has already been used.';
 
     public function __construct(
-        private readonly Totp $totp,
+        private readonly TwoFactorAuthenticationProvider $provider,
         private readonly AdminMfaService $mfa
     ) {}
 
@@ -40,7 +40,7 @@ class MfaController extends Controller
             === (int) $user->getAuthIdentifier();
 
         if (! $belongsToUser || $secret === '' || $startedAt <= 0 || (time() - $startedAt) > $setupTtl) {
-            $secret = $this->totp->generateSecret();
+            $secret = $this->provider->generateSecretKey();
             $request->session()->put([
                 'admin_mfa_setup_secret_ciphertext' => Crypt::encryptString($secret),
                 'admin_mfa_setup_user_id' => (int) $user->getAuthIdentifier(),
@@ -48,9 +48,11 @@ class MfaController extends Controller
             ]);
         }
 
+        $issuer = trim((string) config('admin_security.issuer', 'Rokn')) ?: 'Rokn';
+
         return $this->noStoreView('admin.auth.mfa-setup', [
             'secret' => $secret,
-            'otpauthUri' => $this->totp->otpauthUri($secret, (string) $user->email),
+            'otpauthUri' => $this->provider->qrCodeUrl($issuer, (string) $user->email, $secret),
         ]);
     }
 
@@ -164,7 +166,7 @@ class MfaController extends Controller
         $request->session()->put([
             'admin_mfa_verified_user_id' => $userId,
             'admin_mfa_verified_at' => time(),
-            'admin_mfa_secret_fingerprint' => $this->totp->secretFingerprint($secret),
+            'admin_mfa_secret_fingerprint' => $this->mfa->secretFingerprint($secret),
         ]);
         if (Schema::hasColumn('users', 'last_dashboard_login_at')) {
             User::query()->whereKey($userId)->update(['last_dashboard_login_at' => now()]);
