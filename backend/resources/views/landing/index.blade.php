@@ -2,7 +2,7 @@
 
 @php
     $pageTitle = $setting?->{'seo_meta_title_'.$locale} ?: ($setting?->{'site_name_'.$locale} ?: 'Rokn');
-    $hasDownloads = collect($downloadChannels ?? [])->filter()->isNotEmpty();
+    $hasDownloads = filled($downloadChannels['play'] ?? null) || filled($downloadChannels['appstore'] ?? null);
     $showAccountLink = false;
     $headline = $designSetting->exists && filled($designSetting->{'slogan_1_'.$locale})
         ? $designSetting->{'slogan_1_'.$locale}
@@ -11,7 +11,7 @@
 @endphp
 
 @section('title', $pageTitle)
-@section('meta_description', $setting?->{'seo_meta_description_'.$locale} ?: __('landing.hero_description'))
+@section('meta_description', $setting?->{'seo_meta_description_'.$locale} ?: ($designSetting->exists && filled($designSetting->{'slogan_2_'.$locale}) ? $designSetting->{'slogan_2_'.$locale} : __('landing.hero_description')))
 @section('page_class', 'app-landing')
 
 @section('content')
@@ -24,7 +24,6 @@
                         {{ $headline[1] }}
                     @endif
                 </h1>
-                <p class="hero-description">{{ $designSetting->exists && filled($designSetting->{'slogan_2_'.$locale}) ? $designSetting->{'slogan_2_'.$locale} : __('landing.hero_description') }}</p>
             </div>
 
             <div class="hero-visual">
@@ -55,7 +54,10 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="15" rx="3"/><path d="M9 5V3h6v2M3 11h18M10 14h4"/></svg>
                             @break
                     @endswitch
-                    <span>{{ $benefit }}</span>
+                    <div class="learning-copy">
+                        <h2>{{ $benefit }}</h2>
+                        <p>{{ __('landing.learning_details.'.$kind) }}</p>
+                    </div>
                 </li>
             @endforeach
         </ul>
@@ -90,5 +92,6 @@
             <a href="#download" class="download-button" data-dock-link>{{ __('landing.download_rokn') }}</a>
         </aside>
     @endif
+    @include('landing.partials.chat-demo')
     <script src="{{ asset('js/landing.js') }}?v={{ filemtime(public_path('js/landing.js')) }}" defer></script>
 @endsection

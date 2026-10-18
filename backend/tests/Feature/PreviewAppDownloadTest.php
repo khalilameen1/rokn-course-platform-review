@@ -42,7 +42,7 @@ final class PreviewAppDownloadTest extends TestCase
         self::assertTrue($response->headers->hasCacheControlDirective('no-store'));
     }
 
-    public function test_download_button_identifies_the_test_build_without_changing_store_badges(): void
+    public function test_store_landing_does_not_promote_an_internal_preview_build(): void
     {
         app()->setLocale('ar');
         $html = view('landing.partials.download-buttons', [
@@ -50,8 +50,10 @@ final class PreviewAppDownloadTest extends TestCase
             'directDownloadIsPreview' => true,
         ])->render();
 
-        self::assertStringContainsString('نسخة تجريبية', $html);
-        self::assertStringContainsString(route('app-download.preview'), $html);
+        self::assertStringNotContainsString('نسخة تجريبية', $html);
+        self::assertStringNotContainsString(route('app-download.preview'), $html);
         self::assertSame(2, substr_count($html, 'class="store-btn" aria-disabled="true"'));
+        self::assertStringContainsString('images/landing/google-play.svg', $html);
+        self::assertStringContainsString('images/landing/app-store.svg', $html);
     }
 }

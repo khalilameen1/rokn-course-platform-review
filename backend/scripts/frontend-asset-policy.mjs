@@ -1,5 +1,14 @@
 export const thirdPartyFamilies = [
     {
+        id: 'lucide-lesson-icons', name: 'Lucide lesson illustration icons',
+        version: 'Source commit d672fc43dbf60962d9d829e35bc3b3e5ed89a178', license: 'ISC and MIT (Feather-derived shopping bag)',
+        source: 'https://github.com/lucide-icons/lucide/tree/d672fc43dbf60962d9d829e35bc3b3e5ed89a178',
+        artifacts: [],
+        inlineArtifacts: ['resources/views/landing/partials/player-preview.blade.php (server-rendered inline SVG)'],
+        legal: [['Lucide and Feather icon licenses', 'resources/legal/frontend/LUCIDE-ICONS.txt']],
+        modifications: 'thumbs-up and shopping-bag paths reused in the media-buying lesson illustration; scaled, recolored and animated in our SVG composition. Source SVG snapshots are retained in resources/design/references/lucide. No JavaScript package is bundled.',
+    },
+    {
         id: 'uppy-control-lock', name: 'Uppy control-lock adaptation in Rokn upload form',
         version: 'Source commit 3f1aca3d26157785030e2be20aa5d411b6a5ed66', license: 'MIT (adapted fragment)',
         source: 'https://github.com/transloadit/uppy/blob/3f1aca3d26157785030e2be20aa5d411b6a5ed66/packages/%40uppy/dashboard/src/Dashboard.tsx',
