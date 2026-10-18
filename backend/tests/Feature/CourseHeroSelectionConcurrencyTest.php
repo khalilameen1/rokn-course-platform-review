@@ -4,9 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\RequireAdminMfa;
+use App\Models\Classification;
 use App\Models\Course;
+use App\Models\Lesson;
+use App\Models\LessonMediaState;
+use App\Models\User;
 use App\Services\CourseHeroSelectionService;
+use App\Services\CoursePlanAuthoringService;
+use App\Services\CoursePublishingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -46,34 +55,118 @@ final class CourseHeroSelectionConcurrencyTest extends TestCase
         self::assertSame(1, Course::query()->where('is_main_course', true)->count());
     }
 
-    public function test_course_update_orchestration_passes_its_owned_revision_between_stages(): void
+    public function test_first_publication_hands_its_owned_revision_to_publish_and_hero_stages(): void
     {
-        $source = file_get_contents(
-            app_path('Services/AdminCourseAuthoringService.php')
-        );
+        $oldHero = $this->publishedCourse(true, 4);
+        $course = $this->readyComingSoonCourse(7);
+        $this->actingAsAdministrator();
 
-        self::assertIsString($source);
-        $source = str_replace("\r\n", "\n", $source);
-        self::assertStringContainsString(
-            '$ownedVersion = $this->authoring->advance($locked);',
-            $source
+        $this->patch(route('admin.courses.update', $course), [
+            'authoring_version' => 7,
+            'publishing_intent' => 'publish',
+            'is_catalog_visible' => '1',
+            'is_main_course' => '1',
+        ])
+            ->assertRedirect(route('admin.courses.show', $course))
+            ->assertSessionHas('success', 'تم تحديث الكورس بنجاح.')
+            ->assertSessionMissing('error');
+
+        // Each stage revision-checks the course. A stage that re-read or reused
+        // a stale revision would end in publish_failed or hero_failed (an
+        // error flash) instead of this clean result.
+        $published = $course->fresh();
+        self::assertFalse((bool) $published->is_coming_soon);
+        self::assertTrue((bool) $published->is_main_course);
+        self::assertGreaterThan(7, (int) $published->authoring_version);
+        self::assertFalse((bool) $oldHero->fresh()->is_main_course);
+        self::assertSame(1, Course::query()->where('is_main_course', true)->count());
+    }
+
+    public function test_course_update_hands_its_owned_revision_to_the_catalog_card_stage(): void
+    {
+        $course = $this->publishedCourse(false, 2);
+        $course->forceFill([
+            'is_coming_soon' => true,
+            'is_catalog_visible' => false,
+            'description_ar' => 'وصف بطاقة قريبًا',
+            'image' => 'courses/cover.webp',
+        ])->save();
+        $course->teachers()->attach($this->dashboardUser('teacher'));
+        $course->classifications()->attach(
+            Classification::query()->create(['name_ar' => 'تصنيف', 'name_en' => 'Row'])
         );
-        self::assertStringContainsString(
-            '$publish = $this->publishDirectly($course, (int) $ownedVersion, $catalogVisible);',
-            $source
+        $this->actingAsAdministrator();
+
+        $this->patch(route('admin.courses.update', $course), [
+            'authoring_version' => 2,
+            'is_catalog_visible' => '1',
+        ])
+            ->assertRedirect(route('admin.courses.show', $course))
+            ->assertSessionHas('success', 'تم تحديث الكورس بنجاح.')
+            ->assertSessionMissing('error');
+
+        self::assertTrue((bool) $course->fresh()->is_catalog_visible);
+        self::assertTrue((bool) $course->fresh()->is_coming_soon);
+        // Edit and catalog card each advance the revision the stage before produced.
+        self::assertSame(4, (int) $course->fresh()->authoring_version);
+    }
+
+    private function readyComingSoonCourse(int $version): Course
+    {
+        Http::preventStrayRequests();
+        Storage::fake('public');
+        $course = $this->publishedCourse(false, $version);
+        $course->forceFill([
+            'is_coming_soon' => true,
+            'is_catalog_visible' => false,
+            'description_ar' => 'وصف الكورس',
+            'price' => 800,
+            'certificate_text_template_key' => 'completion',
+            'attachment_prompt_enabled' => false,
+        ])->save();
+        $course->teachers()->attach($this->dashboardUser('teacher'));
+        $course->classifications()->attach(
+            Classification::query()->create(['name_ar' => 'التصنيف', 'name_en' => 'Category'])
         );
-        self::assertStringContainsString(
-            '$catalog = $this->publishCatalogCard($fresh, (int) $ownedVersion);',
-            $source
-        );
-        self::assertStringContainsString(
-            '$this->heroSelection->synchronize($course, (int) $ownedVersion, $heroRequested);',
-            $source
-        );
-        self::assertStringNotContainsString(
-            '$heroExpectedVersion = (int) $heroCourse->authoring_version;',
-            $source
-        );
+        Storage::disk('public')->put('courses/ready-cover.jpg', 'cover bytes');
+        $course->allPhotos()->create(['path' => 'courses/ready-cover.jpg', 'type' => 'featured']);
+        app(CoursePlanAuthoringService::class)->createDefaults($course);
+        $module = $course->modules()->create(['title_ar' => 'الوحدة', 'order' => 1]);
+        $guid = '33333333-3333-4333-8333-333333333333';
+        $lesson = Lesson::query()->create([
+            'list_id' => $course->id, 'title_ar' => 'المقطع',
+            'video_source_type' => 'bunny', 'bunny_video_id' => $guid,
+        ]);
+        LessonMediaState::query()->create([
+            'lesson_id' => $lesson->id, 'provider' => 'bunny', 'provider_media_id' => $guid,
+            'status' => 'ready', 'duration_seconds' => 60,
+            'integrity_status' => 'healthy', 'last_reconciled_at' => now(),
+        ]);
+        $course->sections()->create([
+            'title_ar' => 'المقطع', 'module_id' => $module->id, 'order' => 1,
+            'section_type' => 'lesson', 'sectionable_type' => Lesson::class,
+            'sectionable_id' => $lesson->id,
+        ]);
+        $audit = app(CoursePublishingService::class)->audit($course->fresh());
+        self::assertTrue($audit['ready'], implode("\n", $audit['issues']));
+
+        return $course;
+    }
+
+    private function actingAsAdministrator(): void
+    {
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $this->actingAs($this->dashboardUser('admin'), 'web');
+    }
+
+    private function dashboardUser(string $role): User
+    {
+        return User::query()->forceCreate([
+            'name_ar' => 'مستخدم '.$role,
+            'email' => $role.'-hero@rokn.test',
+            'role' => $role,
+            'active' => true,
+        ]);
     }
 
     private function publishedCourse(bool $main, int $version): Course

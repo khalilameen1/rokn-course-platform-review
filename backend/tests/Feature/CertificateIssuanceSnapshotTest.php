@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Services\BunnyDeliveryService;
 use App\Services\CertificateIssuanceSnapshotService;
 use App\Services\CertificateQrDestinationService;
+use App\Services\CertificateService;
 use App\Services\CertificateTextTemplateService;
 use App\Services\PortfolioModerationService;
 use App\Services\PortfolioReviewReadService;
@@ -28,10 +29,12 @@ use App\Support\RoknPublicUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\Support\RecordsRowLocks;
 use Tests\TestCase;
 
 final class CertificateIssuanceSnapshotTest extends TestCase
 {
+    use RecordsRowLocks;
     use RefreshDatabase;
 
     public function test_all_legacy_keys_use_the_same_new_prefix_without_fabricating_projects(): void
@@ -141,6 +144,22 @@ final class CertificateIssuanceSnapshotTest extends TestCase
         $this->earned($differentUser, $differentCurrent, 1);
         $this->submission($differentUser, $this->project($differentCurrent));
         self::assertSame('', $this->snapshot($differentUser, $differentCurrent)['certificate_completion_text']);
+    }
+
+    public function test_issuance_locks_the_learner_then_shares_the_course_without_upgrading_it(): void
+    {
+        $user = $this->student();
+        $course = $this->course('كورس قفل الإصدار');
+        $this->earned($user, $course);
+        $certificate = null;
+        $locks = $this->recordLocks(function () use ($user, $course, &$certificate): void {
+            $certificate = app(CertificateService::class)->generate($user, $course, 'طالب ركن', false);
+        });
+
+        self::assertNotNull($certificate);
+        self::assertSame((int) $user->id, (int) $certificate->user_id);
+        self::assertSame(['users:update', 'courses:shared'], array_slice($locks, 0, 2));
+        self::assertNotContains('courses:update', $locks);
     }
 
     public function test_missing_earned_graph_and_watch_only_completion_never_gain_project_claims(): void

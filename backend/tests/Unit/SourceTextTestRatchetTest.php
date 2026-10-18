@@ -17,37 +17,7 @@ use RecursiveIteratorIterator;
 final class SourceTextTestRatchetTest extends TestCase
 {
     /** @var list<string> */
-    private const BASELINE = [
-        'tests/Feature/AdminAlertFeedbackTest.php',
-        'tests/Feature/AdminDashboardListsAndExportsTest.php',
-        'tests/Feature/AdminHomeCurationTest.php',
-        'tests/Feature/AdminMutableConfigurationConcurrencyTest.php',
-        'tests/Feature/CourseHeroSelectionConcurrencyTest.php',
-        'tests/Feature/BunnyUploadSafetyTest.php',
-        'tests/Feature/OperatingInvoiceEntryContractTest.php',
-        'tests/Feature/PublicCertificateIntegrityTest.php',
-        'tests/Unit/AdminCourseOperationsViewTest.php',
-        'tests/Unit/AdminCourseSectionStateContractTest.php',
-        'tests/Unit/AdminDashboardViewTest.php',
-        'tests/Unit/AdminEconomyDashboardContractTest.php',
-        'tests/Unit/AdminFinanceViewsTest.php',
-        'tests/Unit/AdminInlineStyleContractTest.php',
-        'tests/Unit/AdminLearningViewsTest.php',
-        'tests/Unit/AdminNotificationAuthoringContractTest.php',
-        'tests/Unit/AdminPaymentOperationsContractTest.php',
-        'tests/Unit/AdminStudentWorkspaceContractTest.php',
-        'tests/Unit/AdminTransactionBoundaryTest.php',
-        'tests/Unit/CourseAuthoringPolicyTest.php',
-        'tests/Unit/CourseResourceProjectSubmissionContractTest.php',
-        'tests/Unit/LessonMediaDeliveryContractTest.php',
-        'tests/Unit/ModeratorCourseWorkspaceContractTest.php',
-        'tests/Unit/ProductionQueueTopologyTest.php',
-        'tests/Unit/ProjectReportRetryContractTest.php',
-        'tests/Unit/ProjectSubmissionCanonicalStateContractTest.php',
-        'tests/Unit/ProjectSubmissionFileRetentionContractTest.php',
-        'tests/Unit/PublicDocumentsTest.php',
-        'tests/Unit/RedactSensitiveContextTest.php',
-    ];
+    private const BASELINE = [];
 
     public function test_no_new_test_asserts_on_application_source_text(): void
     {

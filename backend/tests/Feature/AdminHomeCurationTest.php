@@ -17,10 +17,12 @@ use App\Services\CourseStagedAuthoringService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\Support\RecordsRowLocks;
 use Tests\TestCase;
 
 final class AdminHomeCurationTest extends TestCase
 {
+    use RecordsRowLocks;
     use RefreshDatabase;
 
     private User $administrator;
@@ -205,14 +207,16 @@ final class AdminHomeCurationTest extends TestCase
             $queries[] = ['sql' => strtolower($query->sql), 'bindings' => $query->bindings];
         });
 
-        $this->put(route('admin.classifications.update', $row), [
-            'name_ar' => 'صف متزامن',
-            'name_en' => 'Concurrent row',
-            'show_on_home' => '1',
-            'home_order' => 10,
-            'course_ids' => [$requested->id],
-            'editor_version' => $editorVersion,
-        ])->assertRedirect(route('admin.classifications.index'));
+        $locks = $this->recordLocks(function () use ($row, $requested, $editorVersion): void {
+            $this->put(route('admin.classifications.update', $row), [
+                'name_ar' => 'صف متزامن',
+                'name_en' => 'Concurrent row',
+                'show_on_home' => '1',
+                'home_order' => 10,
+                'course_ids' => [$requested->id],
+                'editor_version' => $editorVersion,
+            ])->assertRedirect(route('admin.classifications.index'));
+        });
 
         $orderedIds = collect([$current->id, $requested->id])->sort()->values()->all();
         $lockQueryIndex = collect($queries)->search(fn (array $query): bool => str_contains($query['sql'], 'from "courses"')
@@ -230,10 +234,11 @@ final class AdminHomeCurationTest extends TestCase
         self::assertNotFalse($syncDeleteIndex, 'The membership replacement did not run.');
         self::assertLessThan($classificationLockIndex, $lockQueryIndex);
         self::assertLessThan($syncDeleteIndex, $classificationLockIndex);
-        self::assertStringContainsString(
-            '->lockForUpdate()',
-            (string) file_get_contents(app_path('Services/AdminClassificationAuthoringService.php'))
-        );
+        $courseLock = array_search('courses:update', $locks, true);
+        $classificationLock = array_search('classifications:update', $locks, true);
+        self::assertNotFalse($courseLock, 'Affected courses were not locked for update.');
+        self::assertNotFalse($classificationLock, 'The classification was not locked for update.');
+        self::assertLessThan($classificationLock, $courseLock);
         self::assertSame([$requested->id], $row->courses()->pluck('courses.id')->all());
     }
 

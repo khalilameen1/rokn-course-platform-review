@@ -11,6 +11,7 @@ use App\Services\BunnyService;
 use App\Services\MediaReconciliationService;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -101,15 +102,27 @@ final class BunnyUploadSafetyTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_video_upload_uses_a_file_stream_instead_of_reading_the_whole_file(): void
+    public function test_storage_upload_streams_the_file_instead_of_buffering_it(): void
     {
-        $source = file_get_contents(app_path('Services/BunnyService.php'));
+        config()->set('bunny.storage_zone', 'test-zone');
+        config()->set('bunny.storage_password', 'test-password');
+        $file = UploadedFile::fake()->createWithContent('lesson.txt', str_repeat('streamed lesson bytes ', 512));
+        $streamedFrom = null;
+        $sentBytes = null;
+        Http::fake(function (HttpRequest $request) use (&$streamedFrom, &$sentBytes) {
+            $body = $request->toPsrRequest()->getBody();
+            $streamedFrom = $body->getMetadata('uri');
+            $sentBytes = (string) $body;
 
-        self::assertStringContainsString("fopen(\$file->getRealPath(), 'rb')", $source);
-        self::assertStringNotContainsString(
-            'file_get_contents($file->getRealPath())',
-            $source
-        );
+            return Http::response([], 201);
+        });
+
+        self::assertIsString(app(BunnyService::class)->uploadFileToStorage($file, 'resources'));
+
+        // The provider body reads straight from the uploaded file rather than a
+        // second in-memory copy of it.
+        self::assertSame(realpath($file->getRealPath()), realpath((string) $streamedFrom));
+        self::assertSame(file_get_contents($file->getRealPath()), $sentBytes);
     }
 
     public function test_replacement_generation_has_its_own_probe_and_stale_job_never_calls_provider(): void

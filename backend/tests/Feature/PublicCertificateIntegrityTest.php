@@ -231,10 +231,17 @@ final class PublicCertificateIntegrityTest extends TestCase
             self::assertLessThanOrEqual(1, $position['y']);
         }
 
-        $source = file_get_contents(resource_path('certificates/certificate_template_v2.svg'));
-        self::assertIsString($source);
-        self::assertStringNotContainsString('امسح الرمز لعرض بياناتها', $source);
-        self::assertStringNotContainsString('>التحقق من الشهادة<', $source);
+        // The renderer draws the QR title and hint (CertificateQrDestinationService),
+        // so the editable artwork must not print its own copy of them.
+        $artwork = new \DOMDocument;
+        self::assertTrue($artwork->load(resource_path('certificates/certificate_template_v2.svg')));
+        $printed = [];
+        foreach ($artwork->getElementsByTagName('text') as $text) {
+            $printed[] = trim($text->textContent);
+        }
+        self::assertNotSame([], $printed);
+        self::assertNotContains('امسح الرمز لعرض بياناتها', $printed);
+        self::assertNotContains('التحقق من الشهادة', $printed);
     }
 
     public function test_qr_destination_follows_the_immutable_certificate_template_family(): void

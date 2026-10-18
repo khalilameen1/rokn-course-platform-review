@@ -11,9 +11,10 @@ use App\Services\AdminAuthoringCreateIntentService;
 use App\Support\AdminEditorVersion;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -96,8 +97,7 @@ final class OperatingInvoiceEntryContractTest extends TestCase
     public function test_actual_form_has_no_allocation_control_and_fx_version_belongs_to_fx_form(): void
     {
         $data = app(OperatingCostPoolController::class)->index(Request::create('/invoices'))->getData();
-        $source = str_replace("@extends('admin.layouts.app')", '', file_get_contents(resource_path('views/admin/operating-costs/index.blade.php')));
-        $html = Blade::render($source."\n@yield('content')", $data);
+        $html = $this->renderWithoutDashboardShell('admin.operating-costs.index', $data);
         $document = new \DOMDocument;
         @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
         $xpath = new \DOMXPath($document);
@@ -152,6 +152,22 @@ final class OperatingInvoiceEntryContractTest extends TestCase
         $this->expectException(ValidationException::class);
         app(OperatingCostPoolController::class)->update(Request::create('/invoices/'.$invoice->id, 'PUT',
             ['editor_version' => $version, 'course_id' => 7] + $this->payload()), $invoice);
+    }
+
+    /**
+     * Renders the real page view while a test-only layout stands in for the
+     * dashboard shell, whose navigation needs the full application schema.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function renderWithoutDashboardShell(string $view, array $data): string
+    {
+        $shell = storage_path('framework/testing-shell');
+        File::ensureDirectoryExists($shell.'/admin/layouts');
+        File::put($shell.'/admin/layouts/app.blade.php', "@yield('content')\n@stack('scripts')");
+        View::getFinder()->prependLocation($shell);
+
+        return view($view, $data)->render();
     }
 
     private function payload(): array

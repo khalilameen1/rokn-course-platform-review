@@ -534,6 +534,27 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame(500, (int) $user->fresh()->wallet_reward_coins);
     }
 
+    public function test_coupon_purchase_keeps_the_redeemable_code_out_of_wallet_metadata_and_notes(): void
+    {
+        [$user, $course, $service] = $this->fixture(1000, 0);
+        $coupon = Coupon::query()->forceCreate(['name_ar' => 'Discount', 'name_en' => 'Discount', 'code' => 'SECRETHALF', 'balance' => 50, 'active' => true]);
+        $quote = $service->create($user, $this->input($course) + ['coupon_code' => 'secrethalf']);
+        self::assertSame('completed', $service->authorize($user, $quote['id'])['status']);
+
+        $order = Order::query()->where('user_id', $user->id)->where('course_id', $course->id)->sole();
+        $debit = WalletTransaction::query()->findOrFail($order->wallet_transaction_id);
+        $bill = Bill::query()->where('order_id', $order->id)->sole();
+        // The order keeps its structured attribution; free-form fields and the
+        // wallet ledger carry only the coupon id, never the redeemable code.
+        self::assertSame((int) $coupon->id, (int) $order->coupon_id);
+        self::assertSame((int) $coupon->id, (int) data_get($debit->metadata, 'coupon_id'));
+        self::assertArrayNotHasKey('coupon_code', (array) $debit->metadata);
+        foreach ([json_encode($debit->metadata, JSON_THROW_ON_ERROR), (string) $order->notes, (string) $bill->notes] as $text) {
+            self::assertStringNotContainsStringIgnoringCase('SECRETHALF', $text);
+            self::assertStringNotContainsString('Idempotency', $text);
+        }
+    }
+
     public static function publicationRevisionCases(): array
     {
         return ['explicit publication' => [1], 'legacy null' => [null], 'legacy zero' => [0]];

@@ -384,12 +384,8 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
         $after = CouponEditorVersion::for($coupon);
 
         self::assertNotSame($before, $after);
-        $source = (string) file_get_contents(
-            dirname(__DIR__, 2).'/app/Services/AdminCouponAuthoringService.php'
-        );
-        self::assertStringContainsString('storeTrackedUpload(', $source);
-        self::assertStringContainsString('->lockForUpdate()->get()', $source);
-        self::assertStringNotContainsString('$coupon->replaceImage(', $source);
+        // Tracked upload, locked old-photo retirement and stale-image rejection:
+        // AdminCouponAuthoringOwnershipTest::test_stale_editor_cannot_replace_image_and_current_editor_retires_only_the_old_image.
     }
 
     public function test_bunny_secret_ciphertext_participates_in_settings_revision(): void

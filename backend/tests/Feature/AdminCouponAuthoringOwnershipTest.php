@@ -21,10 +21,13 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\RecordsRowLocks;
 use Tests\TestCase;
 
 final class AdminCouponAuthoringOwnershipTest extends TestCase
 {
+    use RecordsRowLocks;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -155,7 +158,11 @@ final class AdminCouponAuthoringOwnershipTest extends TestCase
         }
         self::assertSame('اسم أحدث', $coupon->fresh()->name_ar);
         self::assertSame($oldPath, $coupon->fresh()->photo->path);
-        $writer->update($coupon->fresh(), $this->fields(), CouponEditorVersion::for($coupon->fresh()), UploadedFile::fake()->image('new.png'));
+        $locks = $this->recordLocks(function () use ($writer, $coupon): void {
+            $writer->update($coupon->fresh(), $this->fields(), CouponEditorVersion::for($coupon->fresh()), UploadedFile::fake()->image('new.png'));
+        });
+        // The replaced image rows are locked under the coupon before retirement.
+        self::assertSame(['coupons:update', 'photos:update'], $locks);
         self::assertNotSame($oldPath, $coupon->fresh()->photo->path);
         self::assertSame(1, $coupon->allPhotos()->count());
         self::assertTrue(AccountFileDeletion::query()->where('disk', 'public')->where('path_hash', hash('sha256', $oldPath))->where('available_at', '<=', now())->exists());

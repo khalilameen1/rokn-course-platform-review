@@ -78,41 +78,18 @@ final class RedactSensitiveContextTest extends TestCase
 
     public function test_every_runtime_channel_uses_the_privacy_processor(): void
     {
-        $config = require dirname(__DIR__, 2).'/config/logging.php';
-
         foreach (['stack', 'single', 'daily', 'slack', 'papertrail', 'stderr', 'syslog', 'errorlog'] as $channel) {
             self::assertContains(
                 RedactSensitiveContext::class,
-                $config['channels'][$channel]['tap'] ?? [],
+                config("logging.channels.{$channel}.tap", []),
                 "{$channel} must redact sensitive context"
             );
         }
     }
 
-    public function test_redeemable_codes_are_not_duplicated_into_free_form_financial_fields(): void
-    {
-        $courseCodes = file_get_contents(app_path('Services/CourseCodeReceiptService.php'));
-        $coursePurchases = file_get_contents(
-            app_path('Services/CoursePurchaseAction.php')
-        );
-
-        self::assertIsString($courseCodes);
-        self::assertStringNotContainsString("'coupon_code' => \$code->code", $courseCodes);
-        self::assertStringNotContainsString("'notes' => 'Course code redemption: '", $courseCodes);
-        self::assertIsString($coursePurchases);
-        $debitStart = strpos($coursePurchases, '$walletTransaction = $walletService->debit(');
-        $debitEnd = strpos($coursePurchases, '// Course orders preserve');
-        self::assertIsInt($debitStart, 'The shared purchase action must own the wallet debit');
-        self::assertIsInt($debitEnd, 'The debit metadata must end before order attribution');
-        self::assertGreaterThan($debitStart, $debitEnd);
-        $walletMetadata = substr(
-            $coursePurchases,
-            $debitStart,
-            $debitEnd - $debitStart
-        );
-        self::assertStringNotContainsString("'coupon_code'", $walletMetadata);
-        self::assertStringNotContainsString("'notes' => 'Idempotency: '", $coursePurchases);
-    }
+    // Redeemable codes stay out of free-form financial fields:
+    // course codes - CourseCodeRedemptionOwnershipTest::test_one_transaction_creates_a_zero_value_receipt_without_charging_the_wallet;
+    // coupons - CourseCheckoutServiceTest::test_coupon_purchase_keeps_the_redeemable_code_out_of_wallet_metadata_and_notes.
 
     private function throwWithSensitiveArgument(string $payload): never
     {

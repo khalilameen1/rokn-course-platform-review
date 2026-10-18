@@ -4,14 +4,22 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\RequireAdminMfa;
+use App\Models\Contact;
+use App\Models\FeedbackReport;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\MessageBag;
+use Illuminate\Support\Str;
 use Illuminate\Support\ViewErrorBag;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class AdminAlertFeedbackTest extends TestCase
 {
+    use RefreshDatabase;
+
     #[DataProvider('feedbackProvider')]
     public function test_admin_shell_renders_redirect_feedback(
         string $key,
@@ -31,26 +39,41 @@ final class AdminAlertFeedbackTest extends TestCase
         self::assertSame(1, substr_count(strip_tags($response->getContent()), $message));
     }
 
-    #[DataProvider('shellOwnedFlashViews')]
-    public function test_admin_page_delegates_redirect_flash_to_the_shell(string $view): void
+    #[DataProvider('shellOwnedFlashPages')]
+    public function test_admin_page_shows_each_redirect_flash_once_through_the_shell(string $page): void
     {
-        $source = file_get_contents(resource_path("views/admin/{$view}.blade.php"));
+        $url = $this->pageUrl($page);
 
-        self::assertIsString($source);
-        self::assertStringContainsString("@extends('admin.layouts.app')", $source);
-        self::assertStringNotContainsString("session('success')", $source);
-        self::assertStringNotContainsString("session('error')", $source);
-        self::assertStringNotContainsString("session('warning')", $source);
-        self::assertStringNotContainsString('$errors->any()', $source);
+        foreach (['success', 'error', 'warning'] as $key) {
+            $this->flushSession();
+            $this->actingAsAdministrator();
+            $message = "رسالة {$key} للاختبار";
+            $content = (string) $this->withSession([$key => $message])->get($url)->assertOk()->getContent();
+
+            self::assertSame(1, substr_count($content, $message), "{$page} rendered {$key} flash more than once");
+        }
+
+        $this->flushSession();
+        $this->actingAsAdministrator();
+        $errors = (new ViewErrorBag)->put('default', new MessageBag(['name' => 'خطأ تحقق للاختبار']));
+        $content = (string) $this->withSession(['errors' => $errors])->get($url)->assertOk()->getContent();
+        self::assertSame(1, substr_count($content, 'حدثت أخطاء في النموذج'), "{$page} rendered a second error summary");
+        self::assertSame(1, substr_count($content, 'خطأ تحقق للاختبار'), "{$page} rendered validation errors twice");
     }
 
     public function test_shared_moderator_form_leaves_validation_to_its_admin_shell(): void
     {
-        $source = file_get_contents(resource_path('views/admin/moderators/_form.blade.php'));
+        $this->actingAsAdministrator();
+        $errors = (new ViewErrorBag)->put('default', new MessageBag(['name_ar' => 'اسم المشرف مطلوب']));
 
-        self::assertIsString($source);
-        self::assertStringNotContainsString('$errors->any()', $source);
-        self::assertStringContainsString('name="name_ar"', $source);
+        $content = (string) $this->withSession(['errors' => $errors])
+            ->get(route('admin.moderators.create'))
+            ->assertOk()
+            ->assertSee('name="name_ar"', false)
+            ->getContent();
+
+        self::assertSame(1, substr_count($content, 'حدثت أخطاء في النموذج'));
+        self::assertSame(1, substr_count($content, 'اسم المشرف مطلوب'));
     }
 
     public function test_validation_errors_remain_authoritative_over_success_flash(): void
@@ -86,17 +109,54 @@ final class AdminAlertFeedbackTest extends TestCase
     }
 
     /** @return array<string, array{string}> */
-    public static function shellOwnedFlashViews(): array
+    public static function shellOwnedFlashPages(): array
     {
         return [
-            'notification templates' => ['admin_notifications/index'],
-            'support inbox' => ['feedback/index'],
-            'support case' => ['feedback/show'],
-            'contact message' => ['contacts/show'],
-            'payment reconciliation' => ['payment-reconciliation-findings/index'],
-            'notification create' => ['notifications/create'],
-            'students' => ['users/index'],
-            'operating costs' => ['operating-costs/index'],
+            'notification templates' => ['admin.admin_notifications.index'],
+            'support inbox' => ['admin.feedback.index'],
+            'support case' => ['admin.feedback.show'],
+            'contact message' => ['admin.contacts.show'],
+            'payment reconciliation' => ['admin.payment-reconciliation-findings.index'],
+            'notification create' => ['admin.notifications.create'],
+            'students' => ['admin.users.index'],
+            'operating costs' => ['admin.operating-costs.index'],
         ];
+    }
+
+    private function pageUrl(string $page): string
+    {
+        $this->actingAsAdministrator();
+
+        return match ($page) {
+            'admin.feedback.show' => route($page, FeedbackReport::query()->create([
+                'public_id' => (string) Str::ulid(),
+                'category' => 'bug',
+                'status' => 'new',
+                'priority' => 'normal',
+                'message' => 'يتوقف التطبيق عند فتح صفحة الحساب',
+                'version' => 1,
+            ])),
+            'admin.contacts.show' => route($page, Contact::query()->create([
+                'name' => 'Learner',
+                'email' => 'contact-flash@rokn.test',
+                'phone' => '201000000000',
+                'message' => 'رسالة تواصل',
+                'read' => false,
+            ])),
+            default => route($page),
+        };
+    }
+
+    private function actingAsAdministrator(): void
+    {
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $admin = User::query()->where('email', 'alert-admin@rokn.test')->first()
+            ?? User::query()->forceCreate([
+                'name' => 'Alert Admin',
+                'email' => 'alert-admin@rokn.test',
+                'role' => 'admin',
+                'active' => true,
+            ]);
+        $this->actingAs($admin, 'web');
     }
 }

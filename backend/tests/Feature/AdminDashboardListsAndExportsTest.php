@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Middleware\RequireAdminMfa;
+use App\Models\Contact;
 use App\Models\Course;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\AdminStudentProgressReadService;
 use App\Services\CourseStagedAuthoringService;
+use DOMDocument;
+use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -123,22 +126,50 @@ final class AdminDashboardListsAndExportsTest extends TestCase
 
     public function test_phone_numbers_are_isolated_left_to_right_in_rtl_screens(): void
     {
-        $source = static fn (string $view): string => (string) file_get_contents(resource_path('views/admin/'.$view));
+        $admin = $this->user('admin');
+        $student = $this->user('client', ['name' => 'Phone Learner', 'phone' => '201055550001']);
+        $teacher = $this->user('teacher', ['name' => 'Phone Teacher', 'phone' => '201055550002']);
+        $course = Course::factory()->create(['tenant_id' => 1]);
+        $order = $this->order($student, $course, ['final_amount' => 50]);
+        $contact = Contact::query()->create([
+            'name' => 'Phone Contact', 'email' => 'phone-contact@rokn.test',
+            'phone' => '201055550003', 'message' => 'رسالة', 'read' => false,
+        ]);
+        $this->actingAs($admin);
+
         foreach ([
-            'orders/partials/show/order-information.blade.php' => '<bdi dir="ltr">{{ $order->user->phone }}</bdi>',
-            'student-progress/show.blade.php' => '<bdi dir="ltr">{{ $user->phone }}</bdi>',
-            'student-progress/index.blade.php' => "<bdi dir=\"ltr\">{{ \$userProgress['user']->phone }}</bdi>",
-            'teachers/index.blade.php' => '<bdi dir="ltr">{{ $teacher->phone }}</bdi>',
-            'contacts/index.blade.php' => '<bdi dir="ltr">{{ $contact->phone }}</bdi>',
-            'contacts/show.blade.php' => "<bdi dir=\"ltr\">{{ \$contact->phone ?: '—' }}</bdi>",
-            'users/partials/show/profile.blade.php' => '<bdi dir="ltr">{{ $user->phone }}</bdi>',
-            'moderators/_form.blade.php' => 'name="phone" type="tel" dir="ltr"',
-            'teachers/_form.blade.php' => 'type="tel" dir="ltr" name="phone"',
-            'users/_form.blade.php' => "'id'=>\"phone\", 'dir' => 'ltr'",
-            'settings/index.blade.php' => "'id' => 'phone', 'dir' => 'ltr'",
-        ] as $view => $needle) {
-            self::assertStringContainsString($needle, $source($view), $view);
+            'order' => [route('admin.orders.show', $order), '201055550001'],
+            'progress profile' => [route('admin.student-progress.show', $student), '201055550001'],
+            'progress list' => [route('admin.student-progress.index'), '201055550001'],
+            'teachers' => [route('admin.teachers.index'), '201055550002'],
+            'contacts' => [route('admin.contacts.index'), '201055550003'],
+            'contact' => [route('admin.contacts.show', $contact), '201055550003'],
+            'student profile' => [route('admin.users.show', $student), '201055550001'],
+        ] as $page => [$url, $phone]) {
+            $xpath = $this->page($url);
+            self::assertGreaterThan(
+                0,
+                $xpath->query('//bdi[@dir="ltr" and normalize-space()="'.$phone.'"]')->length,
+                $page
+            );
         }
+
+        foreach ([
+            'moderator form' => route('admin.moderators.create'),
+            'teacher form' => route('admin.teachers.create'),
+            'student form' => route('admin.users.edit', $student),
+            'settings' => route('admin.settings'),
+        ] as $page => $url) {
+            self::assertSame(1, $this->page($url)->query('//input[@name="phone" and @dir="ltr"]')->length, $page);
+        }
+    }
+
+    private function page(string $url): DOMXPath
+    {
+        $document = new DOMDocument;
+        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$this->get($url)->assertOk()->getContent());
+
+        return new DOMXPath($document);
     }
 
     /** @param array<string, mixed> $values */
