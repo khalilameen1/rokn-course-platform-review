@@ -41,7 +41,7 @@ jest.mock('../src/utils/secureRandom', () => ({
   secureRandomUuid: jest.fn(() => '11111111-1111-4111-8111-111111111111'),
 }));
 
-jest.mock('../src/components/VideoPlayer/courseLearning/persistence', () => ({
+jest.mock('../src/services/learningPlayerState', () => ({
   readPlayerState: jest.fn(async () => mockPlayerState),
   readPlayerStateForScope: jest.fn(async () => mockPlayerState),
   updatePlayerStateForScope: jest.fn(

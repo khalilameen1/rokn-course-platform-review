@@ -70,9 +70,8 @@ describe('profile recovery contracts', () => {
     expect(replay).toContain('refreshFlightRef.current');
     expect(replay).toContain('await replayPendingPortfolioMediaUploads()');
     expect(initializer).toContain('replayPendingPortfolioMediaUploads()');
-    expect(source('src/services/portfolioMediaReplay.ts')).toContain(
-      'deliverPortfolioMedia(entry, boundary)',
-    );
+    // Replay-as-one-flight behaviour is exercised against the durable outbox
+    // in portfolioMediaReplay.test.ts, not by reading source text.
     expect(source('src/services/portfolioMediaUpload.ts')).toMatch(
       /deliverPortfolioMedia\(entry, boundary,\s*value =>\s*progress\.transfer\(index, value\),\s*\)/,
     );

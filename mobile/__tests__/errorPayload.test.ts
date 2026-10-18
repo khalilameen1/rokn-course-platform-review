@@ -1,20 +1,21 @@
 import {learnerErrorMessage} from '../src/utils/errorPayload';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 describe('learner error copy boundary', () => {
   it('does not expose an English API diagnostic to the learner', () => {
     expect(
       learnerErrorMessage(
         {data: {message: 'Internal server error'}},
-        'حاول مرة أخرى',
+        learnerCopy.retry,
       ),
-    ).toBe('حاول مرة أخرى');
+    ).toBe(learnerCopy.retry);
   });
 
   it('keeps a useful Arabic validation message', () => {
     expect(
       learnerErrorMessage(
         {data: {errors: {portfolio_slug: ['اسم المستخدم مستخدم بالفعل']}}},
-        'حاول مرة أخرى',
+        learnerCopy.retry,
       ),
     ).toBe('اسم المستخدم مستخدم بالفعل');
   });

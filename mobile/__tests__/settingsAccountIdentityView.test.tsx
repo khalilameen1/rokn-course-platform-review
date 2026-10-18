@@ -4,6 +4,7 @@ import TestRenderer, {act} from 'react-test-renderer';
 import {AccessibilityInfo, Alert, StyleSheet, Text} from 'react-native';
 import {SettingsAccountIdentity} from '../src/components/settings/SettingsAccountIdentity';
 import {cleanUnicodeText} from '../src/utils/unicodeText';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 jest.mock('@react-native-clipboard/clipboard', () => ({setString: jest.fn()}));
 
@@ -95,7 +96,7 @@ describe('settings account identity view', () => {
       );
     });
     expect(() => act(() => copyButton().props.onPress())).not.toThrow();
-    expect(Alert.alert).toHaveBeenCalledWith('تعذّر النسخ', 'حاول مرة أخرى');
+    expect(Alert.alert).toHaveBeenCalledWith('تعذّر النسخ', learnerCopy.retry);
     expect(copyButton().props.accessibilityValue).toEqual({text: ''});
     expect(AccessibilityInfo.announceForAccessibility).not.toHaveBeenCalled();
     expect(visibleText()).toEqual(['محمد', 'UID: 123']);

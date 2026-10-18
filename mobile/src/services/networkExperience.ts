@@ -1,6 +1,7 @@
 import {formatArabicCount} from '../constants/arabicFormatting';
 import {serverNowMs} from '../utils/serverClock';
 import {httpFailureOf} from '../constants/apiHttpError';
+import {learnerCopy} from '../constants/learnerCopy';
 
 export type NetworkFailureKind =
   | 'cancelled'
@@ -190,26 +191,26 @@ export const friendlyNetworkMessage = (error: unknown, subject = 'المحتوى
     case 'missing':
       return `${subject} غير متاح الآن`;
     case 'conflict':
-      return 'تغيّرت البيانات أثناء فتح الصفحة\nحدّثها ثم حاول مرة أخرى';
+      return `تغيّرت البيانات أثناء فتح الصفحة\nحدّثها و${learnerCopy.retry}`;
     case 'validation':
-      return 'راجع البيانات المطلوبة\nثم حاول مرة أخرى';
+      return `راجع البيانات المطلوبة\nو${learnerCopy.retry}`;
     case 'rate_limited': {
       const wait = retryAfterSeconds(error);
       if (wait > 0 && wait <= 90) {
-        return `طلبات كثيرة في وقت قصير\nحاول بعد ${formatWaitSeconds(wait)}`;
+        return `طلبات كثيرة في وقت قصير\n${learnerCopy.retry} بعد ${formatWaitSeconds(wait)}`;
       }
       if (wait > 90) {
-        return `طلبات كثيرة في وقت قصير\nحاول بعد ${formatWaitMinutes(
+        return `طلبات كثيرة في وقت قصير\n${learnerCopy.retry} بعد ${formatWaitMinutes(
           Math.ceil(wait / 60),
         )}`;
       }
-      return 'طلبات كثيرة في وقت قصير\nحاول بعد قليل';
+      return `طلبات كثيرة في وقت قصير\n${learnerCopy.retryLater}`;
     }
     case 'maintenance':
-      return 'نجري تحديثًا قصيرًا\nحاول بعد قليل';
+      return `نجري تحديثًا قصيرًا\n${learnerCopy.retryLater}`;
     case 'contract':
       return `تعذّر قراءة ${subject}\nحدّث التطبيق إن استمرت المشكلة`;
     default:
-      return `تعذّر تحميل ${subject} الآن\nحاول مرة أخرى من نفس المكان`;
+      return `تعذّر تحميل ${subject} الآن\n${learnerCopy.retry} من نفس المكان`;
   }
 };

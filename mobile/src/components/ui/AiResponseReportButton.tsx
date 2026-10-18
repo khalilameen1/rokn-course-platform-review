@@ -2,6 +2,7 @@ import React, {useRef, useState} from 'react';
 import {Alert, Pressable, StyleSheet, Text} from 'react-native';
 import {reportAiResponse, type AiReportTarget} from '../../services/aiReporting';
 import {Palette, Type} from '../../constants/designSystem';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 export const AiResponseReportButton = ({target}: {target: AiReportTarget}) => {
   const [sending, setSending] = useState(false);
@@ -14,7 +15,7 @@ export const AiResponseReportButton = ({target}: {target: AiReportTarget}) => {
       await reportAiResponse(target);
       Alert.alert('وصل بلاغك', 'سيراجع فريق ركن الرد\nيمكنك متابعة البلاغ من الإعدادات ← تواصل معنا');
     } catch {
-      Alert.alert('لم يصل البلاغ', 'حاول مرة أخرى');
+      Alert.alert('لم يصل البلاغ', learnerCopy.retry);
     } finally {
       flight.current = false;
       setSending(false);

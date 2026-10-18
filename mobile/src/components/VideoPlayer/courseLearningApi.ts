@@ -6,7 +6,7 @@ export {
   migrateGuestLearningState,
   readPlayerStateForScope,
   WATCH_HISTORY_ENABLED_KEY,
-} from './courseLearning/persistence';
+} from '../../services/learningPlayerState';
 export {
   loadCourseLearningData,
   mapCoursePayload,

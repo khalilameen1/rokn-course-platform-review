@@ -26,7 +26,7 @@ import {flushProductEvents} from '../../services/productAnalytics';
 import {flushPendingAccountWrites} from '../../services/pendingAccountWrites';
 import {subscribeToConnectivityRecovery} from '../../services/playbackPreferenceConnectivity';
 import {flushOperationalTelemetry} from '../../services/operationalTelemetry';
-import {replayPendingPortfolioMediaUploads} from '../../services/portfolioMediaReplay';
+import {replayPendingPortfolioMediaUploads} from '../../services/portfolioMediaDelivery';
 import {networkFailureKind} from '../../services/networkExperience';
 import {setSentryUserId} from '../../services/sentryTelemetry';
 import {androidAuthSessionOwnsCallback} from '../../services/androidAuthSession';

@@ -8,6 +8,7 @@ import {
   getItem,
   saveItem,
 } from '../../constants/helpers';
+import {learnerCopy} from '../../constants/learnerCopy';
 import {getProfile, hasSession} from '../../services/roknApi';
 import {settleWithin} from '../../utils/settleWithin';
 import {
@@ -16,10 +17,10 @@ import {
   withAccountPreferenceWrite,
 } from '../../services/accountPreferenceWrites';
 import {
-  flushPlaybackPreferenceWrites,
+  flushAccountWrites,
   readPendingPlaybackPreferences,
   savePlaybackPreferencePatch,
-} from '../../services/playbackPreferenceSync';
+} from '../../services/pendingAccountWrites';
 
 export const usePlaybackPreferences = (accountIdentity: string) => {
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -147,7 +148,7 @@ export const usePlaybackPreferences = (accountIdentity: string) => {
       const pendingAtProfileRead = await readPendingPlaybackPreferences(
         boundary,
       );
-      void flushPlaybackPreferenceWrites(boundary).catch(() => undefined);
+      void flushAccountWrites(boundary).catch(() => undefined);
       const profile = (await hasSession())
         ? await getProfile(boundary).catch(() => null)
         : null;
@@ -216,10 +217,10 @@ export const usePlaybackPreferences = (accountIdentity: string) => {
       if (!mountedRef.current || preferenceWriteEpoch.current[field] !== epoch)
         return;
       Alert.alert(
-        'متحفظش التغيير',
+        learnerCopy.notSaved,
         field === 'quality'
-          ? 'معرفناش نحفظ جودة الفيديو\nجرب تاني'
-          : 'معرفناش نحفظ سرعة التشغيل\nجرب تاني',
+          ? `معرفناش نحفظ جودة الفيديو\n${learnerCopy.retry}`
+          : `معرفناش نحفظ سرعة التشغيل\n${learnerCopy.retry}`,
       );
     },
     [],

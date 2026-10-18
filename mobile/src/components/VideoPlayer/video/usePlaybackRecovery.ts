@@ -4,7 +4,7 @@ import type {
   PlaybackPlayerEvent,
   PlaybackRuntimeMetrics,
 } from '../playbackTelemetry';
-import {probeVideoSource} from '../videoSourcePolicy';
+import {probeVideoSource} from '../../../services/videoSourcePolicy';
 import {reportClientError} from '../../../services/operationalTelemetry';
 import {selectPlaybackRecoveryStep, type PlaybackFailure} from './policy';
 

@@ -22,7 +22,12 @@ export const learnerDraftStorage = {
     namespace: '@rokn/portfolio-editor-draft/v1',
     account: 'last',
   },
+  /** Durable outbox engine items (M2); `portfolioMediaLegacy` migrates in. */
   portfolioMedia: {
+    namespace: '@rokn/portfolio-media-outbox/v2',
+    account: 'last',
+  },
+  portfolioMediaLegacy: {
     namespace: '@rokn/portfolio-media-outbox/v1',
     account: 'last',
   },
@@ -31,7 +36,12 @@ export const learnerDraftStorage = {
     namespace: '@rokn/project-feedback-draft/v1',
     account: 'first',
   },
+  /** Durable outbox engine items (M2); `projectSubmissionLegacy` migrates in. */
   projectSubmission: {
+    namespace: '@rokn/project-submission/v3',
+    account: 'last',
+  },
+  projectSubmissionLegacy: {
     namespace: '@rokn/project-submission/v2',
     account: 'first',
   },

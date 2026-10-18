@@ -7,7 +7,6 @@ import {
   captureAccountSessionBoundary,
   extractApiToken,
   getItem,
-  removeItem,
   saveItem,
   sessionIdentityKey,
   type AccountSessionBoundary,
@@ -21,11 +20,7 @@ import {
   setSmartReminderHour,
   setSmartRemindersEnabled,
 } from '../../services/smartReminders';
-import {
-  clearWatchHistory,
-  getProfile,
-  updateNotificationStatus,
-} from '../../services/roknApi';
+import {getProfile, updateNotificationStatus} from '../../services/roknApi';
 import {
   clearLocalWatchHistory,
   WATCH_HISTORY_ENABLED_KEY,
@@ -40,7 +35,6 @@ import {
   readPendingPrivacyPreferences,
   usePrivacyPreferenceSync,
 } from './usePrivacyPreferenceSync';
-import {PENDING_WATCH_HISTORY_CLEAR_KEY} from './settingsData';
 import {
   playbackPreferenceReadIsCurrent,
   playbackPreferenceVersions,
@@ -49,11 +43,14 @@ import {
   withAccountPreferenceWrite as withSettingsScopeWrite,
 } from '../../services/accountPreferenceWrites';
 import {
-  flushPlaybackPreferenceWrites,
+  flushAccountWrites,
+  flushPendingAccountWrites,
   readPendingPlaybackPreferences,
+  requestWatchHistoryClear,
   savePlaybackPreferencePatch,
-} from '../../services/playbackPreferenceSync';
+} from '../../services/pendingAccountWrites';
 import {createKeyedAsyncQueue} from '../../utils/keyedAsyncQueue';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 // Keep each toggle's local/server transaction ordered across screen remounts.
 // Network work belongs here, never in the shared native preference writer.
@@ -258,7 +255,7 @@ export const useSettingsPreferences = ({
           // its previously read patch over a newer choice from another visit.
           privacyVersions = privacyPreferenceVersions(boundary);
           const [latest, cachedWatchHistory, cachedMarketing, cachedReminder] = await Promise.all([
-            readPendingPrivacyPreferences(undefined, boundary),
+            readPendingPrivacyPreferences(boundary),
             scopedKey(WATCH_HISTORY_ENABLED_KEY).then(getItem),
             scopedKey(MARKETING_NOTIFICATIONS_KEY).then(getItem),
             getSmartReminderHour(boundary),
@@ -308,8 +305,8 @@ export const useSettingsPreferences = ({
           const pendingPlaybackAtRead = await readPendingPlaybackPreferences(
             boundary,
           );
-          const pendingPrivacyAtRead = await readPendingPrivacyPreferences(undefined, boundary);
-          void flushPlaybackPreferenceWrites(boundary).catch(() => undefined);
+          const pendingPrivacyAtRead = await readPendingPrivacyPreferences(boundary);
+          void flushAccountWrites(boundary).catch(() => undefined);
           const remoteProfile = await getProfile(boundary);
           assertAccountSessionBoundary(boundary);
           if (!active) return;
@@ -320,7 +317,7 @@ export const useSettingsPreferences = ({
               : remoteProfile.videoQualityPreference,
           );
           await withSettingsScopeWrite(boundary, async () => {
-            const pendingReminder = await readPendingPrivacyPreferences(undefined, boundary);
+            const pendingReminder = await readPendingPrivacyPreferences(boundary);
             assertAccountSessionBoundary(boundary);
             if (
               active && isUnchanged('REMINDER_HOUR') &&
@@ -422,20 +419,8 @@ export const useSettingsPreferences = ({
 
   useEffect(() => {
     if (!hasAuthenticatedAccount) return;
-    void captureAccountSessionBoundary()
-      .then(async boundary => {
-        const key = await accountScopedStorageKey(
-          PENDING_WATCH_HISTORY_CLEAR_KEY,
-          boundary,
-        );
-        if (!(await getItem(key))) return;
-        assertAccountSessionBoundary(boundary);
-        await clearWatchHistory(boundary);
-        assertAccountSessionBoundary(boundary);
-        await removeItem(key);
-        assertAccountSessionBoundary(boundary);
-      })
-      .catch(() => undefined);
+    // A queued watch-history deletion replays with the other account writes.
+    void flushPendingAccountWrites().catch(() => undefined);
   }, [accountIdentity, hasAuthenticatedAccount]);
 
   const updatePreference = (
@@ -579,11 +564,11 @@ export const useSettingsPreferences = ({
           preferenceRevisionRef.current[key] === revision
         ) {
           Alert.alert(
-            'لم يُحفظ التغيير',
+            learnerCopy.notSaved,
             error instanceof Error &&
               error.message === 'SETTINGS_STORAGE_WRITE_FAILED'
-              ? 'تعذّر حفظ الإعداد على الجهاز\nحاول مرة أخرى'
-              : 'تعذّر إكمال التغيير الآن\nحاول مرة أخرى',
+              ? `تعذّر حفظ الإعداد على الجهاز\n${learnerCopy.retry}`
+              : `تعذّر إكمال التغيير الآن\n${learnerCopy.retry}`,
           );
         }
         return false;
@@ -625,7 +610,10 @@ export const useSettingsPreferences = ({
           confirmationOwnerRef.current === noticeOwner &&
           preferenceRevisionRef.current[REMINDER_ENABLED_KEY] === revision
         ) {
-          Alert.alert('لم يُحفظ التغيير', 'تعذّر إكمال التغيير الآن\nحاول مرة أخرى');
+          Alert.alert(
+            learnerCopy.notSaved,
+            `تعذّر إكمال التغيير الآن\n${learnerCopy.retry}`,
+          );
         }
       }
     }
@@ -789,7 +777,7 @@ export const useSettingsPreferences = ({
           preferenceRevisionRef.current[preferenceKey] === revision) {
           try {
             const savedHour = await withSettingsScopeWrite(mutationBoundary, async () => {
-              const pending = await readPendingPrivacyPreferences(undefined, mutationBoundary!);
+              const pending = await readPendingPrivacyPreferences(mutationBoundary!);
               return pending.learningReminderHour ?? await getSmartReminderHour(mutationBoundary!);
             });
             if (preferenceRevisionRef.current[preferenceKey] === revision)
@@ -813,10 +801,10 @@ export const useSettingsPreferences = ({
           confirmationOwnerRef.current === presentation.focusOwner
         ) {
           Alert.alert(
-            'لم يُحفظ التغيير',
+            learnerCopy.notSaved,
             reminder
-              ? 'تعذّر حفظ وقت التذكير\nحاول مرة أخرى'
-              : 'تعذّر حفظ جودة الفيديو\nحاول مرة أخرى',
+              ? `تعذّر حفظ وقت التذكير\n${learnerCopy.retry}`
+              : `تعذّر حفظ جودة الفيديو\n${learnerCopy.retry}`,
           );
         }
       });
@@ -853,27 +841,17 @@ export const useSettingsPreferences = ({
               assertAccountSessionBoundary(boundary);
               let serverSynced = true;
               if (extractApiToken(userData)) {
-                const pendingKey = await accountScopedStorageKey(
-                  PENDING_WATCH_HISTORY_CLEAR_KEY,
-                  boundary,
-                );
                 try {
-                  await clearWatchHistory(boundary);
-                  assertAccountSessionBoundary(boundary);
-                  await removeItem(pendingKey);
-                  assertAccountSessionBoundary(boundary);
+                  // Sent now, or kept in the account-write outbox for replay.
+                  serverSynced = await requestWatchHistoryClear(boundary);
                 } catch {
+                  // Neither the server nor the device kept the deletion.
                   assertAccountSessionBoundary(boundary);
-                  serverSynced = false;
-                  const queued = await saveItem(pendingKey, true);
-                  assertAccountSessionBoundary(boundary);
-                  if (!queued) {
-                    Alert.alert(
-                      'لم يكتمل المسح',
-                      'تعذّر حفظ طلب المسح على الجهاز\nحاول مرة أخرى عند عودة الاتصال',
-                    );
-                    return;
-                  }
+                  Alert.alert(
+                    'لم يكتمل المسح',
+                    `تعذّر حفظ طلب المسح على الجهاز\n${learnerCopy.retry} لما الاتصال يرجع`,
+                  );
+                  return;
                 }
               }
               if (confirmationOwnerRef.current !== owner) return;
@@ -891,7 +869,7 @@ export const useSettingsPreferences = ({
                   error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
                 )
               ) {
-                Alert.alert('لم يكتمل المسح', 'حاول مرة أخرى');
+                Alert.alert('لم يكتمل المسح', learnerCopy.retry);
               }
             }
           },

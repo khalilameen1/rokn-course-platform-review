@@ -11,6 +11,7 @@ import {RasterImage as Image} from '../../components/ui/RasterImage';
 
 import {StatusView} from '../../components/ui/PremiumUI';
 import {Palette} from '../../constants/designSystem';
+import {learnerCopy} from '../../constants/learnerCopy';
 import type {
   FeedbackAttachment,
   ProductFeedbackArtifact,
@@ -354,7 +355,7 @@ export const FeedbackConversation = ({
             disabled={previewBusy}
             onPress={() => onOpenArtifact(previewArtifact, true)}
             style={styles.previewRetry}>
-            <Text style={styles.previewRetryText}>حاول مرة أخرى</Text>
+            <Text style={styles.previewRetryText}>{learnerCopy.retry}</Text>
           </Pressable>
         )}
       </View>

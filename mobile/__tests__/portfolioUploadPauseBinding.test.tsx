@@ -48,7 +48,8 @@ import {
   listPortfolioMediaUploads,
   stagePortfolioMediaUpload,
 } from '../src/services/portfolioMediaOutbox';
-import {replayPendingPortfolioMediaUploads} from '../src/services/portfolioMediaReplay';
+import {replayPendingPortfolioMediaUploads} from '../src/services/portfolioMediaDelivery';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 const media = {
   id: 71,
@@ -155,7 +156,7 @@ describe('real portfolio selection, durable pause, transport abort and explicit 
     files = new Map();
     filePath = `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${mockBoundary.scope}/work.jpg`;
     files.set(filePath, 'image bytes');
-    key = `@rokn/portfolio-media-outbox/v1:${mockBoundary.scope}`;
+    key = `@rokn/portfolio-media-outbox/v2:${mockBoundary.scope}`;
     (RNFS.exists as jest.Mock).mockImplementation(async path =>
       files.has(path),
     );
@@ -373,7 +374,7 @@ describe('real portfolio selection, durable pause, transport abort and explicit 
     );
     expect(Alert.alert).toHaveBeenCalledWith(
       'تعذّر إيقاف الرفع',
-      'الرفع مستمر\nحاول مرة أخرى',
+      `الرفع مستمر\n${learnerCopy.retry}`,
     );
     rejectPause = false;
     await act(async () => {

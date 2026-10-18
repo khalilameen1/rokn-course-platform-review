@@ -23,7 +23,7 @@ jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   getLocalLearningState: (...args: unknown[]) => mockLocalState(...args),
   loadCourseLearningData: (...args: unknown[]) => mockLoad(...args),
   applyLocalLearningState: jest.requireActual(
-    '../src/components/VideoPlayer/courseLearning/persistence',
+    '../src/services/learningPlayerState',
   ).applyLocalLearningState,
   reconcileServerSavedLessons: (...args: unknown[]) =>
     mockSavedLessons(...args),
@@ -35,7 +35,7 @@ import {
   createLearningNavigationHandoff,
   learningNavigationHandoff,
 } from '../src/components/VideoPlayer/courseLearning/navigationHandoff';
-import {emptyLocalLearningState} from '../src/components/VideoPlayer/courseLearning/persistence';
+import {emptyLocalLearningState} from '../src/services/learningPlayerState';
 import {useReelsCourseLoader} from '../src/screens/reels/useReelsCourseLoader';
 
 const makeCourse = (): CourseLearningData => ({

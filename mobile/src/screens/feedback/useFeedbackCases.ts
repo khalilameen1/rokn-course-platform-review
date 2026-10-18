@@ -17,6 +17,7 @@ import {settleWithin} from '../../utils/settleWithin';
 import {useFeedbackArtifactPreview} from './useFeedbackArtifactPreview';
 import {useFeedbackReplyDraft} from './useFeedbackReplyDraft';
 import {useFeedbackScreenshotPreparation} from './useFeedbackScreenshotPreparation';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 export const useFeedbackCases = (
   identityKey: string,
@@ -240,7 +241,7 @@ export const useFeedbackCases = (
           dataOwnerRef.current === ownerIdentity
         ) {
           setReplyError(
-            'تعذّر حفظ الرد على الجهاز\nحرر مساحة ثم حاول مرة أخرى',
+            `تعذّر حفظ الرد على الجهاز\nحرر مساحة و${learnerCopy.retry}`,
           );
         }
         return;
@@ -279,7 +280,7 @@ export const useFeedbackCases = (
           replyFailure.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
         )
       ) {
-        setReplyError('تعذّر تأكيد وصول الرد\nحاول مرة أخرى\nنصك محفوظ');
+        setReplyError(`تعذّر تأكيد وصول الرد\n${learnerCopy.retry}\nنصك محفوظ`);
       }
     } finally {
       replyDraft.finishSubmission(submission);
@@ -312,7 +313,7 @@ export const useFeedbackCases = (
     replyError:
       replyError ||
       (replyDraft.saveError
-        ? 'تعذّر حفظ الرد على الجهاز\nحرر مساحة ثم حاول مرة أخرى'
+        ? `تعذّر حفظ الرد على الجهاز\nحرر مساحة و${learnerCopy.retry}`
         : ''),
     replyReady: replyDraft.ready,
     replyRestoreError: replyDraft.restoreError,

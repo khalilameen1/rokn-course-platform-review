@@ -44,7 +44,7 @@ jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
     '../src/components/VideoPlayer/courseLearning/mapping',
   ).mapCoursePayload,
   applyLocalLearningState: jest.requireActual(
-    '../src/components/VideoPlayer/courseLearning/persistence',
+    '../src/services/learningPlayerState',
   ).applyLocalLearningState,
 }));
 

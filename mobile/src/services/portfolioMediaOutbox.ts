@@ -1,11 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
-  accountScopedStorageKey,
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
   type AccountSessionBoundary,
 } from '../constants/helpers';
+import {createDurableOutbox, type DurableOutboxItem} from './durableOutbox';
 import type {LearnerDraftFile} from './learnerDraftFiles';
 import {
   learnerDraftFileIsReadable,
@@ -15,37 +15,24 @@ import {
 import {readJsonOrQuarantine} from './recoverableJsonStorage';
 import {settleWithin} from '../utils/settleWithin';
 import {learnerDraftStorage} from './learnerDraftStorage';
+import {portfolioMediaFailureDisposition} from './portfolioMediaPolicy';
 
-export type PortfolioMediaOutboxEntry = {
+/** Typed M2 adapter: portfolio media uploads on the durable outbox engine. */
+export type PortfolioMediaPayload = {
   projectId: string;
   clientRequestId: string;
   file: LearnerDraftFile;
   createdAt: number;
+};
+
+export type PortfolioMediaOutboxEntry = PortfolioMediaPayload & {
   storageKey?: string;
   paused?: boolean;
 };
 
-const STORAGE_KEY = learnerDraftStorage.portfolioMedia.namespace;
 const REFERENCE_OWNER = 'portfolio-media-outbox';
-const TTL_MS = 30 * 24 * 60 * 60 * 1000;
-const MAX_ENTRIES = 96;
-const operations = new Map<string, Promise<unknown>>();
 
-const withLock = <T>(key: string, callback: () => Promise<T>): Promise<T> => {
-  const operation = operations.get(key) ?? Promise.resolve();
-  const result = operation.then(callback, callback);
-  const tail = result.then(
-    () => undefined,
-    () => undefined,
-  );
-  operations.set(key, tail);
-  void tail.finally(() => {
-    if (operations.get(key) === tail) operations.delete(key);
-  });
-  return result;
-};
-
-const validEntry = (value: unknown): value is PortfolioMediaOutboxEntry => {
+const validPayload = (value: unknown): value is PortfolioMediaPayload => {
   if (!value || typeof value !== 'object') return false;
   const entry = value as Partial<PortfolioMediaOutboxEntry>;
   return (
@@ -57,100 +44,111 @@ const validEntry = (value: unknown): value is PortfolioMediaOutboxEntry => {
   );
 };
 
+const payloadOf = (entry: PortfolioMediaPayload): PortfolioMediaPayload => ({
+  projectId: entry.projectId,
+  clientRequestId: entry.clientRequestId,
+  file: entry.file,
+  createdAt: entry.createdAt,
+});
+
+/** Decoder of the v1 storage format (a bare entry array), kept for migration. */
 export const decodePortfolioMediaOutboxEntries = (
   value: unknown,
 ): PortfolioMediaOutboxEntry[] | null =>
-  Array.isArray(value) && value.every(validEntry) ? value : null;
+  Array.isArray(value) && value.every(validPayload)
+    ? (value as PortfolioMediaOutboxEntry[])
+    : null;
 
-const readStored = async (key: string): Promise<PortfolioMediaOutboxEntry[]> =>
-  readJsonOrQuarantine(key, () => [], decodePortfolioMediaOutboxEntries);
+const legacyKey = (scope: string) =>
+  `${learnerDraftStorage.portfolioMediaLegacy.namespace}:${scope}`;
 
-const writeStored = async (
-  key: string,
-  entries: PortfolioMediaOutboxEntry[],
-): Promise<void> => {
-  if (!entries.length) {
-    await AsyncStorage.removeItem(key);
-    return;
-  }
-  await AsyncStorage.setItem(key, JSON.stringify(entries));
-};
+export const portfolioMediaOutbox = createDurableOutbox<
+  PortfolioMediaPayload,
+  LearnerDraftFile
+>({
+  namespace: learnerDraftStorage.portfolioMedia.namespace,
+  accountScoped: true,
+  maxItems: 96,
+  ttlMs: 30 * 24 * 60 * 60 * 1000,
+  backoff: {baseMs: 2_000, maxMs: 15 * 60 * 1000},
+  decode: value => (validPayload(value) ? payloadOf(value) : null),
+  // A learner pauses and resumes one project; a failure never blocks another.
+  groupOf: payload => payload.projectId,
+  usable: payload => learnerDraftFileIsReadable(payload.file),
+  references: {
+    of: payload => [payload.file],
+    key: file => file.uri,
+    retain: (files, scope) =>
+      retainLearnerDraftFiles(REFERENCE_OWNER, files, scope),
+    release: file => removeLearnerDraftFile(file),
+  },
+  classify: error => {
+    const status = Number(
+      (error as {status?: unknown; response?: {status?: unknown}})?.status ??
+        (error as {response?: {status?: unknown}})?.response?.status ??
+        0,
+    );
+    const disposition = portfolioMediaFailureDisposition(status);
+    return disposition === 'discard_project'
+      ? 'drop_group'
+      : disposition === 'discard_file'
+      ? 'drop'
+      : 'retry';
+  },
+  legacy: {
+    read: async scope => {
+      const entries = await readJsonOrQuarantine(
+        legacyKey(scope),
+        () => [],
+        decodePortfolioMediaOutboxEntries,
+      );
+      return entries.map(entry => ({
+        id: entry.clientRequestId,
+        payload: payloadOf(entry),
+        createdAt: entry.createdAt,
+        paused: entry.paused === true,
+      }));
+    },
+    clear: scope => AsyncStorage.removeItem(legacyKey(scope)),
+  },
+});
 
-const retainStoredFiles = (
-  entries: PortfolioMediaOutboxEntry[],
-  accountScope: string,
-) =>
-  retainLearnerDraftFiles(
-    REFERENCE_OWNER,
-    entries.map(entry => entry.file),
-    accountScope,
-  );
-
-const repairStored = async (
-  key: string,
-  entries: PortfolioMediaOutboxEntry[],
-  accountScope: string,
-): Promise<PortfolioMediaOutboxEntry[]> => {
-  const now = Date.now();
-  const inspected = await Promise.all(
-    entries.map(async entry => ({
-      entry,
-      keep:
-        now - entry.createdAt <= TTL_MS &&
-        (await learnerDraftFileIsReadable(entry.file)),
-    })),
-  );
-  const readable = inspected
-    .filter(result => result.keep)
-    .map(result => result.entry)
-    .sort((left, right) => left.createdAt - right.createdAt);
-  const kept = readable.slice(-MAX_ENTRIES);
-  const keptIds = new Set(kept.map(entry => entry.clientRequestId));
-  if (kept.length !== entries.length) await writeStored(key, kept);
-  await retainStoredFiles(kept, accountScope);
-  await Promise.all(
-    inspected
-      .filter(result => !keptIds.has(result.entry.clientRequestId))
-      .map(result => removeLearnerDraftFile(result.entry.file)),
-  );
-  return kept;
-};
-
-const scopedKey = async (
+const ownerKey = (
   boundary: AccountSessionBoundary,
   supplied?: string,
-): Promise<string> => {
+): string => {
   assertAccountSessionBoundary(boundary);
-  const expected = await accountScopedStorageKey(STORAGE_KEY, boundary);
+  const expected = portfolioMediaOutbox.storageKey(boundary);
   if (supplied && supplied !== expected) {
     throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
   }
-  assertAccountSessionBoundary(boundary);
   return expected;
 };
+
+export const portfolioMediaEntry = (
+  item: DurableOutboxItem<PortfolioMediaPayload>,
+  boundary: AccountSessionBoundary,
+): PortfolioMediaOutboxEntry => ({
+  ...item.payload,
+  storageKey: portfolioMediaOutbox.storageKey(boundary),
+  paused: item.paused === true,
+});
 
 export const listPortfolioMediaUploads = async (
   projectId?: string,
   ownerBoundary?: AccountSessionBoundary,
 ): Promise<PortfolioMediaOutboxEntry[]> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  ownerKey(boundary);
+  const items = await portfolioMediaOutbox.list({boundary});
   assertAccountSessionBoundary(boundary);
-  const key = await scopedKey(boundary);
-  return withLock(key, async () => {
-    assertAccountSessionBoundary(boundary);
-    const entries = await repairStored(
-      key,
-      await readStored(key),
-      boundary.scope,
-    );
-    assertAccountSessionBoundary(boundary);
-    return entries
-      .filter(
-        entry =>
-          projectId === undefined || entry.projectId === String(projectId),
-      )
-      .map(entry => ({...entry, storageKey: key}));
-  });
+  return items
+    .filter(
+      item =>
+        projectId === undefined || item.payload.projectId === String(projectId),
+    )
+    .sort((left, right) => left.payload.createdAt - right.payload.createdAt)
+    .map(item => portfolioMediaEntry(item, boundary));
 };
 
 export const stagePortfolioMediaUpload = async (
@@ -159,52 +157,17 @@ export const stagePortfolioMediaUpload = async (
 ): Promise<PortfolioMediaOutboxEntry> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   assertAccountSessionBoundary(boundary);
-  if (!validEntry(entry) || !(await learnerDraftFileIsReadable(entry.file))) {
+  if (!validPayload(entry) || !(await learnerDraftFileIsReadable(entry.file))) {
     throw new Error('PORTFOLIO_MEDIA_OUTBOX_INVALID');
   }
-  const key = await scopedKey(boundary, entry.storageKey);
-  const scopedEntry = {...entry, storageKey: key};
-  await withLock(key, async () => {
-    assertAccountSessionBoundary(boundary);
-    const entries = await repairStored(
-      key,
-      await readStored(key),
-      boundary.scope,
-    );
-    const replaced = entries.find(
-      candidate => candidate.clientRequestId === scopedEntry.clientRequestId,
-    );
-    // Re-staging or adding a sibling never silently revokes a saved pause.
-    scopedEntry.paused =
-      entries.some(
-        candidate =>
-          candidate.projectId === scopedEntry.projectId &&
-          candidate.paused === true,
-      ) || scopedEntry.paused === true;
-    const next = [
-      ...entries.filter(
-        candidate => candidate.clientRequestId !== scopedEntry.clientRequestId,
-      ),
-      scopedEntry,
-    ].sort((left, right) => left.createdAt - right.createdAt);
-    const overflow = next.slice(0, Math.max(0, next.length - MAX_ENTRIES));
-    const kept = next.slice(-MAX_ENTRIES);
-    await retainStoredFiles(kept, boundary.scope);
-    try {
-      await writeStored(key, kept);
-    } catch (error) {
-      await retainStoredFiles(entries, boundary.scope).catch(() => undefined);
-      throw error;
-    }
-    await Promise.all(
-      overflow.map(candidate => removeLearnerDraftFile(candidate.file)),
-    );
-    if (replaced && replaced.file.uri !== scopedEntry.file.uri) {
-      await removeLearnerDraftFile(replaced.file);
-    }
-    assertAccountSessionBoundary(boundary);
-  });
-  return scopedEntry;
+  ownerKey(boundary, entry.storageKey);
+  const item = await portfolioMediaOutbox.enqueue(
+    entry.clientRequestId,
+    payloadOf(entry),
+    {boundary, paused: entry.paused === true},
+  );
+  assertAccountSessionBoundary(boundary);
+  return portfolioMediaEntry(item, boundary);
 };
 
 /** Durable local intent only; never downgrades an already accepted server file. */
@@ -213,67 +176,14 @@ export const setPortfolioMediaUploadsPaused = async (
   paused: boolean,
   boundary: AccountSessionBoundary,
 ): Promise<number> => {
-  const key = await scopedKey(boundary);
-  return withLock(key, async () => {
-    assertAccountSessionBoundary(boundary);
-    const entries = await readStored(key);
-    let changed = 0;
-    const next = entries.map(entry => {
-      if (entry.projectId !== projectId) return entry;
-      changed += 1;
-      return {...entry, paused};
-    });
-    if (changed) await writeStored(key, next);
-    assertAccountSessionBoundary(boundary);
-    return changed;
-  });
-};
-
-/** Re-check under the same storage lock, not a stale replay list snapshot. */
-export const portfolioMediaUploadIsPaused = async (
-  entry: PortfolioMediaOutboxEntry,
-  boundary: AccountSessionBoundary,
-): Promise<boolean> => {
-  const key = await scopedKey(boundary, entry.storageKey);
-  return withLock(key, async () => {
-    assertAccountSessionBoundary(boundary);
-    const entries = await readStored(key);
-    assertAccountSessionBoundary(boundary);
-    return entries.some(
-      candidate =>
-        candidate.projectId === entry.projectId && candidate.paused === true,
-    );
-  });
-};
-
-export const completePortfolioMediaUpload = async (
-  entry: Pick<PortfolioMediaOutboxEntry, 'clientRequestId' | 'storageKey'>,
-  ownerBoundary?: AccountSessionBoundary,
-): Promise<void> => {
-  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
-  const key = await scopedKey(boundary, entry.storageKey);
-  const cleanup = withLock(key, async () => {
-    assertAccountSessionBoundary(boundary);
-    const entries = await readStored(key);
-    const completed = entries.find(
-      candidate => candidate.clientRequestId === entry.clientRequestId,
-    );
-    const remaining = entries.filter(
-      candidate => candidate.clientRequestId !== entry.clientRequestId,
-    );
-    await writeStored(key, remaining);
-    // The server outcome is already terminal. Remove its pending intent
-    // durably before releasing references or cleaning the local file; a failed
-    // removal must leave that exact intent and its file available for replay.
-    await retainStoredFiles(remaining, boundary.scope).catch(() => undefined);
-    await removeLearnerDraftFile(completed?.file).catch(() => undefined);
-    assertAccountSessionBoundary(boundary);
-  });
-  // The remote result is already terminal. Keep the actual outbox/file locks
-  // until cleanup settles, but never hold that result behind native storage.
-  // A failed removal retains the original UUID and file for idempotent replay.
-  await settleWithin(cleanup, undefined);
+  ownerKey(boundary);
+  const changed = await portfolioMediaOutbox.setPaused(
+    String(projectId),
+    paused,
+    {boundary},
+  );
   assertAccountSessionBoundary(boundary);
+  return changed;
 };
 
 export const discardPortfolioMediaUploads = async (
@@ -281,27 +191,12 @@ export const discardPortfolioMediaUploads = async (
   ownerBoundary?: AccountSessionBoundary,
 ): Promise<void> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
-  const key = await scopedKey(boundary);
-  const cleanup = withLock(key, async () => {
-    assertAccountSessionBoundary(boundary);
-    const entries = await readStored(key);
-    const discarded = entries.filter(
-      entry => entry.projectId === String(projectId),
-    );
-    const remaining = entries.filter(
-      entry => entry.projectId !== String(projectId),
-    );
-    await writeStored(key, remaining);
-    await retainStoredFiles(remaining, boundary.scope).catch(() => undefined);
-    await Promise.all(
-      discarded.map(entry =>
-        removeLearnerDraftFile(entry.file).catch(() => undefined),
-      ),
-    );
-    assertAccountSessionBoundary(boundary);
-  });
+  ownerKey(boundary);
   // Finalize, deletion and a missing remote project have already settled.
-  // New staging still queues behind this exact account's raw cleanup flight.
-  await settleWithin(cleanup, undefined);
+  // New staging still queues behind this exact account's cleanup.
+  await settleWithin(
+    portfolioMediaOutbox.removeGroup(String(projectId), {boundary}),
+    false,
+  );
   assertAccountSessionBoundary(boundary);
 };

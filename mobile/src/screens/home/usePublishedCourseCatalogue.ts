@@ -19,6 +19,7 @@ import {
 } from '../../services/query/catalogueQueries';
 import {isRestoredSnapshot} from '../../services/query/queryClient';
 import {publicQueryKeys} from '../../services/query/queryKeys';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 type Params = {
   active: boolean;
@@ -28,7 +29,7 @@ type Params = {
 
 const CACHE_NOTICE = 'نعرض النسخة المحفوظة\nسنحدّثها عند عودة الاتصال';
 const OFFLINE_NOTICE = 'نعرض النسخة المحفوظة\nأعد المحاولة عند عودة الاتصال';
-const LOAD_MORE_ERROR = 'تعذّر تحميل المزيد\nحاول مرة أخرى';
+const LOAD_MORE_ERROR = `تعذّر تحميل المزيد\n${learnerCopy.retry}`;
 const SEARCH_DEBOUNCE_MS = 350;
 /** A key no normalized search can produce (searches are trimmed). */
 const IDLE_SEARCH = ' ';

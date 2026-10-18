@@ -29,6 +29,7 @@ import {
   useResponsiveLayout,
 } from '../../constants/designSystem';
 import {formatArabicNumber} from '../../constants/arabicFormatting';
+import {learnerCopy} from '../../constants/learnerCopy';
 import {RoknCoinStack} from '../../components/ui/RoknCoin';
 import type {WalletController} from './useWalletController';
 import {walletStyles as styles} from './walletStyles';
@@ -65,7 +66,7 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
               <StatusView
                 state="error"
                 title="تعذّر تحميل مكافآتك"
-                description="تحقق من الاتصال ثم حاول مرة أخرى"
+                description={learnerCopy.networkRetry}
                 actionLabel="إعادة المحاولة"
                 onAction={() => void refreshWallet()}
               />

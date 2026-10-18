@@ -9,6 +9,7 @@ import {
 } from '../constants/helpers';
 import {presentAiConsentPrompt} from './aiConsentPrompt';
 import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
+import {learnerCopy} from '../constants/learnerCopy';
 
 export const AI_CONSENT_VERSION = 'third-party-ai-v1';
 const STORAGE_KEY = '@rokn/ai-consent/v1';
@@ -134,7 +135,7 @@ export const requestAiConsent = async (
           return false;
         }
         if (canPresent())
-          Alert.alert('لم يكتمل التأكيد', 'تأكد من الاتصال وحاول مرة أخرى');
+          Alert.alert('لم يكتمل التأكيد', learnerCopy.networkRetry);
         return false;
       }
     })().finally(() => {
@@ -210,7 +211,7 @@ export const manageAiConsent = async () => {
               } catch {
                 return;
               }
-              Alert.alert('لم يتغير اختيارك', 'تأكد من الاتصال وحاول مرة أخرى');
+              Alert.alert('لم يتغير اختيارك', learnerCopy.networkRetry);
             });
           },
         },
@@ -222,6 +223,6 @@ export const manageAiConsent = async () => {
     } catch {
       return;
     }
-    Alert.alert('تعذّر تحميل اختيارك', 'تأكد من الاتصال وحاول مرة أخرى');
+    Alert.alert('تعذّر تحميل اختيارك', learnerCopy.networkRetry);
   }
 };

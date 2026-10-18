@@ -1,4 +1,11 @@
-import {publicRequest} from '../../../constants/api';
+import {getAiInputAttachment} from '../../../services/api/courseChat';
+import {
+  getProject,
+  getProjectFeedbackThread,
+  postProjectFeedbackMessage,
+  postProjectSubmissionAction,
+  postProjectFeedbackAttachment,
+} from '../../../services/api/projects';
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
@@ -29,7 +36,7 @@ const attachmentFlights = new Map<string, Promise<void>>();
 
 /** The editor owns revision parsing and navigation after its draft is safe. */
 export const requestProjectRevisionConfirmation = (projectId: string) =>
-  publicRequest.get(`projects/${projectId}`, {timeout: 12000});
+  getProject(projectId, 12000);
 
 const numericProjectId = (value: string) => {
   const id = String(value).trim();
@@ -91,10 +98,8 @@ export const loadProjectFeedbackThread = async (
 ): Promise<ProjectFeedbackThread | null> => {
   const boundary = await captureAccountSessionBoundary();
   const response = threadId
-    ? await publicRequest.get(
-        `project-feedback-threads/${publicId(threadId, 'PROJECT_THREAD')}`,
-      )
-    : await publicRequest.get(`projects/${numericProjectId(projectId)}`);
+    ? await getProjectFeedbackThread(publicId(threadId, 'PROJECT_THREAD'))
+    : await getProject(numericProjectId(projectId));
   assertAccountSessionBoundary(boundary);
   const payload = payloadFrom(response);
   return mapProjectFeedbackThread(
@@ -105,9 +110,7 @@ export const loadProjectFeedbackThread = async (
 export const loadProjectResolution = async (projectId: string) => {
   const boundary = await captureAccountSessionBoundary();
   try {
-    const response = await publicRequest.get(
-      `projects/${numericProjectId(projectId)}`,
-    );
+    const response = await getProject(numericProjectId(projectId));
     assertAccountSessionBoundary(boundary);
     const submission = asRecord(payloadFrom(response).latest_submission);
     return projectResolutionFromSubmission(submission);
@@ -167,7 +170,7 @@ export const retryProjectReview = async (
   if (!match) throw new Error('INVALID_PROJECT_REVIEW_RETRY_ENDPOINT');
   const submissionId = publicId(match[1], 'PROJECT_SUBMISSION');
   const boundary = await captureAccountSessionBoundary();
-  const response = await publicRequest.post(route, undefined, {timeout: 30000});
+  const response = await postProjectSubmissionAction(route, 30000);
   assertAccountSessionBoundary(boundary);
   const payload = payloadFrom(response);
   if (valueAsString(payload.id).toLowerCase() !== submissionId) {
@@ -184,7 +187,7 @@ export const retryProjectReport = async (
   if (!match) throw new Error('INVALID_PROJECT_REPORT_RETRY_ENDPOINT');
   const submissionId = publicId(match[1], 'PROJECT_SUBMISSION');
   const boundary = await captureAccountSessionBoundary();
-  const response = await publicRequest.post(route);
+  const response = await postProjectSubmissionAction(route);
   assertAccountSessionBoundary(boundary);
   const payload = payloadFrom(response);
   if (valueAsString(payload.id).toLowerCase() !== submissionId) {
@@ -295,8 +298,8 @@ const openAttachment = async (
     expiresAt <= Date.now() + 15000
   ) {
     if (!candidate.serverId) throw new Error('PROJECT_ATTACHMENT_UNAVAILABLE');
-    const response = await publicRequest.get(
-      `ai-input-attachments/${publicId(candidate.serverId, 'ATTACHMENT')}`,
+    const response = await getAiInputAttachment(
+      publicId(candidate.serverId, 'ATTACHMENT'),
     );
     assertAccountSessionBoundary(boundary);
     const payload = payloadFrom(response);
@@ -354,14 +357,14 @@ export const sendProjectFeedbackMessage = async (
   attachmentIds: string[] = [],
 ): Promise<ProjectFeedbackThread> => {
   const boundary = await captureAccountSessionBoundary();
-  const response = await publicRequest.post(
-    `project-feedback-threads/${publicId(threadId, 'PROJECT_THREAD')}/messages`,
+  const response = await postProjectFeedbackMessage(
+    publicId(threadId, 'PROJECT_THREAD'),
     {
       message: cleanUnicodeText(message),
       client_request_id: clientRequestId,
       attachment_ids: attachmentIds,
     },
-    {headers: {'Idempotency-Key': clientRequestId}, timeout: 30000},
+    clientRequestId,
   );
   assertAccountSessionBoundary(boundary);
   const thread = mapProjectFeedbackThread(payloadFrom(response));
@@ -381,13 +384,9 @@ export const uploadProjectFeedbackAttachment = async (
     name: file.name,
     type: file.type,
   } as unknown as Blob);
-  const response = await publicRequest.post(
-    `project-feedback-threads/${publicId(
-      threadId,
-      'PROJECT_THREAD',
-    )}/attachments`,
+  const response = await postProjectFeedbackAttachment(
+    publicId(threadId, 'PROJECT_THREAD'),
     body,
-    {headers: {'Content-Type': 'multipart/form-data'}, timeout: 45000},
   );
   assertAccountSessionBoundary(boundary);
   const id = valueAsString(asRecord(payloadFrom(response)).id);

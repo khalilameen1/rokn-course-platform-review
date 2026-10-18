@@ -17,6 +17,7 @@ import {
   playbackFeatureErrorCode,
   playbackManifestHttpStatus,
 } from './playbackCourseState';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 type PlaybackManifestRefs = {
   activeReel: MutableRefObject<CourseReel | undefined>;
@@ -134,7 +135,7 @@ export const usePlaybackManifest = ({
               setConnectionNote(
                 scheduled
                   ? 'تعذّر تجديد رابط الفيديو\nسنحاول مرة أخرى'
-                  : 'تعذّر تجديد رابط الفيديو\nحاول مرة أخرى',
+                  : `تعذّر تجديد رابط الفيديو\n${learnerCopy.retry}`,
               );
             }
             return;
@@ -163,8 +164,8 @@ export const usePlaybackManifest = ({
           if (ownsVisibleLesson()) {
             setConnectionNote(current =>
               current === 'تعذّر تجديد رابط الفيديو\nسنحاول مرة أخرى' ||
-              current === 'تعذّر تجديد رابط الفيديو\nحاول مرة أخرى' ||
-              current === 'الفيديو قيد التجهيز\nحاول بعد قليل'
+              current === `تعذّر تجديد رابط الفيديو\n${learnerCopy.retry}` ||
+              current === `الفيديو قيد التجهيز\n${learnerCopy.retryLater}`
                 ? ''
                 : current,
             );
@@ -256,10 +257,10 @@ export const usePlaybackManifest = ({
           if (ownsVisibleLesson()) {
             setConnectionNote(
               code === 'video_processing'
-                ? 'الفيديو قيد التجهيز\nحاول بعد قليل'
+                ? `الفيديو قيد التجهيز\n${learnerCopy.retryLater}`
                 : scheduled
                 ? 'تعذّر تجديد رابط الفيديو\nسنحاول مرة أخرى'
-                : 'تعذّر تجديد رابط الفيديو\nحاول مرة أخرى',
+                : `تعذّر تجديد رابط الفيديو\n${learnerCopy.retry}`,
             );
           }
         })

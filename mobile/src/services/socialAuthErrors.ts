@@ -1,3 +1,5 @@
+import {learnerCopy} from '../constants/learnerCopy';
+
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -78,19 +80,19 @@ export const socialAuthMessage = (code: string): string => {
     code === 'LOGIN_UNAVAILABLE' ||
     code === 'SOCIAL_LOGIN_UNAVAILABLE'
   ) {
-    return 'تعذّر الوصول إلى الحساب\nحاول مرة أخرى';
+    return `تعذّر الوصول إلى الحساب\n${learnerCopy.retry}`;
   }
   if (code === 'LOGIN_BROWSER_UNAVAILABLE') {
-    return 'تعذّر فتح صفحة الدخول\nحاول مرة أخرى';
+    return `تعذّر فتح صفحة الدخول\n${learnerCopy.retry}`;
   }
   if (code === 'SOCIAL_LOGIN_IN_PROGRESS') {
-    return 'جارٍ إكمال تسجيل الدخول\nحاول بعد قليل';
+    return `جارٍ إكمال تسجيل الدخول\n${learnerCopy.retryLater}`;
   }
   if (code === 'SOCIAL_ACCOUNT_CONFLICT') {
     return 'الحساب مرتبط بطريقة دخول أخرى\nتواصل مع الدعم';
   }
   if (code === 'SOCIAL_IDENTITY_VERIFICATION_FAILED') {
-    return 'تعذّر التحقق من الحساب\nحاول مرة أخرى';
+    return `تعذّر التحقق من الحساب\n${learnerCopy.retry}`;
   }
   if (code === 'DEVICE_LOGIN_DENIED') {
     return 'الحساب مرتبط بجهاز آخر\nتواصل مع الدعم';
@@ -106,19 +108,19 @@ export const socialAuthMessage = (code: string): string => {
     code === 'SOCIAL_LOGIN_PKCE_REQUIRED' ||
     code === 'SOCIAL_LOGIN_PKCE_MISMATCH'
   ) {
-    return 'انتهت محاولة الدخول\nحاول مرة أخرى';
+    return `انتهت محاولة الدخول\n${learnerCopy.retry}`;
   }
   if (code === 'LOGIN_SESSION_INVALID') {
-    return 'لم تكتمل بيانات الحساب\nحاول مرة أخرى';
+    return `لم تكتمل بيانات الحساب\n${learnerCopy.retry}`;
   }
   if (code.startsWith('SESSION_STORAGE_UNAVAILABLE')) {
     return 'تعذّر حفظ تسجيل الدخول\nأغلق التطبيق وافتحه ثم حاول';
   }
   if (code === 'NETWORK_UNAVAILABLE') {
-    return 'تحقق من الاتصال\nثم حاول مرة أخرى';
+    return learnerCopy.networkRetry;
   }
   if (code === 'NETWORK_TIMEOUT' || code === 'LOGIN_TIMEOUT') {
-    return 'الاتصال بطيء\nحاول مرة أخرى';
+    return `الاتصال بطيء\n${learnerCopy.retry}`;
   }
-  return 'لم يكتمل تسجيل الدخول\nحاول مرة أخرى';
+  return `لم يكتمل تسجيل الدخول\n${learnerCopy.retry}`;
 };

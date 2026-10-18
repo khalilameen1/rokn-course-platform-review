@@ -22,6 +22,7 @@ import {
 } from '../../services/productFeedback';
 import {secureRandomUuid} from '../../utils/secureRandom';
 import {useFeedbackScreenshotPreparation} from './useFeedbackScreenshotPreparation';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 type Options = {
   focused?: boolean;
@@ -447,7 +448,7 @@ export const useFeedbackComposer = ({
           dataOwnerRef.current === identityKey
         ) {
           setDraftSaveError(true);
-          setError('تعذّر حفظ الرسالة على الجهاز\nحرر مساحة ثم حاول مرة أخرى');
+          setError(`تعذّر حفظ الرسالة على الجهاز\nحرر مساحة و${learnerCopy.retry}`);
         }
         return;
       }
@@ -495,7 +496,7 @@ export const useFeedbackComposer = ({
           submitError.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
         )
       ) {
-        setError('تعذّر تأكيد وصول الرسالة\nحاول مرة أخرى\nنصك محفوظ');
+        setError(`تعذّر تأكيد وصول الرسالة\n${learnerCopy.retry}\nنصك محفوظ`);
       }
     } finally {
       if (generation === submitGenerationRef.current) {

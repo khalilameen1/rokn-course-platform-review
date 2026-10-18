@@ -15,6 +15,7 @@ import {trustedExternalTaskUrl} from '../../services/externalTaskUrlPolicy';
 import {errorCode, learnerErrorMessage} from '../../utils/errorPayload';
 import {useAppForegroundState} from '../../hooks/useAppActiveState';
 import type {WalletData} from './useWalletData';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 const isCoinGuideTask = (task: CoinTask) =>
   task.actionKey.toLowerCase().includes('coin_guide');
@@ -159,7 +160,7 @@ export const useWalletTasks = (
         if (!ownsPresentation(visit)) return false;
         Alert.alert(
           isWhatsAppTask(task) ? 'تعذّر فتح واتساب' : 'تعذّر فتح المهمة',
-          learnerErrorMessage(error, 'تحقق من الاتصال\nثم حاول مرة أخرى'),
+          learnerErrorMessage(error, learnerCopy.networkRetry),
         );
         return false;
       }
@@ -224,7 +225,7 @@ export const useWalletTasks = (
         if (!ownsPresentation(visit)) return;
         Alert.alert(
           isWhatsAppTask(task) ? 'تعذّر فتح واتساب' : 'تعذّر بدء المهمة',
-          learnerErrorMessage(error, 'تحقق من الاتصال\nثم حاول مرة أخرى'),
+          learnerErrorMessage(error, learnerCopy.networkRetry),
         );
       }
     },
@@ -253,7 +254,7 @@ export const useWalletTasks = (
         if (!ownsPresentation(visit)) return;
         Alert.alert(
           isWhatsAppTask(task) ? 'تعذّر فتح واتساب' : 'تعذّر فتح المهمة',
-          learnerErrorMessage(error, 'تحقق من الاتصال\nثم حاول مرة أخرى'),
+          learnerErrorMessage(error, learnerCopy.networkRetry),
         );
       }
     },

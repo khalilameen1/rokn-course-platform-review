@@ -20,6 +20,7 @@ import {
   saveCourseChatHistory,
 } from './persistence';
 import {courseChatTurnIsUnresolved} from './policy';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
 type Params = {
   courseId: string;
@@ -155,7 +156,7 @@ export const useCourseChatConversation = ({
         generation === conversationGenerationRef.current &&
         activeConversationRef.current === conversationScope
       ) {
-        setHydrationError('تعذّر استعادة المحادثة المحفوظة\nحاول مرة أخرى');
+        setHydrationError(`تعذّر استعادة المحادثة المحفوظة\n${learnerCopy.retry}`);
       }
     });
 

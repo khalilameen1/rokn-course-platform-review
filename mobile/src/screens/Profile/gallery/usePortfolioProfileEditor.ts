@@ -15,6 +15,7 @@ import {
 } from '../../../services/api/portfolioContract';
 import {learnerErrorMessage} from '../../../utils/errorPayload';
 import {isPortfolioAccountChangedError} from './portfolioModel';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
 const CHIP_SEPARATORS = /[,،\n]/;
 
@@ -107,7 +108,7 @@ export const usePortfolioProfileEditor = ({
     } catch (saveError) {
       if (!mountedRef.current || isPortfolioAccountChangedError(saveError))
         return;
-      setError(learnerErrorMessage(saveError, 'متحفظتش التعديلات\nجرب تاني'));
+      setError(learnerErrorMessage(saveError, `متحفظتش التعديلات\n${learnerCopy.retry}`));
     } finally {
       if (mountedRef.current) setSaving(false);
     }

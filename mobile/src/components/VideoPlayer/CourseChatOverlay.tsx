@@ -28,6 +28,7 @@ import {CourseChatConversation} from './courseChat/CourseChatConversation';
 import {courseAssistantEntryMode} from './courseEntitlements';
 import {courseChatSheetLayout} from './courseChat/layout';
 import {StatusView} from '../ui/PremiumUI';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 interface CourseChatOverlayProps {
   visible: boolean;
@@ -278,7 +279,7 @@ const CourseChatOverlay = ({
                   }
                   onOpenAttachment={file => {
                     void openCourseAssistantAttachment(file).catch(() =>
-                      Alert.alert('تعذّر فتح الملف', 'حاول مرة أخرى'),
+                      Alert.alert('تعذّر فتح الملف', learnerCopy.retry),
                     );
                   }}
                   onPickAttachments={() => void pickAttachments()}

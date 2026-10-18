@@ -27,6 +27,7 @@ import type {
   SocialAuthMethods,
   SocialProvider,
 } from '../../services/socialAuth';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 type Props = {
   phase: 'discovering' | 'discovery_failed' | 'ready' | 'authorizing';
@@ -85,7 +86,7 @@ const TikTokMark = () => (
 
 const failureMessage = (failureCode?: string) =>
   failureCode === 'NETWORK_UNAVAILABLE' || failureCode === 'NETWORK_TIMEOUT'
-    ? 'تحقق من الاتصال\nثم حاول مرة أخرى'
+    ? learnerCopy.networkRetry
     : failureCode === 'PROVIDER_UNAVAILABLE'
     ? 'طرق تسجيل الدخول غير متاحة الآن'
     : 'تعذّر تحميل طرق الدخول';
@@ -303,7 +304,7 @@ export default function SocialAuthView({
                   disabled={busy}
                   onPress={onRetry}
                   style={styles.retryMethods}>
-                  <Text style={styles.retryMethodsText}>حاول مرة أخرى</Text>
+                  <Text style={styles.retryMethodsText}>{learnerCopy.retry}</Text>
                 </Pressable>
               </View>
             )}

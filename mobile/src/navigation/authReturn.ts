@@ -4,7 +4,12 @@ import {
   type LoginReturnToParamlessRoute,
   type ProfileTab,
 } from './types';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  loginReturnStorageKey,
+  readLoginReturn,
+  removeLoginReturn,
+  writeLoginReturn,
+} from '../services/navigationReturnStorage';
 import {serverNowMs} from '../utils/serverClock';
 import {safeRoknRouteId} from './deepLinks';
 import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
@@ -14,7 +19,7 @@ import {
   getCurrentGuestJourneyScope,
 } from '../constants/helpers';
 
-const PENDING_LOGIN_RETURN_KEY = '@rokn/pending-login-return/v1';
+const PENDING_LOGIN_RETURN_KEY = loginReturnStorageKey;
 const PENDING_LOGIN_RETURN_TTL_MS = 15 * 60 * 1000;
 const mutateLoginReturn = createKeyedAsyncQueue();
 let loginReturnWriteGeneration = 0;
@@ -289,7 +294,7 @@ export const savePendingLoginReturnTo = async (
   const returnTo = safeLoginReturnTo(value);
   if (!returnTo) {
     await mutateLoginReturn(PENDING_LOGIN_RETURN_KEY, async () => {
-      if (ownsWrite()) await AsyncStorage.removeItem(PENDING_LOGIN_RETURN_KEY);
+      if (ownsWrite()) await removeLoginReturn();
     });
     return;
   }
@@ -308,11 +313,11 @@ export const savePendingLoginReturnTo = async (
   });
   return mutateLoginReturn(PENDING_LOGIN_RETURN_KEY, async () => {
     if (!ownsWrite()) return undefined;
-    await AsyncStorage.setItem(PENDING_LOGIN_RETURN_KEY, receipt);
+    await writeLoginReturn(receipt);
     // Keep the physical write owned until it settles. A cancelled writer must
     // not re-create its route, nor remove a newer writer's envelope.
     if (!ownsWrite()) {
-      await AsyncStorage.removeItem(PENDING_LOGIN_RETURN_KEY);
+      await removeLoginReturn();
       return undefined;
     }
     return receipt;
@@ -321,9 +326,7 @@ export const savePendingLoginReturnTo = async (
 
 export const clearPendingLoginReturnTo = () => {
   loginReturnWriteGeneration += 1;
-  return mutateLoginReturn(PENDING_LOGIN_RETURN_KEY, () =>
-    AsyncStorage.removeItem(PENDING_LOGIN_RETURN_KEY),
-  );
+  return mutateLoginReturn(PENDING_LOGIN_RETURN_KEY, removeLoginReturn);
 };
 
 export type PendingLoginReturnClaim = {
@@ -343,9 +346,7 @@ export const claimPendingLoginReturnTo = async (): Promise<
 > => {
   // Snapshot only after earlier physical writers and their retirement cleanup.
   // Validation and conditional acknowledgement stay outside this queue slot.
-  const raw = await mutateLoginReturn(PENDING_LOGIN_RETURN_KEY, () =>
-    AsyncStorage.getItem(PENDING_LOGIN_RETURN_KEY),
-  );
+  const raw = await mutateLoginReturn(PENDING_LOGIN_RETURN_KEY, readLoginReturn);
   if (!raw) return undefined;
   try {
     const envelope = asRecord(JSON.parse(raw));
@@ -398,9 +399,9 @@ export const claimPendingLoginReturnTo = async (): Promise<
 
 export const acknowledgePendingLoginReturnTo = (receipt: string) =>
   mutateLoginReturn(PENDING_LOGIN_RETURN_KEY, async () => {
-    const current = await AsyncStorage.getItem(PENDING_LOGIN_RETURN_KEY);
+    const current = await readLoginReturn();
     if (current === receipt) {
-      await AsyncStorage.removeItem(PENDING_LOGIN_RETURN_KEY);
+      await removeLoginReturn();
       return true;
     }
     return false;

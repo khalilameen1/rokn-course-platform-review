@@ -34,6 +34,7 @@ import {
 import type {CoinPackage} from '../services/api/coinPackageMapper';
 import {courseCheckoutTransport} from '../services/checkoutRouting';
 import {trackProductEvent} from '../services/productAnalytics';
+import {learnerCopy} from '../constants/learnerCopy';
 
 const CONFIRMING_NOTICE = 'الدفع قيد التأكيد\nلا تدفع مرة أخرى';
 // The learner left the hosted page without a provider callback and the server
@@ -293,7 +294,7 @@ export function useCourseSubscriptionCheckout({
         setNotice(
           errorCode(error) === 'COURSE_CHECKOUT_TERMS_CHANGED'
             ? 'تغيّرت الاشتراكات\nأغلق النافذة وحدّث الكورس لعرض التفاصيل الجديدة'
-            : learnerErrorMessage(error, 'تعذّر تجهيز الاشتراك\nحاول مرة أخرى'),
+            : learnerErrorMessage(error, `تعذّر تجهيز الاشتراك\n${learnerCopy.retry}`),
         );
       } finally {
         if (owns(token)) setLoading(false);
@@ -350,7 +351,7 @@ export function useCourseSubscriptionCheckout({
         }
       } catch {
         if (owns(token))
-          setNotice('تعذّر تأكيد حالة الدفع السابق\nحاول مرة أخرى');
+          setNotice(`تعذّر تأكيد حالة الدفع السابق\n${learnerCopy.retry}`);
       } finally {
         if (owns(token)) {
           flight.current = false;
@@ -576,7 +577,7 @@ export function useCourseSubscriptionCheckout({
               error,
               errorCode(error).includes('changed')
                 ? 'تغيّرت التفاصيل\nراجع الاشتراك من جديد'
-                : 'لم تكتمل العملية\nحاول مرة أخرى',
+                : `لم تكتمل العملية\n${learnerCopy.retry}`,
             ),
       );
     } finally {

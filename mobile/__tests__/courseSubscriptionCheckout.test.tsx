@@ -39,6 +39,7 @@ jest.mock('../src/services/coinCheckout', () => ({
   releaseCoinCheckoutPackage: (...args: unknown[]) => mockRelease(...args),
 }));
 import {subscribeWalletSettlements} from '../src/services/walletSettlement';
+import {learnerCopy} from '../src/constants/learnerCopy';
 jest.mock('../src/services/api/courseCheckout', () => ({
   quoteCourseCheckout: (...args: unknown[]) => mockQuote(...args),
   authorizeCourseCheckout: (...args: unknown[]) => mockAuthorize(...args),
@@ -706,7 +707,7 @@ describe('same-sheet course checkout authorization', () => {
       await view.current().cancelPending();
     });
     expect(view.current().blockedByPreviousCheckout).toBe(true);
-    expect(view.current().notice).toContain('حاول مرة أخرى');
+    expect(view.current().notice).toContain(learnerCopy.retry);
     mockCancel.mockResolvedValueOnce({
       ...base,
       id: 'older-checkout',

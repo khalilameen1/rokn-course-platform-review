@@ -1,6 +1,7 @@
 import {toArabicDigits} from '../../../constants/arabicFormatting';
 import type {VideoQuality, VideoQualitySources} from '../types';
-import {isUnsupportedVideoPageUri} from '../videoSourcePolicy';
+import {isUnsupportedVideoPageUri} from '../../../services/videoSourcePolicy';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
 export type PlaybackFailure =
   | 'offline'
@@ -245,13 +246,13 @@ export const selectPlaybackErrorCopy = (
   if (failureKind === 'offline') {
     return {
       title: 'أنت غير متصل بالإنترنت',
-      message: 'اتصل بالإنترنت ثم حاول مرة أخرى',
+      message: learnerCopy.networkRetry,
     };
   }
   if (failureKind === 'timeout') {
     return {
       title: 'الاتصال بطيء',
-      message: 'حاول مرة أخرى أو اختر جودة أقل',
+      message: `${learnerCopy.retry} أو اختر جودة أقل`,
     };
   }
   if (failureKind === 'expired') {
@@ -269,12 +270,12 @@ export const selectPlaybackErrorCopy = (
   if (failureKind === 'server') {
     return {
       title: 'تعذّر الوصول إلى الفيديو',
-      message: 'حاول مرة أخرى بعد قليل',
+      message: learnerCopy.retryLater,
     };
   }
   return {
     title: 'الفيديو غير متاح الآن',
-    message: 'حاول مرة أخرى بعد قليل',
+    message: learnerCopy.retryLater,
   };
 };
 

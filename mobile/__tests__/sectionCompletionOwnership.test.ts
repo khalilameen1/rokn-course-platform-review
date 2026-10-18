@@ -21,7 +21,7 @@ jest.mock('../src/services/productFeatures', () => ({
   requireProductFeature: jest.fn(async () => undefined),
 }));
 
-jest.mock('../src/components/VideoPlayer/courseLearning/persistence', () => ({
+jest.mock('../src/services/learningPlayerState', () => ({
   isWatchHistoryEnabled: jest.fn(async () => true),
   updatePlayerState: jest.fn(async () => undefined),
   updatePlayerStateForScope: jest.fn(async () => undefined),
@@ -38,7 +38,7 @@ import {
   retryPendingSectionCompletions,
   savePlaybackPosition,
 } from '../src/components/VideoPlayer/courseLearning/playback';
-import {updatePlayerStateForScope} from '../src/components/VideoPlayer/courseLearning/persistence';
+import {updatePlayerStateForScope} from '../src/services/learningPlayerState';
 
 const apiPost = publicRequest.post as jest.MockedFunction<
   typeof publicRequest.post
@@ -58,7 +58,7 @@ const deferred = <T>() => {
   return {promise, resolve};
 };
 
-const settleMicrotasks = async (turns = 20) => {
+const settleMicrotasks = async (turns = 200) => {
   for (let index = 0; index < turns; index += 1) {
     await Promise.resolve();
   }
@@ -121,7 +121,7 @@ describe('section completion ownership', () => {
     });
     expect(
       (await AsyncStorage.getAllKeys()).some(key =>
-        key.startsWith('@rokn/section-completion/v1:user-a:'),
+        key.startsWith('@rokn/section-completion/'),
       ),
     ).toBe(false);
   });

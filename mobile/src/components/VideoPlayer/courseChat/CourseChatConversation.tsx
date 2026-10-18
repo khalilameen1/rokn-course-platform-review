@@ -15,6 +15,7 @@ import {
 } from './policy';
 import {courseChatStyles as styles} from './styles';
 import type {AssistantPresence} from './conversation';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
 const canCopyMessage = (message: ChatMessage): boolean =>
   message.role === 'assistant' &&
@@ -256,7 +257,7 @@ export const CourseChatConversation = ({
                           'interrupted_turn',
                         ].includes(message.errorCode || '')
                           ? 'استعد الرد'
-                          : 'حاول مرة أخرى'}
+                          : learnerCopy.retry}
                       </Text>
                     </Pressable>
                   )}

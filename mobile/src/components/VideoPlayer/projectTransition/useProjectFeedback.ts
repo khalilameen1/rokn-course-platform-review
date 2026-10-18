@@ -34,6 +34,7 @@ import {
   usePreparationOwner,
   type PreparedMutationFlight,
 } from '../../../hooks/usePreparationOwner';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
 const draftFingerprint = (text: string, files: ChatAttachmentDraft[]) =>
   [
@@ -278,7 +279,7 @@ export const useProjectFeedback = ({
             )
           ) {
             // The durable draft retains this same request ID for explicit retry.
-            setError('تعذّر تأكيد إرسال الرسالة\nمسودتك محفوظة حاول مرة أخرى');
+            setError(`تعذّر تأكيد إرسال الرسالة\nمسودتك محفوظة ${learnerCopy.retry}`);
             return;
           }
           next = recovered;
@@ -298,7 +299,7 @@ export const useProjectFeedback = ({
         }
         if (errorCode(caught) === 'project_discussion_limit_reached') return;
         setError(
-          learnerErrorMessage(caught, 'لم تُرسل الرسالة\nحاول مرة أخرى'),
+          learnerErrorMessage(caught, `لم تُرسل الرسالة\n${learnerCopy.retry}`),
         );
       } finally {
         if (sendFlightRef.current === flight) {

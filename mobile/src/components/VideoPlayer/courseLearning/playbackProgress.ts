@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {AppState} from 'react-native';
 import {
   assertAccountSessionBoundary,
@@ -6,14 +5,16 @@ import {
   type AccountSessionBoundary,
 } from '../../../constants/helpers';
 import {hasSession} from '../../../services/roknApi';
-import type {VideoQuality} from '../types';
 import {
-  type PlaybackDiagnostics,
-  type PlaybackEndReason,
-  type PlaybackLifecycleEventType,
-  sanitizePlaybackDiagnostics,
-} from '../playbackTelemetry';
-import {isWatchHistoryEnabled, updatePlayerStateForScope} from './persistence';
+  isWatchHistoryEnabled,
+  updatePlayerStateForScope,
+} from '../../../services/learningPlayerState';
+import {
+  playbackProgressOutbox,
+  type PendingWatchHistory,
+} from '../../../services/playbackProgressOutbox';
+import type {DurableOutboxItem} from '../../../services/durableOutbox';
+import {sanitizePlaybackDiagnostics} from '../playbackTelemetry';
 import {
   nextPlaybackSequence,
   postPlaybackSample,
@@ -21,90 +22,17 @@ import {
   type PlaybackEvidenceContext,
 } from './playbackSession';
 
-const WATCH_EVIDENCE_PREFIX = '@rokn/watch-evidence/v1';
+/**
+ * Watch evidence: the newest sample per lesson rides the durable outbox
+ * (services/playbackProgressOutbox). This module owns sampling and the
+ * 30-second heartbeat throttle; the engine owns storage and the retry clock.
+ */
 const WATCH_HISTORY_SYNC_INTERVAL_MS = 30_000;
-
-type PendingWatchHistory = {
-  writeOwner?: string;
-  lessonId: number;
-  positionSeconds: number;
-  durationSeconds?: number;
-  completed: boolean;
-  playbackSessionId?: string;
-  sequence?: number;
-  effectiveQuality?: VideoQuality;
-  effectiveBitrateKbps?: number;
-  playbackRate?: number;
-  recoveryCount?: number;
-  bufferCount?: number;
-  bufferDurationMs?: number;
-  startupLatencyMs?: number;
-  eventType?: PlaybackLifecycleEventType;
-  endReason?: PlaybackEndReason;
-  errorCode?: string;
-  diagnostics?: PlaybackDiagnostics;
-};
-const pendingWatchHistory = new Map<string, PendingWatchHistory>();
 const watchHistoryTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const watchHistoryFlights = new Map<string, Promise<boolean>>();
-const watchEvidenceWriteQueues = new Map<string, Promise<unknown>>();
 const watchHistoryLastSyncedAt = new Map<string, number>();
 const MAX_RECENT_WATCH_SYNC_KEYS = 128;
 let playbackRuntimeGeneration = 0;
-let watchEvidenceWriteSequence = 0;
-
-const isPendingWatchHistory = (
-  value: unknown,
-): value is PendingWatchHistory => {
-  const pending = value as Partial<PendingWatchHistory> | null;
-  return Boolean(
-    pending &&
-      Number.isFinite(pending.lessonId) &&
-      Number.isFinite(pending.positionSeconds) &&
-      typeof pending.completed === 'boolean',
-  );
-};
-
-const mergePendingWatchHistory = (
-  previous: PendingWatchHistory | undefined,
-  next: PendingWatchHistory,
-): PendingWatchHistory =>
-  previous?.completed
-    ? {...previous, writeOwner: next.writeOwner}
-    : {
-        ...next,
-        // Resume means the latest observed position, not the furthest point
-        // reached. A learner can rewind and leave before the 30-second flush;
-        // keeping max(position) would make the next launch jump forward again
-        // and also disagrees with WatchHistoryController's ordered-session
-        // contract.
-        positionSeconds: next.positionSeconds,
-        durationSeconds:
-          Math.max(previous?.durationSeconds || 0, next.durationSeconds || 0) ||
-          undefined,
-        completed: previous?.completed === true || next.completed,
-        eventType:
-          previous?.completed === true || next.completed
-            ? 'complete'
-            : next.eventType,
-      };
-
-const watchEvidenceStorageKey = (key: string) =>
-  `${WATCH_EVIDENCE_PREFIX}:${key}`;
-
-const withWatchEvidence = <T>(key: string, operation: () => Promise<T>) => {
-  const previous = watchEvidenceWriteQueues.get(key) || Promise.resolve();
-  const result = previous.catch(() => undefined).then(operation);
-  const settled = result
-    .catch(() => undefined)
-    .finally(() => {
-      if (watchEvidenceWriteQueues.get(key) === settled) {
-        watchEvidenceWriteQueues.delete(key);
-      }
-    });
-  watchEvidenceWriteQueues.set(key, settled);
-  return result;
-};
 
 const assertWatchHistoryOwner = (
   generation: number,
@@ -116,175 +44,159 @@ const assertWatchHistoryOwner = (
   assertAccountSessionBoundary(boundary);
 };
 
-const hydratePendingWatchEvidence = async (
-  boundary: AccountSessionBoundary,
-  generation: number,
-) => {
-  assertWatchHistoryOwner(generation, boundary);
-  const scopePrefix = `${WATCH_EVIDENCE_PREFIX}:${boundary.scope}:`;
-  const keys = (await AsyncStorage.getAllKeys()).filter(key =>
-    key.startsWith(scopePrefix),
-  );
-  assertWatchHistoryOwner(generation, boundary);
-  if (!keys.length) return;
-  await Promise.all(
-    keys.map(storageKey => {
-      const key = storageKey.slice(`${WATCH_EVIDENCE_PREFIX}:`.length);
-      return withWatchEvidence(key, async () => {
-        assertWatchHistoryOwner(generation, boundary);
-        const beforeRead = pendingWatchHistory.get(key);
-        const raw = await AsyncStorage.getItem(storageKey);
-        assertWatchHistoryOwner(generation, boundary);
-        // A network ACK can retire the in-memory sample while native reading is
-        // pending. Never restore that older snapshot after its acknowledgement.
-        if (!raw || pendingWatchHistory.get(key) !== beforeRead) return;
-        let pending: PendingWatchHistory;
-        try {
-          pending = JSON.parse(raw) as PendingWatchHistory;
-        } catch {
-          await AsyncStorage.removeItem(storageKey);
-          return;
-        }
-        if (!isPendingWatchHistory(pending)) return;
-        if (!pendingWatchHistory.has(key))
-          pendingWatchHistory.set(key, pending);
-        if (pending.playbackSessionId && pending.sequence) {
-          restorePlaybackSequence(
-            pending.playbackSessionId,
-            boundary.scope,
-            pending.sequence,
-          );
-        }
-      });
-    }),
-  );
+const ownedBy = (generation: number, boundary: AccountSessionBoundary) => {
+  try {
+    assertWatchHistoryOwner(generation, boundary);
+    return true;
+  } catch {
+    return false;
+  }
 };
 
-const scheduleWatchHistoryFlush = (key: string, delay: number) => {
+const sampleBody = (pending: PendingWatchHistory) => ({
+  lesson_id: pending.lessonId,
+  position_seconds: pending.positionSeconds,
+  ...(pending.durationSeconds && pending.durationSeconds > 0
+    ? {duration_seconds: pending.durationSeconds}
+    : {}),
+  is_completed: pending.completed,
+  ...(pending.playbackSessionId
+    ? {playback_session_id: pending.playbackSessionId}
+    : {}),
+  ...(pending.sequence ? {sequence: pending.sequence} : {}),
+  ...(pending.effectiveQuality
+    ? {effective_quality: pending.effectiveQuality}
+    : {}),
+  ...(pending.effectiveBitrateKbps
+    ? {effective_bitrate_kbps: pending.effectiveBitrateKbps}
+    : {}),
+  ...(pending.playbackRate ? {playback_rate: pending.playbackRate} : {}),
+  ...(Number.isFinite(pending.recoveryCount)
+    ? {recovery_count: pending.recoveryCount}
+    : {}),
+  ...(Number.isFinite(pending.bufferCount)
+    ? {buffer_count: pending.bufferCount}
+    : {}),
+  ...(Number.isFinite(pending.bufferDurationMs)
+    ? {buffer_duration_ms: pending.bufferDurationMs}
+    : {}),
+  ...(Number.isFinite(pending.startupLatencyMs)
+    ? {startup_latency_ms: pending.startupLatencyMs}
+    : {}),
+  event_type:
+    pending.eventType || (pending.completed ? 'complete' : 'heartbeat'),
+  ...(pending.endReason ? {end_reason: pending.endReason} : {}),
+  ...(pending.errorCode ? {error_code: pending.errorCode} : {}),
+  ...(pending.diagnostics ? {diagnostics: pending.diagnostics} : {}),
+});
+
+const deliverSample =
+  (boundary: AccountSessionBoundary) =>
+  async (item: DurableOutboxItem<PendingWatchHistory>) => {
+    await postPlaybackSample(
+      item.payload.playbackSessionId,
+      sampleBody(item.payload),
+      boundary,
+    );
+    return 'ack' as const;
+  };
+
+const scheduleWatchHistoryFlush = (
+  key: string,
+  boundary: AccountSessionBoundary,
+  generation: number,
+  delay: number,
+) => {
   const existing = watchHistoryTimers.get(key);
   if (existing) clearTimeout(existing);
   const timer = setTimeout(() => {
     watchHistoryTimers.delete(key);
     if (AppState.currentState !== 'active') return;
-    void flushWatchHistoryEntry(key);
+    void flushWatchHistoryEntry(key, boundary, generation, false);
   }, Math.max(0, delay));
   watchHistoryTimers.set(key, timer);
 };
 
-const flushWatchHistoryEntry = async (key: string): Promise<boolean> => {
+const rememberSync = (key: string) => {
+  watchHistoryLastSyncedAt.set(key, Date.now());
+  while (watchHistoryLastSyncedAt.size > MAX_RECENT_WATCH_SYNC_KEYS) {
+    const oldest = watchHistoryLastSyncedAt.keys().next().value;
+    if (typeof oldest !== 'string') break;
+    watchHistoryLastSyncedAt.delete(oldest);
+  }
+};
+
+/**
+ * Keep only the newest sample and retry it on the engine's clock (never
+ * sooner than the heartbeat interval). Playback never waits for this.
+ */
+const scheduleRemaining = async (
+  key: string,
+  lessonId: string,
+  boundary: AccountSessionBoundary,
+  generation: number,
+) => {
+  if (!ownedBy(generation, boundary) || watchHistoryTimers.has(key)) return;
+  const pending = await playbackProgressOutbox
+    .get(lessonId, {boundary})
+    .catch(() => null);
+  if (
+    !pending ||
+    !ownedBy(generation, boundary) ||
+    watchHistoryTimers.has(key) ||
+    watchHistoryFlights.has(key)
+  ) {
+    return;
+  }
+  const due = Math.max(
+    Date.parse(pending.nextAttemptAt) - Date.now(),
+    WATCH_HISTORY_SYNC_INTERVAL_MS -
+      (Date.now() - (watchHistoryLastSyncedAt.get(key) || 0)),
+    0,
+  );
+  scheduleWatchHistoryFlush(key, boundary, generation, due);
+};
+
+/** One flight per lesson; resolves true when nothing is left unaccepted. */
+const flushWatchHistoryEntry = (
+  key: string,
+  boundary: AccountSessionBoundary,
+  generation: number,
+  ignoreBackoff: boolean,
+  completionDrain = false,
+): Promise<boolean> => {
   const activeFlight = watchHistoryFlights.get(key);
   if (activeFlight) return activeFlight;
-  const pending = pendingWatchHistory.get(key);
-  if (!pending) return true;
-  const generation = playbackRuntimeGeneration;
-  let boundary: AccountSessionBoundary;
-  try {
-    boundary = await captureAccountSessionBoundary();
-    assertWatchHistoryOwner(generation, boundary);
-  } catch {
-    return false;
-  }
-  if (!key.startsWith(`${boundary.scope}:`)) {
-    return false;
-  }
-
-  const stillOwned = () => {
-    try {
-      assertWatchHistoryOwner(generation, boundary);
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
+  if (!ownedBy(generation, boundary)) return Promise.resolve(false);
+  const lessonId = key.slice(boundary.scope.length + 1);
   const timer = watchHistoryTimers.get(key);
   if (timer) clearTimeout(timer);
   watchHistoryTimers.delete(key);
 
-  const flight = postPlaybackSample(
-    pending.playbackSessionId,
-    {
-      lesson_id: pending.lessonId,
-      position_seconds: pending.positionSeconds,
-      ...(pending.durationSeconds && pending.durationSeconds > 0
-        ? {duration_seconds: pending.durationSeconds}
-        : {}),
-      is_completed: pending.completed,
-      ...(pending.playbackSessionId
-        ? {playback_session_id: pending.playbackSessionId}
-        : {}),
-      ...(pending.sequence ? {sequence: pending.sequence} : {}),
-      ...(pending.effectiveQuality
-        ? {effective_quality: pending.effectiveQuality}
-        : {}),
-      ...(pending.effectiveBitrateKbps
-        ? {effective_bitrate_kbps: pending.effectiveBitrateKbps}
-        : {}),
-      ...(pending.playbackRate ? {playback_rate: pending.playbackRate} : {}),
-      ...(Number.isFinite(pending.recoveryCount)
-        ? {recovery_count: pending.recoveryCount}
-        : {}),
-      ...(Number.isFinite(pending.bufferCount)
-        ? {buffer_count: pending.bufferCount}
-        : {}),
-      ...(Number.isFinite(pending.bufferDurationMs)
-        ? {buffer_duration_ms: pending.bufferDurationMs}
-        : {}),
-      ...(Number.isFinite(pending.startupLatencyMs)
-        ? {startup_latency_ms: pending.startupLatencyMs}
-        : {}),
-      event_type:
-        pending.eventType || (pending.completed ? 'complete' : 'heartbeat'),
-      ...(pending.endReason ? {end_reason: pending.endReason} : {}),
-      ...(pending.errorCode ? {error_code: pending.errorCode} : {}),
-      ...(pending.diagnostics ? {diagnostics: pending.diagnostics} : {}),
-    },
-    boundary,
-  )
-    .then(() => {
-      watchHistoryLastSyncedAt.set(key, Date.now());
-      while (watchHistoryLastSyncedAt.size > MAX_RECENT_WATCH_SYNC_KEYS) {
-        const oldest = watchHistoryLastSyncedAt.keys().next().value;
-        if (typeof oldest !== 'string') break;
-        watchHistoryLastSyncedAt.delete(oldest);
-      }
-      if (pendingWatchHistory.get(key) === pending) {
-        pendingWatchHistory.delete(key);
-        // The sample is already committed remotely. Native storage cleanup
-        // must not route this success into the network catch and repeatedly
-        // POST the same completion/heartbeat.
-        void withWatchEvidence(key, async () => {
-          const storageKey = watchEvidenceStorageKey(key);
-          const raw = await AsyncStorage.getItem(storageKey);
-          if (
-            raw &&
-            JSON.stringify(JSON.parse(raw)) === JSON.stringify(pending)
-          ) {
-            await AsyncStorage.removeItem(storageKey);
-          }
-        }).catch(() => undefined);
-      }
-      return true;
+  const flight: Promise<boolean> = playbackProgressOutbox
+    .flush({
+      boundary,
+      ids: [lessonId],
+      ignoreBackoff,
+      // Completion gates need the newest evidence, not whichever heartbeat
+      // owned the request; heartbeats otherwise keep their 30 s throttle.
+      redeliverSuperseded: completionDrain,
+      // An accepted sample never waits for its native cleanup.
+      awaitRetirement: false,
+      deliver: deliverSample(boundary),
     })
-    .catch(() => {
-      // Keep only the newest sample in memory and retry later. Playback and
-      // the local resume point never wait for this network request.
-      if (stillOwned()) {
-        scheduleWatchHistoryFlush(key, WATCH_HISTORY_SYNC_INTERVAL_MS);
+    .then(report => {
+      if (report.results.some(result => result.outcome === 'ack')) {
+        rememberSync(key);
       }
-      return false;
+      return report.results.every(result => result.outcome === 'ack');
     })
+    .catch(() => false)
     .finally(() => {
       if (watchHistoryFlights.get(key) === flight) {
         watchHistoryFlights.delete(key);
       }
-      if (
-        stillOwned() &&
-        pendingWatchHistory.has(key) &&
-        !watchHistoryTimers.has(key)
-      ) {
-        scheduleWatchHistoryFlush(key, WATCH_HISTORY_SYNC_INTERVAL_MS);
-      }
+      void scheduleRemaining(key, lessonId, boundary, generation);
     });
   watchHistoryFlights.set(key, flight);
   return flight;
@@ -293,17 +205,16 @@ const flushWatchHistoryEntry = async (key: string): Promise<boolean> => {
 const queueWatchHistorySync = async (
   lessonId: number,
   seconds: number,
-  durationSeconds?: number,
-  completed = false,
-  context?: PlaybackEvidenceContext,
-  boundary?: AccountSessionBoundary,
-  generation = playbackRuntimeGeneration,
+  durationSeconds: number | undefined,
+  completed: boolean,
+  context: PlaybackEvidenceContext | undefined,
+  owner: AccountSessionBoundary,
+  generation: number,
 ) => {
-  const owner = boundary || (await captureAccountSessionBoundary());
   assertWatchHistoryOwner(generation, owner);
   const key = `${owner.scope}:${lessonId}`;
+  const diagnostics = sanitizePlaybackDiagnostics(context?.diagnostics);
   const next: PendingWatchHistory = {
-    writeOwner: `${generation}:${++watchEvidenceWriteSequence}`,
     lessonId,
     positionSeconds: Math.max(0, Math.floor(seconds)),
     ...(durationSeconds && durationSeconds > 0
@@ -359,86 +270,77 @@ const queueWatchHistorySync = async (
         }
       : {}),
     eventType: completed ? 'complete' : 'heartbeat',
-    ...(sanitizePlaybackDiagnostics(context?.diagnostics)
-      ? {diagnostics: sanitizePlaybackDiagnostics(context?.diagnostics)}
-      : {}),
+    ...(diagnostics ? {diagnostics} : {}),
   };
-  const write = withWatchEvidence(key, async () => {
-    assertWatchHistoryOwner(generation, owner);
-    const storageKey = watchEvidenceStorageKey(key);
-    const raw = await AsyncStorage.getItem(storageKey);
-    assertWatchHistoryOwner(generation, owner);
-    let durable: PendingWatchHistory | undefined;
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw) as unknown;
-        if (isPendingWatchHistory(parsed)) durable = parsed;
-      } catch {
-        // The next valid sample repairs this account-scoped record.
-      }
-    }
-    const previous = mergePendingWatchHistory(
-      durable,
-      pendingWatchHistory.get(key) || next,
-    );
-    const pending = mergePendingWatchHistory(previous, next);
-    await AsyncStorage.setItem(storageKey, JSON.stringify(pending));
-    try {
-      assertWatchHistoryOwner(generation, owner);
-    } catch (error) {
-      // Logout/account replacement can clear this scope while a native
-      // storage write is already in flight. Remove only this exact write;
-      // a newer runtime may already have persisted a newer sample at the
-      // same key and must never be erased by the old operation's cleanup.
-      const current = await AsyncStorage.getItem(storageKey).catch(() => null);
-      if (current) {
-        try {
-          const stored = JSON.parse(current) as PendingWatchHistory;
-          if (stored.writeOwner === pending.writeOwner) {
-            await AsyncStorage.removeItem(storageKey).catch(() => undefined);
-          }
-        } catch {
-          // A later valid write owns malformed-record repair.
-        }
-      }
-      throw error;
-    }
-    pendingWatchHistory.set(key, pending);
-    const elapsed = Date.now() - (watchHistoryLastSyncedAt.get(key) || 0);
-    if (pending.completed || elapsed >= WATCH_HISTORY_SYNC_INTERVAL_MS) {
-      return true;
-    }
-    scheduleWatchHistoryFlush(key, WATCH_HISTORY_SYNC_INTERVAL_MS - elapsed);
-    return false;
+  const item = await playbackProgressOutbox.enqueue(String(lessonId), next, {
+    boundary: owner,
   });
-  const shouldFlush = await write;
-  if (!shouldFlush) return;
-
-  const flushed = await flushWatchHistoryEntry(key);
-  // Completion gates depend on the latest evidence, not merely whichever
-  // heartbeat happened to own the active request when completion arrived.
-  // One bounded drain is sufficient because completion makes the merged
-  // durable sample terminal for this lesson.
-  if (completed && flushed && pendingWatchHistory.has(key)) {
-    await flushWatchHistoryEntry(key);
+  if (!ownedBy(generation, owner)) {
+    // A runtime reset (logout, token replacement) landed during the native
+    // write. Retract only this exact generation; a newer runtime may already
+    // have persisted a newer sample at the same id.
+    await playbackProgressOutbox
+      .remove(String(lessonId), {boundary: owner, generation: item.generation})
+      .catch(() => undefined);
+    assertWatchHistoryOwner(generation, owner);
+  }
+  const elapsed = Date.now() - (watchHistoryLastSyncedAt.get(key) || 0);
+  if (!item.payload.completed && elapsed < WATCH_HISTORY_SYNC_INTERVAL_MS) {
+    if (!watchHistoryTimers.has(key) && !watchHistoryFlights.has(key)) {
+      scheduleWatchHistoryFlush(
+        key,
+        owner,
+        generation,
+        WATCH_HISTORY_SYNC_INTERVAL_MS - elapsed,
+      );
+    }
+    return;
+  }
+  const flushed = await flushWatchHistoryEntry(
+    key,
+    owner,
+    generation,
+    item.payload.completed,
+    item.payload.completed,
+  );
+  // A completion that arrived while a heartbeat owned the request still has
+  // to reach the server now: one bounded drain of the newest sample.
+  if (item.payload.completed && flushed) {
+    await flushWatchHistoryEntry(key, owner, generation, true, true);
   }
 };
 
-/** Flush the latest sample per lesson when the app backgrounds or changes reel. */
+/** Lifecycle trigger: flush the newest sample of every lesson now. */
 export const flushPendingPlaybackPositions = async () => {
   const generation = playbackRuntimeGeneration;
   let boundary: AccountSessionBoundary;
+  let pending: DurableOutboxItem<PendingWatchHistory>[];
   try {
     boundary = await captureAccountSessionBoundary();
-    await hydratePendingWatchEvidence(boundary, generation);
+    assertWatchHistoryOwner(generation, boundary);
+    pending = await playbackProgressOutbox.list({boundary});
     assertWatchHistoryOwner(generation, boundary);
   } catch {
     return;
   }
+  pending.forEach(item => {
+    if (item.payload.playbackSessionId && item.payload.sequence) {
+      restorePlaybackSequence(
+        item.payload.playbackSessionId,
+        boundary.scope,
+        item.payload.sequence,
+      );
+    }
+  });
   await Promise.allSettled(
-    Array.from(pendingWatchHistory.keys())
-      .filter(key => key.startsWith(`${boundary.scope}:`))
-      .map(flushWatchHistoryEntry),
+    pending.map(item =>
+      flushWatchHistoryEntry(
+        `${boundary.scope}:${item.id}`,
+        boundary,
+        generation,
+        true,
+      ),
+    ),
   );
 };
 
@@ -510,11 +412,8 @@ export const resetPlaybackProgressRuntime = () => {
   playbackRuntimeGeneration += 1;
   watchHistoryTimers.forEach(timer => clearTimeout(timer));
   watchHistoryTimers.clear();
-  pendingWatchHistory.clear();
   watchHistoryFlights.clear();
-  // Keep native storage writes serialized across a token/account runtime
-  // reset. Their generation check prevents any old response from applying,
-  // while preserving the queue prevents an unfinished old write from
-  // overwriting a newer record for the same account scope.
+  // Durable writes stay serialized by the outbox across a runtime reset; the
+  // generation check keeps an old response from applying to the new owner.
   watchHistoryLastSyncedAt.clear();
 };

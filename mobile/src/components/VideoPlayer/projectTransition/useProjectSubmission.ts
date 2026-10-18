@@ -30,6 +30,7 @@ import {
   type DraftRevision,
   type DraftReplacementConfirmation,
 } from './projectDraftRevision';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
 const EMPTY_MIME_TYPES: string[] = [];
 type SubmissionFlight = {phase: 'preparing' | 'dispatched' | 'revision'};
@@ -273,7 +274,7 @@ export const useProjectSubmission = ({
             ? 'صيغة الملف غير مدعومة'
             : 'تعذّر قراءة حجم الملف',
           code === 'LEARNER_DRAFT_STORAGE_FULL'
-            ? 'اتصل بالإنترنت لإرسال الملفات المعلّقة\nثم حاول مرة أخرى'
+            ? `اتصل بالإنترنت لإرسال الملفات المعلّقة\nو${learnerCopy.retry}`
             : code === 'PROJECT_FILE_TOO_LARGE'
             ? `الحد الأقصى ${maximumFileSizeLabel}\nاختر نسخة أصغر`
             : code === 'PROJECT_FILE_TYPE_UNSUPPORTED'
@@ -332,7 +333,7 @@ export const useProjectSubmission = ({
         if (!outcome.accepted && outcome.submissionStatus === 'draft') {
           Alert.alert(
             'لم يكتمل الإرسال',
-            'محاولتك محفوظة على هذا الجهاز\nحاول مرة أخرى عند استقرار الاتصال',
+            `محاولتك محفوظة على هذا الجهاز\n${learnerCopy.retry} لما الاتصال يستقر`,
           );
         }
         if (outcome.submissionStatus === 'evaluating') {
@@ -387,7 +388,7 @@ export const useProjectSubmission = ({
         ) {
           Alert.alert(
             'نتحقق من المحاولة السابقة',
-            'تعديلاتك الجديدة محفوظة على هذا الجهاز\nانتظر تأكيد حالة المحاولة السابقة ثم حاول مرة أخرى',
+            `تعديلاتك الجديدة محفوظة على هذا الجهاز\nانتظر تأكيد حالة المحاولة السابقة و${learnerCopy.retry}`,
           );
           return;
         }
@@ -402,13 +403,13 @@ export const useProjectSubmission = ({
         Alert.alert(
           'لم يكتمل التسليم',
           responseStatus === 401
-            ? 'سجّل الدخول ثم حاول مرة أخرى'
+            ? `سجّل الدخول و${learnerCopy.retry}`
             : responseStatus === 403
             ? 'لم يعد هذا المشروع متاحًا لحسابك'
             : responseStatus === 409
-            ? 'أكمل المحتوى السابق ثم حاول مرة أخرى'
+            ? `أكمل المحتوى السابق و${learnerCopy.retry}`
             : responseStatus === 422
-            ? 'راجع الملف المختار ثم حاول مرة أخرى'
+            ? `راجع الملف المختار و${learnerCopy.retry}`
             : 'حاول تسليم المشروع مرة أخرى',
         );
       }
@@ -652,7 +653,7 @@ export const useProjectSubmission = ({
           return;
         }
         setRevisionError(
-          'تعذّر تجهيز المسودة\nاترك الصفحة مفتوحة وحاول مرة أخرى',
+          `تعذّر تجهيز المسودة\nاترك الصفحة مفتوحة و${learnerCopy.retry}`,
         );
       } finally {
         if (ownsProject(id, generation) && submissionFlightRef.current === flight) {

@@ -7,7 +7,7 @@ import {
   removeSavedLessonEverywhereFromCache,
   removeSavedLessonFromCache,
 } from '../../../services/roknApi';
-import {updatePlayerStateForScope} from './persistence';
+import {updatePlayerStateForScope} from '../../../services/learningPlayerState';
 
 export type SavedMembershipChange =
   | {kind: 'save'; folderId: string; lessonId: string}

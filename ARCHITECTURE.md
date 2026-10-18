@@ -81,14 +81,21 @@ submissions, portfolio media, account writes, telemetry) are items in
 `services/durableOutbox.ts` with a typed payload and a deliver function. A
 feature does not build its own queue, retry clock or storage format.
 Successful deliveries invalidate the related queries.
+Adapters today: client events, product events, portfolio media, project
+submissions, playback progress, section completion and account writes
+(privacy and playback preferences, watch-history deletion). Each migrates its
+previous storage format on first read.
 - Reference: the outbox pattern on the client; exponential backoff with
-  jitter (AWS Architecture Blog).
+  full jitter (AWS Architecture Blog, "Exponential Backoff And Jitter").
 
 ### M3. Layers
 Network calls only in `src/services/api/*`. Device storage only in
 `src/services/*` storage modules. Screens and components call hooks; hooks
 call services.
-- Enforced by: ESLint `no-restricted-imports` / `no-restricted-syntax`.
+- Enforced by: ESLint `no-restricted-imports` / `no-restricted-globals` /
+  `no-restricted-syntax` in `mobile/.eslintrc.js` (the HTTP client and `fetch`
+  only under `src/services`; AsyncStorage only under `src/services`,
+  `src/constants` and `src/utils`; tests and scripts exempt).
 
 ### M4. Navigation
 Root tabs and stacks are described once; flat destinations become nested
@@ -127,9 +134,9 @@ Counts of code that still follows a second way. Each may only go down.
 | B2 | Controllers with their own `error()` helper | 6 |
 | B2 | Controllers hand-building a 500 | 5 |
 | M1 | Read domains with a hand-written cache | being migrated |
-| M2 | Feature-owned offline queues outside `durableOutbox` | 3 |
-| M3 | Files calling HTTP outside `services/` | 8 |
-| M3 | Files touching AsyncStorage outside `services/`, `constants/`, `utils/` | 11 |
-| M5 | Standard-Arabic retry copy ("حاول مرة أخرى") in the app | 39 |
+| M2 | Feature-owned offline queues outside `durableOutbox` | 0 |
+| M3 | Files calling HTTP outside `services/` | 0 |
+| M3 | Files touching AsyncStorage outside `services/`, `constants/`, `utils/` | 0 |
+| M5 | Standard-Arabic retry copy ("حاول مرة أخرى") in the app | 3 |
 | Tests | Backend test files that read source text (`SourceTextTestRatchetTest` baseline) | 29 |
 | B8 | Larastan baseline entries | 1550 |

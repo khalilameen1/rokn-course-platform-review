@@ -31,6 +31,7 @@ import {useOneTapSave} from './feedSideBar/useOneTapSave';
 import {CopyIcon} from '../ui/CopyIcon';
 import {ActionSnackbar} from '../ui/ActionSnackbar';
 import {useFocusedOverlayBack} from './useFocusedOverlayBack';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 interface FeedSideBarProps {
   course: CourseLearningData;
@@ -528,7 +529,7 @@ const FeedSideBar = ({
                   pressed && styles.pressed,
                 ]}>
                 <Text style={styles.folderRetryText}>
-                  {foldersLoading ? 'بنحمّل' : 'جرب تاني'}
+                  {foldersLoading ? 'بنحمّل' : learnerCopy.retry}
                 </Text>
               </Pressable>
             </View>

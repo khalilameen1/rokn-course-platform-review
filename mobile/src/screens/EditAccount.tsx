@@ -51,6 +51,7 @@ import {showMediaPickerFailure} from '../services/mediaPickerErrors';
 import {DefaultAvatar} from '../components/ui/DefaultAvatar';
 import {settleWithin} from '../utils/settleWithin';
 import {useAppForegroundState} from '../hooks/useAppActiveState';
+import {learnerCopy} from '../constants/learnerCopy';
 
 const discardAvatar = (file: Parameters<typeof removeLearnerDraftFile>[0]) => {
   void removeLearnerDraftFile(file).catch(() => undefined);
@@ -540,7 +541,7 @@ export default function EditAccount() {
       } else if (ownsPresentation()) {
         Alert.alert(
           'تعذّر حفظ التغييرات',
-          learnerErrorMessage(error, 'لم تكتمل التغييرات\nحاول مرة أخرى'),
+          learnerErrorMessage(error, `لم تكتمل التغييرات\n${learnerCopy.retry}`),
         );
       }
     } finally {
@@ -575,7 +576,7 @@ export default function EditAccount() {
           ) : hydrationState === 'error' ? (
             <StatusView
               actionLabel="إعادة المحاولة"
-              description="حاول مرة أخرى"
+              description={learnerCopy.retry}
               onAction={() => setReloadProfile(value => value + 1)}
               state="error"
               title="تعذّر تحديث بيانات الحساب"

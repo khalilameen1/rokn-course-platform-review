@@ -92,6 +92,7 @@ import {
   revokeOtherDeviceSessions,
   type DeviceSession,
 } from '../src/services/deviceSessions';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;
@@ -529,7 +530,7 @@ describe('device sessions account ownership', () => {
         expect(alert).toHaveBeenCalledTimes(2);
         expect(alert).toHaveBeenLastCalledWith(
           'لم يتم تسجيل الخروج',
-          'حاول مرة أخرى بعد قليل',
+          learnerCopy.retryLater,
         );
         expect(renderedText(renderer)).toContain(
           'تسجيل الخروج من الأجهزة الأخرى',

@@ -22,7 +22,7 @@ export const usePrivacyPreferenceSync = () => {
       // component-level queue around HTTP or a later accepted tap stays volatile.
       return (async () => {
         await queuePendingPrivacyPreferences(patch, ownerBoundary);
-        const pending = await readPendingPrivacyPreferences(undefined, ownerBoundary);
+        const pending = await readPendingPrivacyPreferences(ownerBoundary);
         if (typeof pending.watchHistoryEnabled !== 'boolean') {
           dirtyKeysRef.current.delete(WATCH_HISTORY_ENABLED_KEY);
         }

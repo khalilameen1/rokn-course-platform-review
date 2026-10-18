@@ -5,9 +5,9 @@ import {
   captureAccountSessionBoundary,
   getCurrentAccountStorageScope,
   type AccountSessionBoundary,
-} from '../../../constants/helpers';
-import type {CourseLearningData, CourseLearningModule} from '../types';
-import {asArray} from './shared';
+} from '../constants/helpers';
+import type {CourseLearningData, CourseLearningModule} from '../components/VideoPlayer/types';
+import {asArray} from '../components/VideoPlayer/courseLearning/shared';
 
 const PLAYER_STATE_KEY = '@rokn/course-player/v3';
 export const WATCH_HISTORY_ENABLED_KEY = 'PREF_WATCH_HISTORY';

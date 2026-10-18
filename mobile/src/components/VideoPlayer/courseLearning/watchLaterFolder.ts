@@ -1,5 +1,13 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {publicRequest} from '../../../constants/api';
+import {
+  createSavedFolder,
+  listSavedFolders,
+} from '../../../services/api/savedFolders';
+import {
+  readWatchLaterHint,
+  removeWatchLaterHint,
+  watchLaterHintKey,
+  writeWatchLaterHint,
+} from '../../../services/savedFolderStorage';
 import {
   assertAccountSessionBoundary,
   type AccountSessionBoundary,
@@ -16,19 +24,18 @@ import {
 import {isWatchLaterFolderName, WATCH_LATER_FOLDER_NAME} from './savedFolderNames';
 import {valueAsString} from './shared';
 
-const WATCH_LATER_FOLDER_KEY = '@rokn/watch-later-folder-id/v2';
 const watchLaterFolderFlights = new Map<string, Promise<string | null>>();
 const watchLaterHintOperations = new Map<string, Promise<void>>();
 
 const withWatchLaterHint = <T>(
   boundary: AccountSessionBoundary,
-  operation: (key: string) => Promise<T>,
+  operation: (accountScope: string) => Promise<T>,
 ): Promise<T> => {
-  const key = `${WATCH_LATER_FOLDER_KEY}:${boundary.scope}`;
+  const key = watchLaterHintKey(boundary.scope);
   const result = (watchLaterHintOperations.get(key) ?? Promise.resolve()).then(
     async () => {
       assertAccountSessionBoundary(boundary);
-      const value = await operation(key);
+      const value = await operation(boundary.scope);
       assertAccountSessionBoundary(boundary);
       return value;
     },
@@ -49,10 +56,10 @@ export const forgetWatchLaterHint = (
   boundary: AccountSessionBoundary,
   expectedId: string,
 ) =>
-  withWatchLaterHint(boundary, async key => {
-    const current = await AsyncStorage.getItem(key);
+  withWatchLaterHint(boundary, async accountScope => {
+    const current = await readWatchLaterHint(accountScope);
     assertAccountSessionBoundary(boundary);
-    if (current === expectedId) await AsyncStorage.removeItem(key);
+    if (current === expectedId) await removeWatchLaterHint(accountScope);
   });
 
 export const ensureWatchLaterFolder = async (
@@ -68,9 +75,7 @@ export const ensureWatchLaterFolder = async (
       const cached = ignoreCached
         ? null
         : await settleWithin(
-            withWatchLaterHint(accountBoundary, key =>
-              AsyncStorage.getItem(key),
-            ),
+            withWatchLaterHint(accountBoundary, readWatchLaterHint),
             null,
           );
       assertAccountSessionBoundary(accountBoundary);
@@ -97,7 +102,7 @@ export const ensureWatchLaterFolder = async (
         return null;
       }
 
-      const response = await publicRequest.get('saved-folders');
+      const response = await listSavedFolders();
       assertAccountSessionBoundary(accountBoundary);
       const folderPayload = response?.data?.data;
       const folders = requireSavedFolderList(folderPayload);
@@ -105,10 +110,10 @@ export const ensureWatchLaterFolder = async (
         isWatchLaterFolderName(valueAsString(item?.name)),
       );
       if (!folder) {
-        const created = await publicRequest.post('saved-folders', {
-          name: WATCH_LATER_FOLDER_NAME,
-          client_request_id: secureRandomUuid(),
-        });
+        const created = await createSavedFolder(
+          WATCH_LATER_FOLDER_NAME,
+          secureRandomUuid(),
+        );
         assertAccountSessionBoundary(accountBoundary);
         folder = created?.data?.data;
         invalidateFolderList(accountBoundary);
@@ -118,8 +123,8 @@ export const ensureWatchLaterFolder = async (
       }
       const id = valueAsString(folder.id);
       await settleWithin(
-        withWatchLaterHint(accountBoundary, key =>
-          AsyncStorage.setItem(key, id),
+        withWatchLaterHint(accountBoundary, accountScope =>
+          writeWatchLaterHint(accountScope, id),
         ),
         undefined,
       );

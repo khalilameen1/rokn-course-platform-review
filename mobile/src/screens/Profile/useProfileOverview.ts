@@ -20,6 +20,7 @@ import {trustedPortfolioShareUrl} from '../../services/publicLinks';
 import {shareOnce} from '../../services/systemActions';
 import {portfolioSharingNotice} from './portfolioState';
 import type {RootState} from '../../store/store';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 export function useProfileOverview() {
   const storedUser = useSelector((state: RootState) => state.auth.userData);
@@ -257,7 +258,7 @@ export function useProfileOverview() {
         const notice = portfolioSharingNotice(latest);
         Alert.alert(
           'مشاركة الأعمال',
-          notice || 'تعذّر تحديث حالة المشاركة\nحاول مرة أخرى',
+          notice || `تعذّر تحديث حالة المشاركة\n${learnerCopy.retry}`,
         );
         return;
       }
@@ -268,7 +269,7 @@ export function useProfileOverview() {
       if (!isCurrent()) return;
       setPortfolioProfile(null);
       setPortfolioReadError('تعذّر تحديث حالة المشاركة');
-      Alert.alert('تعذّرت المشاركة', 'جرب تاني');
+      Alert.alert('تعذّرت المشاركة', learnerCopy.retry);
     } finally {
       if (shareCheckRef.current === flight) shareCheckRef.current = null;
     }
@@ -287,7 +288,7 @@ export function useProfileOverview() {
       });
     } catch {
       if (!mountedRef.current || owner !== shareOwnerRef.current) return;
-      Alert.alert('تعذّرت المشاركة', 'جرب تاني');
+      Alert.alert('تعذّرت المشاركة', learnerCopy.retry);
     }
   }, [displayName, refreshPortfolioShareUrl]);
 

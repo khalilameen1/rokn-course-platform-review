@@ -184,9 +184,6 @@ describe('course gate contracts', () => {
     const submission = source(
       'src/components/VideoPlayer/projectTransition/useProjectSubmission.ts',
     );
-    const outbox = source(
-      'src/components/VideoPlayer/courseLearning/projectSubmissionOutbox.ts',
-    );
     const acceptedCleanup = submission.match(
       /if \(outcome\.accepted && !outcome\.preserveDraft\) \{([\s\S]*?)\n {8}\}/,
     )?.[1];
@@ -207,9 +204,9 @@ describe('course gate contracts', () => {
     expect(editor).toMatch(
       /clearProjectSubmissionDraft\(\s*projectId,\s*submittedFiles,\s*boundary,/,
     );
-    expect(outbox).toMatch(
-      /recovered\.result\.submissionStatus === 'passed'[\s\S]*?outcomeFromSync\(recovered\.result, previous, operation\)[\s\S]*?preserveDraft: true/,
-    );
+    // Recovering a previous pass with preserveDraft is exercised through the
+    // submission outbox in projectSubmissionOutboxOwnership ("adopts a
+    // previous pass without uploading or claiming the edited draft").
     expect(submission).not.toContain(
       'clearProjectSubmissionDraft(project.id, [], boundary)',
     );

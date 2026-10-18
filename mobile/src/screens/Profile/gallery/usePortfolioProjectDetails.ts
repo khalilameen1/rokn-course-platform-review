@@ -47,6 +47,7 @@ import {usePortfolioPublication} from './usePortfolioPublication';
 import {usePortfolioProjectSelection} from './usePortfolioProjectSelection';
 import type {PortfolioUploadProgress} from '../../../services/portfolioUploadProgress';
 import {usePortfolioUploadSession} from './usePortfolioUploadSession';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
 type Options = {
   onSubscriptions?: PortfolioSubscriptionAction;
@@ -403,7 +404,7 @@ export const usePortfolioProjectDetails = ({
       if (!isPortfolioAccountChangedError(error) && mountedRef.current) {
         Alert.alert(
           'تعذّر حفظ التعديل',
-          learnerErrorMessage(error, 'مشروعك متغيرش\nجرب تاني'),
+          learnerErrorMessage(error, `مشروعك متغيرش\n${learnerCopy.retry}`),
         );
       }
     } finally {
@@ -451,7 +452,7 @@ export const usePortfolioProjectDetails = ({
         if (!isPortfolioAccountChangedError(error) && mountedRef.current) {
           Alert.alert(
             failureTitle,
-            learnerErrorMessage(error, 'مشروعك متغيرش\nجرب تاني'),
+            learnerErrorMessage(error, `مشروعك متغيرش\n${learnerCopy.retry}`),
           );
         }
       } finally {
@@ -553,7 +554,7 @@ export const usePortfolioProjectDetails = ({
         if (!isPortfolioAccountChangedError(error) && mountedRef.current) {
           Alert.alert(
             'تعذّر تغيير الترتيب',
-            learnerErrorMessage(error, 'جرب تاني'),
+            learnerErrorMessage(error, learnerCopy.retry),
           );
         }
       } finally {
@@ -602,14 +603,14 @@ export const usePortfolioProjectDetails = ({
           publication === 'processing' ? 'يُجهز الفيديو' : 'المشروع غير مكتمل',
           publication === 'processing'
             ? 'ستتم مراجعة أعمالك بعد اكتمال التجهيز'
-            : 'أضف صورة أو فيديو جاهزًا ثم حاول مرة أخرى',
+            : `أضف صورة أو فيديو جاهزًا و${learnerCopy.retry}`,
         );
       }
     } catch (error: unknown) {
       if (!isPortfolioAccountChangedError(error) && mountedRef.current) {
         Alert.alert(
           'تعذّر إتمام المشروع',
-          learnerErrorMessage(error, 'حاول مرة أخرى'),
+          learnerErrorMessage(error, learnerCopy.retry),
         );
       }
     } finally {
@@ -665,7 +666,7 @@ export const usePortfolioProjectDetails = ({
       else if (discardedFiles && mountedRef.current)
         Alert.alert(
           'لم تُرفع بعض الملفات',
-          'اختر صورة أو فيديو آخر ثم حاول مرة أخرى',
+          `اختر صورة أو فيديو آخر و${learnerCopy.retry}`,
         );
       if (!interrupted && !paused) {
         try {
@@ -733,7 +734,7 @@ export const usePortfolioProjectDetails = ({
           return;
         Alert.alert(
           'تعذّر استكمال الرفع',
-          learnerErrorMessage(error, 'حاول مرة أخرى'),
+          learnerErrorMessage(error, learnerCopy.retry),
         );
       }
     } finally {
@@ -812,7 +813,7 @@ export const usePortfolioProjectDetails = ({
           return;
         Alert.alert(
           'تعذّر رفع الملف',
-          learnerErrorMessage(error, 'حاول مرة أخرى'),
+          learnerErrorMessage(error, learnerCopy.retry),
         );
       }
     } finally {
@@ -874,7 +875,7 @@ export const usePortfolioProjectDetails = ({
                 ) {
                   Alert.alert(
                     'تعذّر حذف المشروع',
-                    'المشروع ما زال محفوظًا\nحاول مرة أخرى',
+                    `المشروع ما زال محفوظًا\n${learnerCopy.retry}`,
                   );
                 }
               } finally {
@@ -934,7 +935,7 @@ export const usePortfolioProjectDetails = ({
                   ) {
                     Alert.alert(
                       'تعذّر حذف الملف',
-                      learnerErrorMessage(error, 'حاول مرة أخرى'),
+                      learnerErrorMessage(error, learnerCopy.retry),
                     );
                   }
                 })

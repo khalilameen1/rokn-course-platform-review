@@ -29,6 +29,7 @@ jest.mock('../src/assets/SVG', () => ({MoreBellIcon: () => null}));
 jest.mock('../src/components/ui/RoknCoin', () => ({RoknCoinStack: () => null}));
 
 import NotificationPermissionPrimer from '../src/components/ui/NotificationPermissionPrimer';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;
@@ -128,7 +129,7 @@ describe('notification primer recovers according to permission versus activation
     await act(async () => activation.reject(new Error('offline')));
     expect(text()).toContain('تعذّر تفعيل الإشعارات');
     expect(text()).not.toContain('اسمح بإشعارات ركن من إعدادات الهاتف');
-    await press('حاول مرة أخرى');
+    await press(learnerCopy.retry);
     expect(enable).toHaveBeenCalledTimes(3);
     expect(Linking.openSettings).toHaveBeenCalledTimes(1);
     expect(close).toHaveBeenCalledTimes(1);
@@ -149,7 +150,7 @@ describe('notification primer recovers according to permission versus activation
     enable.mockRejectedValueOnce(new Error('token-registration'));
     await press('فعّل الإشعارات');
     expect(text()).toContain('تعذّر تفعيل الإشعارات');
-    await press('حاول مرة أخرى');
+    await press(learnerCopy.retry);
     expect(close).toHaveBeenCalledTimes(1);
     expect(Linking.openSettings).not.toHaveBeenCalled();
   });

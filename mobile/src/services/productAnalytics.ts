@@ -7,7 +7,7 @@ import {
   captureAccountSessionBoundary,
   type AccountSessionBoundary,
 } from '../constants/helpers';
-import {enqueueDurableOutbox, flushDurableOutbox} from './durableOutbox';
+import {createDurableOutbox} from './durableOutbox';
 import {errorStatus} from '../utils/errorPayload';
 
 export type ProductEventName =
@@ -58,6 +58,14 @@ const QUEUE_KEY = '@rokn/product-events/v1';
 const MAX_QUEUE_SIZE = 50;
 const MAX_BATCH_SIZE = 12;
 const FLUSH_DEBOUNCE_MS = 1_200;
+
+const productEventsOutbox = createDurableOutbox<QueuedEvent>({
+  namespace: QUEUE_KEY,
+  accountScoped: true,
+  maxItems: MAX_QUEUE_SIZE,
+  ttlMs: 7 * 24 * 60 * 60 * 1000,
+  backoff: {baseMs: 2_000, maxMs: 60 * 60 * 1000},
+});
 
 const uuid = (): string => {
   const seed = `${Date.now()}-${Math.random()}-${Math.random()}`;
@@ -110,24 +118,24 @@ const deliverBatch = async (
   }
 };
 
-const flushQueue = (storageKey: string) =>
-  flushDurableOutbox<QueuedEvent>({
-    storageKey,
-    deliver: async event =>
-      (await queueKey()) === storageKey ? deliver(event) : 'drop',
-    deliverBatch: async events =>
-      (await queueKey()) === storageKey ? deliverBatch(events) : 'drop',
+const flushQueue = (boundary: AccountSessionBoundary) =>
+  productEventsOutbox.flush({
+    boundary,
+    deliver: item => deliver(item.payload),
+    deliverBatch,
     maxBatch: MAX_BATCH_SIZE,
-    maxItems: MAX_QUEUE_SIZE,
   });
 
-const scheduleQueueFlush = (storageKey: string) => {
+const scheduleQueueFlush = (
+  storageKey: string,
+  boundary: AccountSessionBoundary,
+) => {
   const existing = scheduledFlushes.get(storageKey);
   if (existing) clearTimeout(existing);
   const timer = setTimeout(() => {
     scheduledFlushes.delete(storageKey);
     if (AppState.currentState !== 'active') return;
-    void flushQueue(storageKey).catch(() => undefined);
+    void flushQueue(boundary).catch(() => undefined);
   }, FLUSH_DEBOUNCE_MS);
   scheduledFlushes.set(storageKey, timer);
   while (scheduledFlushes.size > 4) {
@@ -146,7 +154,7 @@ export const flushProductEvents = async (): Promise<void> => {
   if (scheduled) clearTimeout(scheduled);
   scheduledFlushes.delete(storageKey);
   assertAccountSessionBoundary(boundary);
-  await flushQueue(storageKey);
+  await flushQueue(boundary);
   assertAccountSessionBoundary(boundary);
 };
 
@@ -163,14 +171,9 @@ export const trackProductEvent = async (event: ProductEvent): Promise<void> => {
     };
 
     assertAccountSessionBoundary(boundary);
-    await enqueueDurableOutbox({
-      storageKey,
-      id: queued.event_id,
-      payload: queued,
-      maxItems: MAX_QUEUE_SIZE,
-    });
+    await productEventsOutbox.enqueue(queued.event_id, queued, {boundary});
     assertAccountSessionBoundary(boundary);
-    scheduleQueueFlush(storageKey);
+    scheduleQueueFlush(storageKey, boundary);
   } catch {
     // Logout cleanup may win before a queued AsyncStorage write finishes. The
     // old owner's analytics are disposable; remove a resurrected queue rather
@@ -186,5 +189,5 @@ export const trackProductEvent = async (event: ProductEvent): Promise<void> => {
   }
 };
 
-export const productAnalyticsQueueBaseKey = QUEUE_KEY;
-export const getProductAnalyticsQueueKey = queueKey;
+export const readQueuedProductEvents = async () =>
+  productEventsOutbox.peek({boundary: await captureAccountSessionBoundary()});

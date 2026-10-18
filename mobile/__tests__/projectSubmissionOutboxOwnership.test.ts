@@ -71,7 +71,7 @@ const deferred = <T>() => {
   return {promise, resolve};
 };
 
-const settleMicrotasks = async (turns = 30) => {
+const settleMicrotasks = async (turns = 400) => {
   for (let index = 0; index < turns; index += 1) {
     await Promise.resolve();
   }
@@ -101,6 +101,18 @@ const lookupResponse = (
     },
   },
 });
+
+/** The durable outbox record (engine format, one key per account). */
+const outboxKey = (scope = 'user-a') => `@rokn/project-submission/v3:${scope}`;
+/** The pending submission of one project, as the learner's payload. */
+const pendingRecord = async (scope = 'user-a', projectId = '42') => {
+  const raw = await AsyncStorage.getItem(outboxKey(scope));
+  return raw
+    ? (JSON.parse(raw) as Array<{id: string; payload: any}>).find(
+        item => item.id === projectId,
+      )?.payload
+    : undefined;
+};
 
 describe('project submission outbox ownership', () => {
   beforeEach(async () => {
@@ -155,7 +167,7 @@ describe('project submission outbox ownership', () => {
       reviewFeedback: 'الصورة لا توضح النتيجة المطلوبة',
     });
     expect(
-      (await AsyncStorage.getAllKeys()).some(key => key.includes(':user-a:42')),
+      Boolean(await pendingRecord()),
     ).toBe(false);
   });
 
@@ -338,7 +350,7 @@ describe('project submission outbox ownership', () => {
     });
     expect(mockPost).toHaveBeenCalledTimes(2);
     expect(
-      (await AsyncStorage.getAllKeys()).some(key => key.includes(':user-a:42')),
+      Boolean(await pendingRecord()),
     ).toBe(true);
   });
 
@@ -358,11 +370,7 @@ describe('project submission outbox ownership', () => {
     ).rejects.toThrow('ACCOUNT_CHANGED_DURING_REQUEST');
 
     expect(mockPost).not.toHaveBeenCalled();
-    const oldAccountKey = (await AsyncStorage.getAllKeys()).find(key =>
-      key.includes(':user-a:42'),
-    );
-    expect(oldAccountKey).toBeDefined();
-    expect(await AsyncStorage.getItem(oldAccountKey!)).toContain(
+    expect((await pendingRecord())?.submissionText).toBe(
       'يُستكمل عند العودة',
     );
   });
@@ -435,11 +443,8 @@ describe('project submission outbox ownership', () => {
       canContinue: false,
     });
 
-    const pendingKey = (await AsyncStorage.getAllKeys()).find(key =>
-      key.includes(':user-a:42'),
-    );
-    expect(pendingKey).toBeDefined();
-    const pending = JSON.parse((await AsyncStorage.getItem(pendingKey!))!);
+    const pending = await pendingRecord();
+    expect(pending).toBeDefined();
     const submissionId = '33333333-3333-4333-8333-333333333333';
     mockGet.mockResolvedValueOnce(
       lookupResponse(pending.clientSubmissionId, {
@@ -470,7 +475,7 @@ describe('project submission outbox ownership', () => {
         call[0].startsWith('project-submissions/'),
       ),
     ).toBe(false);
-    expect(await AsyncStorage.getItem(pendingKey!)).toBeNull();
+    expect(await pendingRecord()).toBeUndefined();
   });
 
   it.each(['write', 'cleanup'])(
@@ -494,11 +499,10 @@ describe('project submission outbox ownership', () => {
             .mocked(AsyncStorage.setItem)
             .mockRejectedValueOnce(new Error('disk full'));
         } else {
-          // Releasing references after the committed write is already guarded;
-          // the following file-cleanup release was not.
+          // The outbox narrows the protected file set once, after the
+          // committed write; a failure there must not release the file.
           jest
             .mocked(retainLearnerDraftFiles)
-            .mockRejectedValueOnce(new Error('registry unavailable'))
             .mockRejectedValueOnce(new Error('registry unavailable'));
         }
         return accepted;
@@ -515,16 +519,15 @@ describe('project submission outbox ownership', () => {
       });
       expect(removeLearnerDraftFile).not.toHaveBeenCalled();
       await settleMicrotasks();
-      expect(mockReportClientError).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'PROJECT_SUBMISSION_ACKNOWLEDGEMENT',
-        }),
-        {source: 'project_submission_acknowledgement'},
-      );
-      const key = (await AsyncStorage.getAllKeys()).find(value =>
-        value.includes(':user-a:42'),
-      )!;
-      const pending = JSON.parse((await AsyncStorage.getItem(key))!);
+      if (failure === 'write') {
+        expect(mockReportClientError).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: 'PROJECT_SUBMISSION_ACKNOWLEDGEMENT',
+          }),
+          {source: 'project_submission_acknowledgement'},
+        );
+      }
+      const pending = await pendingRecord();
       expect(pending.clientSubmissionId).toBe(
         mockPost.mock.calls[0][2].headers['Idempotency-Key'],
       );
@@ -556,9 +559,7 @@ describe('project submission outbox ownership', () => {
   it('never discards an uncertain submission merely because its outbox read fails', async () => {
     mockPost.mockRejectedValueOnce(new Error('response lost'));
     await submitProjectAttempt('42', null, 'محاولة محفوظة');
-    const key = (await AsyncStorage.getAllKeys()).find(value =>
-      value.includes(':user-a:42'),
-    )!;
+    const key = outboxKey();
     const saved = await AsyncStorage.getItem(key);
     jest
       .mocked(AsyncStorage.getItem)
@@ -604,10 +605,7 @@ describe('project submission outbox ownership', () => {
     ).rejects.toThrow('ACCOUNT_CHANGED_DURING_REQUEST');
     expect(mockGet).not.toHaveBeenCalled();
     expect(mockReportClientError).not.toHaveBeenCalled();
-    const key = (await AsyncStorage.getAllKeys()).find(value =>
-      value.includes(':user-a:42'),
-    )!;
-    expect(JSON.parse((await AsyncStorage.getItem(key))!).publicId).toBe(
+    expect((await pendingRecord())?.publicId).toBe(
       '33333333-3333-4333-8333-333333333333',
     );
   });
@@ -688,10 +686,9 @@ describe('project submission outbox ownership', () => {
         expect.objectContaining({accepted: false, submissionStatus: 'draft'}),
       ]);
       expect(mockPost).toHaveBeenCalledTimes(1);
-      const key = (await AsyncStorage.getAllKeys())[0];
-      expect(
-        JSON.parse((await AsyncStorage.getItem(key))!).publicId,
-      ).toBeUndefined();
+      const pending = await pendingRecord();
+      expect(pending).toBeDefined();
+      expect(pending.publicId).toBeUndefined();
       expect(
         mockGet.mock.calls.every(
           call => call[0] === 'projects/42/submissions/lookup',
@@ -723,18 +720,61 @@ describe('project submission outbox ownership', () => {
     );
   });
 
-  it('recovers a legacy outbox by identity before any upload', async () => {
+  it('migrates a v2 per-project outbox on first read and recovers it by identity before any upload', async () => {
     mockPost.mockRejectedValueOnce(new Error('response lost'));
     await submitProjectAttempt('42', null, 'محاولة من النسخة السابقة');
-    const key = (await AsyncStorage.getAllKeys())[0];
-    const pending = JSON.parse((await AsyncStorage.getItem(key))!);
+    const pending = await pendingRecord();
+    // The previous app version stored one key per project and no upload
+    // marker; such a record may already exist on the server.
     delete pending.uploadAttempted;
-    await AsyncStorage.setItem(key, JSON.stringify(pending));
+    await AsyncStorage.removeItem(outboxKey());
+    const legacyKey = '@rokn/project-submission/v2:user-a:42';
+    await AsyncStorage.setItem(legacyKey, JSON.stringify(pending));
     mockGet.mockResolvedValueOnce(lookupResponse(pending.clientSubmissionId));
     await expect(retryPendingProjectSubmissions()).resolves.toEqual([
       expect.objectContaining({accepted: true, submissionStatus: 'passed'}),
     ]);
     expect(mockPost).toHaveBeenCalledTimes(1);
+    expect(await AsyncStorage.getItem(legacyKey)).toBeNull();
+    expect(await pendingRecord()).toBeUndefined();
+  });
+
+  it('keeps a migrated v2 submission, its files and its server cooldown when replay is refused', async () => {
+    const file = {
+      uri: 'file:///draft/legacy.jpg',
+      name: 'legacy.jpg',
+      type: 'image/jpeg',
+      size: 100,
+    };
+    const legacy = {
+      projectId: '42',
+      accountScope: 'user-a',
+      clientSubmissionId: 'rokn-42-legacy-abc',
+      fingerprint: 'abc',
+      selectedFiles: [file],
+      submissionText: 'محاولة محفوظة',
+      uploadAttempted: false,
+      retryAfterAt: Date.now() + 60_000,
+    };
+    await AsyncStorage.setItem(
+      '@rokn/project-submission/v2:user-a:42',
+      JSON.stringify(legacy),
+    );
+    // The cooldown migrates as the outbox's notBefore: no replay yet.
+    await expect(retryPendingProjectSubmissions()).resolves.toEqual([]);
+    expect(mockPost).not.toHaveBeenCalled();
+    const migrated: Partial<typeof legacy> = {...legacy};
+    delete migrated.retryAfterAt;
+    expect(await pendingRecord()).toEqual(migrated);
+    expect(retainLearnerDraftFiles).toHaveBeenCalledWith(
+      'project-submission-outbox',
+      [file],
+      'user-a',
+    );
+    expect(removeLearnerDraftFile).not.toHaveBeenCalled();
+    await expect(
+      submitProjectAttempt('42', file, 'محاولة محفوظة'),
+    ).rejects.toMatchObject({status: 429});
   });
 
   it.each([
@@ -762,8 +802,7 @@ describe('project submission outbox ownership', () => {
       await expect(
         submitProjectAttempt('42', file, 'المحاولة الأصلية'),
       ).resolves.toMatchObject({accepted: false});
-      const storageKey = (await AsyncStorage.getAllKeys())[0];
-      const original = JSON.parse((await AsyncStorage.getItem(storageKey))!);
+      const original = await pendingRecord();
       const revisionChanged = {
         status: 409,
         data: {
@@ -808,12 +847,12 @@ describe('project submission outbox ownership', () => {
             submissionStatus: 'passed',
           }),
         });
-        expect(await AsyncStorage.getItem(storageKey)).toBeNull();
+        expect(await pendingRecord()).toBeUndefined();
       } else if (recovery === 'missing' && admissionClosed) {
         // Only the marked server rejection closes the admission window. Let
         // the editor handle its original revision target, never auto-send it.
         expect(await result).toEqual({error: revisionChanged});
-        expect(await AsyncStorage.getItem(storageKey)).toBeNull();
+        expect(await pendingRecord()).toBeUndefined();
         expect(await retryPendingProjectSubmissions()).toEqual([]);
       } else {
         expect(await result).toEqual({
@@ -824,9 +863,7 @@ describe('project submission outbox ownership', () => {
                 : 'PROJECT_SUBMISSION_PREVIOUS_ATTEMPT_PENDING',
           }),
         });
-        expect(
-          JSON.parse((await AsyncStorage.getItem(storageKey))!),
-        ).toMatchObject({
+        expect(await pendingRecord()).toMatchObject({
           clientSubmissionId: original.clientSubmissionId,
           selectedFiles: [file],
         });
@@ -884,11 +921,9 @@ describe('project submission outbox ownership', () => {
       'ACCOUNT_CHANGED_DURING_REQUEST',
     );
     expect(mockPost).toHaveBeenCalledTimes(1);
-    const key = (await AsyncStorage.getAllKeys())[0];
-    expect(key).toContain(':user-a:42');
-    expect(
-      JSON.parse((await AsyncStorage.getItem(key))!).publicId,
-    ).toBeUndefined();
+    const pending = await pendingRecord();
+    expect(pending).toBeDefined();
+    expect(pending.publicId).toBeUndefined();
     expect(removeLearnerDraftFile).not.toHaveBeenCalled();
   });
 
@@ -917,8 +952,7 @@ describe('project submission outbox ownership', () => {
     async state => {
       mockPost.mockRejectedValueOnce(new Error('lost acknowledgement'));
       await submitProjectAttempt('42', null, 'المحاولة الأولى');
-      const key = (await AsyncStorage.getAllKeys())[0];
-      const saved = JSON.parse((await AsyncStorage.getItem(key))!);
+      const saved = await pendingRecord();
       if (state === 'unavailable')
         mockGet.mockRejectedValueOnce(new Error('read unavailable'));
       else
@@ -932,9 +966,9 @@ describe('project submission outbox ownership', () => {
         submitProjectAttempt('42', null, 'تعديلات جديدة يجب ألا تضيع'),
       ).rejects.toThrow('PROJECT_SUBMISSION_PREVIOUS_ATTEMPT_PENDING');
       expect(mockPost).toHaveBeenCalledTimes(1);
-      expect(
-        JSON.parse((await AsyncStorage.getItem(key))!).clientSubmissionId,
-      ).toBe(saved.clientSubmissionId);
+      expect((await pendingRecord())?.clientSubmissionId).toBe(
+        saved.clientSubmissionId,
+      );
     },
   );
 

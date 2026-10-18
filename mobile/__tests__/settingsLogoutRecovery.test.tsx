@@ -15,6 +15,7 @@ import {revokeCurrentDeviceSession} from '../src/services/deviceSessions';
 import {signInWithSocialProvider} from '../src/services/socialAuth';
 import {clearPendingLoginReturnTo} from '../src/navigation/authReturn';
 import {accountScopedStorageKey} from '../src/constants/helpers';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 jest.mock('../src/store/actions/auth', () => ({
   deleteAccount: () => ({type: 'test/deleteAccount'}),
@@ -175,7 +176,7 @@ describe('settings durable local logout', () => {
 
       expect(Alert.alert).toHaveBeenLastCalledWith(
         'لم يكتمل تسجيل الخروج',
-        'حاول مرة أخرى',
+        learnerCopy.retry,
       );
       expect(hook.dispatch).not.toHaveBeenCalledWith({type: 'test/logout'});
       expect(hook.navigation.reset).not.toHaveBeenCalled();

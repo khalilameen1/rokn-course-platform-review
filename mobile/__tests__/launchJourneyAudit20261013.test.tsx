@@ -89,7 +89,7 @@ import {emitCoinCheckoutCreditOnce} from '../src/services/coinCheckoutCoordinato
 import {
   markSectionComplete,
   resetSectionCompletionRuntime,
-} from '../src/components/VideoPlayer/courseLearning/sectionCompletion';
+} from '../src/services/sectionCompletionOutbox';
 import {
   isProductFeatureEnabled,
   resetProductFeaturesForTests,

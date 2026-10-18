@@ -44,6 +44,7 @@ import type {PortfolioPublicationResult} from './usePortfolioPublication';
 import type {PortfolioUploadProgress} from '../../../services/portfolioUploadProgress';
 import {usePortfolioUploadSession} from './usePortfolioUploadSession';
 import {MAX_PORTFOLIO_MEDIA_COUNT} from '../../../services/portfolioMediaPolicy';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
 type Options = {
   onSubscriptions?: PortfolioSubscriptionAction;
@@ -246,7 +247,7 @@ export const usePortfolioCreateFlow = ({
               'إضافة عمل',
               learnerErrorMessage(
                 error,
-                'تعذّر التحقق من الاشتراك\nحاول مرة أخرى',
+                `تعذّر التحقق من الاشتراك\n${learnerCopy.retry}`,
               ),
             );
           }
@@ -769,7 +770,7 @@ export const usePortfolioCreateFlow = ({
           remoteProjectCreated ? 'حُفظ المشروع كمسودة' : 'تعذّر إضافة المشروع',
           remoteProjectCreated
             ? 'تعذّر تجهيز بعض الملفات\nستبقى محفوظة لإكمال الرفع'
-            : learnerErrorMessage(error, 'لم يُضف المشروع\nحاول مرة أخرى'),
+            : learnerErrorMessage(error, `لم يُضف المشروع\n${learnerCopy.retry}`),
         );
       }
     } finally {

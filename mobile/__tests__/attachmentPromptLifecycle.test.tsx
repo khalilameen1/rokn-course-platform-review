@@ -9,7 +9,7 @@ import type {
 import {
   hasSeenAttachmentPrompt,
   markAttachmentPromptSeen,
-} from '../src/components/VideoPlayer/attachmentPrompt';
+} from '../src/services/attachmentPrompt';
 import {captureAccountSessionBoundary} from '../src/constants/helpers';
 
 let mockBoundary = {epoch: 1, scope: 'user-a'};
@@ -26,7 +26,7 @@ jest.mock('../src/services/secureSession', () => ({
   peekSecureSession: () => ({epoch: mockBoundary.epoch}),
 }));
 
-jest.mock('../src/components/VideoPlayer/attachmentPrompt', () => ({
+jest.mock('../src/services/attachmentPrompt', () => ({
   hasSeenAttachmentPrompt: jest.fn(),
   markAttachmentPromptSeen: jest.fn(),
 }));

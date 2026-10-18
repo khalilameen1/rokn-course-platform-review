@@ -1,4 +1,10 @@
-import {publicRequest} from '../../../constants/api';
+import {
+  addLessonToSavedFolder,
+  createSavedFolder,
+  deleteSavedResource,
+  getSavedLessonFolders,
+  getSavedLessonsState,
+} from '../../../services/api/savedFolders';
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
@@ -49,7 +55,7 @@ const responseStatus = (error: unknown) =>
 /** Resolves the server response, or null when the route was already gone. */
 const deleteIdempotently = async (route: string) => {
   try {
-    return await publicRequest.delete(route);
+    return await deleteSavedResource(route);
   } catch (error) {
     if (responseStatus(error) !== 404) throw error;
     return null;
@@ -57,12 +63,7 @@ const deleteIdempotently = async (route: string) => {
 };
 
 const saveMembershipOnServer = async (folderId: string, lessonId: string) => {
-  const response = await publicRequest.post(
-    `saved-folders/${folderId}/lessons`,
-    {
-      lesson_id: lessonId,
-    },
-  );
+  const response = await addLessonToSavedFolder(folderId, lessonId);
   const payload = response?.data?.data;
   if (
     payload?.is_saved !== true ||
@@ -88,10 +89,7 @@ export const createSavedFolderOption = async (
     if (!sessionAvailable) {
       throw new Error('SAVED_COLLECTIONS_AUTH_REQUIRED');
     }
-    const response = await publicRequest.post('saved-folders', {
-      name,
-      client_request_id: secureRandomUuid(),
-    });
+    const response = await createSavedFolder(name, secureRandomUuid());
     assertAccountSessionBoundary(accountBoundary);
     invalidateFolderList(accountBoundary);
     const payload = response?.data?.data;
@@ -280,9 +278,7 @@ export const reconcileServerSavedLessons = async (
       const saved = new Set<string>();
       for (let offset = 0; offset < lessonIds.length; offset += 200) {
         const chunk = lessonIds.slice(offset, offset + 200);
-        const response = await publicRequest.get('saved-lessons/state', {
-          params: {lesson_ids: chunk},
-        });
+        const response = await getSavedLessonsState(chunk);
         assertCurrent();
         const ids = response?.data?.data?.saved_lesson_ids;
         if (!Array.isArray(ids)) {
@@ -339,9 +335,7 @@ export const getSavedLessonFolderMembership = async (
   if (!sessionAvailable) {
     throw new Error('SAVED_COLLECTIONS_AUTH_REQUIRED');
   }
-  const response = await publicRequest.get(
-    `saved-lessons/${normalizedLessonId}/folders`,
-  );
+  const response = await getSavedLessonFolders(normalizedLessonId);
   assertAccountSessionBoundary(accountBoundary);
   const payload = response?.data?.data;
   const folders: unknown = payload?.folders;

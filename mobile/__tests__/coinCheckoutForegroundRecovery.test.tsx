@@ -66,7 +66,7 @@ jest.mock('../src/services/pendingAccountWrites', () => ({
 jest.mock('../src/services/operationalTelemetry', () => ({
   flushOperationalTelemetry: async () => undefined,
 }));
-jest.mock('../src/services/portfolioMediaReplay', () => ({
+jest.mock('../src/services/portfolioMediaDelivery', () => ({
   replayPendingPortfolioMediaUploads: async () => undefined,
 }));
 jest.mock('../src/services/sentryTelemetry', () => ({

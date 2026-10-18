@@ -60,9 +60,9 @@ jest.mock('../src/services/roknApi', () => ({
   removeSavedLessonFromCache: jest.fn(async () => undefined),
   removeSavedLessonEverywhereFromCache: jest.fn(async () => undefined),
 }));
-jest.mock('../src/components/VideoPlayer/courseLearning/persistence', () => ({
+jest.mock('../src/services/learningPlayerState', () => ({
   ...jest.requireActual(
-    '../src/components/VideoPlayer/courseLearning/persistence',
+    '../src/services/learningPlayerState',
   ),
   updatePlayerStateForScope: jest.fn(
     async (

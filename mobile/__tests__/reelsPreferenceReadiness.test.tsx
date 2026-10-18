@@ -31,11 +31,12 @@ jest.mock('../src/services/roknApi', () => ({
 }));
 import {usePlaybackPreferences} from '../src/screens/reels/usePlaybackPreferences';
 import {markPlaybackPreferenceMutation} from '../src/services/accountPreferenceWrites';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {resetDurableOutboxForTests} from '../src/services/durableOutbox';
 import {
-  flushPlaybackPreferenceWrites,
-  PENDING_PLAYBACK_PREFERENCES_KEY,
+  flushAccountWrites as flushPlaybackPreferenceWrites,
   savePlaybackPreferencePatch,
-} from '../src/services/playbackPreferenceSync';
+} from '../src/services/pendingAccountWrites';
 
 describe('bounded playback preference readiness', () => {
   let preferences: ReturnType<typeof usePlaybackPreferences>;
@@ -49,7 +50,9 @@ describe('bounded playback preference readiness', () => {
       renderer = TestRenderer.create(<Harness />);
     });
   };
-  beforeEach(() => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    resetDurableOutboxForTests();
     jest.useFakeTimers();
     mockBoundary = {scope: 'learner-7', epoch: 1};
     mockGetItem.mockReset().mockResolvedValue(null);
@@ -281,8 +284,8 @@ describe('bounded playback preference readiness', () => {
       finishPut();
       await flight;
     });
-    expect(stored.has(`${PENDING_PLAYBACK_PREFERENCES_KEY}:learner-7`)).toBe(
-      false,
+    expect(await AsyncStorage.getItem('@rokn/account-writes/v1:learner-7')).toBe(
+      null,
     );
     await act(async () =>
       finishProfile({videoQualityPreference: '1080p', playbackSpeed: 2}),
@@ -307,11 +310,23 @@ describe('bounded playback preference readiness', () => {
       'tells the learner a %s choice was not saved but keeps it playing',
       async (field, message) => {
         await mount();
-        mockSaveItem.mockResolvedValue(false);
-        await act(async () => {
-          if (field === 'quality') preferences.changeQuality('480p');
-          else preferences.changePlaybackSpeed(1.5);
+        // The durable outbox cannot commit the learner's choice.
+        const nativeSet = jest.mocked(AsyncStorage.setItem);
+        const normalSet = nativeSet.getMockImplementation()!;
+        nativeSet.mockImplementation(async (key: string, value: string) => {
+          if (key === '@rokn/account-writes/v1:learner-7') {
+            throw new Error('NATIVE_STORAGE_FULL');
+          }
+          return normalSet(key, value);
         });
+        try {
+          await act(async () => {
+            if (field === 'quality') preferences.changeQuality('480p');
+            else preferences.changePlaybackSpeed(1.5);
+          });
+        } finally {
+          nativeSet.mockImplementation(normalSet);
+        }
         expect(alertSpy).toHaveBeenCalledTimes(1);
         expect(alertSpy).toHaveBeenCalledWith('متحفظش التغيير', message);
         if (field === 'quality') expect(preferences.selectedQuality).toBe('480p');

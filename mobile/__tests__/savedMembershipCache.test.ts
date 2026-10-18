@@ -9,7 +9,7 @@ jest.mock('../src/services/roknApi', () => ({
   removeSavedLessonEverywhereFromCache: jest.fn(async () => undefined),
   removeSavedLessonFromCache: jest.fn(async () => undefined),
 }));
-jest.mock('../src/components/VideoPlayer/courseLearning/persistence', () => ({
+jest.mock('../src/services/learningPlayerState', () => ({
   updatePlayerStateForScope: jest.fn(),
 }));
 
@@ -19,7 +19,7 @@ import {
   removeSavedLessonEverywhereFromCache,
   removeSavedLessonFromCache,
 } from '../src/services/roknApi';
-import {updatePlayerStateForScope} from '../src/components/VideoPlayer/courseLearning/persistence';
+import {updatePlayerStateForScope} from '../src/services/learningPlayerState';
 import {
   repairSavedMembershipCache,
   reconcileSavedMembershipCache,

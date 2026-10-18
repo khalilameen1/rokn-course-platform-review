@@ -1,5 +1,5 @@
-import type {ProjectStatus, SelectedProjectFile} from '../types';
-import {learnerDraftStorage} from '../../../services/learnerDraftStorage';
+import type {ProjectStatus, SelectedProjectFile} from '../components/VideoPlayer/types';
+import {learnerDraftStorage} from './learnerDraftStorage';
 
 export type PendingProjectSubmission = {
   projectId: string;
@@ -11,7 +11,6 @@ export type PendingProjectSubmission = {
   publicId?: string;
   pollAfterSeconds?: number;
   uploadAttempted?: boolean;
-  retryAfterAt?: number;
 };
 
 export type SubmissionSyncResult = {
@@ -32,8 +31,9 @@ export type ProjectSubmissionRetryOutcome = SubmissionSyncResult & {
   projectId: string;
 };
 
-export const PROJECT_SUBMISSION_PREFIX =
-  learnerDraftStorage.projectSubmission.namespace;
+/** v2 kept one key per project: `${prefix}:${scope}:${projectId}`. */
+export const LEGACY_PROJECT_SUBMISSION_PREFIX =
+  learnerDraftStorage.projectSubmissionLegacy.namespace;
 
 export const PUBLIC_SUBMISSION_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

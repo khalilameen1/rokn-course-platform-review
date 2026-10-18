@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
 import {Alert} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
@@ -52,9 +53,7 @@ jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   WATCH_HISTORY_ENABLED_KEY: 'watch-history',
 }));
 jest.mock('../src/services/pushDeviceRegistration', () => ({}));
-jest.mock('../src/screens/settings/settingsData', () => ({
-  PENDING_WATCH_HISTORY_CLEAR_KEY: 'pending-clear',
-}));
+jest.mock('../src/screens/settings/settingsData', () => ({}));
 jest.mock('../src/screens/settings/usePrivacyPreferenceSync', () => ({
   usePrivacyPreferenceSync: () => ({
     dirtyKeys: mockDirty,
@@ -183,7 +182,16 @@ describe('watch-history destructive confirmation ownership', () => {
         expect(mockClearRemote).toHaveBeenCalledWith(mockBoundary);
         expect(alert).toHaveBeenCalledWith('تم مسح السجل', expect.any(String));
         if (network === 'offline') {
-          expect(mockSave).toHaveBeenCalledWith('user-1:pending-clear', true);
+          // The deletion intent waits in the account-write outbox.
+          const queued = JSON.parse(
+            (await AsyncStorage.getItem('@rokn/account-writes/v1:user-1'))!,
+          );
+          expect(queued).toEqual([
+            expect.objectContaining({
+              id: 'watch_history_clear',
+              payload: {kind: 'watch_history_clear'},
+            }),
+          ]);
         }
       } finally {
         alert.mockRestore();

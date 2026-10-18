@@ -7,6 +7,7 @@ jest.mock('../src/services/portfolioMediaDelivery', () => ({
   pausePortfolioMediaDelivery: (...args: unknown[]) => mockPause(...args),
 }));
 import {usePortfolioUploadSession} from '../src/screens/Profile/gallery/usePortfolioUploadSession';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 const boundary = {epoch: 1, scope: 'owner-a'};
 const deferred = <T,>() => {
@@ -79,7 +80,7 @@ describe('portfolio upload presentation owns durable pause acknowledgement', () 
     expect(session.pausing).toBe(false);
     expect(Alert.alert).toHaveBeenCalledWith(
       'تعذّر إيقاف الرفع',
-      'الرفع مستمر\nحاول مرة أخرى',
+      `الرفع مستمر\n${learnerCopy.retry}`,
     );
     await act(async () => {
       expect(await session.pause()).toBe(true);

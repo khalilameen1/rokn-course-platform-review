@@ -11,7 +11,7 @@ import {learningNavigationHandoff} from '../../components/VideoPlayer/courseLear
 import {
   emptyLocalLearningState,
   overlayLocalLearningState,
-} from '../../components/VideoPlayer/courseLearning/persistence';
+} from '../../services/learningPlayerState';
 import {settleWithin} from '../../utils/settleWithin';
 import type {CourseLearningData} from '../../components/VideoPlayer/types';
 import type {PlaybackRuntimeMetrics} from '../../components/VideoPlayer/playbackTelemetry';
@@ -31,6 +31,7 @@ import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
 } from '../../constants/helpers';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 type CourseLoaderRefs = {
   closedPlaybackSessions: MutableRefObject<Set<string>>;
@@ -168,10 +169,10 @@ export const useReelsCourseLoader = ({
           if (!ownsLoadSlot()) return await superseded();
           if (hasCurrentCourse) {
             setConnectionNote(
-              'تعذّر تحديث محتوى الكورس\nحاول مرة أخرى من زر الفيديو',
+              `تعذّر تحديث محتوى الكورس\n${learnerCopy.retry} من زر الفيديو`,
             );
           } else {
-            setLoadError('تعذّر فتح محتوى الكورس\nمكانك محفوظ\nحاول مرة أخرى');
+            setLoadError(`تعذّر فتح محتوى الكورس\nمكانك محفوظ\n${learnerCopy.retry}`);
           }
           if (refs.loadAbort.current === controller) {
             refs.loadAbort.current = null;
@@ -391,7 +392,7 @@ export const useReelsCourseLoader = ({
           refs.loadedCourse.current = null;
           setCourse(null);
           setLoadError(
-            'تعذّر فتح محتوى الكورس\nمكانك محفوظ\nتحقق من الاتصال ثم حاول مرة أخرى',
+            `تعذّر فتح محتوى الكورس\nمكانك محفوظ\n${learnerCopy.networkRetry}`,
           );
         }
         finish(false);

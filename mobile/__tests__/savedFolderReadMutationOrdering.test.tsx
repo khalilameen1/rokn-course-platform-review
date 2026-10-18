@@ -48,7 +48,7 @@ jest.mock('../src/components/VideoPlayer/courseLearningApi', () =>
     '../src/components/VideoPlayer/courseLearning/savedCollections',
   ),
 );
-jest.mock('../src/components/VideoPlayer/courseLearning/persistence', () => ({
+jest.mock('../src/services/learningPlayerState', () => ({
   updatePlayerStateForScope: jest.fn(async () => undefined),
 }));
 jest.mock('../src/utils/secureRandom', () => ({

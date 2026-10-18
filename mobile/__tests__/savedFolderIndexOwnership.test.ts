@@ -29,7 +29,7 @@ jest.mock(
     throw new Error('Folder index must not load default-folder creation');
   },
 );
-jest.mock('../src/components/VideoPlayer/courseLearning/persistence', () => {
+jest.mock('../src/services/learningPlayerState', () => {
   throw new Error('Folder index must not load the player cache');
 });
 

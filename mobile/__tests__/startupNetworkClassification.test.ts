@@ -82,6 +82,6 @@ describe('startup network failure classification', () => {
     expect(shell).toContain('failureCode: socialAuthFailureCode(error)');
     expect(shell).toContain('authMethods?.providers.includes(provider)');
     expect(view).toContain('providerDefinitions.find');
-    expect(view).toContain('حاول مرة أخرى');
+    expect(view).toContain('{learnerCopy.retry}');
   });
 });

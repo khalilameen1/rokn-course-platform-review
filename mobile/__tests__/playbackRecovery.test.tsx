@@ -2,12 +2,12 @@ import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
 import {usePlaybackRecovery} from '../src/components/VideoPlayer/video/usePlaybackRecovery';
 import {usePlaybackStatus} from '../src/components/VideoPlayer/video/usePlaybackStatus';
-import {probeVideoSource} from '../src/components/VideoPlayer/videoSourcePolicy';
+import {probeVideoSource} from '../src/services/videoSourcePolicy';
 
 jest.mock('../src/services/operationalTelemetry', () => ({
   reportClientError: jest.fn(),
 }));
-jest.mock('../src/components/VideoPlayer/videoSourcePolicy', () => ({
+jest.mock('../src/services/videoSourcePolicy', () => ({
   probeVideoSource: jest.fn(),
 }));
 

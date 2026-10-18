@@ -139,7 +139,7 @@ const restorations = [
   },
   {
     name: 'portfolio upload receipt',
-    key: '@rokn/portfolio-media-outbox/v1:learner-a',
+    key: '@rokn/portfolio-media-outbox/v2:learner-a',
     save: () =>
       stagePortfolioMediaUpload(
         {

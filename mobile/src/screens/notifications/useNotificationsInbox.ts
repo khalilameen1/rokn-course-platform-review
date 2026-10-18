@@ -34,6 +34,7 @@ import {
   saveCachedNotifications,
 } from './cache';
 import {notificationImageKey, type NotificationItem} from './model';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 export function useNotificationsInbox() {
   const [serverSession, setServerSession] = useState<boolean | null>(null);
@@ -221,7 +222,7 @@ export function useNotificationsInbox() {
         return;
       if (networkFailureKind(error) === 'cancelled') return;
       if (requestGeneration === notificationGenerationRef.current) {
-        setNotificationError('تعذّر تحديث الإشعارات\nحاول مرة أخرى');
+        setNotificationError(`تعذّر تحديث الإشعارات\n${learnerCopy.retry}`);
       }
     } finally {
       if (requestGeneration === notificationGenerationRef.current) {
@@ -298,7 +299,7 @@ export function useNotificationsInbox() {
         loadMoreFlightRef.current === flight &&
         requestGeneration === notificationGenerationRef.current
       ) {
-        setNotificationError('تعذّر تحميل الإشعارات الأقدم\nحاول مرة أخرى');
+        setNotificationError(`تعذّر تحميل الإشعارات الأقدم\n${learnerCopy.retry}`);
       }
     } finally {
       if (loadMoreFlightRef.current === flight) {
@@ -448,7 +449,7 @@ export function useNotificationsInbox() {
         )
           return;
         if (requestGeneration === notificationGenerationRef.current) {
-          setNotificationError('تعذّر تحديث حالة القراءة\nحاول مرة أخرى');
+          setNotificationError(`تعذّر تحديث حالة القراءة\n${learnerCopy.retry}`);
           void refreshNotifications();
         }
       } finally {
@@ -518,7 +519,7 @@ export function useNotificationsInbox() {
             return;
           }
           setNotificationError(
-            'هذا الإشعار لم يعد متاحًا\nحدّث الصفحة ثم حاول مرة أخرى',
+            `هذا الإشعار لم يعد متاحًا\nحدّث الصفحة و${learnerCopy.retry}`,
           );
         } catch {
           setNotificationError('تعذّر فتح الإشعار الآن');

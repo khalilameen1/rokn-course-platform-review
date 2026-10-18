@@ -4,6 +4,7 @@ import {subscriptionMessages} from '../../../constants/subscriptionMessages';
 import {Palette} from '../../../constants/designSystem';
 import type {CourseChatUpgradeStatus} from './useCourseChatUpgrade';
 import {courseChatStyles as styles} from './styles';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
 export const CourseChatGate = ({
   accessUnavailable,
@@ -44,7 +45,7 @@ export const CourseChatGate = ({
   const upgradeBody = checking
     ? 'جارٍ التحقق من الترقية المتاحة'
     : failed
-    ? 'حاول مرة أخرى'
+    ? learnerCopy.retry
     : unavailable
     ? planLimitReached
       ? 'لا يوجد اشتراك أعلى يتيح رسائل إضافية لهذا الكورس'

@@ -1,6 +1,7 @@
 import type {CourseAssistantTurnResponse} from '../courseLearning/assistant';
 import type {ChatAttachmentDraft, ChatMessage} from '../types';
 import {courseChatTurnIsPolling} from './policy';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
 export const queueCourseChatTurn = ({
   attachments,
@@ -208,7 +209,7 @@ export const failCourseChatTurn = (
       : item.id === assistantMessageId
       ? {
           ...item,
-          text: 'تعذّر الرد\nحاول مرة أخرى',
+          text: `تعذّر الرد\n${learnerCopy.retry}`,
           deliveryStatus: 'failed' as const,
           errorCode: 'network_unavailable',
           canRetry: true,

@@ -19,11 +19,11 @@ export {
 export {
   markSectionComplete,
   retryPendingSectionCompletions,
-} from './sectionCompletion';
+} from '../../../services/sectionCompletionOutbox';
 
 import {resetPlaybackProgressRuntime} from './playbackProgress';
 import {resetPlaybackSessionRuntime} from './playbackSession';
-import {resetSectionCompletionRuntime} from './sectionCompletion';
+import {resetSectionCompletionRuntime} from '../../../services/sectionCompletionOutbox';
 
 export const resetPlaybackRuntimeState = () => {
   resetPlaybackProgressRuntime();

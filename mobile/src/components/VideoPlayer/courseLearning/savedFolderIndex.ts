@@ -1,5 +1,8 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {publicRequest} from '../../../constants/api';
+import {listSavedFolders} from '../../../services/api/savedFolders';
+import {
+  readSavedFolderIndex,
+  writeSavedFolderIndex,
+} from '../../../services/savedFolderStorage';
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
@@ -20,7 +23,6 @@ type SavedFolderDto = {
   lessons_count?: unknown;
 };
 
-const SAVED_FOLDERS_KEY = '@rokn/saved-folder-options/v1';
 const folderListFlights = new Map<string, Promise<SavedFolderOption[]>>();
 const folderListRevisions = new Map<string, number>();
 const folderCacheWrites = new Map<string, Promise<void>>();
@@ -91,14 +93,11 @@ export const requireSavedFolderList = (value: unknown): SavedFolderDto[] => {
   return value as SavedFolderDto[];
 };
 
-const localSavedFoldersKey = (accountScope: string) =>
-  `${SAVED_FOLDERS_KEY}:${accountScope}`;
-
 const readLocalSavedFolders = async (
   accountScope: string,
 ): Promise<SavedFolderOption[]> => {
   try {
-    const raw = await AsyncStorage.getItem(localSavedFoldersKey(accountScope));
+    const raw = await readSavedFolderIndex(accountScope);
     const parsed = raw ? JSON.parse(raw) : [];
     if (Array.isArray(parsed) && parsed.length) {
       return parsed.filter(validSavedFolderOption).map(folder => {
@@ -140,10 +139,7 @@ const writeLocalSavedFolders = async (
             ? next(await readLocalSavedFolders(accountScope))
             : next;
         if (!isCurrent()) return;
-        await AsyncStorage.setItem(
-          localSavedFoldersKey(accountScope),
-          JSON.stringify(folders),
-        );
+        await writeSavedFolderIndex(accountScope, JSON.stringify(folders));
       }
     });
   folderCacheWrites.set(accountScope, write);
@@ -222,7 +218,7 @@ const loadSavedFolderOptions = async (
       throw new Error('SAVED_COLLECTIONS_AUTH_REQUIRED');
     }
     try {
-      const response = await publicRequest.get('saved-folders');
+      const response = await listSavedFolders();
       const folderPayload = response?.data?.data;
       const folders = requireSavedFolderList(folderPayload).map(mapSavedFolder);
       assertAccountSessionBoundary(accountBoundary);

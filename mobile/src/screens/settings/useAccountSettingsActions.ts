@@ -48,6 +48,7 @@ import {
   peekSecureSession,
   updateSecureSessionForOwner,
 } from '../../services/secureSession';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 export const useAccountSettingsActions = ({
   dispatch,
@@ -113,7 +114,7 @@ export const useAccountSettingsActions = ({
         await openExternalUrlOnce(appStoreUrl);
         return;
       }
-      Alert.alert('تعذّر فتح التقييم', 'حاول مرة أخرى');
+      Alert.alert('تعذّر فتح التقييم', learnerCopy.retry);
     } catch {
       if (Platform.OS === 'android') {
         try {
@@ -125,7 +126,7 @@ export const useAccountSettingsActions = ({
           // Fall through to the same visible recovery as iOS.
         }
       }
-      Alert.alert('تعذّر فتح التقييم', 'حاول مرة أخرى');
+      Alert.alert('تعذّر فتح التقييم', learnerCopy.retry);
     }
   };
 
@@ -208,7 +209,7 @@ export const useAccountSettingsActions = ({
                 .catch(() => false);
             assertAccountSessionBoundary(boundary);
             if (!serverSessionRevoked && !pushInvalidationDurable) {
-              Alert.alert('لم يكتمل تسجيل الخروج', 'حاول مرة أخرى');
+              Alert.alert('لم يكتمل تسجيل الخروج', learnerCopy.retry);
               return;
             }
             // Secure credential deletion is the durable device-side logout
@@ -222,7 +223,7 @@ export const useAccountSettingsActions = ({
                 error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
               )
             ) {
-              Alert.alert('لم يكتمل تسجيل الخروج', 'حاول مرة أخرى');
+              Alert.alert('لم يكتمل تسجيل الخروج', learnerCopy.retry);
             }
           } finally {
             accountExitFlightRef.current = null;
@@ -373,7 +374,7 @@ export const useAccountSettingsActions = ({
         Alert.alert(
           'تعذّر حذف الحساب',
           mismatch
-            ? 'اختر حساب ركن نفسه\nثم حاول مرة أخرى'
+            ? `اختر حساب ركن نفسه\nو${learnerCopy.retry}`
             : 'أكد هويتك من جديد\nأو استخدم صفحة الحذف',
           [
             {text: 'إلغاء', style: 'cancel'},

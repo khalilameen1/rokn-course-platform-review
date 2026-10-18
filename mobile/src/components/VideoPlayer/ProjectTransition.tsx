@@ -39,6 +39,7 @@ import {
   useProjectUploadProgress,
 } from './courseLearning/projectSubmissionProgress';
 import {PortfolioUploadStatus} from '../../screens/Profile/gallery/PortfolioUploadStatus';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 interface ProjectTransitionProps {
   active: boolean;
@@ -380,7 +381,7 @@ const ProjectTransition = ({
                       <Text style={styles.reportRetryText}>
                         {controller.reportRetrying
                           ? 'نحاول الآن'
-                          : 'تعذّر تجهيز التقرير  حاول مرة أخرى'}
+                          : `تعذّر تجهيز التقرير  ${learnerCopy.retry}`}
                       </Text>
                     </Pressable>
                   )}
@@ -475,7 +476,7 @@ const ProjectTransition = ({
                   busy={!controller.submissionDraftRestoreError}
                   description={
                     controller.submissionDraftRestoreError
-                      ? 'حاول مرة أخرى لاستعادة النص والملفات'
+                      ? `${learnerCopy.retry} لاستعادة النص والملفات`
                       : 'نجهّز بيانات التسليم'
                   }
                   title={

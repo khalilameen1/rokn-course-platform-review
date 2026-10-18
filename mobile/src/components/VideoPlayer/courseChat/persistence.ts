@@ -1,5 +1,8 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {learnerDraftStorage} from '../../../services/learnerDraftStorage';
+import {
+  courseChatHistoryKey as historyKey,
+  readCourseChatHistory,
+  writeCourseChatHistory,
+} from '../../../services/courseChatHistoryStorage';
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
@@ -13,7 +16,6 @@ import {
 import {cleanUnicodeText, truncateGraphemes} from '../../../utils/unicodeText';
 import {courseChatTurnIsPolling, courseChatTurnIsUnresolved} from './policy';
 
-const COURSE_CHAT_HISTORY_PREFIX = learnerDraftStorage.courseChat.namespace;
 const MAX_STORED_MESSAGES = 36;
 const writeFlights = new Map<string, Promise<void>>();
 let persistenceGeneration = 0;
@@ -29,16 +31,6 @@ const DELIVERY_STATUSES = new Set([
   'cancelled',
 ]);
 
-const historyKey = async (
-  courseId: string,
-  lessonId?: string,
-  boundary?: AccountSessionBoundary,
-) =>
-  `${COURSE_CHAT_HISTORY_PREFIX}:${
-    boundary?.scope || (await captureAccountSessionBoundary()).scope
-  }:${encodeURIComponent(courseId)}:${encodeURIComponent(
-    lessonId || 'course',
-  )}`;
 const referenceOwner = (courseId: string, lessonId?: string) =>
   `course-chat:${encodeURIComponent(courseId)}:${encodeURIComponent(
     lessonId || 'course',
@@ -178,7 +170,7 @@ export const loadCourseChatHistory = async (
 ): Promise<ChatMessage[]> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   assertAccountSessionBoundary(boundary);
-  const raw = await AsyncStorage.getItem(
+  const raw = await readCourseChatHistory(
     await historyKey(courseId, lessonId, boundary),
   );
   assertAccountSessionBoundary(boundary);
@@ -256,7 +248,7 @@ export const saveCourseChatHistory = async (
     .then(async () => {
       if (generation !== persistenceGeneration) return;
       assertAccountSessionBoundary(boundary);
-      await AsyncStorage.setItem(key, JSON.stringify(durable));
+      await writeCourseChatHistory(key, JSON.stringify(durable));
       assertAccountSessionBoundary(boundary);
       const localFiles = messages
         .flatMap(message => message.attachments || [])

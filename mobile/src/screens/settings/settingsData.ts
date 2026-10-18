@@ -22,11 +22,9 @@ import {
 import {toArabicDigits} from '../../constants/arabicFormatting';
 import appConfig from '../../../app.json';
 import {accountDeletionUrl} from '../../services/publicLinks';
-import {PENDING_WATCH_HISTORY_CLEAR_KEY} from '../../services/pendingAccountWrites';
 
 export {accountDeletionUrl};
 
-export {PENDING_WATCH_HISTORY_CLEAR_KEY};
 export const settingsAppVersion = toArabicDigits(appConfig.expo.version);
 
 export const qualityLabel = (value: string) => {

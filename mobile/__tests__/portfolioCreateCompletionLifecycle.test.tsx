@@ -49,7 +49,7 @@ import {
 } from '../src/services/portfolioDraft';
 import type {PortfolioItem} from '../src/services/api/portfolio';
 import {listPortfolioMediaUploads} from '../src/services/portfolioMediaOutbox';
-import {replayPendingPortfolioMediaUploads} from '../src/services/portfolioMediaReplay';
+import {replayPendingPortfolioMediaUploads} from '../src/services/portfolioMediaDelivery';
 
 const media = {
   id: 71,

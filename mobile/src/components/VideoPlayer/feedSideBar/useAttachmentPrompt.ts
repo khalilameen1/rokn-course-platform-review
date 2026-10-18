@@ -8,7 +8,7 @@ import {peekSecureSession} from '../../../services/secureSession';
 import {
   hasSeenAttachmentPrompt,
   markAttachmentPromptSeen,
-} from '../attachmentPrompt';
+} from '../../../services/attachmentPrompt';
 import type {CourseLearningData} from '../types';
 
 // A bottom sheet can take longer than one animation frame to acquire the

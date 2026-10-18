@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useRef} from 'react';
 
-import {replayPendingPortfolioMediaUploads} from '../../../services/portfolioMediaReplay';
+import {replayPendingPortfolioMediaUploads} from '../../../services/portfolioMediaDelivery';
 
 type Options = {
   appActive: boolean;

@@ -17,6 +17,7 @@ import {
 import {isRestoredSnapshot} from '../../services/query/queryClient';
 import {accountQueryKeys} from '../../services/query/queryKeys';
 import {restoreBeforeFailing} from '../../services/query/queryPersistence';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 const EMPTY_PANELS = {
   paths: [],
@@ -136,7 +137,7 @@ export const useMyCornerData = (identityKey: string) => {
 
   let dashboardError = '';
   if (scopeFailed) {
-    dashboardError = 'تعذّر تجهيز بيانات ركني\nحاول مرة أخرى';
+    dashboardError = `تعذّر تجهيز بيانات ركني\n${learnerCopy.retry}`;
   } else if (session.isError && !session.isFetching) {
     dashboardError = `${friendlyNetworkMessage(
       session.error,

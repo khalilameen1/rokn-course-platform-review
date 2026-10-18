@@ -20,6 +20,7 @@ import {
   Type,
   textDirection,
 } from '../../../constants/designSystem';
+import {learnerCopy} from '../../../constants/learnerCopy';
 import {
   formatRemainingTime,
   formatVideoDuration,
@@ -159,7 +160,7 @@ export const VideoChrome = ({
             accessibilityRole="button"
             style={styles.retryButton}
             onPress={onRetry}>
-            <Text style={styles.retryText}> حاول مرة أخرى</Text>
+            <Text style={styles.retryText}> {learnerCopy.retry}</Text>
           </Pressable>
         </View>
       )}

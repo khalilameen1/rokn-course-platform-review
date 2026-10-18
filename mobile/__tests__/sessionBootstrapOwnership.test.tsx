@@ -49,6 +49,7 @@ jest.mock('../src/navigation/roknLinking', () => ({
 }));
 
 import {useSessionBootstrap} from '../src/screens/appInitializer/useSessionBootstrap';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 let latestBootstrap: ReturnType<typeof useSessionBootstrap> | null = null;
 
@@ -155,7 +156,7 @@ describe('session bootstrap ownership', () => {
     expect(alert).toHaveBeenCalledTimes(1);
     expect(alert).toHaveBeenCalledWith(
       'تعذّر تسجيل الدخول',
-      'تحقق من الاتصال\nثم حاول مرة أخرى',
+      learnerCopy.networkRetry,
       expect.arrayContaining([
         expect.objectContaining({
           text: 'إعادة المحاولة',

@@ -13,8 +13,9 @@ import {
   sessionIdentityKey,
 } from '../../../constants/helpers';
 import type {RootState} from '../../../store/store';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
-const REMOVE_FAILED = 'معرفناش نحدّث المحفوظات\nاتأكد من النت وجرب تاني';
+const REMOVE_FAILED = `معرفناش نحدّث المحفوظات\n${learnerCopy.networkRetry}`;
 
 /**
  * Facebook-style "Save to collection" sheet: each list row shows whether it
@@ -292,7 +293,7 @@ export function useSavedFolderPicker({
       saveInFolder(created);
     } catch {
       if (stillOwned(generation)) {
-        setError('معرفناش نعمل القائمة\nاتأكد من النت وجرب تاني');
+        setError(`معرفناش نعمل القائمة\n${learnerCopy.networkRetry}`);
       }
     } finally {
       if (generation === generationRef.current) creatingRef.current = false;

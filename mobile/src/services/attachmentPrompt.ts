@@ -4,7 +4,7 @@ import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
   type AccountSessionBoundary,
-} from '../../constants/helpers';
+} from '../constants/helpers';
 
 const ATTACHMENT_PROMPT_SEEN = 'course-attachment-prompt-seen:v1';
 

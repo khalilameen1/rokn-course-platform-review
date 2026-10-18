@@ -1,4 +1,8 @@
-import {publicRequest} from '../../../constants/api';
+import {
+  getProjectSubmission,
+  lookupProjectSubmission,
+  postProjectSubmission,
+} from '../../../services/api/projectSubmissions';
 import {requireAiConsent} from '../../../services/aiConsent';
 import {withUploadStallTimeout} from '../../../services/uploadStallTimeout';
 import {publishProjectUploadProgress} from './projectSubmissionProgress';
@@ -13,17 +17,17 @@ import {
   assertProjectSubmissionOwner,
   runSubmissionSync,
   type ProjectSubmissionOperation,
-} from './projectSubmissionOwnership';
+} from '../../../services/projectSubmissionOwnership';
 import {
-  removePendingProjectFiles,
+  retryableProjectSubmissionFailure,
   savePendingProjectSubmission,
-} from './projectSubmissionStore';
+} from '../../../services/projectSubmissionStore';
 import {
   canonicalSubmissionPublicId,
   PUBLIC_SUBMISSION_ID_PATTERN,
   type PendingProjectSubmission,
   type SubmissionSyncResult,
-} from './projectSubmissionTypes';
+} from '../../../services/projectSubmissionTypes';
 
 const makeSubmissionForm = (pending: PendingProjectSubmission) => {
   const form = new FormData();
@@ -82,10 +86,6 @@ const requestStatus = (error: unknown): number | null => {
   return Number.isFinite(status) && status > 0 ? status : null;
 };
 
-export const retryableProjectSubmissionFailure = (error: unknown) => {
-  const status = requestStatus(error);
-  return status === null || status === 408 || status === 429 || status >= 500;
-};
 
 const reportUncertainSubmission = (
   source: 'unknown_upload' | 'invalid_ack',
@@ -107,20 +107,6 @@ const unconfirmedSubmission = (): SubmissionSyncResult => ({
   accepted: false,
   canContinue: false,
 });
-
-export const assertSubmissionRetryWindow = (
-  pending: PendingProjectSubmission,
-) => {
-  const seconds = Math.ceil(
-    (Number(pending.retryAfterAt || 0) - Date.now()) / 1000,
-  );
-  if (seconds > 0) {
-    throw Object.assign(new Error('PROJECT_SUBMISSION_RATE_LIMITED'), {
-      status: 429,
-      retryAfterSeconds: seconds,
-    });
-  }
-};
 
 const submissionRetryAfterSeconds = (error: unknown) => {
   const root = asRecord(error);
@@ -162,9 +148,9 @@ const pollProjectSubmission = async (
     }
     try {
       assertProjectSubmissionOwner(operation);
-      const response = await publicRequest.get(
-        `project-submissions/${canonicalSubmissionPublicId(pending.publicId)}`,
-        {timeout: 12000},
+      const response = await getProjectSubmission(
+        canonicalSubmissionPublicId(pending.publicId),
+        12000,
       );
       assertProjectSubmissionOwner(operation);
       const result = parseSubmissionResult(unwrapResponseData(response));
@@ -201,17 +187,15 @@ const persistAcceptedSubmission = async (
   pending: PendingProjectSubmission,
   operation: ProjectSubmissionOperation,
 ) => {
-  const uploadedFiles = pending.selectedFiles || [];
   try {
     // Keep the old durable files and idempotency key until the server identity
-    // is committed locally. A failed write must not delete the retry payload.
+    // is committed locally; the outbox releases the uploaded files only after
+    // that commit. A failed write must not delete the retry payload.
     await savePendingProjectSubmission(
       {...pending, selectedFiles: []},
       operation,
-      uploadedFiles,
     );
     pending.selectedFiles = [];
-    await removePendingProjectFiles({...pending, selectedFiles: uploadedFiles});
   } catch {
     assertProjectSubmissionOwner(operation);
     void import('../../../services/operationalTelemetry')
@@ -245,12 +229,10 @@ export const recoverSubmissionAcknowledgement = async (
     if (remaining <= 0) return {kind: 'unavailable'};
     let payload: DataRecord;
     try {
-      const response = await publicRequest.get(
-        `projects/${pending.projectId}/submissions/lookup`,
-        {
-          params: {client_submission_id: pending.clientSubmissionId},
-          timeout: remaining,
-        },
+      const response = await lookupProjectSubmission(
+        pending.projectId,
+        pending.clientSubmissionId,
+        remaining,
       );
       assertProjectSubmissionOwner(operation);
       payload = unwrapResponseData(response);
@@ -322,7 +304,8 @@ const performProjectSubmissionSync = async (
     }
     return pollProjectSubmission(pending, operation);
   }
-  assertSubmissionRetryWindow(pending);
+  // A server cooldown is the outbox's `notBefore`: replay skips it and a
+  // learner tap is refused before reaching here.
 
   // Legacy outboxes have no marker and may already exist on the server. A
   // failed lookup is not permission to replay their multipart upload.
@@ -341,11 +324,7 @@ const performProjectSubmissionSync = async (
   await requireAiConsent(operation.boundary);
   assertProjectSubmissionOwner(operation);
   pending.uploadAttempted = true;
-  await savePendingProjectSubmission(
-    pending,
-    operation,
-    pending.selectedFiles || [],
-  );
+  await savePendingProjectSubmission(pending, operation);
   assertProjectSubmissionOwner(operation);
 
   let response: unknown;
@@ -356,17 +335,13 @@ const performProjectSubmissionSync = async (
     publishProjectUploadProgress(pending.projectId, {loaded: 0, total: null});
     response = await withUploadStallTimeout(
       transport =>
-        publicRequest.post(
-          `projects/${pending.projectId}/submissions`,
-          makeSubmissionForm(pending),
-          {
-            ...transport,
-            headers: {
-              'Content-Type': 'multipart/form-data',
-              'Idempotency-Key': pending.clientSubmissionId,
-            },
+        postProjectSubmission(pending.projectId, makeSubmissionForm(pending), {
+          ...transport,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Idempotency-Key': pending.clientSubmissionId,
           },
-        ),
+        }),
       {
         onUploadProgress: event =>
           publishProjectUploadProgress(pending.projectId, {
@@ -411,17 +386,13 @@ const performProjectSubmissionSync = async (
       throw new Error('PROJECT_SUBMISSION_PREVIOUS_ATTEMPT_PENDING');
     }
     if (requestStatus(error) === 429) {
-      // This POST was explicitly refused, not lost in transit. Persist the
-      // server's cooldown so taps, resume and process restart cannot bypass it.
-      pending.retryAfterAt =
-        Date.now() + submissionRetryAfterSeconds(error) * 1000;
-      await savePendingProjectSubmission(
-        pending,
-        operation,
-        pending.selectedFiles || [],
-      );
-      assertProjectSubmissionOwner(operation);
-      assertSubmissionRetryWindow(pending);
+      // This POST was explicitly refused, not lost in transit. The outbox
+      // persists the server's cooldown (`notBefore`) from this coded refusal,
+      // so taps, resume and process restart cannot bypass it.
+      throw Object.assign(new Error('PROJECT_SUBMISSION_RATE_LIMITED'), {
+        status: 429,
+        retryAfterSeconds: submissionRetryAfterSeconds(error),
+      });
     }
     if (retryableProjectSubmissionFailure(error)) {
       return resolveUncertainSubmission(pending, operation, 'unknown_upload');

@@ -23,7 +23,7 @@ jest.mock('../src/constants/helpers', () => ({
 }));
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   getLocalLearningState: jest.requireActual(
-    '../src/components/VideoPlayer/courseLearning/persistence',
+    '../src/services/learningPlayerState',
   ).getLocalLearningState,
   loadCourseLearningData: (...args: unknown[]) => mockLoadMap(...args),
 }));

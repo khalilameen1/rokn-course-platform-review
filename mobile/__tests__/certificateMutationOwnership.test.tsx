@@ -79,6 +79,7 @@ import {
   recoverCertificate,
 } from '../src/services/api/certificates';
 import {useCertificatesController} from '../src/screens/Profile/certificates/useCertificatesController';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 const readyCourse = {
   id: '52',
@@ -542,7 +543,7 @@ describe('certificate issue and recovery presentation ownership', () => {
           : systemActions.shareOnce;
       const expectedAlert =
         action === 'open'
-          ? ['تعذّر فتح الشهادة', 'حاول مرة أخرى']
+          ? ['تعذّر فتح الشهادة', learnerCopy.retry]
           : ['تعذّرت المشاركة', 'جرب تاني'];
       const run = () =>
         action === 'open'

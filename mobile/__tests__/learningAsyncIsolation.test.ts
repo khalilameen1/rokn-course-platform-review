@@ -102,64 +102,10 @@ describe('learning async ownership contracts', () => {
     );
   });
 
-  it('keeps project and completion writes owned by their starting account', () => {
-    const projects =
-      source(
-        'src/components/VideoPlayer/courseLearning/projectSubmissionOutbox.ts',
-      ) +
-      source(
-        'src/components/VideoPlayer/courseLearning/projectSubmissionOwnership.ts',
-      ) +
-      source(
-        'src/components/VideoPlayer/courseLearning/projectSubmissionStore.ts',
-      ) +
-      source(
-        'src/components/VideoPlayer/courseLearning/projectSubmissionTransport.ts',
-      ) +
-      source('src/components/VideoPlayer/courseLearning/projectRemote.ts');
-    const playbackFacade = source(
-      'src/components/VideoPlayer/courseLearning/playback.ts',
-    );
-    const playbackProgress = source(
-      'src/components/VideoPlayer/courseLearning/playbackProgress.ts',
-    );
-    const playbackSession = source(
-      'src/components/VideoPlayer/courseLearning/playbackSession.ts',
-    );
-    const sectionCompletion = source(
-      'src/components/VideoPlayer/courseLearning/sectionCompletion.ts',
-    );
-
-    expect(projects).toContain(
-      'const boundary = await captureAccountSessionBoundary();',
-    );
-    expect(projects).toContain('assertProjectSubmissionOwner(operation);');
-    expect(projects).toContain(
-      'const storageKey = projectSubmissionKey(projectId, accountScope);',
-    );
-    expect(projects).not.toContain('passedProjects');
-    expect(projects).not.toContain('evaluatingProjects');
-    expect(projects).toContain("submissionStatus: 'draft'");
-    expect(projects).toContain('runForegroundSubmission(');
-    expect(projects).toContain('flights.get(key) === flight');
-    expect(projects).toContain('withProjectSubmissionLock(');
-    expect(projects).toContain('boundary.scope,');
-    expect(projects).toMatch(/openAttachment\(input, boundary\)/);
-
-    expect(playbackFacade).not.toContain('publicRequest.');
-    expect(playbackFacade).not.toContain('AsyncStorage.');
-    expect(playbackProgress).toContain('assertWatchHistoryOwner(');
-    expect(playbackProgress).toContain(
-      'watchHistoryFlights.get(key) === flight',
-    );
-    expect(sectionCompletion).toContain('updatePlayerStateForScope(');
-    expect(sectionCompletion).toContain('assertOwner(generation, boundary);');
-    expect(sectionCompletion).toContain(
-      'const key = `${boundary.scope}:${boundary.epoch}:${courseId}:${sectionId}`;',
-    );
-    expect(sectionCompletion).toContain('flights.get(key) === flight');
-    expect(playbackSession).toContain('`${accountScope}:${playbackSessionId}`');
-  });
+  // Project submission, playback evidence and section completion ownership
+  // are exercised through their durable outbox adapters instead of source
+  // text: projectSubmissionOutboxOwnership, playbackEvidenceStorageOrdering,
+  // sectionCompletionOwnership and sectionCompletionAcknowledgement.
 
   it('bounds chat polling while keeping one owned project report read alive at a reduced cadence', () => {
     const chat = source('src/components/VideoPlayer/courseChat/turnPolling.ts');

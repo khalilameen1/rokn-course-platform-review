@@ -812,12 +812,14 @@ describe('course progression boundaries', () => {
 
     expect(
       (await AsyncStorage.getAllKeys()).some(key =>
-        key.startsWith('@rokn/watch-evidence/v1:'),
+        key.startsWith('@rokn/watch-evidence/v2:'),
       ),
     ).toBe(true);
 
     apiPost.mockResolvedValue({} as any);
     await retryPendingPlaybackPositions();
+    // The accepted sample retires in the outbox's order, after the request.
+    await new Promise(resolve => setImmediate(resolve));
 
     expect(apiPost).toHaveBeenLastCalledWith('user/watch-history', {
       lesson_id: 303,
@@ -828,7 +830,7 @@ describe('course progression boundaries', () => {
     });
     expect(
       (await AsyncStorage.getAllKeys()).some(key =>
-        key.startsWith('@rokn/watch-evidence/v1:'),
+        key.startsWith('@rokn/watch-evidence/'),
       ),
     ).toBe(false);
   });

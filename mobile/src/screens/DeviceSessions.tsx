@@ -43,6 +43,7 @@ import {
 import {openGuestLogin} from '../navigation/journeyNavigation';
 import type {RootNavigation} from '../navigation/types';
 import type {RootState} from '../store/store';
+import {learnerCopy} from '../constants/learnerCopy';
 
 const dateLabel = (value?: string | null) => {
   if (!value) return 'غير معروف';
@@ -259,7 +260,7 @@ export default function DeviceSessions() {
                 ) {
                   setSessions([]);
                 } else {
-                  Alert.alert('لم يتم تسجيل الخروج', 'حاول مرة أخرى بعد قليل');
+                  Alert.alert('لم يتم تسجيل الخروج', learnerCopy.retryLater);
                 }
               }
             } finally {
@@ -316,7 +317,7 @@ export default function DeviceSessions() {
                 ) {
                   setSessions([]);
                 } else {
-                  Alert.alert('لم يتم تسجيل الخروج', 'حاول مرة أخرى بعد قليل');
+                  Alert.alert('لم يتم تسجيل الخروج', learnerCopy.retryLater);
                 }
               }
             } finally {
@@ -384,7 +385,7 @@ export default function DeviceSessions() {
                   accessibilityRole="button"
                   style={styles.retryButton}
                   onPress={() => void load()}>
-                  <Text style={styles.retryText}>حاول مرة أخرى</Text>
+                  <Text style={styles.retryText}>{learnerCopy.retry}</Text>
                 </Pressable>
               </View>
             ) : sessions.length === 0 ? (

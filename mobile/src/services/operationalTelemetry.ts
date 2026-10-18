@@ -3,11 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import appConfig from '../../app.json';
 import {roknApiUrl} from '../constants/apiBaseUrl';
-import {
-  enqueueDurableOutbox,
-  flushDurableOutbox,
-  readDurableOutbox,
-} from './durableOutbox';
+import {createDurableOutbox} from './durableOutbox';
 import {sha256Hex} from '../utils/sha256';
 import {
   captureSentryDiagnostic,
@@ -49,6 +45,15 @@ type ClientEventPayload = {
   request_id?: string;
   occurred_at: string;
 };
+
+/** Device-scoped: a crash report outlives the account that saw it. */
+const telemetryOutbox = createDurableOutbox<ClientEventPayload>({
+  namespace: TELEMETRY_OUTBOX_KEY,
+  accountScoped: false,
+  maxItems: MAX_TELEMETRY_EVENTS,
+  ttlMs: 7 * 24 * 60 * 60 * 1000,
+  backoff: {baseMs: 2_000, maxMs: 60 * 60 * 1000},
+});
 
 let recentFingerprintSource = '';
 let recentAt = 0;
@@ -226,12 +231,7 @@ export const reportClientError = (error: Error, context: ErrorContext = {}) => {
     const errorFingerprint = sha256Hex(fingerprintSource);
     const durablePayload = {...payload, error_fingerprint: errorFingerprint};
     await rememberDiagnostic(durablePayload);
-    await enqueueDurableOutbox({
-      storageKey: TELEMETRY_OUTBOX_KEY,
-      id: eventId,
-      payload: durablePayload,
-      maxItems: MAX_TELEMETRY_EVENTS,
-    });
+    await telemetryOutbox.enqueue(eventId, durablePayload);
     await flushOperationalTelemetry();
   })().catch(() => {
     // Diagnostics are not an availability dependency.
@@ -270,13 +270,12 @@ const deliverClientEvent = async (
   }
 };
 
-export const flushOperationalTelemetry = () =>
-  flushDurableOutbox<ClientEventPayload>({
-    storageKey: TELEMETRY_OUTBOX_KEY,
-    deliver: deliverClientEvent,
+export const flushOperationalTelemetry = async () => {
+  await telemetryOutbox.flush({
+    deliver: item => deliverClientEvent(item.payload),
     maxBatch: 8,
-    maxItems: MAX_TELEMETRY_EVENTS,
   });
+};
 
 type NativeExitEvent = {
   event_id?: string;
@@ -318,12 +317,7 @@ export const bootstrapOperationalDiagnostics = async () => {
         occurred_at: nativeEvent.occurred_at,
       };
       await rememberDiagnostic(payload);
-      await enqueueDurableOutbox({
-        storageKey: TELEMETRY_OUTBOX_KEY,
-        id: payload.client_event_id,
-        payload,
-        maxItems: MAX_TELEMETRY_EVENTS,
-      });
+      await telemetryOutbox.enqueue(payload.client_event_id, payload);
       await nativeDiagnostics
         ?.acknowledgePendingExitEvent?.(nativeEvent.event_id)
         .catch(() => false);
@@ -336,9 +330,8 @@ export const bootstrapOperationalDiagnostics = async () => {
 
 export const getOperationalDiagnosticsSnapshot = async () => {
   const history = await readDiagnosticHistory();
-  const pending = await readDurableOutbox<ClientEventPayload>(
-    TELEMETRY_OUTBOX_KEY,
-  );
+  // Diagnostics may render an empty snapshot while storage is unavailable.
+  const pending = await telemetryOutbox.peek().catch(() => []);
   const pendingById = new Map(pending.map(item => [item.id, item]));
   return history
     .map(item => ({

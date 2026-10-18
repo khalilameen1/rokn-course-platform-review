@@ -19,7 +19,7 @@ jest.mock('../src/services/roknApi', () => ({
   removeSavedLessonEverywhereFromCache: jest.fn(),
   removeSavedLessonFromCache: jest.fn(),
 }));
-jest.mock('../src/components/VideoPlayer/courseLearning/persistence', () => ({
+jest.mock('../src/services/learningPlayerState', () => ({
   updatePlayerStateForScope: async (
     _scope: string,
     update: (value: typeof mockPlayerState) => typeof mockPlayerState,

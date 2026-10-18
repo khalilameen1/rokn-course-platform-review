@@ -3,6 +3,7 @@ import {Alert} from 'react-native';
 import type {AccountSessionBoundary} from '../../../constants/helpers';
 import {pausePortfolioMediaDelivery} from '../../../services/portfolioMediaDelivery';
 import {isPortfolioAccountChangedError} from './portfolioModel';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
 /** Presentation owner for one explicitly started/resumed project's transfer. */
 export const usePortfolioUploadSession = (
@@ -35,7 +36,7 @@ export const usePortfolioUploadSession = (
           ownerRef.current === owner &&
           !isPortfolioAccountChangedError(error)
         ) {
-          Alert.alert('تعذّر إيقاف الرفع', 'الرفع مستمر\nحاول مرة أخرى');
+          Alert.alert('تعذّر إيقاف الرفع', `الرفع مستمر\n${learnerCopy.retry}`);
         }
         return false;
       })

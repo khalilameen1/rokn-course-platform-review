@@ -2,7 +2,7 @@ import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
   type AccountSessionBoundary,
-} from '../../../constants/helpers';
+} from '../constants/helpers';
 import type {
   ProjectSubmissionOutcome,
   ProjectSubmissionRetryOutcome,

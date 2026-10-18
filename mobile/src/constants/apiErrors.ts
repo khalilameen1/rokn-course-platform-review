@@ -1,3 +1,5 @@
+import {learnerCopy} from './learnerCopy';
+
 export type APIError = {
   message: string;
   code: number;
@@ -10,7 +12,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
 export const InternalError: APIError = {
-  message: 'تعذّر إكمال الطلب\nحاول مرة أخرى',
+  message: `تعذّر إكمال الطلب\n${learnerCopy.retry}`,
   errors: {},
   code: -500,
   diagnostic_code: 'INTERNAL_REQUEST_ERROR',

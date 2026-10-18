@@ -6,6 +6,7 @@ import Svg, {Path} from 'react-native-svg';
 import {SectionHeading, StatusView} from '../../components/ui/PremiumUI';
 import {toArabicDigits} from '../../constants/arabicFormatting';
 import {Palette} from '../../constants/designSystem';
+import {learnerCopy} from '../../constants/learnerCopy';
 import type {
   FeedbackAttachment,
   ProductFeedbackCategory,
@@ -226,7 +227,7 @@ export const FeedbackForm = ({
       {draftSaveError && !error && (
         <Text accessibilityRole="alert" style={styles.error}>
           لم تُحفظ المسودة على الجهاز
-          {'\n'}حرر مساحة ثم حاول مرة أخرى
+          {'\n'}حرر مساحة و{learnerCopy.retry}
         </Text>
       )}
       <Pressable

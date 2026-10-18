@@ -3,6 +3,7 @@ import {Alert} from 'react-native';
 
 import {shareOnce} from '../../../services/systemActions';
 import {portfolioProjectShareUrl, type Project} from './portfolioModel';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
 /**
  * "Share project" on one published, visible project (Behance/Dribbble share
@@ -29,7 +30,7 @@ export const usePortfolioProjectShare = ({
         url: shareUrl,
       });
     } catch {
-      if (mountedRef.current) Alert.alert('تعذّرت المشاركة', 'جرب تاني');
+      if (mountedRef.current) Alert.alert('تعذّرت المشاركة', learnerCopy.retry);
     }
   }, [mountedRef, selected, shareUrl]);
   return shareUrl ? share : undefined;

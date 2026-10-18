@@ -34,6 +34,7 @@ import {CopyButton} from '../../ui/CopyButton';
 import {AiResponseReportButton} from '../../ui/AiResponseReportButton';
 import {ProjectFeedbackReadRecovery} from './ProjectFeedbackReadRecovery';
 import {ProjectDiscussionUpgradeGate} from './ProjectDiscussionUpgradeGate';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
 // Decorative marks stay inside labelled 48dp targets; all content still uses
 // the OS font scale and the composer keeps its full-width, wrapping layout.
@@ -104,7 +105,7 @@ const MessageAttachments = ({
               projectId,
               threadId,
               file,
-            }).catch(() => Alert.alert('تعذّر فتح الملف', 'حاول مرة أخرى'))
+            }).catch(() => Alert.alert('تعذّر فتح الملف', learnerCopy.retry))
           }>
           <Text numberOfLines={1} style={styles.messageAttachmentName}>
             {formatAuthoredDisplayText(file.name)}

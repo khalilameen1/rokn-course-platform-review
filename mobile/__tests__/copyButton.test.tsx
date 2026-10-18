@@ -3,6 +3,7 @@ import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 import {AccessibilityInfo, Alert, Text} from 'react-native';
 import {CopyButton} from '../src/components/ui/CopyButton';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 jest.mock('@react-native-clipboard/clipboard', () => ({setString: jest.fn()}));
 
@@ -78,7 +79,7 @@ describe('shared icon copy feedback', () => {
     act(() => button().props.onPress());
     expect(button().props.accessibilityValue).toEqual({text: ''});
     expect(jest.getTimerCount()).toBe(0);
-    expect(Alert.alert).toHaveBeenCalledWith('تعذّر النسخ', 'حاول مرة أخرى');
+    expect(Alert.alert).toHaveBeenCalledWith('تعذّر النسخ', learnerCopy.retry);
     expect(AccessibilityInfo.announceForAccessibility).toHaveBeenCalledTimes(1);
   });
 

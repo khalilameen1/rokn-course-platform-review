@@ -118,7 +118,6 @@ describe('keyed async queue', () => {
     'src/services/projectFeedbackDraft.ts',
     'src/services/projectSubmissionDraft.ts',
     'src/services/searchHistory.ts',
-    'src/services/pendingAccountWrites.ts',
     'src/services/productFeedback/drafts.ts',
     'src/services/pushDeviceRegistration.ts',
     'src/services/operationalTelemetry.ts',

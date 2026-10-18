@@ -25,6 +25,7 @@ import {
   formatAuthoredDisplayText,
 } from '../../constants/arabicFormatting';
 import {learnerFacingText} from '../../utils/errorPayload';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 export const ResponsiveFrame = ({
   children,
@@ -117,12 +118,12 @@ export const StatusView = ({
       : formatArabicDisplayText(title);
   const visibleDescription = description
     ? state === 'error'
-      ? learnerFacingText(description, 'حاول مرة أخرى')
+      ? learnerFacingText(description, learnerCopy.retry)
       : formatArabicDisplayText(description)
     : '';
   const visibleAction = actionLabel
     ? state === 'error'
-      ? learnerFacingText(actionLabel, 'حاول مرة أخرى')
+      ? learnerFacingText(actionLabel, learnerCopy.retry)
       : formatArabicDisplayText(actionLabel)
     : '';
 

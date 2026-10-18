@@ -2,10 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {publicRequest} from '../src/constants/api';
 import {
   flushProductEvents,
-  getProductAnalyticsQueueKey,
+  readQueuedProductEvents,
   trackProductEvent,
 } from '../src/services/productAnalytics';
-import {readDurableOutbox} from '../src/services/durableOutbox';
 
 jest.mock('../src/constants/api', () => ({
   publicRequest: {post: jest.fn()},
@@ -41,9 +40,7 @@ describe('product analytics', () => {
       },
       {timeout: 6000},
     );
-    expect(
-      await readDurableOutbox(await getProductAnalyticsQueueKey()),
-    ).toEqual([]);
+    expect(await readQueuedProductEvents()).toEqual([]);
   });
 
   it('keeps an event locally when the endpoint is unavailable', async () => {
@@ -52,9 +49,7 @@ describe('product analytics', () => {
     await trackProductEvent({event_name: 'home_viewed', screen_key: 'home'});
     await flushProductEvents();
 
-    const queued = await readDurableOutbox<any>(
-      await getProductAnalyticsQueueKey(),
-    );
+    const queued = await readQueuedProductEvents();
     expect(queued).toHaveLength(1);
     expect(queued[0].payload.event_name).toBe('home_viewed');
   });

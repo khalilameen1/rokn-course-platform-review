@@ -27,6 +27,7 @@ import {areSmartRemindersSupported} from '../../services/smartReminders';
 import {MoreBellIcon} from '../../assets/SVG';
 import {RoknCoinStack} from './RoknCoin';
 import {useReducedMotion} from '../../hooks/useReducedMotion';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 type PrimerPhase =
   | 'idle'
@@ -205,16 +206,16 @@ export default function NotificationPermissionPrimer({
       return {
         eyebrow: '',
         title: 'تعذّر تفعيل الإشعارات',
-        body: 'تحقق من الاتصال ثم حاول مرة أخرى',
+        body: learnerCopy.networkRetry,
         footnote: '',
-        action: 'حاول مرة أخرى',
+        action: learnerCopy.retry,
       };
     }
     if (phase === 'settings_failed') {
       return {
         eyebrow: '',
         title: 'تعذّر فتح إعدادات الهاتف',
-        body: 'حاول مرة أخرى',
+        body: learnerCopy.retry,
         footnote: '',
         action: 'فتح إعدادات الهاتف',
       };

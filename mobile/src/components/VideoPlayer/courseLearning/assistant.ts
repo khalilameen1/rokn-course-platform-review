@@ -1,4 +1,11 @@
-import {publicRequest, type RoknRequestConfig} from '../../../constants/api';
+import {
+  cancelCourseChatTurn,
+  getAiInputAttachment,
+  getCourseChatMessages,
+  getCourseChatTurn,
+  postCourseChatMessage,
+  uploadCourseChatAttachment,
+} from '../../../services/api/courseChat';
 import {isProductFeatureEnabled} from '../../../services/productFeatures';
 import {
   subscriptionMessages,
@@ -15,6 +22,7 @@ import {cleanUnicodeText} from '../../../utils/unicodeText';
 import {includesCourseAssistant} from '../courseEntitlements';
 import type {ChatMessage, CourseLearningData, CourseReel} from '../types';
 import {asArray, asRecord, valueAsBoolean, valueAsString} from './shared';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
 // The send endpoint only admits the durable turn; the provider work runs on
 // its own queue.  A slow web response must not keep the composer frozen for a
@@ -114,7 +122,7 @@ const mapCourseAssistantTurn = (
     (!rawStatus && !code && !responseText)
   ) {
     return {
-      text: 'لم تكتمل الإجابة\nحاول مرة أخرى',
+      text: `لم تكتمل الإجابة\n${learnerCopy.retry}`,
       offline: false,
       unavailable: true,
       clientRequestId: expectedClientRequestId || responseClientRequestId,
@@ -129,7 +137,7 @@ const mapCourseAssistantTurn = (
       (turnStatus === 'cancelled'
         ? 'تم إيقاف الرد'
         : turnStatus === 'failed'
-        ? 'لم تكتمل الإجابة\nحاول مرة أخرى'
+        ? `لم تكتمل الإجابة\n${learnerCopy.retry}`
         : 'الرد قيد التجهيز\nسيظهر خلال لحظات'),
     offline: false,
     blocked,
@@ -159,12 +167,10 @@ export const loadCourseAssistantHistory = async (
   lessonId?: string,
 ): Promise<ChatMessage[]> => {
   const serverCourseId = requireServerCourseId(courseId);
-  const response = await publicRequest.get('course-chat/messages', {
-    params: {
-      course_id: serverCourseId,
-      lesson_id: lessonId,
-      per_page: 20,
-    },
+  const response = await getCourseChatMessages({
+    course_id: serverCourseId,
+    lesson_id: lessonId,
+    per_page: 20,
   });
   return asArray<Record<string, unknown>>(
     asRecord(response?.data?.data).messages,
@@ -194,7 +200,7 @@ export const loadCourseAssistantHistory = async (
         ? 'أكد اختيارك لمشاركة السؤال مع خدمة الذكاء الاصطناعي ثم أعد المحاولة'
         : role === 'assistant' && status === 'failed'
         ? canRetry
-          ? 'لم تكتمل الإجابة\nحاول مرة أخرى'
+          ? `لم تكتمل الإجابة\n${learnerCopy.retry}`
           : 'تعذّر تأكيد نتيجة الإجابة السابقة'
         : role === 'assistant' && status === 'cancelled'
         ? 'تم إيقاف الرد'
@@ -245,9 +251,7 @@ const openCourseAssistantAttachmentInternal = async (
     expiresAt <= Date.now() + 15000
   ) {
     if (!candidate.serverId) throw new Error('CHAT_ATTACHMENT_UNAVAILABLE');
-    const response = await publicRequest.get(
-      `ai-input-attachments/${encodeURIComponent(candidate.serverId)}`,
-    );
+    const response = await getAiInputAttachment(candidate.serverId);
     assertAccountSessionBoundary(boundary);
     const refreshed = asRecord(asRecord(response?.data).data);
     candidate = {
@@ -297,19 +301,16 @@ export const openCourseAssistantAttachment = (
 export const pollCourseAssistantTurn = async (
   clientRequestId: string,
 ): Promise<CourseAssistantTurnResponse> => {
-  let response: Awaited<ReturnType<typeof publicRequest.get>>;
+  let response: Awaited<ReturnType<typeof getCourseChatTurn>>;
   try {
-    response = await publicRequest.get(
-      `course-chat/turns/${encodeURIComponent(clientRequestId)}`,
-      {
-        timeout: COURSE_CHAT_STATUS_TIMEOUT_MS,
-        // `onRejectedResponse` retries only when this counter is below the
-        // shared ladder length. A status probe has its own outer retry loop,
-        // so mark the inner ladder as already consumed.
-        roknNetworkRetryCount: Number.MAX_SAFE_INTEGER,
-        roknNetworkRetryDeadlineAt: Date.now() + COURSE_CHAT_STATUS_TIMEOUT_MS,
-      } as RoknRequestConfig,
-    );
+    response = await getCourseChatTurn(clientRequestId, {
+      timeout: COURSE_CHAT_STATUS_TIMEOUT_MS,
+      // `onRejectedResponse` retries only when this counter is below the
+      // shared ladder length. A status probe has its own outer retry loop,
+      // so mark the inner ladder as already consumed.
+      roknNetworkRetryCount: Number.MAX_SAFE_INTEGER,
+      roknNetworkRetryDeadlineAt: Date.now() + COURSE_CHAT_STATUS_TIMEOUT_MS,
+    });
   } catch (error: unknown) {
     const failure = asRecord(error);
     const errorResponse = asRecord(failure.response);
@@ -370,10 +371,7 @@ export const cancelCourseAssistantTurn = async (
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   assertAccountSessionBoundary(boundary);
   try {
-    const response = await publicRequest.delete(
-      `course-chat/turns/${encodeURIComponent(clientRequestId)}`,
-      {timeout: 12000},
-    );
+    const response = await cancelCourseChatTurn(clientRequestId, 12000);
     assertAccountSessionBoundary(boundary);
     const receipt = asRecord(response?.data);
     return receipt.success === true && receipt.code === 'chat_turn_cancelled';
@@ -419,15 +417,15 @@ export const askCourseAssistant = async ({
   }
   try {
     onRequestStart?.();
-    const response = await publicRequest.post(
-      `courses/${courseId}/chat`,
+    const response = await postCourseChatMessage(
+      courseId,
       {
         message,
         client_request_id: clientRequestId,
         lesson_id: reel?.lessonId,
         attachment_ids: attachmentIds,
       },
-      {timeout: COURSE_CHAT_REQUEST_TIMEOUT_MS},
+      COURSE_CHAT_REQUEST_TIMEOUT_MS,
     );
     return mapCourseAssistantTurn(response?.data, clientRequestId);
   } catch (error: unknown) {
@@ -554,7 +552,7 @@ export const uploadCourseAssistantAttachment = async ({
   } as unknown as Blob);
   // Abort a stalled attachment, never a slow one that is still moving.
   const response = await withUploadStallTimeout(transport =>
-    publicRequest.post(`courses/${serverCourseId}/chat/attachments`, body, {
+    uploadCourseChatAttachment(serverCourseId, body, {
       ...transport,
       headers: {'Content-Type': 'multipart/form-data'},
     }),

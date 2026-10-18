@@ -45,7 +45,50 @@ import {
   stagePortfolioMediaUpload,
 } from '../src/services/portfolioMediaOutbox';
 import {deliverPortfolioMedia} from '../src/services/portfolioMediaDelivery';
-import {replayPendingPortfolioMediaUploads} from '../src/services/portfolioMediaReplay';
+import {replayPendingPortfolioMediaUploads} from '../src/services/portfolioMediaDelivery';
+
+const outboxKeyFor = (scope: string) =>
+  `@rokn/portfolio-media-outbox/v2:${scope}`;
+type SeedEntry = {
+  projectId: string;
+  clientRequestId: string;
+  file: {uri: string; type?: string};
+  createdAt: number;
+  paused?: boolean;
+  storageKey?: string;
+};
+const pendingShape = (entry: SeedEntry) => ({
+  projectId: entry.projectId,
+  clientRequestId: entry.clientRequestId,
+  file: entry.file,
+  createdAt: entry.createdAt,
+  ...(entry.paused ? {paused: true} : {}),
+});
+/** Seed the durable outbox exactly as a committed staging would. */
+const seed = (key: string, entries: SeedEntry[]) =>
+  AsyncStorage.setItem(
+    key,
+    JSON.stringify(
+      entries.map(entry => ({
+        id: entry.clientRequestId,
+        generation: 1,
+        payload: {...pendingShape(entry), paused: undefined},
+        createdAt: new Date(entry.createdAt).toISOString(),
+        expiresAt: new Date(
+          entry.createdAt + 30 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
+        attempts: 0,
+        nextAttemptAt: new Date(entry.createdAt).toISOString(),
+        ...(entry.paused ? {paused: true} : {}),
+      })),
+    ),
+  );
+/** Pending learner intents without the engine's delivery bookkeeping. */
+const storedEntries = async (key: string) =>
+  JSON.parse((await AsyncStorage.getItem(key))!).map(
+    (stored: {payload: SeedEntry; paused?: boolean}) =>
+      pendingShape({...stored.payload, paused: stored.paused}),
+  );
 
 const item = {
   id: 9,
@@ -134,22 +177,19 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
     'releases the confirmed %s action while terminal native cleanup is stalled',
     async operation => {
       const boundary = mockBoundary;
-      const key = `@rokn/portfolio-media-outbox/v1:${boundary.scope}`;
+      const key = outboxKeyFor(boundary.scope);
       const filePath = `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${
         boundary.scope
       }/${operation === 'delete' ? 'uploaded.jpg' : '.references.json.backup'}`;
       if (operation === 'delete') {
-        await AsyncStorage.setItem(
-          key,
-          JSON.stringify([
+        await seed(key, [
             {
               projectId: '9',
               clientRequestId: '11111111-1111-4111-8111-111111111111',
               file: {uri: `file://${filePath}`, type: 'image/jpeg'},
               createdAt: Date.now(),
             },
-          ]),
-        );
+          ]);
       }
       const gate = deferred<void>();
       const started = deferred<void>();
@@ -215,7 +255,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
 
   it('returns accepted image media while terminal native file cleanup is stalled', async () => {
     const boundary = mockBoundary;
-    const key = `@rokn/portfolio-media-outbox/v1:${boundary.scope}`;
+    const key = outboxKeyFor(boundary.scope);
     const filePath = `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${boundary.scope}/accepted.jpg`;
     const entry = {
       projectId: '9',
@@ -224,7 +264,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
       createdAt: Date.now(),
       storageKey: key,
     };
-    await AsyncStorage.setItem(key, JSON.stringify([entry]));
+    await seed(key, [entry]);
     const gate = deferred<void>();
     const started = deferred<void>();
     (RNFS.unlink as jest.Mock).mockImplementation(async path => {
@@ -267,7 +307,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
 
   it('retains the exact request and file after failed retirement and replays only that identity', async () => {
     const boundary = mockBoundary;
-    const key = `@rokn/portfolio-media-outbox/v1:${boundary.scope}`;
+    const key = outboxKeyFor(boundary.scope);
     const entry = {
       projectId: '9',
       clientRequestId: '33333333-3333-4333-8333-333333333333',
@@ -278,7 +318,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
       createdAt: Date.now(),
       storageKey: key,
     };
-    await AsyncStorage.setItem(key, JSON.stringify([entry]));
+    await seed(key, [entry]);
     const serverIdentities = new Set<string>();
     mockPost.mockImplementation(async (_endpoint, _body, options) => {
       serverIdentities.add(options.headers['Idempotency-Key']);
@@ -294,12 +334,9 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
       await expect(
         deliverPortfolioMedia(entry, boundary),
       ).resolves.toMatchObject({state: 'uploaded', media: {id: '71'}});
-      expect(JSON.parse((await AsyncStorage.getItem(key))!)).toEqual([entry]);
-      expect(
-        (RNFS.unlink as jest.Mock).mock.calls.map(([path]) => path),
-      ).toEqual([
-        `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${boundary.scope}/.references.json.backup`,
-      ]);
+      expect(await storedEntries(key)).toEqual([pendingShape(entry)]);
+      // The learner file stays until its retirement is durable.
+      expect(RNFS.unlink).not.toHaveBeenCalledWith(entry.file.uri.slice(7));
       await expect(
         deliverPortfolioMedia(entry, boundary),
       ).resolves.toMatchObject({state: 'uploaded', media: {id: '71'}});
@@ -314,7 +351,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
 
   it('does not convert an unacknowledged upload failure into completed media', async () => {
     const boundary = mockBoundary;
-    const key = `@rokn/portfolio-media-outbox/v1:${boundary.scope}`;
+    const key = outboxKeyFor(boundary.scope);
     const entry = {
       projectId: '9',
       clientRequestId: '44444444-4444-4444-8444-444444444444',
@@ -322,36 +359,29 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
       createdAt: Date.now(),
       storageKey: key,
     };
-    await AsyncStorage.setItem(key, JSON.stringify([entry]));
+    await seed(key, [entry]);
     mockPost.mockRejectedValueOnce(new Error('NETWORK_TIMEOUT'));
     await expect(deliverPortfolioMedia(entry, boundary)).resolves.toEqual({
       state: 'retry',
     });
-    expect(JSON.parse((await AsyncStorage.getItem(key))!)).toEqual([entry]);
-    expect((RNFS.unlink as jest.Mock).mock.calls.map(([path]) => path)).toEqual(
-      [
-        `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${boundary.scope}/.references.json.backup`,
-      ],
-    );
+    expect(await storedEntries(key)).toEqual([pendingShape(entry)]);
+    expect(RNFS.unlink).not.toHaveBeenCalledWith(entry.file.uri.slice(7));
     expect(mockPost).toHaveBeenCalledTimes(1);
   });
 
   it('keeps later staging behind the raw retirement lock without deleting its new entry or file', async () => {
     const boundary = mockBoundary;
-    const key = `@rokn/portfolio-media-outbox/v1:${boundary.scope}`;
+    const key = outboxKeyFor(boundary.scope);
     const oldPath = `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${boundary.scope}/old.jpg`;
     const nextPath = `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${boundary.scope}/next.jpg`;
-    await AsyncStorage.setItem(
-      key,
-      JSON.stringify([
+    await seed(key, [
         {
           projectId: '9',
           clientRequestId: '55555555-5555-4555-8555-555555555555',
           file: {uri: `file://${oldPath}`},
           createdAt: Date.now(),
         },
-      ]),
-    );
+      ]);
     const gate = deferred<void>();
     const started = deferred<void>();
     (RNFS.unlink as jest.Mock).mockImplementation(async path => {
@@ -401,9 +431,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
         gate.resolve();
         await next;
       });
-      expect(JSON.parse((await AsyncStorage.getItem(key))!)).toEqual([
-        {...nextEntry, storageKey: key, paused: false},
-      ]);
+      expect(await storedEntries(key)).toEqual([pendingShape(nextEntry)]);
       expect(RNFS.unlink).not.toHaveBeenCalledWith(nextPath);
       expect(RNFS.writeFile).toHaveBeenLastCalledWith(
         expect.stringContaining('.references.json.tmp'),
@@ -420,7 +448,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
     'does not finalize while a readable upload remains pending with paused=%s',
     async paused => {
       const boundary = mockBoundary;
-      const key = `@rokn/portfolio-media-outbox/v1:${boundary.scope}`;
+      const key = outboxKeyFor(boundary.scope);
       const path = `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${boundary.scope}/pending.jpg`;
       const entry = {
         projectId: '9',
@@ -429,7 +457,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
         createdAt: Date.now(),
         paused,
       };
-      await AsyncStorage.setItem(key, JSON.stringify([entry]));
+      await seed(key, [entry]);
       jest.spyOn(RNFS, 'stat').mockResolvedValue({
         isFile: () => true,
         size: 128,
@@ -440,7 +468,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
       });
       expect(mockPost).not.toHaveBeenCalled();
       expect(mockDelete).not.toHaveBeenCalled();
-      expect(JSON.parse((await AsyncStorage.getItem(key))!)).toEqual([entry]);
+      expect(await storedEntries(key)).toEqual([pendingShape(entry)]);
       expect(RNFS.unlink).not.toHaveBeenCalledWith(path);
       expect(owner.selected).toEqual(selected);
       expect(owner.saving).toBe(false);
@@ -454,19 +482,16 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
 
   it('does not treat stalled pre-publication pruning as a confirmed finalize', async () => {
     const boundary = mockBoundary;
-    const key = `@rokn/portfolio-media-outbox/v1:${boundary.scope}`;
+    const key = outboxKeyFor(boundary.scope);
     const path = `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${boundary.scope}/unreadable.jpg`;
-    await AsyncStorage.setItem(
-      key,
-      JSON.stringify([
+    await seed(key, [
         {
           projectId: '9',
           clientRequestId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
           file: {uri: `file://${path}`},
           createdAt: Date.now(),
         },
-      ]),
-    );
+      ]);
     // A zero-byte file requires preflight pruning, not retirement following
     // an accepted finalize request.
     jest.spyOn(RNFS, 'stat').mockResolvedValue({
@@ -510,7 +535,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
 
   it('rejects the old account result when ownership changes during terminal cleanup', async () => {
     const boundary = mockBoundary;
-    const key = `@rokn/portfolio-media-outbox/v1:${boundary.scope}`;
+    const key = outboxKeyFor(boundary.scope);
     const path = `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${boundary.scope}/old-owner.jpg`;
     const entry = {
       projectId: '9',
@@ -519,7 +544,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
       createdAt: Date.now(),
       storageKey: key,
     };
-    await AsyncStorage.setItem(key, JSON.stringify([entry]));
+    await seed(key, [entry]);
     const gate = deferred<void>();
     const started = deferred<void>();
     (RNFS.unlink as jest.Mock).mockImplementation(async filePath => {
@@ -536,7 +561,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
         epoch: boundary.epoch + 1,
         scope: `${boundary.scope}-replacement`,
       };
-      const replacementKey = `@rokn/portfolio-media-outbox/v1:${mockBoundary.scope}`;
+      const replacementKey = outboxKeyFor(mockBoundary.scope);
       await AsyncStorage.setItem(replacementKey, 'replacement account data');
       await act(async () => {
         await jest.advanceTimersByTimeAsync(750);
@@ -584,7 +609,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
 
   it('still waits for durable staging before admitting an unaccepted upload', async () => {
     const boundary = mockBoundary;
-    const key = `@rokn/portfolio-media-outbox/v1:${boundary.scope}`;
+    const key = outboxKeyFor(boundary.scope);
     const entry = {
       projectId: '9',
       clientRequestId: '88888888-8888-4888-8888-888888888888',
@@ -627,9 +652,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
         storageKey: key,
         paused: false,
       });
-      expect(JSON.parse((await AsyncStorage.getItem(key))!)).toEqual([
-        {...entry, storageKey: key, paused: false},
-      ]);
+      expect(await storedEntries(key)).toEqual([pendingShape(entry)]);
     } finally {
       gate.resolve();
       await pending;
@@ -639,19 +662,16 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
 
   it('does not update an unmounted gallery after confirmed deletion cleanup times out', async () => {
     const boundary = mockBoundary;
-    const key = `@rokn/portfolio-media-outbox/v1:${boundary.scope}`;
+    const key = outboxKeyFor(boundary.scope);
     const path = `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${boundary.scope}/unmounted.jpg`;
-    await AsyncStorage.setItem(
-      key,
-      JSON.stringify([
+    await seed(key, [
         {
           projectId: '9',
           clientRequestId: '99999999-9999-4999-8999-999999999999',
           file: {uri: `file://${path}`},
           createdAt: Date.now(),
         },
-      ]),
-    );
+      ]);
     const gate = deferred<void>();
     const started = deferred<void>();
     (RNFS.unlink as jest.Mock).mockImplementation(async filePath => {
@@ -690,7 +710,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
 
   it('retires only a server-deleted UUID and continues its sibling upload in the same project', async () => {
     const boundary = mockBoundary;
-    const key = `@rokn/portfolio-media-outbox/v1:${boundary.scope}`;
+    const key = outboxKeyFor(boundary.scope);
     const root = `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${boundary.scope}`;
     const retiredPath = `${root}/retired.jpg`;
     const siblingPath = `${root}/sibling.jpg`;
@@ -707,7 +727,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
       file: {uri: `file://${siblingPath}`, type: 'image/jpeg'},
       createdAt: Date.now(),
     };
-    await AsyncStorage.setItem(key, JSON.stringify([retired, sibling]));
+    await seed(key, [retired, sibling]);
     jest.spyOn(RNFS, 'stat').mockResolvedValue({
       isFile: () => true,
       size: 128,
@@ -741,7 +761,7 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
     const replay = replayPendingPortfolioMediaUploads();
     try {
       await siblingStarted.promise;
-      expect(JSON.parse((await AsyncStorage.getItem(key))!)).toEqual([sibling]);
+      expect(await storedEntries(key)).toEqual([pendingShape(sibling)]);
       expect(RNFS.unlink).toHaveBeenCalledWith(retiredPath);
       expect(RNFS.unlink).not.toHaveBeenCalledWith(siblingPath);
       expect(mockDelete).not.toHaveBeenCalled();

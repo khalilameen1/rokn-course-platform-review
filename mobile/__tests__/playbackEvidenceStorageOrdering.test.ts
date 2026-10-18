@@ -20,20 +20,47 @@ jest.mock('../src/services/roknApi', () => ({
 jest.mock('../src/services/productFeatures', () => ({
   requireProductFeature: jest.fn(async () => undefined),
 }));
-jest.mock('../src/components/VideoPlayer/courseLearning/persistence', () => ({
+jest.mock('../src/services/learningPlayerState', () => ({
   isWatchHistoryEnabled: jest.fn(async () => true),
   updatePlayerStateForScope: jest.fn(async () => undefined),
 }));
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {publicRequest} from '../src/constants/api';
+import {resetDurableOutboxForTests} from '../src/services/durableOutbox';
 import {
   resetPlaybackRuntimeState,
   retryPendingPlaybackPositions,
   savePlaybackPosition,
 } from '../src/components/VideoPlayer/courseLearning/playback';
 
-const key = '@rokn/watch-evidence/v1:user-a:72';
+// The durable outbox keeps one record per account; the v1 per-lesson key is
+// migrated on first read.
+const key = '@rokn/watch-evidence/v2:user-a';
+const legacyKey = '@rokn/watch-evidence/v1:user-a:72';
+const sampleIn = (raw: string | null, lessonId = 72) =>
+  raw === null
+    ? null
+    : (JSON.parse(raw) as Array<{id: string; payload: unknown}>).find(
+        item => item.id === String(lessonId),
+      )?.payload ?? null;
+const storedSample = async (storageKey = key) =>
+  sampleIn(await AsyncStorage.getItem(storageKey));
+const seed = (sample: unknown) =>
+  AsyncStorage.setItem(
+    key,
+    JSON.stringify([
+      {
+        id: '72',
+        generation: 1,
+        payload: sample,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+        attempts: 0,
+        nextAttemptAt: new Date().toISOString(),
+      },
+    ]),
+  );
 const originalRemove = jest
   .mocked(AsyncStorage.removeItem)
   .getMockImplementation()!;
@@ -65,6 +92,7 @@ describe('durable playback evidence acknowledgement ordering', () => {
     await AsyncStorage.clear();
     mockBoundary = {epoch: 1, scope: 'user-a'};
     resetPlaybackRuntimeState();
+    resetDurableOutboxForTests();
     apiPost.mockReset().mockResolvedValue({} as never);
   });
 
@@ -104,7 +132,7 @@ describe('durable playback evidence acknowledgement ordering', () => {
         await saving;
         await ticks();
 
-        expect(JSON.parse((await AsyncStorage.getItem(key)) || 'null')).toEqual(
+        expect(await storedSample()).toEqual(
           expect.objectContaining({positionSeconds: 24}),
         );
         // A runtime restart must still recover the latest unaccepted sample.
@@ -177,7 +205,11 @@ describe('durable playback evidence acknowledgement ordering', () => {
     jest
       .mocked(AsyncStorage.setItem)
       .mockImplementation(async (storageKey, raw) => {
-        if (storageKey === key && JSON.parse(raw).positionSeconds === 24) {
+        if (
+          storageKey === key &&
+          (sampleIn(raw) as {positionSeconds?: number} | null)
+            ?.positionSeconds === 24
+        ) {
           writing = true;
           await write.promise;
         }
@@ -192,7 +224,7 @@ describe('durable playback evidence acknowledgement ordering', () => {
       write.resolve();
       await second;
       await ticks();
-      expect(JSON.parse((await AsyncStorage.getItem(key))!)).toEqual(
+      expect(await storedSample()).toEqual(
         expect.objectContaining({positionSeconds: 24}),
       );
       expect(apiPost).toHaveBeenCalledTimes(1);
@@ -220,7 +252,11 @@ describe('durable playback evidence acknowledgement ordering', () => {
     await ticks();
     jest.advanceTimersByTime(30_000);
     await ticks();
-    expect(apiPost).toHaveBeenCalledTimes(1);
+    // The record whose retirement failed keeps its id; at most the same
+    // accepted sample is replayed (idempotent), never an invented one.
+    apiPost.mock.calls.forEach(call =>
+      expect(call[1]).toEqual(expect.objectContaining({position_seconds: 12})),
+    );
     await savePlaybackPosition('31', 'reel-72', 24, '72', 60);
     expect(apiPost).toHaveBeenLastCalledWith(
       'user/watch-history',
@@ -252,11 +288,9 @@ describe('durable playback evidence acknowledgement ordering', () => {
       expect(apiPost).toHaveBeenCalledTimes(2);
       cleanup.resolve();
       await ticks();
-      expect(
-        JSON.parse(
-          (await AsyncStorage.getItem('@rokn/watch-evidence/v1:user-b:72'))!,
-        ),
-      ).toEqual(expect.objectContaining({positionSeconds: 36}));
+      expect(await storedSample('@rokn/watch-evidence/v2:user-b')).toEqual(
+        expect.objectContaining({positionSeconds: 36}),
+      );
       expect(await AsyncStorage.getItem(key)).toBeNull();
     } finally {
       cleanup.resolve();
@@ -280,14 +314,14 @@ describe('durable playback evidence acknowledgement ordering', () => {
 
   it('does not delete unreadable evidence or send an invented empty sample', async () => {
     const pending = {lessonId: 72, positionSeconds: 12, completed: false};
-    await AsyncStorage.setItem(key, JSON.stringify(pending));
+    await seed(pending);
     jest
       .mocked(AsyncStorage.getItem)
       .mockRejectedValueOnce(new Error('disk unavailable'));
     await retryPendingPlaybackPositions();
     expect(apiPost).not.toHaveBeenCalled();
     expect(AsyncStorage.removeItem).not.toHaveBeenCalled();
-    expect(JSON.parse((await AsyncStorage.getItem(key))!)).toEqual(pending);
+    expect(await storedSample()).toEqual(pending);
     await retryPendingPlaybackPositions();
     expect(apiPost).toHaveBeenCalledTimes(1);
     await ticks();
@@ -316,7 +350,7 @@ describe('durable playback evidence acknowledgement ordering', () => {
       await ticks();
       cleanup.resolve();
       await Promise.all([retrying, saving]);
-      expect(JSON.parse((await AsyncStorage.getItem(key))!)).toEqual(
+      expect(await storedSample()).toEqual(
         expect.objectContaining({positionSeconds: 24}),
       );
     } finally {
@@ -324,5 +358,49 @@ describe('durable playback evidence acknowledgement ordering', () => {
       await Promise.all([retrying, saving]);
       await ticks();
     }
+  });
+
+  it('migrates a v1 per-lesson sample on first read and sends it exactly once', async () => {
+    const pending = {
+      lessonId: 72,
+      positionSeconds: 41,
+      durationSeconds: 60,
+      completed: false,
+      playbackSessionId: 'session-legacy',
+      sequence: 7,
+      writeOwner: '3:9',
+    };
+    await AsyncStorage.setItem(legacyKey, JSON.stringify(pending));
+
+    await retryPendingPlaybackPositions();
+
+    expect(apiPost).toHaveBeenCalledTimes(1);
+    expect(apiPost).toHaveBeenCalledWith(
+      'user/watch-history',
+      expect.objectContaining({
+        lesson_id: 72,
+        position_seconds: 41,
+        playback_session_id: 'session-legacy',
+        sequence: 7,
+      }),
+    );
+    await ticks();
+    expect(await AsyncStorage.getItem(legacyKey)).toBeNull();
+    expect(await AsyncStorage.getItem(key)).toBeNull();
+  });
+
+  it('keeps a migrated v1 sample when the first send fails', async () => {
+    await AsyncStorage.setItem(
+      legacyKey,
+      JSON.stringify({lessonId: 72, positionSeconds: 41, completed: true}),
+    );
+    apiPost.mockRejectedValueOnce(new Error('offline'));
+
+    await retryPendingPlaybackPositions();
+
+    expect(await AsyncStorage.getItem(legacyKey)).toBeNull();
+    expect(await storedSample()).toEqual(
+      expect.objectContaining({positionSeconds: 41, completed: true}),
+    );
   });
 });

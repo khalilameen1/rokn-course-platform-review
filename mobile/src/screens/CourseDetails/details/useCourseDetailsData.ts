@@ -34,6 +34,7 @@ import {
 import {walletQueryOptions} from '../../../services/query/walletQueries';
 import {settleWithin} from '../../../utils/settleWithin';
 import {courseRequiresWallet} from './purchaseTerms';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
 type UseCourseDetailsDataParams = {
   courseId: string;
@@ -335,10 +336,10 @@ export const useCourseDetailsData = ({
   if (!courseId) {
     remoteError = 'عد إلى الرئيسية\nوافتح الكورس من هناك';
   } else if (scopeFailed) {
-    remoteError = 'تعذّر تجهيز تفاصيل الكورس\nحاول مرة أخرى';
+    remoteError = `تعذّر تجهيز تفاصيل الكورس\n${learnerCopy.retry}`;
   } else if (detailsError && !details.isFetching) {
     if (isAccountChange(detailsError)) {
-      remoteError = 'تغيّر الحساب\nحاول مرة أخرى';
+      remoteError = `تغيّر الحساب\n${learnerCopy.retry}`;
     } else if (unavailable) {
       remoteError = UNAVAILABLE_ERROR;
     } else if (!detailsLoaded) {

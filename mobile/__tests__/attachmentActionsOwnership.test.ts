@@ -65,6 +65,7 @@ import {
 } from '../src/components/VideoPlayer/attachmentActions';
 import type {CourseAttachment} from '../src/components/VideoPlayer/types';
 import {beginAttachmentDownloadNotice} from '../src/components/VideoPlayer/attachmentDownloadNotice';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 const loadCourse = loadCourseLearningData as jest.MockedFunction<
   typeof loadCourseLearningData
@@ -221,7 +222,7 @@ describe('course attachment operation ownership', () => {
     expect(Alert.alert).toHaveBeenCalledTimes(1);
     expect(Alert.alert).toHaveBeenCalledWith(
       'تعذّر نسخ الرابط',
-      'حاول مرة أخرى',
+      learnerCopy.retry,
     );
     expect(enqueue).not.toHaveBeenCalled();
     await expect(openCourseAttachment(file)).resolves.toEqual({
@@ -532,7 +533,7 @@ describe('course attachment operation ownership', () => {
       if (reason === 'interruption') {
         expect(Alert.alert).toHaveBeenLastCalledWith(
           'تعذّر تنزيل الملف',
-          'تحقق من الاتصال ثم حاول مرة أخرى',
+          learnerCopy.networkRetry,
         );
       } else expect(Alert.alert).not.toHaveBeenCalled();
 

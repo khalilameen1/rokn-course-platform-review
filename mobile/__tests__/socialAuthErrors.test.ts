@@ -2,6 +2,7 @@ import {
   socialAuthFailureCode,
   socialAuthMessage,
 } from '../src/services/socialAuthErrors';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 describe('social auth failure presentation', () => {
   it('preserves only the backend diagnostic code', () => {
@@ -34,7 +35,7 @@ describe('social auth failure presentation', () => {
     );
     expect(socialAuthFailureCode({code: 'ETIMEDOUT'})).toBe('NETWORK_TIMEOUT');
     expect(socialAuthMessage('NETWORK_TIMEOUT')).toBe(
-      'الاتصال بطيء\nحاول مرة أخرى',
+      `الاتصال بطيء\n${learnerCopy.retry}`,
     );
     expect(
       socialAuthFailureCode(
@@ -49,16 +50,16 @@ describe('social auth failure presentation', () => {
   it('keeps learner copy short and hides cancelled attempts', () => {
     expect(socialAuthMessage('LOGIN_CANCELLED')).toBe('');
     expect(socialAuthMessage('SOCIAL_LOGIN_EXPIRED')).toBe(
-      'انتهت محاولة الدخول\nحاول مرة أخرى',
+      `انتهت محاولة الدخول\n${learnerCopy.retry}`,
     );
     expect(socialAuthMessage('LOGIN_FAILED')).toBe(
-      'لم يكتمل تسجيل الدخول\nحاول مرة أخرى',
+      `لم يكتمل تسجيل الدخول\n${learnerCopy.retry}`,
     );
     expect(socialAuthMessage('LOGIN_BROWSER_UNAVAILABLE')).toBe(
-      'تعذّر فتح صفحة الدخول\nحاول مرة أخرى',
+      `تعذّر فتح صفحة الدخول\n${learnerCopy.retry}`,
     );
     expect(socialAuthMessage('SOCIAL_PROVIDER_UNAVAILABLE')).toBe(
-      'تعذّر الوصول إلى الحساب\nحاول مرة أخرى',
+      `تعذّر الوصول إلى الحساب\n${learnerCopy.retry}`,
     );
   });
 });

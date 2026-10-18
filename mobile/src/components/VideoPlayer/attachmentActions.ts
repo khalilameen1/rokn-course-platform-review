@@ -45,6 +45,7 @@ import {
   attachmentResponseIsHtml,
   type AttachmentMetadata,
 } from './attachmentMetadata';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 const downloadFlights = new Map<
   string,
@@ -186,7 +187,7 @@ const showExternalDownloadFallback = (
                 if (attachmentOwnerIsActive(operation)) {
                   Alert.alert(
                     'تعذّر فتح المصدر',
-                    'تحقق من الاتصال ثم حاول مرة أخرى',
+                    learnerCopy.networkRetry,
                   );
                 }
               }
@@ -194,7 +195,7 @@ const showExternalDownloadFallback = (
               if (attachmentOwnerIsActive(operation)) {
                 Alert.alert(
                   'تعذّر فتح المصدر',
-                  'تحقق من الاتصال ثم حاول مرة أخرى',
+                  learnerCopy.networkRetry,
                 );
               }
             }
@@ -221,7 +222,7 @@ const openCourseAttachmentInternal = async (
     if (!attachmentOwnerIsActive(operation)) {
       return emptyResult();
     }
-    Alert.alert('تعذّر تجهيز الملف', 'تحقق من الاتصال ثم حاول مرة أخرى');
+    Alert.alert('تعذّر تجهيز الملف', learnerCopy.networkRetry);
     return emptyResult();
   }
 
@@ -230,7 +231,7 @@ const openCourseAttachmentInternal = async (
   }
 
   if (!isAllowedRemoteUrl(currentAttachment.url)) {
-    Alert.alert('الرابط غير متاح', 'حاول مرة أخرى\nأو تواصل مع الدعم');
+    Alert.alert('الرابط غير متاح', `${learnerCopy.retry}\nأو تواصل مع الدعم`);
     return emptyResult();
   }
 
@@ -243,7 +244,7 @@ const openCourseAttachmentInternal = async (
     try {
       Clipboard.setString(computerUrl);
     } catch {
-      Alert.alert('تعذّر نسخ الرابط', 'حاول مرة أخرى');
+      Alert.alert('تعذّر نسخ الرابط', learnerCopy.retry);
       return emptyResult();
     }
     const temporaryLink =
@@ -373,7 +374,7 @@ const openCourseAttachmentInternal = async (
         if (!attachmentOwnerIsActive(operation)) return emptyResult();
         Alert.alert(
           'المساحة لا تكفي',
-          'وفّر مساحة على الهاتف ثم حاول مرة أخرى',
+          `وفّر مساحة على الهاتف و${learnerCopy.retry}`,
         );
         return emptyResult();
       }
@@ -390,7 +391,7 @@ const openCourseAttachmentInternal = async (
           return openCourseAttachmentInternal(refreshed, operation, true);
         } catch {
           if (!attachmentOwnerIsActive(operation)) return emptyResult();
-          Alert.alert('تعذّر تنزيل الملف', 'تحقق من الاتصال ثم حاول مرة أخرى');
+          Alert.alert('تعذّر تنزيل الملف', learnerCopy.networkRetry);
           return emptyResult();
         }
       }
@@ -399,7 +400,7 @@ const openCourseAttachmentInternal = async (
         signedUrlRefreshAttempted
       ) {
         if (!attachmentOwnerIsActive(operation)) return emptyResult();
-        Alert.alert('تعذّر تنزيل الملف', 'تحقق من الاتصال ثم حاول مرة أخرى');
+        Alert.alert('تعذّر تنزيل الملف', learnerCopy.networkRetry);
         return emptyResult();
       }
       // Fall through to the direct URL so a native integration issue never blocks the learner.
@@ -417,7 +418,7 @@ const openCourseAttachmentInternal = async (
       return emptyResult();
     }
     if (!attachmentOwnerIsActive(operation)) return emptyResult();
-    Alert.alert('تعذّر تنزيل الملف', 'تحقق من الاتصال ثم حاول مرة أخرى');
+    Alert.alert('تعذّر تنزيل الملف', learnerCopy.networkRetry);
     return emptyResult();
   }
 
@@ -429,7 +430,7 @@ const openCourseAttachmentInternal = async (
     return emptyResult();
   }
   if (!hasSpace) {
-    Alert.alert('المساحة لا تكفي', 'وفّر مساحة على الهاتف ثم حاول مرة أخرى');
+    Alert.alert('المساحة لا تكفي', `وفّر مساحة على الهاتف و${learnerCopy.retry}`);
     return emptyResult();
   }
   const attachmentCacheFolder = `${
@@ -590,7 +591,7 @@ const openCourseAttachmentInternal = async (
       return emptyResult();
     }
     if (attachmentOwnerIsActive(operation)) {
-      Alert.alert('تعذّر تنزيل الملف', 'تحقق من الاتصال ثم حاول مرة أخرى');
+      Alert.alert('تعذّر تنزيل الملف', learnerCopy.networkRetry);
     }
     return emptyResult();
   } finally {
@@ -630,7 +631,7 @@ export const openCourseAttachment = async (
         attachmentOwnerIsActive(operation) &&
         downloadFlights.get(key) === flight
       ) {
-        Alert.alert('تعذّر فتح الملف', 'تحقق من الاتصال ثم حاول مرة أخرى');
+        Alert.alert('تعذّر فتح الملف', learnerCopy.networkRetry);
       }
       return emptyResult();
     },

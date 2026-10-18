@@ -1,7 +1,10 @@
 import appConfig from '../../../../app.json';
 import {Dimensions, Platform} from 'react-native';
 
-import {publicRequest} from '../../../constants/api';
+import {
+  postWatchHistorySample,
+  requestPlaybackManifest,
+} from '../../../services/api/playback';
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
@@ -144,7 +147,7 @@ export const postPlaybackSample = (
   const send = async () => {
     assertOwner(generation, boundary);
     try {
-      const response = await publicRequest.post('user/watch-history', payload);
+      const response = await postWatchHistorySample(payload);
       assertOwner(generation, boundary);
       publishCourseRevisionChange(response, sourceLessonId);
       return response;
@@ -321,18 +324,14 @@ export const openPlaybackSession = async (
   assertOwner(generation, boundary);
   await requireProductFeature('playback');
   assertOwner(generation, boundary);
-  const response = await publicRequest.post(
-    `lessons/${numericLessonId}/playback-manifest`,
-    {
-      client: Platform.OS,
-      capability_version: 2,
-      ...(preference.playbackSessionId
-        ? {playback_session_id: preference.playbackSessionId}
-        : {}),
-      client_capabilities: playbackClientCapabilities(preference),
-    },
-    {timeout: 8000},
-  );
+  const response = await requestPlaybackManifest(numericLessonId, {
+    client: Platform.OS,
+    capability_version: 2,
+    ...(preference.playbackSessionId
+      ? {playback_session_id: preference.playbackSessionId}
+      : {}),
+    client_capabilities: playbackClientCapabilities(preference),
+  });
   assertOwner(generation, boundary);
   const raw = response?.data?.data || response?.data;
   const sourceUrl = valueAsString(raw?.source_url || raw?.url);

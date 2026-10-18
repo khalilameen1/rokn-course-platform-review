@@ -23,7 +23,7 @@ jest.mock('../src/services/roknApi', () => ({
 import * as facade from '../src/components/VideoPlayer/courseLearningApi';
 import * as assistant from '../src/components/VideoPlayer/courseLearning/assistant';
 import * as mapping from '../src/components/VideoPlayer/courseLearning/mapping';
-import * as persistence from '../src/components/VideoPlayer/courseLearning/persistence';
+import * as persistence from '../src/services/learningPlayerState';
 import * as playback from '../src/components/VideoPlayer/courseLearning/playback';
 import * as projects from '../src/components/VideoPlayer/courseLearning/projects';
 import * as savedCollections from '../src/components/VideoPlayer/courseLearning/savedCollections';

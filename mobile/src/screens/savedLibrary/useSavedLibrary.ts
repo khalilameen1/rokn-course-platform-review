@@ -24,6 +24,7 @@ import type {SavedLesson} from '../../services/roknApi';
 import type {RootState} from '../../store/store';
 import {SavedLibrarySnapshot} from './SavedLibrarySnapshot';
 import {useSavedLibraryRead} from './useSavedLibraryRead';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 type SavedGroup = {
   name: string;
@@ -135,7 +136,7 @@ export function useSavedLibrary(initialFolderId?: string) {
       setShowCreateFolder(false);
     } catch {
       if (operation.isCurrent()) {
-        setFolderError('تعذّر إنشاء القائمة\nتحقق من الاتصال ثم حاول مرة أخرى');
+        setFolderError(`تعذّر إنشاء القائمة\n${learnerCopy.networkRetry}`);
       }
     } finally {
       if (createFolderFlightRef.current === flight) {
@@ -214,7 +215,7 @@ export function useSavedLibrary(initialFolderId?: string) {
       } catch {
         if (stillOwned()) {
           if (removal) snapshot.rollbackLessonRemoval(removal);
-          setActionError('تعذّرت إزالة المقطع\nحاول مرة أخرى');
+          setActionError(`تعذّرت إزالة المقطع\n${learnerCopy.retry}`);
         }
       } finally {
         if (removeFlightsRef.current.get(key) === flight) {
@@ -295,7 +296,7 @@ export function useSavedLibrary(initialFolderId?: string) {
                     restoreFolderSelection(folder.id);
                   }
                   setFolderError(
-                    'تعذّر حذف القائمة\nتحقق من الاتصال وحاول مرة أخرى',
+                    `تعذّر حذف القائمة\n${learnerCopy.networkRetry}`,
                   );
                 }
               } finally {

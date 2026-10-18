@@ -14,7 +14,7 @@ jest.mock(
   '../src/components/VideoPlayer/courseLearning/navigationHandoff',
   () => ({learningNavigationHandoff: {take: () => null}}),
 );
-jest.mock('../src/components/VideoPlayer/courseLearning/persistence', () => ({
+jest.mock('../src/services/learningPlayerState', () => ({
   emptyLocalLearningState: () => ({positions: {}, savedLessons: []}),
   overlayLocalLearningState: (course: unknown) => course,
 }));

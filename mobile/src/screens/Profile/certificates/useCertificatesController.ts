@@ -26,6 +26,7 @@ import {useAttachmentDownloadCancellation} from '../../../components/VideoPlayer
 import type {CourseAttachment} from '../../../components/VideoPlayer/types';
 import {useAppForegroundState} from '../../../hooks/useAppActiveState';
 import {settleWithin} from '../../../utils/settleWithin';
+import {learnerCopy} from '../../../constants/learnerCopy';
 
 type CertificateMutationFlight = {
   presentation: number;
@@ -391,7 +392,7 @@ export function useCertificatesController(
         recoveryResults.every(result => result.status === 'rejected') &&
         ownsIssue(flight, identityKey)
       ) {
-        setLoadError('تعذّر تحديث الشهادة الآن\nحاول مرة أخرى');
+        setLoadError(`تعذّر تحديث الشهادة الآن\n${learnerCopy.retry}`);
       }
     } catch (error: unknown) {
       if (!ownsIssue(flight, identityKey)) return;
@@ -401,7 +402,7 @@ export function useCertificatesController(
       ) {
         return;
       }
-      setLoadError('تعذّر تحديث الشهادة الآن\nحاول مرة أخرى');
+      setLoadError(`تعذّر تحديث الشهادة الآن\n${learnerCopy.retry}`);
     } finally {
       await finishIssueFlight(flight);
     }
@@ -462,7 +463,7 @@ export function useCertificatesController(
       await openExternalUrlOnce(activeCertificateLink);
     } catch {
       if (!ownsIdentity(owner)) return;
-      Alert.alert('تعذّر فتح الشهادة', 'حاول مرة أخرى');
+      Alert.alert('تعذّر فتح الشهادة', learnerCopy.retry);
     }
   };
 
@@ -476,7 +477,7 @@ export function useCertificatesController(
       });
     } catch {
       if (!ownsIdentity(owner)) return;
-      Alert.alert('تعذّرت المشاركة', 'جرب تاني');
+      Alert.alert('تعذّرت المشاركة', learnerCopy.retry);
     }
   };
 
@@ -597,7 +598,7 @@ export function useCertificatesController(
       }
       Alert.alert(
         'تعذّر إصدار الشهادة',
-        learnerErrorMessage(error, 'حاول مرة أخرى'),
+        learnerErrorMessage(error, learnerCopy.retry),
       );
       // A timed-out POST has an unknown outcome. Keep the issue single-flight
       // until the authoritative list has been reconciled so a fast second tap
@@ -644,7 +645,7 @@ export function useCertificatesController(
       }
       Alert.alert(
         'تعذّر تجهيز الشهادة',
-        learnerErrorMessage(error, 'حاول مرة أخرى'),
+        learnerErrorMessage(error, learnerCopy.retry),
       );
     } finally {
       await finishIssueFlight(flight);

@@ -14,7 +14,7 @@ import {
 import {
   emptyLocalLearningState,
   overlayLocalLearningState,
-} from '../../components/VideoPlayer/courseLearning/persistence';
+} from '../../services/learningPlayerState';
 import {settleWithin} from '../../utils/settleWithin';
 import {
   loadProjectResolution,

@@ -23,7 +23,8 @@ import {
   markSectionComplete,
   resetSectionCompletionRuntime,
   retryPendingSectionCompletions,
-} from '../src/components/VideoPlayer/courseLearning/sectionCompletion';
+} from '../src/services/sectionCompletionOutbox';
+import {resetDurableOutboxForTests} from '../src/services/durableOutbox';
 
 const mockPost = publicRequest.post as jest.Mock;
 const rawSet = jest.mocked(AsyncStorage.setItem).getMockImplementation()!;
@@ -38,8 +39,14 @@ const deferred = <T>() => {
 const tick = async () => {
   for (let i = 0; i < 50; i++) await Promise.resolve();
 };
+/** The v1 per-section record; still seeded to prove first-read migration. */
 const pendingKey = () =>
   `@rokn/section-completion/v1:${mockBoundary.scope}:31:72`;
+const outboxKey = () => `@rokn/section-completion/v2:${mockBoundary.scope}`;
+const outboxPayloads = async () =>
+  JSON.parse((await AsyncStorage.getItem(outboxKey())) || '[]').map(
+    (item: {payload: unknown}) => item.payload,
+  );
 const playerKey = () => `@rokn/course-player/v3:${mockBoundary.scope}`;
 let ownerSequence = 0;
 
@@ -52,6 +59,7 @@ describe('authoritative completion delivery with optional cache repair', () => {
       epoch: ownerSequence,
     };
     resetSectionCompletionRuntime();
+    resetDurableOutboxForTests();
     mockPost.mockReset().mockResolvedValue({});
   });
   afterEach(async () => {
@@ -115,10 +123,36 @@ describe('authoritative completion delivery with optional cache repair', () => {
       await retry;
       expect(mockPost).toHaveBeenCalledTimes(1);
       expect(await AsyncStorage.getItem(pendingKey())).toBeNull();
+      expect(await outboxPayloads()).toEqual([]);
     } finally {
       cleanup.resolve();
       await tick();
     }
+  });
+
+  it('migrates a v1 record on first retry and replays it once', async () => {
+    await AsyncStorage.setItem(
+      pendingKey(),
+      JSON.stringify({courseId: '31', sectionId: '72'}),
+    );
+    await AsyncStorage.setItem(
+      `@rokn/section-completion/v1:${mockBoundary.scope}:31:73`,
+      JSON.stringify({courseId: '31', sectionId: '73'}),
+    );
+    mockPost
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce({response: {status: 503}});
+
+    await retryPendingSectionCompletions();
+
+    expect(mockPost.mock.calls.map(call => call[0]).sort()).toEqual([
+      'courses/31/sections/72/complete',
+      'courses/31/sections/73/complete',
+    ]);
+    expect(await AsyncStorage.getItem(pendingKey())).toBeNull();
+    const left = JSON.parse((await AsyncStorage.getItem(outboxKey()))!);
+    expect(left).toHaveLength(1);
+    expect(left[0].attempts).toBe(1);
   });
 
   it('still requires durable retry recording when the server has not acknowledged completion', async () => {
@@ -138,13 +172,15 @@ describe('authoritative completion delivery with optional cache repair', () => {
       await tick();
       expect(settled).toBe(false);
       expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-        pendingKey(),
-        JSON.stringify({courseId: '31', sectionId: '72'}),
+        outboxKey(),
+        expect.stringContaining('"payload":{"courseId":"31","sectionId":"72"}'),
       );
       write.resolve();
       await expect(completed).resolves.toBe(false);
       expect(await AsyncStorage.getItem(playerKey())).toBeNull();
-      expect(await AsyncStorage.getItem(pendingKey())).not.toBeNull();
+      expect(await outboxPayloads()).toEqual([
+        {courseId: '31', sectionId: '72'},
+      ]);
     } finally {
       write.resolve();
       await tick();
@@ -177,10 +213,10 @@ describe('authoritative completion delivery with optional cache repair', () => {
       expect(mockPost).toHaveBeenCalledTimes(2);
       cleanup.resolve();
       await expect(fresh).resolves.toBe(false);
-      expect(JSON.parse((await AsyncStorage.getItem(pendingKey()))!)).toEqual({
-        courseId: '31',
-        sectionId: '72',
-      });
+      expect(await outboxPayloads()).toEqual([
+        {courseId: '31', sectionId: '72'},
+      ]);
+      expect(await AsyncStorage.getItem(pendingKey())).toBeNull();
     } finally {
       cleanup.resolve();
       await tick();

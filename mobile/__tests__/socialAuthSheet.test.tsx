@@ -10,6 +10,7 @@ import {
 import * as AppleAuthentication from 'expo-apple-authentication';
 import SocialAuthView from '../src/components/auth/SocialAuthView';
 import {Palette, Spacing} from '../src/constants/designSystem';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 const mockInsets = {top: 24, bottom: 34, left: 0, right: 0};
 let mockDimensions = {width: 320, height: 568, scale: 1, fontScale: 1};
@@ -151,7 +152,7 @@ describe('social sign-in sheet', () => {
     mount(props);
     expect(
       renderer.root.findAllByType(Text).map(node => node.props.children),
-    ).toContain('تحقق من الاتصال\nثم حاول مرة أخرى');
+    ).toContain(learnerCopy.networkRetry);
     act(() => button('إعادة تحميل طرق تسجيل الدخول').props.onPress());
     expect(props.onRetry).toHaveBeenCalledTimes(1);
     expect(button('إغلاق').props.disabled).toBe(false);

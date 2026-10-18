@@ -40,17 +40,15 @@ jest.mock('../src/services/pushDeviceRegistration', () => ({
   registerPushDeviceIfEligible: async () => true,
   unregisterPushDevice: async () => undefined,
 }));
-jest.mock('../src/screens/settings/settingsData', () => ({
-  PENDING_WATCH_HISTORY_CLEAR_KEY: '@rokn/pending-watch-history-clear/v1',
-}));
+jest.mock('../src/screens/settings/settingsData', () => ({}));
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () =>
-  jest.requireActual('../src/components/VideoPlayer/courseLearning/persistence'));
+  jest.requireActual('../src/services/learningPlayerState'));
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {resetDurableOutboxForTests} from '../src/services/durableOutbox';
 import {
+  flushAccountWrites as flushPrivacyPreferenceWrites,
   flushPendingAccountWrites,
-  flushPrivacyPreferenceWrites,
-  PENDING_PRIVACY_PREFERENCES_KEY,
-  PENDING_WATCH_HISTORY_CLEAR_KEY,
   queuePendingPrivacyPreferences,
   readPendingPrivacyPreferences,
 } from '../src/services/pendingAccountWrites';
@@ -61,6 +59,7 @@ import {
 import {getProfile} from '../src/services/api/accountProfile';
 import {REMINDER_HOUR_KEY, getSmartReminderHour} from '../src/services/smartReminders';
 import {useSettingsPreferences} from '../src/screens/settings/useSettingsPreferences';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 const deferred = <T>() => {
   let resolve!: (value: T) => void;
@@ -69,6 +68,21 @@ const deferred = <T>() => {
   return {promise, resolve, reject};
 };
 const key = (base: string, owner = mockBoundary) => `${base}:${owner.scope}`;
+const LEGACY_PRIVACY_KEY = '@rokn/pending-privacy-preferences/v1';
+const LEGACY_WATCH_CLEAR_KEY = '@rokn/pending-watch-history-clear/v1';
+const outboxKey = (owner = mockBoundary) => `@rokn/account-writes/v1:${owner.scope}`;
+/** The account-write outbox item of one kind; its generation is the revision. */
+const outboxItem = async (id: string, owner = mockBoundary) => {
+  const raw = await AsyncStorage.getItem(outboxKey(owner));
+  return raw
+    ? (JSON.parse(raw) as Array<{id: string; generation: number; payload: {patch?: unknown}}>)
+      .find(item => item.id === id)
+    : undefined;
+};
+const journal = async (owner = mockBoundary) => {
+  const item = await outboxItem('privacy_preferences', owner);
+  return item ? {revision: item.generation, patch: item.payload.patch} : undefined;
+};
 const reminder = (hour: number) => ({
   learningReminderHour: hour, learningReminderTimezone: 'Asia/Kolkata',
 });
@@ -100,9 +114,11 @@ const selectReminder = async (hour: number) => {
 // Real journal, account-native writer, reminder cache and HTTP payload adapter.
 // Only native storage/session and network transport are seams. Not executed yet.
 describe('account reminder preference admission and exact acknowledgement', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     mockBoundary = {scope: 'user-reminder', epoch: mockBoundary.epoch + 1};
     mockValues.clear();
+    await AsyncStorage.clear();
+    resetDurableOutboxForTests();
     mockValues.set('USER_DATA', {id: 7, api_token: 'test-token'});
     mockSave.mockReset().mockImplementation(async (storageKey: string, value: unknown) => {
       mockValues.set(storageKey, value);
@@ -118,15 +134,12 @@ describe('account reminder preference admission and exact acknowledgement', () =
 
   it('retains offline intent and mirrors the selected hour through the actual reminder service', async () => {
     await write(reminder(10));
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual(reminder(10));
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual(reminder(10));
     expect(await getSmartReminderHour(mockBoundary)).toBe(10);
     expect(mockPut).toHaveBeenCalledWith('user/profile', {
       learning_reminder_hour: 10, learning_reminder_timezone: 'Asia/Kolkata',
     });
-    expect(mockValues.get(key(PENDING_PRIVACY_PREFERENCES_KEY))).toEqual({
-      revision: 1, patch: reminder(10),
-    });
-    expect(mockRemove).not.toHaveBeenCalled();
+    expect(await journal()).toEqual({revision: 1, patch: reminder(10)});
   });
 
   it('persists a second selection without waiting for a slow PUT and old ACK cannot delete it', async () => {
@@ -138,31 +151,30 @@ describe('account reminder preference admission and exact acknowledgement', () =
     await settleScheduledWork();
     expect(mockPut).toHaveBeenCalledTimes(1);
     await queuePendingPrivacyPreferences(reminder(15), mockBoundary);
-    expect(mockValues.get(key(PENDING_PRIVACY_PREFERENCES_KEY))).toEqual({
-      revision: 2, patch: reminder(15),
-    });
+    expect(await journal()).toEqual({revision: 2, patch: reminder(15)});
     expect(await getSmartReminderHour(mockBoundary)).toBe(15);
     first.resolve(receipt({learning_reminder_hour: 10, learning_reminder_timezone: 'Asia/Kolkata'}));
     await settleScheduledWork();
     expect(mockPut).toHaveBeenCalledTimes(2);
-    expect(mockRemove).not.toHaveBeenCalled();
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual(reminder(15));
+    expect(await journal()).toEqual({revision: 2, patch: reminder(15)});
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual(reminder(15));
     second.resolve(receipt({learning_reminder_hour: 15, learning_reminder_timezone: 'Asia/Kolkata'}));
     await worker;
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual({});
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual({});
     expect(await getSmartReminderHour(mockBoundary)).toBe(15);
   });
 
-  it('preserves plain v1 privacy intents while merging a new reminder pair', async () => {
-    mockValues.set(key(PENDING_PRIVACY_PREFERENCES_KEY), {
+  it('migrates plain v1 privacy intents on first read while merging a new reminder pair', async () => {
+    await AsyncStorage.setItem(key(LEGACY_PRIVACY_KEY), JSON.stringify({
+      watchHistoryEnabled: false, marketingNotificationsEnabled: true,
+    }));
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual({
       watchHistoryEnabled: false, marketingNotificationsEnabled: true,
     });
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual({
-      watchHistoryEnabled: false, marketingNotificationsEnabled: true,
-    });
+    expect(await AsyncStorage.getItem(key(LEGACY_PRIVACY_KEY))).toBeNull();
     await write(reminder(15));
-    expect(mockValues.get(key(PENDING_PRIVACY_PREFERENCES_KEY))).toEqual({
-      revision: 1, patch: {
+    expect(await journal()).toEqual({
+      revision: 2, patch: {
         watchHistoryEnabled: false, marketingNotificationsEnabled: true, ...reminder(15),
       },
     });
@@ -171,24 +183,26 @@ describe('account reminder preference admission and exact acknowledgement', () =
   });
 
   it('replays legacy intent alone and keeps its fields when the server does not acknowledge them', async () => {
-    mockValues.set(key(PENDING_PRIVACY_PREFERENCES_KEY), {watchHistoryEnabled: false});
+    await AsyncStorage.setItem(key(LEGACY_PRIVACY_KEY), JSON.stringify({
+      revision: 4, patch: {watchHistoryEnabled: false},
+    }));
     mockPut.mockResolvedValue(receipt({watch_history_enabled: true}));
     await flushPrivacyPreferenceWrites(mockBoundary);
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual({watchHistoryEnabled: false});
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual({watchHistoryEnabled: false});
     mockPut.mockResolvedValue(receipt({watch_history_enabled: false}));
     await flushPrivacyPreferenceWrites(mockBoundary);
     expect(mockValues.get(key('PREF_WATCH_HISTORY'))).toBe(false);
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual({});
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual({});
   });
 
   it('does not trust an old backend HTTP 200 that ignored the new reminder fields', async () => {
     mockPut.mockResolvedValue(receipt({watch_history_enabled: true}));
     await write(reminder(20));
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual(reminder(20));
-    expect(mockRemove).not.toHaveBeenCalled();
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual(reminder(20));
+    expect(await journal()).toBeDefined();
     mockPut.mockImplementation(async (_path: string, body: Record<string, unknown>) => receipt(body));
     await flushPendingAccountWrites();
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual({});
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual({});
   });
 
   it('retains A to B to A as a newer command even if its value matches the old request', async () => {
@@ -200,7 +214,7 @@ describe('account reminder preference admission and exact acknowledgement', () =
     await settleScheduledWork();
     await queuePendingPrivacyPreferences(reminder(15), mockBoundary);
     await queuePendingPrivacyPreferences(reminder(10), mockBoundary);
-    expect(mockValues.get(key(PENDING_PRIVACY_PREFERENCES_KEY))).toEqual({revision: 3, patch: reminder(10)});
+    expect(await journal()).toEqual({revision: 3, patch: reminder(10)});
     first.resolve(receipt({learning_reminder_hour: 10, learning_reminder_timezone: 'Asia/Kolkata'}));
     await worker;
     expect(mockPut).toHaveBeenCalledTimes(2);
@@ -212,17 +226,17 @@ describe('account reminder preference admission and exact acknowledgement', () =
       storageKey === key(REMINDER_HOUR_KEY) ? false : normalSave(storageKey, value));
     mockPut.mockImplementation(async (_path: string, body: Record<string, unknown>) => receipt(body));
     await write(reminder(15));
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual(reminder(15));
-    expect(mockRemove).not.toHaveBeenCalled();
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual(reminder(15));
+    expect(await journal()).toBeDefined();
     mockSave.mockImplementation(normalSave);
     await flushPrivacyPreferenceWrites(mockBoundary);
     expect(await getSmartReminderHour(mockBoundary)).toBe(15);
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual({});
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual({});
   });
 
   it('reports failed journal persistence without sending or mirroring a new value', async () => {
     mockValues.set(key(REMINDER_HOUR_KEY), 20);
-    mockSave.mockResolvedValue(false);
+    jest.mocked(AsyncStorage.setItem).mockRejectedValueOnce(new Error('NATIVE_STORAGE_FULL'));
     await expect(queuePendingPrivacyPreferences(reminder(10), mockBoundary))
       .rejects.toThrow('DURABLE_ACCOUNT_WRITE_UNAVAILABLE');
     expect(mockPut).not.toHaveBeenCalled();
@@ -230,18 +244,19 @@ describe('account reminder preference admission and exact acknowledgement', () =
   });
 
   it('does not spin on failed native deletion and settles on the next lifecycle retry', async () => {
-    const normalRemove = mockRemove.getMockImplementation()!;
+    const nativeRemove = jest.mocked(AsyncStorage.removeItem);
+    const normalRemove = nativeRemove.getMockImplementation()!;
     mockPut.mockImplementation(async (_path: string, body: Record<string, unknown>) => receipt(body));
-    mockRemove.mockResolvedValue(false);
+    nativeRemove.mockRejectedValue(new Error('NATIVE_STORAGE_FULL'));
     await queuePendingPrivacyPreferences(reminder(15), mockBoundary);
     await flushPrivacyPreferenceWrites(mockBoundary);
     await settleScheduledWork();
     // Joining/afterCurrent may make one follow-up probe, never an unbounded loop.
     expect(mockPut.mock.calls.length).toBeLessThanOrEqual(2);
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual(reminder(15));
-    mockRemove.mockImplementation(normalRemove);
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual(reminder(15));
+    nativeRemove.mockImplementation(normalRemove);
     await flushPrivacyPreferenceWrites(mockBoundary);
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual({});
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual({});
   });
 
   it('retires an old-account ACK without deleting either account newer work', async () => {
@@ -256,9 +271,9 @@ describe('account reminder preference admission and exact acknowledgement', () =
     await write(reminder(15));
     first.resolve(receipt({learning_reminder_hour: 10, learning_reminder_timezone: 'Asia/Kolkata'}));
     expect(await oldResult).toBe('ACCOUNT_CHANGED_DURING_REQUEST');
-    expect(mockValues.get(key(PENDING_PRIVACY_PREFERENCES_KEY, oldOwner))).toBeDefined();
+    expect(await journal(oldOwner)).toBeDefined();
     expect(await getSmartReminderHour(mockBoundary)).toBe(15);
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual({});
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual({});
   });
 
   it('serializes HTTP across a same-account epoch replacement while accepting the new local choice', async () => {
@@ -278,7 +293,7 @@ describe('account reminder preference admission and exact acknowledgement', () =
     await oldResult;
     await nextWorker;
     expect(mockPut).toHaveBeenCalledTimes(2);
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual({});
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual({});
   });
 
   it('invalidates a profile read even after the newer choice has already been acknowledged', async () => {
@@ -288,7 +303,7 @@ describe('account reminder preference admission and exact acknowledgement', () =
     const profileRead = getProfile(mockBoundary);
     mockPut.mockImplementation(async (_path: string, body: Record<string, unknown>) => receipt(body));
     await write(reminder(15));
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual({});
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual({});
     oldGet.resolve(receipt({learning_reminder_hour: 20, learning_reminder_timezone: 'Africa/Cairo'}));
     expect((await profileRead).learningReminderHour).toBe(20);
     expect(privacyPreferenceReadIsCurrent(mockBoundary, versions, 'reminder')).toBe(false);
@@ -299,15 +314,15 @@ describe('account reminder preference admission and exact acknowledgement', () =
     await write(reminder(10));
     await expect(queuePendingPrivacyPreferences({learningReminderHour: 15}, mockBoundary))
       .rejects.toThrow('ACCOUNT_PREFERENCE_INVALID');
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual(reminder(10));
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual(reminder(10));
   });
 
   it('leaves the separately owned watch-history-clear record intact during reminder ACK', async () => {
-    mockValues.set(key(PENDING_WATCH_HISTORY_CLEAR_KEY), true);
+    await AsyncStorage.setItem(key(LEGACY_WATCH_CLEAR_KEY), 'true');
     mockPut.mockImplementation(async (_path: string, body: Record<string, unknown>) => receipt(body));
     await write(reminder(15));
-    expect(mockValues.get(key(PENDING_WATCH_HISTORY_CLEAR_KEY))).toBe(true);
-    expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual({});
+    expect(await outboxItem('watch_history_clear')).toBeDefined();
+    expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual({});
   });
 
   describe('real settings hook and privacy journal binding', () => {
@@ -332,7 +347,7 @@ describe('account reminder preference admission and exact acknowledgement', () =
       expect(mockPut).toHaveBeenCalledTimes(1);
       await selectReminder(15);
       expect(settings.reminderHour).toBe(15);
-      expect((await readPendingPrivacyPreferences(undefined, mockBoundary)).learningReminderHour).toBe(15);
+      expect((await readPendingPrivacyPreferences(mockBoundary)).learningReminderHour).toBe(15);
       expect(await getSmartReminderHour(mockBoundary)).toBe(15);
       const worker = flushPrivacyPreferenceWrites(mockBoundary);
       await act(async () => {
@@ -352,7 +367,7 @@ describe('account reminder preference admission and exact acknowledgement', () =
       expect(mockGet).toHaveBeenCalledTimes(1);
       mockPut.mockImplementation(async (_path: string, body: Record<string, unknown>) => receipt(body));
       await act(async () => {await write(reminder(15));});
-      expect(await readPendingPrivacyPreferences(undefined, mockBoundary)).toEqual({});
+      expect(await readPendingPrivacyPreferences(mockBoundary)).toEqual({});
       await act(async () => {oldGet.resolve(receipt({learning_reminder_hour: 20}));});
       expect(await getSmartReminderHour(mockBoundary)).toBe(15);
       // This retained view has not received a new local selection. The stale
@@ -383,14 +398,18 @@ describe('account reminder preference admission and exact acknowledgement', () =
     it('rolls a failed later choice back to the last durable accepted hour', async () => {
       await act(async () => {renderer = mountSettings();});
       await selectReminder(10);
-      const normalSave = mockSave.getMockImplementation()!;
-      mockSave.mockImplementation(async (storageKey: string, value: unknown) =>
-        storageKey === key(PENDING_PRIVACY_PREFERENCES_KEY) ? false : normalSave(storageKey, value));
+      const nativeSet = jest.mocked(AsyncStorage.setItem);
+      const normalSet = nativeSet.getMockImplementation()!;
+      nativeSet.mockImplementation(async (storageKey: string, value: string) => {
+        if (storageKey === outboxKey()) throw new Error('NATIVE_STORAGE_FULL');
+        return normalSet(storageKey, value);
+      });
       await selectReminder(15);
+      nativeSet.mockImplementation(normalSet);
       await act(settleScheduledWork);
       expect(settings.reminderHour).toBe(10);
-      expect((await readPendingPrivacyPreferences(undefined, mockBoundary)).learningReminderHour).toBe(10);
-      expect(Alert.alert).toHaveBeenCalledWith('لم يُحفظ التغيير', 'تعذّر حفظ وقت التذكير\nحاول مرة أخرى');
+      expect((await readPendingPrivacyPreferences(mockBoundary)).learningReminderHour).toBe(10);
+      expect(Alert.alert).toHaveBeenCalledWith(learnerCopy.notSaved, `تعذّر حفظ وقت التذكير\n${learnerCopy.retry}`);
     });
   });
 });

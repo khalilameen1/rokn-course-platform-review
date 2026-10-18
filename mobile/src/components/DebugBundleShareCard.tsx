@@ -11,6 +11,7 @@ import {
 } from '../constants/designSystem';
 import {shareDebugBundle} from '../services/debugBundle';
 import {PremiumCard} from './ui/PremiumUI';
+import {learnerCopy} from '../constants/learnerCopy';
 
 /** Diagnostics are read only after the learner explicitly asks to share them. */
 export const DebugBundleShareCard = () => {
@@ -24,7 +25,7 @@ export const DebugBundleShareCard = () => {
     try {
       await shareDebugBundle();
     } catch {
-      setError('تعذّرت المشاركة الآن\nحاول مرة أخرى');
+      setError(`تعذّرت المشاركة الآن\n${learnerCopy.retry}`);
     } finally {
       setSharing(false);
     }

@@ -14,6 +14,7 @@ import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
 } from '../../constants/helpers';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 type Params = {
   loadedCourse: MutableRefObject<CourseLearningData | null>;
@@ -117,7 +118,7 @@ export const useReelsSavedLessons = ({
           if (optimisticApplied) {
             reflectSaved(currentlySaved);
           }
-          setConnectionNote('معرفناش نحدّث المحفوظات\nاتأكد من النت وجرب تاني');
+          setConnectionNote(`معرفناش نحدّث المحفوظات\n${learnerCopy.networkRetry}`);
         }
         throw error;
       } finally {

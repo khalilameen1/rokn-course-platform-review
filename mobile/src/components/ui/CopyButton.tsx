@@ -3,6 +3,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {AccessibilityInfo, Alert, Pressable, StyleSheet} from 'react-native';
 import {Accessibility, Palette, Radius} from '../../constants/designSystem';
 import {CopyIcon} from './CopyIcon';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 type Props = {value: string; accessibilityLabel: string; color?: string};
 
@@ -25,7 +26,7 @@ export const CopyButton = ({value, accessibilityLabel, color}: Props) => {
       Clipboard.setString(value);
     } catch {
       setCopied(false);
-      Alert.alert('تعذّر النسخ', 'حاول مرة أخرى');
+      Alert.alert('تعذّر النسخ', learnerCopy.retry);
       return;
     }
 

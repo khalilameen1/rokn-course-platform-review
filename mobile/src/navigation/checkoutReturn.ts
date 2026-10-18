@@ -1,16 +1,19 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  accountScopedStorageKey,
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
   type AccountSessionBoundary,
 } from '../constants/helpers';
 import {serverNowMs} from '../utils/serverClock';
 import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
+import {
+  checkoutReturnStorageKey,
+  readCheckoutReturn,
+  removeCheckoutReturn,
+  writeCheckoutReturn,
+} from '../services/navigationReturnStorage';
 import {safeLoginReturnTo} from './authReturn';
 import type {LoginReturnTo} from './types';
 
-const CHECKOUT_RETURN_KEY = '@rokn/pending-checkout-return/v1';
 const CHECKOUT_RETURN_TTL_MS = 30 * 60 * 1000;
 const withCheckoutReturnWrite = createKeyedAsyncQueue();
 
@@ -38,10 +41,10 @@ const removeCheckoutReturnIfUnchanged = (
 ) =>
   withCheckoutReturnWrite(storageKey, async () => {
     assertAccountSessionBoundary(accountBoundary);
-    const current = await AsyncStorage.getItem(storageKey);
+    const current = await readCheckoutReturn(storageKey);
     assertAccountSessionBoundary(accountBoundary);
     if (current !== receipt) return false;
-    await AsyncStorage.removeItem(storageKey);
+    await removeCheckoutReturn(storageKey);
     assertAccountSessionBoundary(accountBoundary);
     return true;
   });
@@ -55,7 +58,7 @@ export const savePendingCheckoutReturn = async (
   if (!returnTo) return undefined;
   const owner = boundary || (await captureAccountSessionBoundary());
   assertAccountSessionBoundary(owner);
-  const storageKey = await accountScopedStorageKey(CHECKOUT_RETURN_KEY, owner);
+  const storageKey = await checkoutReturnStorageKey(owner);
   const envelope: CheckoutReturnEnvelope = {
     returnTo,
     createdAt: serverNowMs(),
@@ -63,7 +66,7 @@ export const savePendingCheckoutReturn = async (
   const receipt = JSON.stringify(envelope);
   await withCheckoutReturnWrite(storageKey, async () => {
     assertAccountSessionBoundary(owner);
-    await AsyncStorage.setItem(storageKey, receipt);
+    await writeCheckoutReturn(storageKey, receipt);
     assertAccountSessionBoundary(owner);
   });
   return {
@@ -78,11 +81,8 @@ export const claimPendingCheckoutReturn = async (): Promise<
   PendingCheckoutReturnClaim | undefined
 > => {
   const accountBoundary = await captureAccountSessionBoundary();
-  const storageKey = await accountScopedStorageKey(
-    CHECKOUT_RETURN_KEY,
-    accountBoundary,
-  );
-  const receipt = await AsyncStorage.getItem(storageKey);
+  const storageKey = await checkoutReturnStorageKey(accountBoundary);
+  const receipt = await readCheckoutReturn(storageKey);
   assertAccountSessionBoundary(accountBoundary);
   if (!receipt) return undefined;
   let envelope: Record<string, unknown> | null;

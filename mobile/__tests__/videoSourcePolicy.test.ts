@@ -1,4 +1,4 @@
-import {isUnsupportedVideoPageUri} from '../src/components/VideoPlayer/videoSourcePolicy';
+import {isUnsupportedVideoPageUri} from '../src/services/videoSourcePolicy';
 
 describe('video source policy', () => {
   it.each([

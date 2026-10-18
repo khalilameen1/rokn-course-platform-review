@@ -6,6 +6,7 @@ import {
   rememberSearch,
 } from '../../services/searchHistory';
 import {trackProductEvent} from '../../services/productAnalytics';
+import {learnerCopy} from '../../constants/learnerCopy';
 
 export const useHomeSearch = (identityKey: string) => {
   const [query, setQuery] = useState('');
@@ -63,7 +64,7 @@ export const useHomeSearch = (identityKey: string) => {
       // An unremoved history reappears on the next visit. Show the stored
       // list again and say so, unless a newer search or account owns it.
       if (generation !== historyGenerationRef.current) return;
-      Alert.alert('متمسحش', 'جرب تاني');
+      Alert.alert('متمسحش', learnerCopy.retry);
       void getSearchHistory()
         .then(items => {
           if (generation === historyGenerationRef.current) setHistory(items);

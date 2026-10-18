@@ -53,10 +53,10 @@ jest.mock('../src/hooks/useAppActiveState', () => ({
 }));
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   applyLocalLearningState: jest.requireActual(
-    '../src/components/VideoPlayer/courseLearning/persistence',
+    '../src/services/learningPlayerState',
   ).applyLocalLearningState,
   getLocalLearningState: jest.requireActual(
-    '../src/components/VideoPlayer/courseLearning/persistence',
+    '../src/services/learningPlayerState',
   ).getLocalLearningState,
   loadCourseLearningData: (...args: unknown[]) => mockLearningMap(...args),
 }));

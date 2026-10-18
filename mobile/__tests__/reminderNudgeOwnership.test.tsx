@@ -70,6 +70,7 @@ jest.mock('../src/components/ui/RoknCoin', () => ({RoknCoinStack: () => null}));
 
 import {useReminderNudge} from '../src/screens/reels/useReminderNudge';
 import NotificationPermissionPrimer from '../src/components/ui/NotificationPermissionPrimer';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;
@@ -533,7 +534,7 @@ describe('optional reminder presentation owns its route and account', () => {
     expect(mockSchedule).not.toHaveBeenCalled();
     mockForeground = true;
     await render();
-    await press('حاول مرة أخرى');
+    await press(learnerCopy.retry);
     expect(mockSetEnabled).toHaveBeenCalledTimes(2);
     expect(mockSetEnabled).toHaveBeenLastCalledWith(true, mockBoundary);
     expect(mockSchedule).toHaveBeenCalledTimes(1);

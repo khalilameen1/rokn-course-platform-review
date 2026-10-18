@@ -35,7 +35,7 @@ import {
   migrateGuestLearningState,
   readPlayerState,
   updatePlayerState,
-} from '../src/components/VideoPlayer/courseLearning/persistence';
+} from '../src/services/learningPlayerState';
 
 const KEY = '@rokn/course-player/v3:user-account-a';
 const boundary = {epoch: 1, scope: 'user-account-a'} as const;

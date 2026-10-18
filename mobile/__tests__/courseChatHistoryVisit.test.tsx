@@ -47,6 +47,7 @@ import {askCourseAssistant, loadCourseAssistantHistory, pollCourseAssistantTurn,
 import {loadCourseChatHistory, saveCourseChatHistory} from '../src/components/VideoPlayer/courseChat/persistence';
 import {removeLearnerDraftFile} from '../src/services/learnerDraftFiles';
 import type {ChatMessage, CourseLearningData, CourseReel} from '../src/components/VideoPlayer/types';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;
@@ -244,7 +245,7 @@ describe('remote course chat history belongs to an open foreground visit', () =>
         jest.mocked(loadCourseChatHistory).mockResolvedValueOnce([
           {...message('local-user', 'السؤال السابق'), role: 'user',
             deliveryStatus: 'failed', clientRequestId: originalRequestId, attachments: [file]},
-          {...message('local-assistant', 'حاول مرة أخرى'), deliveryStatus: 'failed',
+          {...message('local-assistant', learnerCopy.retry), deliveryStatus: 'failed',
             clientRequestId: originalRequestId, canRetry: true},
         ]);
         jest.mocked(pollCourseAssistantTurn).mockResolvedValueOnce({

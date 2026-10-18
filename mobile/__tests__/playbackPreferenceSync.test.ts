@@ -22,12 +22,13 @@ jest.mock('../src/services/roknApi', () => ({
   updatePlaybackPreferences: (...args: unknown[]) => mockUpdate(...args),
 }));
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {resetDurableOutboxForTests} from '../src/services/durableOutbox';
 import {
-  flushPlaybackPreferenceWrites,
-  PENDING_PLAYBACK_PREFERENCES_KEY,
+  flushAccountWrites as flushPlaybackPreferenceWrites,
   readPendingPlaybackPreferences,
   savePlaybackPreferencePatch,
-} from '../src/services/playbackPreferenceSync';
+} from '../src/services/pendingAccountWrites';
 
 const deferred = <T>() => {
   let resolve!: (value: T) => void;
@@ -42,8 +43,22 @@ const settleScheduledWork = async () => {
   for (let tick = 0; tick < 24; tick += 1) await Promise.resolve();
 };
 const key = (field: string) => `${mockBoundary.scope}:${field}`;
-const pendingKey = () => key(PENDING_PLAYBACK_PREFERENCES_KEY);
-const journal = () => mockValues.get(pendingKey());
+/** The account-write outbox record; its generation is the revision. */
+const pendingKey = (scope = mockBoundary.scope) =>
+  `@rokn/account-writes/v1:${scope}`;
+const journal = async (scope = mockBoundary.scope) => {
+  const raw = await AsyncStorage.getItem(pendingKey(scope));
+  const item = raw
+    ? (
+        JSON.parse(raw) as Array<{
+          id: string;
+          generation: number;
+          payload: {patch: unknown};
+        }>
+      ).find(entry => entry.id === 'playback_preferences')
+    : undefined;
+  return item ? {revision: item.generation, patch: item.payload.patch} : undefined;
+};
 const write = async (
   patch: Parameters<typeof savePlaybackPreferencePatch>[0],
 ) => {
@@ -52,9 +67,11 @@ const write = async (
 };
 
 describe('durable playback preferences using the real account write queue', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     mockBoundary = {scope: 'user-7', epoch: mockBoundary.epoch + 1};
     mockValues.clear();
+    await AsyncStorage.clear();
+    resetDurableOutboxForTests();
     mockSave
       .mockReset()
       .mockImplementation(async (storageKey: string, value: unknown) => {
@@ -71,7 +88,7 @@ describe('durable playback preferences using the real account write queue', () =
   it('keeps quality and speed together while offline instead of accepting an old profile', async () => {
     await write({videoQualityPreference: '720p'});
     await write({playbackSpeed: 1.5});
-    expect(journal()).toEqual({
+    expect(await journal()).toEqual({
       revision: 2,
       patch: {videoQualityPreference: '720p', playbackSpeed: 1.5},
     });
@@ -94,7 +111,7 @@ describe('durable playback preferences using the real account write queue', () =
       {videoQualityPreference: '480p', playbackSpeed: 1.25},
       mockBoundary,
     );
-    expect(journal()).toBeUndefined();
+    expect(await journal()).toBeUndefined();
   });
 
   it('does not let a slow network block local changes or acknowledge a newer revision', async () => {
@@ -113,7 +130,7 @@ describe('durable playback preferences using the real account write queue', () =
       {playbackSpeed: 1.5, videoQualityPreference: '480p'},
       mockBoundary,
     );
-    expect(journal()).toEqual({
+    expect(await journal()).toEqual({
       revision: 2,
       patch: {videoQualityPreference: '480p', playbackSpeed: 1.5},
     });
@@ -124,7 +141,28 @@ describe('durable playback preferences using the real account write queue', () =
       {videoQualityPreference: '480p', playbackSpeed: 1.5},
       mockBoundary,
     );
-    expect(journal()).toBeUndefined();
+    expect(await journal()).toBeUndefined();
+  });
+
+  it('migrates a v1 journal on first read and replays it once', async () => {
+    await AsyncStorage.setItem(
+      `@rokn/pending-playback-preferences/v1:${mockBoundary.scope}`,
+      JSON.stringify({revision: 4, patch: {playbackSpeed: 1.75}}),
+    );
+    expect(await readPendingPlaybackPreferences(mockBoundary)).toEqual({
+      playbackSpeed: 1.75,
+    });
+    expect(
+      await AsyncStorage.getItem(
+        `@rokn/pending-playback-preferences/v1:${mockBoundary.scope}`,
+      ),
+    ).toBeNull();
+    mockUpdate.mockResolvedValue(undefined);
+    await flushPlaybackPreferenceWrites(mockBoundary);
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockUpdate).toHaveBeenCalledWith({playbackSpeed: 1.75}, mockBoundary);
+    expect(mockValues.get(key('VIDEO_PLAYBACK_SPEED'))).toBe(1.75);
+    expect(await journal()).toBeUndefined();
   });
 
   it('retains A to B to A intent even though its final value matches the in-flight request', async () => {
@@ -146,31 +184,32 @@ describe('durable playback preferences using the real account write queue', () =
       {videoQualityPreference: '720p'},
       mockBoundary,
     );
-    expect(journal()).toEqual({
+    expect(await journal()).toEqual({
       revision: 3,
       patch: {videoQualityPreference: '720p'},
     });
     firstRequest.resolve();
     await flight;
     expect(mockUpdate).toHaveBeenCalledTimes(2);
-    expect(journal()).toBeUndefined();
+    expect(await journal()).toBeUndefined();
   });
 
   it('drains an edit queued while the previous journal deletion is still pending', async () => {
     const deletion = deferred<boolean>();
     mockUpdate.mockResolvedValue(undefined);
-    mockRemove.mockImplementationOnce(async (storageKey: string) => {
-      const removed = await deletion.promise;
-      if (removed) mockValues.delete(storageKey);
-      return removed;
-    });
+    const nativeRemove = AsyncStorage.removeItem;
+    const remove = jest
+      .mocked(AsyncStorage.removeItem)
+      .mockImplementationOnce(async (storageKey: string) => {
+        if (await deletion.promise) await nativeRemove(storageKey);
+      });
     await savePlaybackPreferencePatch(
       {videoQualityPreference: '720p'},
       mockBoundary,
     );
     const firstFlight = flushPlaybackPreferenceWrites(mockBoundary);
     await settleScheduledWork();
-    expect(mockRemove).toHaveBeenCalledTimes(1);
+    expect(remove).toHaveBeenCalledWith(pendingKey());
     const nextChoice = savePlaybackPreferencePatch(
       {videoQualityPreference: '480p'},
       mockBoundary,
@@ -181,7 +220,7 @@ describe('durable playback preferences using the real account write queue', () =
     await flushPlaybackPreferenceWrites(mockBoundary);
     expect(mockUpdate).toHaveBeenCalledTimes(2);
     expect(mockValues.get(key('VIDEO_QUALITY'))).toBe('480p');
-    expect(journal()).toBeUndefined();
+    expect(await journal()).toBeUndefined();
   });
 
   it('repairs a failed optimistic cache write before retiring its durable command', async () => {
@@ -197,7 +236,7 @@ describe('durable playback preferences using the real account write queue', () =
     });
     await write({videoQualityPreference: '480p'});
     expect(mockValues.get(key('VIDEO_QUALITY'))).toBe('480p');
-    expect(journal()).toBeUndefined();
+    expect(await journal()).toBeUndefined();
   });
 
   it('retains acknowledged intent if its cache remains unavailable then retries on foreground', async () => {
@@ -212,28 +251,31 @@ describe('durable playback preferences using the real account write queue', () =
     expect(await readPendingPlaybackPreferences(mockBoundary)).toEqual({
       videoQualityPreference: '480p',
     });
-    expect(mockRemove).not.toHaveBeenCalled();
+    expect(await journal()).toBeDefined();
     mockSave.mockImplementation(originalSave);
     await flushPlaybackPreferenceWrites(mockBoundary);
     expect(mockValues.get(key('VIDEO_QUALITY'))).toBe('480p');
-    expect(journal()).toBeUndefined();
+    expect(await journal()).toBeUndefined();
   });
 
   it('does not spin when native deletion fails and can settle on a later lifecycle call', async () => {
     mockUpdate.mockResolvedValue(undefined);
-    const originalRemove = mockRemove.getMockImplementation()!;
-    mockRemove.mockResolvedValue(false);
+    const remove = jest.mocked(AsyncStorage.removeItem);
+    const nativeRemove = remove.getMockImplementation()!;
+    remove.mockRejectedValue(new Error('NATIVE_STORAGE_FULL'));
     await write({playbackSpeed: 1.25});
     expect(mockUpdate).toHaveBeenCalledTimes(1);
-    expect(journal()).toBeDefined();
-    mockRemove.mockImplementation(originalRemove);
+    expect(await journal()).toBeDefined();
+    remove.mockImplementation(nativeRemove);
     await flushPlaybackPreferenceWrites(mockBoundary);
-    expect(journal()).toBeUndefined();
+    expect(await journal()).toBeUndefined();
   });
 
   it('does not send or change the cache if persisting the command fails', async () => {
     mockValues.set(key('VIDEO_QUALITY'), 'auto');
-    mockSave.mockResolvedValue(false);
+    jest
+      .mocked(AsyncStorage.setItem)
+      .mockRejectedValueOnce(new Error('NATIVE_STORAGE_FULL'));
     await expect(
       savePlaybackPreferencePatch(
         {videoQualityPreference: '720p'},
@@ -249,7 +291,7 @@ describe('durable playback preferences using the real account write queue', () =
     await write({videoQualityPreference: 'data_saver', playbackSpeed: 1.5});
     expect(mockValues.get(key('VIDEO_QUALITY'))).toBe('data_saver');
     expect(mockValues.get(key('VIDEO_PLAYBACK_SPEED'))).toBe(1.5);
-    expect(journal()).toBeUndefined();
+    expect(await journal()).toBeUndefined();
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 
@@ -259,7 +301,7 @@ describe('durable playback preferences using the real account write queue', () =
       .mockResolvedValue(undefined)
       .mockReturnValueOnce(oldRequest.promise);
     const previousBoundary = mockBoundary;
-    const previousKey = pendingKey();
+    const previousScope = mockBoundary.scope;
     await savePlaybackPreferencePatch(
       {videoQualityPreference: '720p'},
       previousBoundary,
@@ -271,9 +313,9 @@ describe('durable playback preferences using the real account write queue', () =
     await write({videoQualityPreference: '480p'});
     oldRequest.resolve();
     expect(await oldResult).toBe('ACCOUNT_CHANGED_DURING_REQUEST');
-    expect(mockValues.get(previousKey)).toBeDefined();
+    expect(await journal(previousScope)).toBeDefined();
     expect(mockValues.get(key('VIDEO_QUALITY'))).toBe('480p');
-    expect(journal()).toBeUndefined();
+    expect(await journal()).toBeUndefined();
   });
 
   it('serializes server writes across a same-account profile epoch change without blocking edits', async () => {
@@ -306,7 +348,7 @@ describe('durable playback preferences using the real account write queue', () =
       {videoQualityPreference: '480p'},
       mockBoundary,
     );
-    expect(journal()).toBeUndefined();
+    expect(await journal()).toBeUndefined();
   });
 
   it('probes again if internet returns before the original offline request has failed', async () => {
@@ -325,6 +367,6 @@ describe('durable playback preferences using the real account write queue', () =
     offlineRequest.reject(new Error('offline'));
     await recovery;
     expect(mockUpdate).toHaveBeenCalledTimes(2);
-    expect(journal()).toBeUndefined();
+    expect(await journal()).toBeUndefined();
   });
 });

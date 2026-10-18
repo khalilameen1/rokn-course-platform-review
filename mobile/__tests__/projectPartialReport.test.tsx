@@ -51,6 +51,7 @@ import ProjectTransition from '../src/components/VideoPlayer/ProjectTransition';
 import ProjectFeedbackPanel from '../src/components/VideoPlayer/projectTransition/ProjectFeedbackPanel';
 import {ProjectFeedbackReadRecovery} from '../src/components/VideoPlayer/projectTransition/ProjectFeedbackReadRecovery';
 import ProjectSubmissionEditor from '../src/components/VideoPlayer/projectTransition/ProjectSubmissionEditor';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 const project: CourseProject = {
   id: '7',
@@ -285,7 +286,7 @@ describe('project lifecycle presentation', () => {
       expect(renderer.root.findAllByType(ActivityIndicator)).toHaveLength(0);
       mockController.mockReturnValue({...controller, feedbackReadError: ''});
       act(() => renderer.update(React.cloneElement(element)));
-      expect(text()).toContain('تعذّر تجهيز التقرير  حاول مرة أخرى');
+      expect(text()).toContain(`تعذّر تجهيز التقرير  ${learnerCopy.retry}`);
     } finally {
       act(() => renderer.unmount());
     }

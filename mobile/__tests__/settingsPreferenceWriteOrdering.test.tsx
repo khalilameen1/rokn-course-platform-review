@@ -101,9 +101,7 @@ jest.mock('../src/services/pushDeviceRegistration', () => ({
   unregisterPushDevice: (...args: unknown[]) => mockUnregister(...args),
   registerPushDeviceIfEligible: (...args: unknown[]) => mockRegistration(...args),
 }));
-jest.mock('../src/screens/settings/settingsData', () => ({
-  PENDING_WATCH_HISTORY_CLEAR_KEY: 'pending-clear',
-}));
+jest.mock('../src/screens/settings/settingsData', () => ({}));
 jest.mock('../src/screens/settings/usePrivacyPreferenceSync', () => ({
   usePrivacyPreferenceSync: () => ({dirtyKeys: mockDirty, queue: mockQueue}),
   readPendingPrivacyPreferences: async () => ({}),
@@ -128,11 +126,14 @@ jest.mock('../src/components/ui/RoknCoin', () => ({RoknCoinStack: () => null}));
 import {useSettingsPreferences} from '../src/screens/settings/useSettingsPreferences';
 import NotificationPermissionPrimer from '../src/components/ui/NotificationPermissionPrimer';
 import {SettingsChoiceModal} from '../src/components/settings/SettingsChoiceModal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {resetDurableOutboxForTests} from '../src/services/durableOutbox';
 import {
-  flushPlaybackPreferenceWrites,
-  PENDING_PLAYBACK_PREFERENCES_KEY,
+  accountWritesOutbox,
+  flushAccountWrites as flushPlaybackPreferenceWrites,
   savePlaybackPreferencePatch,
-} from '../src/services/playbackPreferenceSync';
+} from '../src/services/pendingAccountWrites';
+import {learnerCopy} from '../src/constants/learnerCopy';
 
 let preferences!: ReturnType<typeof useSettingsPreferences>;
 const PreferencesHarness = () => {
@@ -211,27 +212,57 @@ const cases = [
 ] as const;
 type Setting = (typeof cases)[number];
 // Fail the durable intent, not an unrelated cache mirror/native read. Quality
-// now has an account journal while the other settings keep their own writers.
-const intentSuffix = (setting: Setting) =>
-  `:${
-    setting.field === 'quality' ? PENDING_PLAYBACK_PREFERENCES_KEY : setting.key
-  }`;
+// rides the account-write outbox while the other settings keep their writers.
+const accountWritesKey = () => `@rokn/account-writes/v1:${mockBoundary.scope}`;
+const nativeSet = jest.mocked(AsyncStorage.setItem);
+const nativeSetImplementation = nativeSet.getMockImplementation()!;
+let enqueueSpy: jest.SpyInstance;
+/** Playback intents admitted to the account-write outbox (one per choice). */
+const playbackIntentWrites = () =>
+  enqueueSpy.mock.calls.filter(([id]) => id === 'playback_preferences');
 const intentWrites = (setting: Setting) =>
-  mockWrite.mock.calls.filter(([key]) =>
-    String(key).endsWith(intentSuffix(setting)),
-  );
+  setting.field === 'quality'
+    ? playbackIntentWrites()
+    : mockWrite.mock.calls.filter(([key]) =>
+        String(key).endsWith(`:${setting.key}`),
+      );
 const configureIntentWrites = (
   setting: Setting,
   results: Array<Promise<boolean> | boolean>,
 ) => {
+  if (setting.field === 'quality') {
+    nativeSet.mockImplementation(async (key: string, value: string) => {
+      const result =
+        key === accountWritesKey() && results.length
+          ? await results.shift()
+          : true;
+      if (!result) throw new Error('NATIVE_STORAGE_FULL');
+      return nativeSetImplementation(key, value);
+    });
+    return;
+  }
   mockWrite.mockImplementation(async (key: string, value: unknown) => {
     const result =
-      key.endsWith(intentSuffix(setting)) && results.length
+      key.endsWith(`:${setting.key}`) && results.length
         ? await results.shift()
         : true;
     if (result) mockValues.set(key, value);
     return result;
   });
+};
+/** The pending playback command; its generation is the revision. */
+const playbackJournal = async () => {
+  const raw = await AsyncStorage.getItem(accountWritesKey());
+  const item = raw
+    ? (
+        JSON.parse(raw) as Array<{
+          id: string;
+          generation: number;
+          payload: {patch: unknown};
+        }>
+      ).find(entry => entry.id === 'playback_preferences')
+    : undefined;
+  return item ? {revision: item.generation, patch: item.payload.patch} : undefined;
 };
 const change = async (setting: Setting, value: string | number | boolean) => {
   if (setting.field === 'quality' || setting.field === 'reminderHour') {
@@ -269,6 +300,11 @@ describe('settings optimistic changes retain the last saved value', () => {
     mockDirty.clear();
     mockQueue.mockReset().mockResolvedValue(undefined);
     mockValues.clear();
+    nativeSet.mockClear();
+    nativeSet.mockImplementation(nativeSetImplementation);
+    await AsyncStorage.clear();
+    resetDurableOutboxForTests();
+    enqueueSpy = jest.spyOn(accountWritesOutbox, 'enqueue');
     mockPlaybackUpdate.mockReset().mockRejectedValue(new Error('offline'));
     mockProfile.mockReset().mockResolvedValue({
       watchHistoryEnabled: true,
@@ -346,7 +382,7 @@ describe('settings optimistic changes retain the last saved value', () => {
       expect(preferences[setting.field]).toBe(setting.initial);
       expect(Alert.alert).toHaveBeenCalledTimes(1);
       expect(Alert.alert).toHaveBeenCalledWith(
-        'لم يُحفظ التغيير',
+        learnerCopy.notSaved,
         expect.any(String),
       );
     },
@@ -839,9 +875,7 @@ describe('settings optimistic changes retain the last saved value', () => {
     expect(preferences.quality).toBe('480p');
     expect(mockValues.get('user-1:VIDEO_QUALITY')).toBe('480p');
     expect(mockValues.get('user-1:VIDEO_PLAYBACK_SPEED')).toBe(1.5);
-    expect(
-      mockValues.get(`user-1:${PENDING_PLAYBACK_PREFERENCES_KEY}`),
-    ).toBeDefined();
+    expect(await playbackJournal()).toBeDefined();
   });
 
   it('persists playback intent while an authenticated privacy write is waiting for the server', async () => {
@@ -865,9 +899,7 @@ describe('settings optimistic changes retain the last saved value', () => {
       await act(async () => {
         await savePlaybackPreferencePatch({playbackSpeed: 1.5}, mockBoundary);
       });
-      expect(
-        mockValues.get(`user-1:${PENDING_PLAYBACK_PREFERENCES_KEY}`),
-      ).toEqual({
+      expect(await playbackJournal()).toEqual({
         revision: 2,
         patch: {videoQualityPreference: '480p', playbackSpeed: 1.5},
       });
@@ -900,9 +932,7 @@ describe('settings optimistic changes retain the last saved value', () => {
         disable = preferences.toggleNotifications(false);
         await savePlaybackPreferencePatch({playbackSpeed: 1.5}, mockBoundary);
       });
-      expect(
-        mockValues.get(`user-1:${PENDING_PLAYBACK_PREFERENCES_KEY}`),
-      ).toEqual({
+      expect(await playbackJournal()).toEqual({
         revision: 1,
         patch: {playbackSpeed: 1.5},
       });
@@ -977,7 +1007,7 @@ describe('settings optimistic changes retain the last saved value', () => {
       expect(preferences.notificationPrimer).toBe(true);
       expect(preferences.notifications).toBe(false);
       expect(Alert.alert).not.toHaveBeenCalled();
-      await press('حاول مرة أخرى');
+      await press(learnerCopy.retry);
       expect(preferences.notificationPrimer).toBe(false);
       expect(preferences.notifications).toBe(true);
       expect(mockValues.get('user-1:reminder')).toBe(true);
