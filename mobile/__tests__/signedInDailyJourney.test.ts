@@ -240,9 +240,6 @@ describe('signed-in daily journey', () => {
 
   it('uses the session epoch for profile and certificate reads', () => {
     const profileApi = source('src/services/api/accountProfile.ts');
-    const profileController = source(
-      'src/screens/Profile/useProfileOverview.ts',
-    );
     const certificateController = source(
       'src/screens/Profile/certificates/useCertificatesController.ts',
     );
@@ -250,10 +247,9 @@ describe('signed-in daily journey', () => {
     expect(profileApi).toMatch(
       /getProfile = async[\s\S]*captureAccountSessionBoundary\(\)[\s\S]*publicRequest\.get\('user\/profile'[\s\S]*assertAccountSessionBoundary\(boundary\)/,
     );
-    expect(profileController).toContain(
-      'const boundary = await captureAccountSessionBoundary();',
-    );
-    expect(profileController).not.toContain('getCurrentAccountStorageScope()');
+    // The أنا tab's reads are account-scoped queries; their ownership is
+    // proven in profileOverviewReadSettlement.test.tsx ("late results cannot
+    // replace another account identity or authorize its portfolio").
     expect(certificateController).toContain(
       'const boundary = await captureAccountSessionBoundary();',
     );

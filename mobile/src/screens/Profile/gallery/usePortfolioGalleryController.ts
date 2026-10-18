@@ -21,7 +21,7 @@ export type {GalleryProps};
  * Gallery orchestration only. Library, create draft/upload, selected-project
  * mutations and post-upload publication each own their own state machine.
  */
-export const usePortfolioGalleryController = (props: GalleryProps = {}) => {
+export const usePortfolioGalleryController = (props: GalleryProps) => {
   const {onSubscriptions, onSharePortfolio, onShareablePortfolioChange} = props;
   const appActive = useAppForegroundState();
   const mountedRef = useRef(true);
@@ -40,6 +40,7 @@ export const usePortfolioGalleryController = (props: GalleryProps = {}) => {
     detailMutationBlockedRef.current = blocked;
   }, []);
   const library = usePortfolioLibrary({
+    identityKey: props.identityKey,
     captureBoundary,
     isLoadBlocked,
     mountedRef,

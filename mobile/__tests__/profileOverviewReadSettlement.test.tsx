@@ -1,6 +1,7 @@
 import React from 'react';
 import {Text, View} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
 
 let mockFocused = true;
 let mockBoundary = {scope: 'user-7', epoch: 1};
@@ -26,6 +27,7 @@ jest.mock('react-redux', () => ({
     select({auth: {userData: mockUser}}),
 }));
 jest.mock('../src/constants/helpers', () => ({
+  ...jest.requireActual('../src/constants/helpers'),
   assertAccountSessionBoundary: (boundary: typeof mockBoundary) => {
     if (
       boundary.scope !== mockBoundary.scope ||
@@ -96,6 +98,7 @@ const portfolio = (
 
 describe('profile identity and reviewed portfolio settle independently', () => {
   let renderer: TestRenderer.ReactTestRenderer;
+  let client = createTestQueryClient();
   let overview!: ReturnType<typeof useProfileOverview>;
   const Harness = () => {
     overview = useProfileOverview();
@@ -113,10 +116,20 @@ describe('profile identity and reviewed portfolio settle independently', () => {
   };
   const rendered = (testID: string) =>
     renderer.root.findByProps({testID}).props.children;
-  const mount = async () => {
-    await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+  const settle = () =>
+    act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 10));
     });
+  const mount = async () => {
+    client = createTestQueryClient();
+    await act(async () => {
+      renderer = TestRenderer.create(withQueryClient(<Harness />, client));
+    });
+    await settle();
+  };
+  const update = async () => {
+    await act(async () => renderer.update(withQueryClient(<Harness />, client)));
+    await settle();
   };
   beforeEach(() => {
     mockFocused = true;
@@ -145,6 +158,7 @@ describe('profile identity and reviewed portfolio settle independently', () => {
     expect(rendered('share-url')).toBe('');
     expect(overview.canSharePortfolio).toBe(false);
     await act(async () => sharing.resolve(portfolio()));
+    await settle();
     expect(rendered('share-url')).toBe(portfolio().publicUrl);
     expect(rendered('name')).toBe('الاسم الجديد');
   });
@@ -160,6 +174,7 @@ describe('profile identity and reviewed portfolio settle independently', () => {
     await act(async () => overview.sharePortfolio());
     expect(mockShare).toHaveBeenCalledTimes(1);
     await act(async () => identity.resolve(profile()));
+    await settle();
     expect(rendered('name')).toBe('الاسم الجديد');
   });
 
@@ -171,6 +186,7 @@ describe('profile identity and reviewed portfolio settle independently', () => {
     expect(rendered('error')).toBe('تعذّر تحديث بعض بيانات الحساب');
     expect(rendered('name')).toBe('الاسم المحفوظ');
     await act(async () => sharing.resolve(portfolio()));
+    await settle();
     expect(rendered('error')).toBe('تعذّر تحديث بعض بيانات الحساب');
     expect(rendered('share-url')).toBe(portfolio().publicUrl);
   });
@@ -183,9 +199,11 @@ describe('profile identity and reviewed portfolio settle independently', () => {
     expect(rendered('error')).toBe('تعذّر تحديث بعض بيانات الحساب');
     expect(overview.canSharePortfolio).toBe(false);
     await act(async () => identity.resolve(profile()));
+    await settle();
     expect(rendered('name')).toBe('الاسم الجديد');
     expect(rendered('error')).toBe('تعذّر تحديث بعض بيانات الحساب');
     await act(async () => overview.retry());
+    await settle();
     expect(rendered('error')).toBe('');
   });
 
@@ -193,6 +211,7 @@ describe('profile identity and reviewed portfolio settle independently', () => {
     mockGetProfile.mockRejectedValue(new Error('identity-offline'));
     await mount();
     await act(async () => overview.setHasShareablePortfolio(true));
+    await settle();
     expect(overview.canSharePortfolio).toBe(true);
     expect(rendered('error')).toBe('تعذّر تحديث بعض بيانات الحساب');
     await act(async () => {
@@ -200,6 +219,7 @@ describe('profile identity and reviewed portfolio settle independently', () => {
         portfolio().publicUrl,
       );
     });
+    await settle();
     expect(rendered('error')).toBe('تعذّر تحديث بعض بيانات الحساب');
     expect(rendered('share-url')).toBe(portfolio().publicUrl);
     expect(overview.canSharePortfolio).toBe(true);
@@ -214,12 +234,14 @@ describe('profile identity and reviewed portfolio settle independently', () => {
     mockGetProfile.mockResolvedValueOnce(profile('بعد المحاولة', 3));
     mockGetPortfolio.mockResolvedValueOnce(portfolio('suspended'));
     await act(async () => overview.retry());
+    await settle();
     expect(rendered('name')).toBe('بعد المحاولة');
     expect(overview.portfolioSharingSuspended).toBe(true);
     await act(async () => {
       identity.resolve(profile('رد قديم', 2));
       sharing.resolve(portfolio());
     });
+    await settle();
     expect(rendered('name')).toBe('بعد المحاولة');
     expect(rendered('share-url')).toBe('');
     expect(overview.portfolioSharingSuspended).toBe(true);
@@ -234,11 +256,14 @@ describe('profile identity and reviewed portfolio settle independently', () => {
       .mockReturnValueOnce(reviewed.promise);
     await mount();
     await act(async () => overview.setHasShareablePortfolio(true));
+    await settle();
     await act(async () => oldSharing.resolve(portfolio()));
+    await settle();
     expect(rendered('name')).toBe('الاسم الجديد');
     expect(rendered('share-url')).toBe('');
     expect(overview.canSharePortfolio).toBe(false);
     await act(async () => reviewed.resolve(portfolio('pending')));
+    await settle();
     expect(overview.portfolioSharingNotice).toBe(
       'أعمالك قيد المراجعة\nسيظهر رابط المشاركة بعد الموافقة',
     );
@@ -258,34 +283,38 @@ describe('profile identity and reviewed portfolio settle independently', () => {
     };
     mockGetProfile.mockResolvedValueOnce(profile('الحساب الثاني', 2));
     mockGetPortfolio.mockResolvedValueOnce(portfolio('suspended'));
-    await act(async () => renderer.update(<Harness />));
+    await update();
     await act(async () => {
       oldIdentity.resolve(profile('الحساب الأول', 4));
       oldSharing.resolve(portfolio());
     });
+    await settle();
     expect(rendered('name')).toBe('الحساب الثاني');
     expect(rendered('share-url')).toBe('');
     expect(overview.portfolioSharingSuspended).toBe(true);
     expect(rendered('error')).toBe('');
   });
 
-  it('a late failure after blur does not surface and a fresh focus owns new reads', async () => {
+  it('a fresh focus owns new reads after both earlier reads failed while away', async () => {
     const oldIdentity = deferred<Profile>();
     const oldSharing = deferred<PortfolioProfile>();
     mockGetProfile.mockReturnValueOnce(oldIdentity.promise);
     mockGetPortfolio.mockReturnValueOnce(oldSharing.promise);
     await mount();
     mockFocused = false;
-    await act(async () => renderer.update(<Harness />));
+    await update();
     await act(async () => {
       oldIdentity.reject(new Error('old-identity'));
       oldSharing.reject(new Error('old-portfolio'));
     });
-    expect(rendered('error')).toBe('');
+    await settle();
+    expect(rendered('name')).toBe('الاسم المحفوظ');
+    expect(rendered('share-url')).toBe('');
     mockFocused = true;
-    await act(async () => renderer.update(<Harness />));
+    await update();
     expect(rendered('name')).toBe('الاسم الجديد');
     expect(rendered('share-url')).toBe(portfolio().publicUrl);
+    expect(rendered('error')).toBe('');
   });
 
   it('does not request either private endpoint for a guest session', async () => {

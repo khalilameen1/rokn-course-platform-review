@@ -7,7 +7,7 @@ import {
 
 export type {GalleryProps};
 
-export default function Gallery(props: GalleryProps = {}) {
+export default function Gallery(props: GalleryProps) {
   const controller = usePortfolioGalleryController(props);
   return <PortfolioGalleryView controller={controller} />;
 }

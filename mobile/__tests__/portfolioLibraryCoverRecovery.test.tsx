@@ -1,7 +1,7 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
 
-const mockGetCachedPortfolio = jest.fn();
 const mockGetPortfolio = jest.fn();
 const mockGetPortfolioItem = jest.fn();
 const mockHasSession = jest.fn();
@@ -14,11 +14,12 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 jest.mock('../src/constants/helpers', () => ({
+  ...jest.requireActual('../src/constants/helpers'),
   assertAccountSessionBoundary: jest.fn(),
+  captureAccountSessionBoundary: async () => ({epoch: 1, scope: 'account-a'}),
 }));
 
 jest.mock('../src/services/roknApi', () => ({
-  getCachedPortfolio: (...args: unknown[]) => mockGetCachedPortfolio(...args),
   getPortfolio: (...args: unknown[]) => mockGetPortfolio(...args),
   getPortfolioItem: (...args: unknown[]) => mockGetPortfolioItem(...args),
   hasSession: (...args: unknown[]) => mockHasSession(...args),
@@ -57,16 +58,13 @@ const deferred = <T,>() => {
 };
 
 const flush = async () => {
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 10));
 };
 
 describe('portfolio library cover recovery', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockHasSession.mockResolvedValue(true);
-    mockGetCachedPortfolio.mockResolvedValue([]);
     mockGetPortfolio.mockResolvedValue([
       item('https://cdn.example/expired.jpg'),
     ]);
@@ -79,6 +77,7 @@ describe('portfolio library cover recovery', () => {
     const isLoadBlocked = () => false;
     const Harness = () => {
       library = usePortfolioLibrary({
+        identityKey: 'learner',
         captureBoundary,
         isLoadBlocked,
         mountedRef,
@@ -87,7 +86,9 @@ describe('portfolio library cover recovery', () => {
     };
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness />, createTestQueryClient()),
+      );
       await flush();
     });
     const failedProject = library.projects[0];
@@ -138,6 +139,7 @@ describe('portfolio library cover recovery', () => {
     const isLoadBlocked = () => false;
     const Harness = () => {
       library = usePortfolioLibrary({
+        identityKey: 'learner',
         captureBoundary,
         isLoadBlocked,
         mountedRef,
@@ -146,7 +148,9 @@ describe('portfolio library cover recovery', () => {
     };
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness />, createTestQueryClient()),
+      );
       await flush();
     });
     const failedProject = library.projects[0];
@@ -181,6 +185,7 @@ describe('portfolio library cover recovery', () => {
     const isLoadBlocked = () => false;
     const Harness = () => {
       library = usePortfolioLibrary({
+        identityKey: 'learner',
         captureBoundary,
         isLoadBlocked,
         mountedRef,
@@ -189,7 +194,9 @@ describe('portfolio library cover recovery', () => {
     };
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness />, createTestQueryClient()),
+      );
       await flush();
     });
     const failedProject = library.projects[0];

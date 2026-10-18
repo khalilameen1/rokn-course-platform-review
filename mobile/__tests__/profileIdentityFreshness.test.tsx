@@ -1,6 +1,7 @@
 import React from 'react';
 import {Text, View} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
 
 let mockStoredUser: Record<string, unknown> = {};
 const mockGetProfile = jest.fn();
@@ -18,6 +19,7 @@ jest.mock('react-redux', () => ({
     selector({auth: {userData: mockStoredUser}}),
 }));
 jest.mock('../src/constants/helpers', () => ({
+  ...jest.requireActual('../src/constants/helpers'),
   assertAccountSessionBoundary: jest.fn(),
   captureAccountSessionBoundary: jest.fn(async () => ({
     epoch: 1,
@@ -55,6 +57,24 @@ const Harness = () => {
 
 const text = (renderer: TestRenderer.ReactTestRenderer, testID: string) =>
   String(renderer.root.findByProps({testID}).props.children);
+const settle = () =>
+  act(async () => {
+    await new Promise(resolve => setTimeout(resolve, 10));
+  });
+let client = createTestQueryClient();
+const mount = async () => {
+  client = createTestQueryClient();
+  let renderer!: TestRenderer.ReactTestRenderer;
+  await act(async () => {
+    renderer = TestRenderer.create(withQueryClient(<Harness />, client));
+  });
+  await settle();
+  return renderer;
+};
+const update = async (renderer: TestRenderer.ReactTestRenderer) => {
+  await act(async () => renderer.update(withQueryClient(<Harness />, client)));
+  await settle();
+};
 
 describe('profile identity freshness', () => {
   beforeEach(() => {
@@ -88,10 +108,7 @@ describe('profile identity freshness', () => {
         publicUrl: '',
         slug: '',
       });
-      let renderer!: TestRenderer.ReactTestRenderer;
-      await act(async () => {
-        renderer = TestRenderer.create(<Harness />);
-      });
+      const renderer = await mount();
       try {
         expect(text(renderer, 'profile-headline')).toBe('مصمم سابق');
         if (source === 'saved session') {
@@ -104,7 +121,7 @@ describe('profile identity freshness', () => {
               profile_revision: 3,
             },
           };
-          await act(async () => renderer.update(<Harness />));
+          await update(renderer);
         } else {
           mockGetProfile.mockResolvedValue({
             ...oldProfile,
@@ -113,6 +130,7 @@ describe('profile identity freshness', () => {
           });
           mockGetPortfolioProfile.mockRejectedValue(new Error('offline'));
           await act(async () => currentProfile.retry());
+          await settle();
           expect(currentProfile.profileError).not.toBe('');
         }
         expect(text(renderer, 'profile-headline')).toBe('');
@@ -129,6 +147,7 @@ describe('profile identity freshness', () => {
           slug: '',
         });
         await act(async () => currentProfile.retry());
+        await settle();
         expect(text(renderer, 'profile-headline')).toBe('');
         expect(currentProfile.profileError).toBe('');
       } finally {
@@ -145,10 +164,7 @@ describe('profile identity freshness', () => {
       publicUrl: '',
       slug: '',
     });
-    let renderer!: TestRenderer.ReactTestRenderer;
-    await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
-    });
+    const renderer = await mount();
     expect(text(renderer, 'profile-headline')).toBe('مصمم منتجات');
     await act(async () => renderer.unmount());
   });
@@ -177,10 +193,7 @@ describe('profile identity freshness', () => {
       watchHistoryEnabled: true,
     });
 
-    let renderer!: TestRenderer.ReactTestRenderer;
-    await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
-    });
+    const renderer = await mount();
     expect(text(renderer, 'profile-name')).toBe('الاسم القديم');
 
     mockStoredUser = {
@@ -192,7 +205,7 @@ describe('profile identity freshness', () => {
         profile_revision: 3,
       },
     };
-    await act(async () => renderer.update(<Harness />));
+    await update(renderer);
 
     expect(text(renderer, 'profile-name')).toBe('الاسم الجديد');
     expect(text(renderer, 'profile-avatar')).toBe(

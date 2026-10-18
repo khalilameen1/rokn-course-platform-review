@@ -50,19 +50,15 @@ describe('daily read latency budget', () => {
   });
 
   it('does not let best-effort device cache work own a daily screen spinner', () => {
-    const portfolio = source(
-      'src/screens/Profile/gallery/usePortfolioLibrary.ts',
-    );
     const certificates = source(
       'src/screens/Profile/certificates/useCertificatesController.ts',
     );
 
-    // Catalogue, course details, dashboard and wallet reads start before
-    // the device snapshot settles (queryPersistence restore budget): proven
-    // by courseCatalogueUnavailableRecovery and myCornerStorageBoundary.
-    expect(portfolio).toContain(
-      'settleWithin(getCachedPortfolio(boundary), [])',
-    );
+    // Catalogue, course details, dashboard, wallet, saved library and
+    // portfolio reads start before the device snapshot settles
+    // (queryPersistence restore budget): proven by
+    // courseCatalogueUnavailableRecovery, myCornerStorageBoundary,
+    // savedLibraryFocusLifecycle and portfolioLibraryQuery.
     expect(certificates).toMatch(
       /settleWithin\(\s*getCachedCertificates\(boundary\),\s*\[\]/,
     );

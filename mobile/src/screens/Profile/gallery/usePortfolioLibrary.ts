@@ -1,15 +1,17 @@
-import {useCallback, useRef, useState} from 'react';
 import {useFocusEffect} from '@react-navigation/native';
-import type {MutableRefObject} from 'react';
+import {useQuery, useQueryClient} from '@tanstack/react-query';
+import {useCallback, useMemo, useRef} from 'react';
+import type {MutableRefObject, SetStateAction} from 'react';
+import type {AccountSessionBoundary} from '../../../constants/helpers';
+import {assertAccountSessionBoundary} from '../../../constants/helpers';
+import {useAccountQueryScope} from '../../../services/query/accountQueryScope';
+import {accountQueryKeys} from '../../../services/query/queryKeys';
+import {restoreBeforeFailing} from '../../../services/query/queryPersistence';
 import {
-  getCachedPortfolio,
   getPortfolio,
   getPortfolioItem,
   hasSession,
 } from '../../../services/roknApi';
-import type {AccountSessionBoundary} from '../../../constants/helpers';
-import {assertAccountSessionBoundary} from '../../../constants/helpers';
-import {settleWithin} from '../../../utils/settleWithin';
 import {
   isPortfolioAccountChangedError,
   fallbackPortfolioCover,
@@ -19,85 +21,105 @@ import {
 } from './portfolioModel';
 
 type Params = {
+  identityKey: string;
   captureBoundary: () => Promise<AccountSessionBoundary>;
   isLoadBlocked: () => boolean;
   mountedRef: MutableRefObject<boolean>;
 };
 
+const NO_PROJECTS: Project[] = [];
+
+/**
+ * The owner's project list as one account-scoped query (ARCHITECTURE.md M1):
+ * read on mount and on every focus, foreground return and media replay
+ * (`loadProjects`), kept on device by the `portfolio` snapshot policy with
+ * `shareReady` (publication state and `is_live`) as the screen computed it.
+ * The create, edit, media and delete hooks write acknowledged responses into
+ * the same entry (`setProjects`, TanStack "Updates from Mutation Responses")
+ * and cancel a list read that could land over them (`cancelLoad`); a media
+ * delivery confirmed by the outbox invalidates it (`invalidatePortfolio`).
+ */
 export function usePortfolioLibrary({
+  identityKey,
   captureBoundary,
   isLoadBlocked,
   mountedRef,
 }: Params) {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [serverSession, setServerSession] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
+  const client = useQueryClient();
+  const {scope, failed: scopeFailed} = useAccountQueryScope(identityKey);
+  const scopeRef = useRef(scope);
+  scopeRef.current = scope;
+  const keys = useMemo(() => accountQueryKeys(scope), [scope]);
+  const portfolioKey = useMemo(() => keys.portfolio(), [keys]);
   const generationRef = useRef(0);
   const coverRefreshAttemptsRef = useRef(new Set<string>());
   const coverRefreshFlightsRef = useRef(new Set<string>());
+
+  const session = useQuery({
+    queryKey: keys.session(),
+    queryFn: () => hasSession(),
+    enabled: scope !== null,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+  const signedIn = session.data === true;
+
+  const portfolio = useQuery({
+    queryKey: portfolioKey,
+    queryFn: restoreBeforeFailing(async (): Promise<Project[]> => {
+      const boundary = await captureBoundary();
+      if (boundary.scope !== scope) {
+        throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
+      }
+      const items = await getPortfolio(boundary);
+      assertAccountSessionBoundary(boundary);
+      return items.map(toPortfolioProject);
+    }),
+    enabled: scope !== null && signedIn,
+    // A device snapshot never counts as fresh: the mount read always asks
+    // the server. Later reads happen when the gallery asks (focus,
+    // foreground, replay, retry) or when a confirmed write invalidates the
+    // list; never on a timer or on every return to the app.
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+  const projects = signedIn ? portfolio.data ?? NO_PROJECTS : NO_PROJECTS;
+  // The latest stored list, synchronously after a write too.
   const projectsRef = useRef<Project[]>(projects);
   projectsRef.current = projects;
 
+  /** A mutation starts: an older list response must not land over its edit. */
   const cancelLoad = useCallback(() => {
     generationRef.current += 1;
-    if (mountedRef.current) setLoading(false);
-  }, [mountedRef]);
+    const owner = scopeRef.current;
+    if (owner === null) return;
+    void client
+      .cancelQueries({queryKey: accountQueryKeys(owner).portfolio(), exact: true})
+      .catch(() => undefined);
+  }, [client]);
 
+  const refetchSession = session.refetch;
+  const refetchPortfolio = portfolio.refetch;
   const loadProjects = useCallback(async () => {
-    if (isLoadBlocked()) return;
-    const generation = ++generationRef.current;
-    const isCurrent = () =>
-      mountedRef.current && generation === generationRef.current;
-    setLoading(true);
-    let boundary: AccountSessionBoundary;
-    let sessionAvailable = false;
-    try {
-      boundary = await captureBoundary();
-      sessionAvailable = await hasSession();
-      assertAccountSessionBoundary(boundary);
-    } catch (error: unknown) {
-      if (isPortfolioAccountChangedError(error)) return;
-      if (isCurrent()) {
-        setLoadError('تعذّر تحميل البورتفوليو\nأعد فتح الصفحة');
-        setLoading(false);
-      }
-      return;
-    }
-    if (!isCurrent()) return;
-    setServerSession(sessionAvailable);
-    if (!sessionAvailable) {
-      setProjects([]);
-      setLoadError('');
-      setLoading(false);
-      return;
-    }
+    if (isLoadBlocked() || scopeRef.current === null) return;
+    generationRef.current += 1;
+    const result = await refetchSession({cancelRefetch: false});
+    if (result.data !== true || !mountedRef.current) return;
+    await refetchPortfolio();
+  }, [isLoadBlocked, mountedRef, refetchPortfolio, refetchSession]);
 
-    try {
-      const remoteItems = getPortfolio(boundary).then(
-        value => ({ok: true as const, value}),
-        error => ({ok: false as const, error}),
+  const setProjects = useCallback(
+    (update: SetStateAction<Project[]>) => {
+      const owner = scopeRef.current;
+      if (owner === null) return;
+      const queryKey = accountQueryKeys(owner).portfolio();
+      client.setQueryData<Project[]>(queryKey, current =>
+        typeof update === 'function' ? update(current ?? []) : update,
       );
-      const cached = await settleWithin(getCachedPortfolio(boundary), []);
-      if (!isCurrent()) return;
-      if (cached.length && projectsRef.current.length === 0) {
-        setProjects(cached.map(toPortfolioProject));
-        setLoading(false);
-      }
-      const remoteResult = await remoteItems;
-      if (!remoteResult.ok) throw remoteResult.error;
-      if (!isCurrent()) return;
-      setProjects(remoteResult.value.map(toPortfolioProject));
-      setLoadError('');
-    } catch (error: unknown) {
-      if (isPortfolioAccountChangedError(error)) return;
-      if (isCurrent()) {
-        setLoadError('تعذّر تحميل البورتفوليو\nمشروعاتك محفوظة');
-      }
-    } finally {
-      if (isCurrent()) setLoading(false);
-    }
-  }, [captureBoundary, isLoadBlocked, mountedRef]);
+      projectsRef.current = client.getQueryData<Project[]>(queryKey) ?? [];
+    },
+    [client],
+  );
 
   const handleProjectCoverError = useCallback(
     (project: Project) => {
@@ -105,13 +127,19 @@ export function usePortfolioLibrary({
       if (!failedUri) return;
       const current = projectsRef.current.find(item => item.id === project.id);
       if (!current || portfolioProjectCoverUri(current) !== failedUri) return;
-      const fallbackProject = {...current, cover: fallbackPortfolioCover};
-
       // Never leave a broken remote image in the grid while its short-lived
       // URL is renewed. The media record stays intact for the detail refresh.
       setProjects(items =>
-        items.map(item => (item === current ? fallbackProject : item)),
+        items.map(item =>
+          item === current ? {...current, cover: fallbackPortfolioCover} : item,
+        ),
       );
+      // The stored entry (after structural sharing) is the receipt: a renewal
+      // replaces exactly it, never a project edited meanwhile.
+      const fallbackProject = projectsRef.current.find(
+        item => item.id === project.id,
+      );
+      if (!fallbackProject) return;
 
       if (
         isLoadBlocked() ||
@@ -160,7 +188,7 @@ export function usePortfolioLibrary({
           coverRefreshFlightsRef.current.delete(project.id);
         });
     },
-    [captureBoundary, isLoadBlocked, mountedRef],
+    [captureBoundary, isLoadBlocked, mountedRef, setProjects],
   );
 
   const handleProjectCoverLoad = useCallback((project: Project) => {
@@ -172,12 +200,41 @@ export function usePortfolioLibrary({
     }
   }, []);
 
+  // TanStack React Native guide, "Refresh on Screen focus": the first focus
+  // is the mount read; every later focus reads again. Leaving the screen
+  // drops a read still in flight, as before.
+  const focusedBeforeRef = useRef(false);
+  const loadProjectsRef = useRef(loadProjects);
+  loadProjectsRef.current = loadProjects;
+  const cancelLoadRef = useRef(cancelLoad);
+  cancelLoadRef.current = cancelLoad;
   useFocusEffect(
     useCallback(() => {
-      void loadProjects();
-      return cancelLoad;
-    }, [cancelLoad, loadProjects]),
+      if (focusedBeforeRef.current) void loadProjectsRef.current();
+      focusedBeforeRef.current = true;
+      return () => cancelLoadRef.current();
+    }, []),
   );
+
+  const serverSession = scope === null ? null : session.data ?? null;
+  const loading =
+    scope === null
+      ? !scopeFailed
+      : !signedIn
+      ? session.data === undefined && !session.isError
+      : portfolio.isFetching ||
+        (portfolio.data === undefined && !portfolio.isError);
+  let loadError = '';
+  if (scopeFailed || (session.isError && !session.isFetching)) {
+    loadError = 'تعذّر تحميل البورتفوليو\nأعد فتح الصفحة';
+  } else if (
+    signedIn &&
+    portfolio.isError &&
+    !portfolio.isFetching &&
+    !isPortfolioAccountChangedError(portfolio.error)
+  ) {
+    loadError = 'تعذّر تحميل البورتفوليو\nمشروعاتك محفوظة';
+  }
 
   return {
     cancelLoad,

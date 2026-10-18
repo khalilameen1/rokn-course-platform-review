@@ -13,7 +13,6 @@ export {
   deletePortfolioItem,
   deletePortfolioMedia,
   finalizePortfolioItem,
-  getCachedPortfolio,
   getEligibleProjects,
   getPortfolio,
   getPortfolioItem,
