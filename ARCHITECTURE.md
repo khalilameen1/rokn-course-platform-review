@@ -127,16 +127,21 @@ read source text (`SourceTextTestRatchetTest`).
 ## Convergence
 Counts of code that still follows a second way. Each may only go down.
 
-| Rule | Deviation | Count (2026-10-18) |
-|---|---|---|
-| B1 | Controllers opening transactions or locks | 21 |
-| B2 | Controllers building the envelope by hand (`response()->json([...])`) | 36 |
-| B2 | Controllers with their own `error()` helper | 6 |
-| B2 | Controllers hand-building a 500 | 5 |
-| M1 | Read domains with a hand-written cache | being migrated |
-| M2 | Feature-owned offline queues outside `durableOutbox` | 0 |
-| M3 | Files calling HTTP outside `services/` | 0 |
-| M3 | Files touching AsyncStorage outside `services/`, `constants/`, `utils/` | 0 |
-| M5 | Standard-Arabic retry copy ("حاول مرة أخرى") in the app | 3 |
-| Tests | Backend test files that read source text (`SourceTextTestRatchetTest` baseline) | 29 |
-| B8 | Larastan baseline entries | 1550 |
+| Rule | Deviation | 2026-10-18 start | Now |
+|---|---|---|---|
+| B1 | Controllers opening transactions or locks | 21 | 0 |
+| B2 | Learner API controllers building the envelope by hand | 36 | 0 |
+| B2 | Controllers with their own `error()` helper | 6 | 0 |
+| B2 | Controllers hand-building a 500 | 5 | 0 |
+| B6 | GET endpoints that write | 7 | 2 (public portfolio page and admin preview call `PortfolioModerationService::reconcile`) |
+| B8 | Larastan baseline entries | 1550 | 1218 |
+| B8 | Eloquent relations without a return type | 205 | 0 |
+| M1 | Read domains outside TanStack Query | 8 | 3 (saved library, profile overview, portfolio gallery) |
+| M2 | Feature-owned offline queues outside `durableOutbox` | 5 | 0 |
+| M3 | Files calling HTTP outside `services/` | 8 | 0 |
+| M3 | Files touching AsyncStorage outside `services/`, `constants/`, `utils/` | 11 | 0 |
+| M5 | Standard-Arabic retry copy ("حاول مرة أخرى") in the app | 132 | 3 (the app's own "سنحاول مرة أخرى" notice) |
+| Tests | Backend test files that read source text | 29 | 0 |
+
+Dashboard JSON endpoints (course studio, uploads) answer `public/admin/assets/js/request.js`'s
+own contract and are outside B2's learner-API scope.
