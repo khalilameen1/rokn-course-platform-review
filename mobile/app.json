@@ -39,7 +39,7 @@
     ],
     "android": {
       "package": "com.rokn",
-      "versionCode": 66,
+      "versionCode": 67,
       "googleServicesFile": "./android/app/google-services.json",
       "intentFilters": [
         {
