@@ -10,6 +10,7 @@ use App\Models\CourseCheckout;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\User;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -24,10 +25,12 @@ final readonly class KashierCheckoutOrderService
         User $user,
         Package $package,
         string $clientRequestKey,
-        ?float $expectedAmount = null,
+        Money|string|float|int|null $expectedAmount = null,
         ?int $expectedCoins = null,
         ?string $courseCheckoutId = null
     ): array {
+        $expectedAmount = $expectedAmount === null ? null : Money::ofEgp($expectedAmount);
+
         return DB::transaction(function () use (
             $user,
             $package,
@@ -92,8 +95,7 @@ final readonly class KashierCheckoutOrderService
                 }
                 if (
                     ($expectedAmount !== null
-                        && (int) round((float) $existing->final_amount * 100)
-                            !== (int) round($expectedAmount * 100))
+                        && Money::ofEgp($existing->final_amount)->toCents() !== $expectedAmount->toCents())
                     || ($expectedCoins !== null
                         && (int) $existing->package_coins !== $expectedCoins)
                 ) {
@@ -129,7 +131,7 @@ final readonly class KashierCheckoutOrderService
             if (
                 ! $package->is_active
                 || ! $package->direct_enabled
-                || (float) $package->price <= 0
+                || Money::ofEgp($package->price)->isNegativeOrZero()
                 || (int) $package->coins <= 0
             ) {
                 throw new KashierCheckoutConflict(
@@ -156,16 +158,15 @@ final readonly class KashierCheckoutOrderService
             // Neither client expectations nor a changed catalogue can set the
             // amount or turn a course shortfall into a full package purchase.
             $funding = $courseCheckout?->terms['selected_package'] ?? null;
-            $baseAmount = (float) ($funding['price'] ?? $package->price);
-            $finalAmount = (float) ($funding['direct_price'] ?? $this->pricing->directPrice($package));
+            $baseAmount = Money::ofEgp($funding['price'] ?? $package->price);
+            $finalAmount = Money::ofEgp($funding['direct_price'] ?? $this->pricing->directPrice($package));
             $coins = (int) ($funding['coins'] ?? $package->coins);
-            if ($coins < 1 || $baseAmount <= 0 || $finalAmount <= 0
+            if ($coins < 1 || $baseAmount->isNegativeOrZero() || $finalAmount->isNegativeOrZero()
                 || ($courseCheckout && (int) ($funding['id'] ?? 0) !== (int) $package->id)) {
                 throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
             }
             if (
-                ($expectedAmount !== null
-                    && (int) round($finalAmount * 100) !== (int) round($expectedAmount * 100))
+                ($expectedAmount !== null && $finalAmount->toCents() !== $expectedAmount->toCents())
                 || ($expectedCoins !== null && $coins !== $expectedCoins)
             ) {
                 throw new KashierCheckoutConflict(
@@ -183,9 +184,9 @@ final readonly class KashierCheckoutOrderService
                     ? $clientRequestKey
                     : 'server-'.(string) Str::uuid(),
                 'checkout_expires_at' => now()->addMinutes(Order::KASHIER_CHECKOUT_TTL_MINUTES),
-                'amount' => $baseAmount,
-                'discount_amount' => round($baseAmount - $finalAmount, 2),
-                'final_amount' => $finalAmount,
+                'amount' => $baseAmount->toDecimalString(),
+                'discount_amount' => $baseAmount->sub($finalAmount)->toDecimalString(),
+                'final_amount' => $finalAmount->toDecimalString(),
                 'status' => Order::STATUS_PENDING,
                 'financial_status' => Order::FINANCIAL_PENDING,
                 'is_premium_user' => $user->isPremiumUser(),

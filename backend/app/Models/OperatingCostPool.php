@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Money;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -57,13 +58,14 @@ final class OperatingCostPool extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function amountEgp(): ?float
+    /** Exact invoice value in EGP (a USD invoice at its recorded rate); null without a rate. */
+    public function amountEgp(): ?Money
     {
         if ($this->currency === 'EGP') {
-            return (float) $this->amount;
+            return Money::ofEgp($this->amount);
         }
-        if ($this->currency === 'USD' && (float) $this->fx_rate_to_egp > 0) {
-            return (float) $this->amount * (float) $this->fx_rate_to_egp;
+        if ($this->currency === 'USD' && Money::ofEgp($this->fx_rate_to_egp)->isPositive()) {
+            return Money::ofEgp($this->amount)->mul($this->fx_rate_to_egp);
         }
 
         return null;

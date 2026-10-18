@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\AiUsageEvent;
+use App\Support\Money;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -95,9 +96,9 @@ final class OpenRouterCostReconciliationService
                     // decimal-six ledger representation. Zero is a real fact.
                     $metadata['provider_cost_usd'] = $cost;
                     $fields['cost_usd'] = number_format($cost, 6, '.', '');
-                    $historicalFx = (float) $event->fx_rate_to_egp;
-                    $fields['cost_egp'] = $historicalFx > 0
-                        ? number_format($cost * $historicalFx, 6, '.', '') : null;
+                    $historicalFx = Money::ofEgp($event->fx_rate_to_egp);
+                    $fields['cost_egp'] = $historicalFx->isPositive()
+                        ? Money::ofEgp($cost)->mul($historicalFx)->toDecimalString(6) : null;
                 }
                 $event->forceFill($fields + ['metadata' => $metadata])->save();
 

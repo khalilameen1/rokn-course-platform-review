@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\OperatingCostPool;
 use App\Support\BusinessClock;
+use App\Support\Money;
 use App\Support\ReportPeriod;
 
 /** Recorded final invoices; no inferred bill or allocation by usage. */
@@ -28,13 +29,13 @@ final class ProviderInvoiceReportService
             ->get()->filter($inPeriod);
         $services = collect(OperatingCostPool::SERVICES)->map(function (string $label, string $key) use ($invoices): array {
             $records = $invoices->where('service_key', $key);
-            $amounts = $records->map(fn (OperatingCostPool $invoice): ?float => $invoice->amountEgp());
+            $amounts = $records->map(fn (OperatingCostPool $invoice): ?Money => $invoice->amountEgp());
 
             return [
                 'key' => $key, 'label' => $label, 'invoices' => $records->count(),
                 'actual_egp' => $records->isNotEmpty() && ! $amounts->containsStrict(null)
-                    ? round((float) $amounts->sum(), 4) : null,
-                'known_egp' => round((float) $amounts->filter(fn ($amount) => $amount !== null)->sum(), 4),
+                    ? Money::sum($amounts)->toFloat(4) : null,
+                'known_egp' => Money::sum($amounts->filter(fn ($amount) => $amount !== null))->toFloat(4),
                 'missing_fx' => $amounts->filter(fn ($amount) => $amount === null)->count(),
             ];
         })->values();
@@ -42,7 +43,7 @@ final class ProviderInvoiceReportService
         return [
             'services' => $services,
             'has_invoices' => $invoices->isNotEmpty(),
-            'known_total_egp' => round((float) $services->sum('known_egp'), 4),
+            'known_total_egp' => Money::sum($services->pluck('known_egp'))->toFloat(4),
             'missing_fx' => (int) $services->sum('missing_fx'),
             'shared_costs' => $sharedCosts,
         ];

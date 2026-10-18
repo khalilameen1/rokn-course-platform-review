@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
+use App\Support\Money;
 use App\Support\ReportPeriod;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Collection;
@@ -140,13 +141,14 @@ final readonly class PlatformCommercialReportService
                 && $ai['cost_egp'] !== null && collect(['bunny_delivery', 'bunny_storage', 'infrastructure'])
                     ->every(fn (string $key): bool => $invoiceReport['services']->firstWhere('key', $key)['actual_egp'] !== null);
             $summary['service_cost_complete'] = $complete;
-            $summary['service_cost_egp'] = $complete ? round($ai['cost_egp'] + $invoiceReport['known_total_egp'], 4) : null;
+            $summary['service_cost_egp'] = $complete
+                ? Money::ofEgp($ai['cost_egp'])->add($invoiceReport['known_total_egp'])->toFloat(4) : null;
         } else {
             $summary['service_cost_complete'] = false;
             $summary['service_cost_egp'] = null;
         }
         $summary['margin_egp'] = $summary['net_egp'] !== null && $summary['service_cost_egp'] !== null
-            ? round($summary['net_egp'] - $summary['service_cost_egp'], 4) : null;
+            ? Money::ofEgp($summary['net_egp'])->sub($summary['service_cost_egp'])->toFloat(4) : null;
         $summary['cost_to_net_revenue_percentage'] = $summary['net_egp'] > 0 && $summary['service_cost_egp'] !== null
             ? round($summary['service_cost_egp'] / $summary['net_egp'] * 100, 2) : null;
         $summary['contribution_margin_percentage'] = $summary['net_egp'] > 0 && $summary['margin_egp'] !== null
@@ -196,7 +198,7 @@ final readonly class PlatformCommercialReportService
         $uniqueStudents = $studentRows->count();
         $summary['average_net_per_student_egp'] = $uniqueStudents > 0
             && $summary['net_egp'] !== null
-                ? round((float) $summary['net_egp'] / $uniqueStudents, 2)
+                ? Money::ofEgp($summary['net_egp'])->div($uniqueStudents)->toFloat()
                 : null;
         // Recorded platform invoices are not evidence of individual learner costs.
         $summary['average_cost_per_student_egp'] = null;
@@ -333,8 +335,7 @@ final readonly class PlatformCommercialReportService
                 return null;
             }
 
-            return round((float) $rows->sum(fn (array $row): float => (float) ($row[$field][$serviceKey] ?? 0)
-            ), 4);
+            return Money::sum($rows->map(fn (array $row): mixed => $row[$field][$serviceKey] ?? 0))->toFloat(4);
         });
     }
 

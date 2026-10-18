@@ -9,6 +9,7 @@ use App\Models\Course;
 use App\Models\CourseCode;
 use App\Models\Order;
 use App\Models\User;
+use App\Support\Money;
 
 /** Zero-value financial receipt; never a wallet charge or paid-plan entitlement. */
 final class CourseCodeReceiptService
@@ -25,7 +26,7 @@ final class CourseCodeReceiptService
                 || ! in_array($order->financial_status, [
                     null, '', Order::FINANCIAL_PENDING, Order::FINANCIAL_SETTLED,
                 ], true)
-                || (float) $order->final_amount !== 0.0) {
+                || ! Money::ofEgp($order->final_amount)->isZero()) {
                 throw new \LogicException('Existing course-code order does not match its redemption contract.');
             }
             $order->forceFill([

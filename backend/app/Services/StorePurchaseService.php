@@ -12,6 +12,7 @@ use App\Models\Package;
 use App\Models\StoreNotificationEvent;
 use App\Models\StorePurchase;
 use App\Models\User;
+use App\Support\Money;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -189,7 +190,7 @@ final readonly class StorePurchaseService
                     return $existing;
                 }
 
-                $catalogAmount = (float) $package->price;
+                $catalogAmount = Money::ofEgp($package->price)->toDecimalString();
                 $isTest = in_array($environment, ['test', 'sandbox'], true);
                 $gatewayGross = $isTest ? 0.0 : $verified->grossAmount;
                 $gatewayCurrency = $verified->currency;

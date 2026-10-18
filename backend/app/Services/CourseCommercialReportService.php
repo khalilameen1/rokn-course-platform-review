@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Order;
+use App\Support\Money;
 use App\Support\ReportPeriod;
 use Illuminate\Support\Collection;
 
@@ -221,19 +222,11 @@ final class CourseCommercialReportService
             $row['contribution_margin_egp'] = $row['cash_net_complete']
                 && $row['service_cost_complete']
                 && $row['service_cost_actual_egp'] !== null
-                    ? round(
-                        (float) $row['cash_net_known_egp']
-                        - (float) $row['service_cost_actual_egp'],
-                        2
-                    )
+                    ? Money::ofEgp($row['cash_net_known_egp'])->sub($row['service_cost_actual_egp'])->toFloat()
                     : null;
             $row['estimated_contribution_margin_egp'] = $row['cash_net_complete']
                 && $row['service_cost_with_estimates_egp'] !== null
-                    ? round(
-                        (float) $row['cash_net_known_egp']
-                        - (float) $row['service_cost_with_estimates_egp'],
-                        2
-                    )
+                    ? Money::ofEgp($row['cash_net_known_egp'])->sub($row['service_cost_with_estimates_egp'])->toFloat()
                     : null;
             $row += $this->summaries->unitEconomics(
                 $row['cash_net_complete'] ? (float) $row['cash_net_known_egp'] : null,
@@ -244,10 +237,10 @@ final class CourseCommercialReportService
             return $row;
         })->values();
 
-        $gross = round((float) $rows->sum('cash_gross_egp'), 2);
-        $estimatedGross = round((float) $rows->sum('cash_estimated_gross_egp'), 2);
-        $knownNet = round((float) $rows->sum('cash_net_known_egp'), 2);
-        $pendingGross = round((float) $rows->sum('cash_pending_settlement_egp'), 2);
+        $gross = Money::sum($rows->pluck('cash_gross_egp'))->toFloat();
+        $estimatedGross = Money::sum($rows->pluck('cash_estimated_gross_egp'))->toFloat();
+        $knownNet = Money::sum($rows->pluck('cash_net_known_egp'))->toFloat();
+        $pendingGross = Money::sum($rows->pluck('cash_pending_settlement_egp'))->toFloat();
         $cashNetComplete = $rows->every(fn (array $row): bool => (bool) $row['cash_net_complete']);
         $cashGrossComplete = $rows->every(fn (array $row): bool => (bool) $row['cash_gross_complete']);
         $foreignCurrencyExposure = $rows
@@ -257,7 +250,7 @@ final class CourseCommercialReportService
                     'amount' => $amount,
                 ])->values()->all())
             ->groupBy('currency')
-            ->map(fn (Collection $items): float => round((float) $items->sum('amount'), 2))
+            ->map(fn (Collection $items): float => Money::sum($items->pluck('amount'))->toFloat())
             ->all();
         // A directly invoiced course cost is not an invented allocation to its
         // individual students, so the course collector owns this total.
@@ -267,7 +260,7 @@ final class CourseCommercialReportService
             $cashNetComplete ? $knownNet : null,
             $serviceCost,
             $cashNetComplete && $serviceCostComplete
-                ? round($knownNet - (float) $serviceCost, 2)
+                ? Money::ofEgp($knownNet)->sub($serviceCost)->toFloat()
                 : null
         );
         $cashChannels = $rows
@@ -281,18 +274,18 @@ final class CourseCommercialReportService
                             'amount' => $amount,
                         ])->values()->all();
                 })->groupBy('currency')->map(
-                    fn (Collection $amounts): float => round((float) $amounts->sum('amount'), 2)
+                    fn (Collection $amounts): float => Money::sum($amounts->pluck('amount'))->toFloat()
                 )->all();
 
                 return [
                     'method' => (string) $items->first()['method'],
                     'label' => (string) $items->first()['label'],
                     'paid_coins' => (int) $items->sum('paid_coins'),
-                    'gross_egp' => round((float) $items->sum('gross_egp'), 2),
-                    'estimated_gross_egp' => round((float) $items->sum('estimated_gross_egp'), 2),
+                    'gross_egp' => Money::sum($items->pluck('gross_egp'))->toFloat(),
+                    'estimated_gross_egp' => Money::sum($items->pluck('estimated_gross_egp'))->toFloat(),
                     'gross_complete' => $items->every(fn (array $item): bool => (bool) $item['gross_complete']),
-                    'net_known_egp' => round((float) $items->sum('net_known_egp'), 2),
-                    'pending_settlement_egp' => round((float) $items->sum('pending_settlement_egp'), 2),
+                    'net_known_egp' => Money::sum($items->pluck('net_known_egp'))->toFloat(),
+                    'pending_settlement_egp' => Money::sum($items->pluck('pending_settlement_egp'))->toFloat(),
                     'net_complete' => $items->every(fn (array $item): bool => (bool) $item['net_complete']),
                     'foreign_currency_amounts' => $foreign,
                 ];
@@ -338,10 +331,10 @@ final class CourseCommercialReportService
             'service_cost_with_estimates_egp' => $costReport['service_cost_with_estimates_egp'],
             'estimated_contribution_margin_egp' => $cashNetComplete
                 && $costReport['service_cost_with_estimates_egp'] !== null
-                    ? round($knownNet - (float) $costReport['service_cost_with_estimates_egp'], 2)
+                    ? Money::ofEgp($knownNet)->sub($costReport['service_cost_with_estimates_egp'])->toFloat()
                     : null,
             'contribution_margin_egp' => $cashNetComplete && $serviceCostComplete
-                ? round($knownNet - (float) $serviceCost, 2)
+                ? Money::ofEgp($knownNet)->sub($serviceCost)->toFloat()
                 : null,
             'cost_warnings' => $costReport['unallocated_pools'],
             'service_breakdown' => $costReport['service_breakdown'],

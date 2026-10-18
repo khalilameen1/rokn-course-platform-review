@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Order;
+use App\Support\Money;
 
 final readonly class KashierGatewayEvidenceService
 {
+    /** Kashier reports the charged amount in EGP; anything beyond sub-piastre noise is a different payment. */
+    public const AMOUNT_TOLERANCE_EGP = '0.009';
+
     public function transactionIdConflicts(Order $order, ?string $transactionId): bool
     {
         return $transactionId !== null
@@ -351,9 +355,9 @@ final readonly class KashierGatewayEvidenceService
             'response.net_amount', 'response.settlement.netAmount', 'response.settlement.amount',
             'data.netAmount', 'data.settlementAmount',
         ]));
-        $gross = (float) $order->final_amount;
+        $gross = Money::ofEgp($order->final_amount);
         if ($net === null && $fee !== null) {
-            $net = max(0, $gross - $fee);
+            $net = $gross->sub($fee)->max(0);
         }
         $currency = strtoupper((string) ($this->firstValue($payload, [
             'currency', 'response.currency', 'response.settlement.currency', 'data.currency',
@@ -366,11 +370,11 @@ final readonly class KashierGatewayEvidenceService
 
         $facts = [];
         foreach ([
-            'gateway_gross_amount' => number_format($gross, 2, '.', ''),
+            'gateway_gross_amount' => $gross->toDecimalString(),
             'gateway_currency' => substr($currency, 0, 3),
             'gateway_settlement_status' => $net !== null ? 'settled' : substr($providerStatus, 0, 32),
-            'gateway_fee_amount' => $fee !== null ? number_format($fee, 2, '.', '') : null,
-            'gateway_net_amount' => $net !== null ? number_format($net, 2, '.', '') : null,
+            'gateway_fee_amount' => $fee?->toDecimalString(),
+            'gateway_net_amount' => $net?->toDecimalString(),
             'gateway_settled_at' => $net !== null ? now() : null,
         ] as $field => $value) {
             if ($order->{$field} === null && $value !== null) {
@@ -405,7 +409,7 @@ final readonly class KashierGatewayEvidenceService
         ]);
         $normalizedAmount = $this->normalizeAmount($amount);
         if ($amount === null || $normalizedAmount === null
-            || abs($normalizedAmount - (float) $order->final_amount) > 0.009) {
+            || $normalizedAmount->differsFrom(Money::ofEgp($order->final_amount), self::AMOUNT_TOLERANCE_EGP)) {
             throw new \RuntimeException('Kashier payment amount mismatch.');
         }
 
@@ -430,16 +434,9 @@ final readonly class KashierGatewayEvidenceService
         return null;
     }
 
-    private function normalizeAmount(mixed $value): ?float
+    /** Provider amounts arrive as numbers or formatted strings ("1,250.00"); keep them exact. */
+    private function normalizeAmount(mixed $value): ?Money
     {
-        if (is_int($value) || is_float($value)) {
-            return (float) $value;
-        }
-        if (! is_string($value)) {
-            return null;
-        }
-        $value = str_replace([',', ' '], '', trim($value));
-
-        return $value !== '' && is_numeric($value) ? (float) $value : null;
+        return Money::tryOfEgp($value);
     }
 }

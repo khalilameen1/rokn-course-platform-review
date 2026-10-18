@@ -6,29 +6,33 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Support\BusinessClock;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 
 final class AdminOrderSettlementService
 {
+    /** A statement may disagree with the captured gross by rounding slack only. */
+    public const SETTLEMENT_TOLERANCE_EGP = '0.02';
+
     /** @param array<string, mixed> $input */
     public function record(Order $order, array $input, int $actorId): void
     {
         $this->assertRecordable($order);
 
-        $gross = round((float) $input['gross_amount'], 2);
-        $fee = round((float) $input['fee_amount'], 2);
-        $net = round((float) $input['net_amount'], 2);
+        $gross = Money::ofEgp($input['gross_amount'])->toScale();
+        $fee = Money::ofEgp($input['fee_amount'])->toScale();
+        $net = Money::ofEgp($input['net_amount'])->toScale();
         $currency = strtoupper((string) $input['currency']);
         $settledAt = BusinessClock::localInputToUtc((string) $input['settled_at']);
         if ($settledAt === null || $settledAt->isAfter(BusinessClock::utcNow()->addMinute())) {
             throw new \DomainException('Settlement time cannot be in the future.');
         }
-        if (abs(($gross - $fee) - $net) > 0.02) {
+        if ($gross->sub($fee)->differsFrom($net, self::SETTLEMENT_TOLERANCE_EGP)) {
             throw new \DomainException('Settlement net does not equal gross minus fees.');
         }
         if (
             $order->gateway_gross_amount !== null
-            && abs((float) $order->gateway_gross_amount - $gross) > 0.02
+            && Money::ofEgp($order->gateway_gross_amount)->differsFrom($gross, self::SETTLEMENT_TOLERANCE_EGP)
         ) {
             throw new \DomainException('Settlement gross does not match the captured gross.');
         }
@@ -51,9 +55,9 @@ final class AdminOrderSettlementService
                 'recorded_at' => now()->toIso8601String(),
             ];
             $locked->forceFill([
-                'gateway_gross_amount' => $locked->gateway_gross_amount ?? number_format($gross, 2, '.', ''),
-                'gateway_fee_amount' => number_format($fee, 2, '.', ''),
-                'gateway_net_amount' => number_format($net, 2, '.', ''),
+                'gateway_gross_amount' => $locked->gateway_gross_amount ?? $gross->toDecimalString(),
+                'gateway_fee_amount' => $fee->toDecimalString(),
+                'gateway_net_amount' => $net->toDecimalString(),
                 'gateway_currency' => $currency,
                 'gateway_settlement_status' => 'settled',
                 'gateway_settled_at' => $settledAt,

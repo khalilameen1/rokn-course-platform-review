@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Support\BusinessClock;
+use App\Support\Money;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -126,15 +127,15 @@ final class PaymentChannelReportService
                 'live_count' => (int) $egpRows->sum('live_count'),
                 'test_count' => (int) $egpRows->sum('test_count'),
                 'live_coins' => (int) $egpRows->sum('live_coins'),
-                'gross_amount' => (float) $egpRows->sum('gross_amount'),
-                'confirmed_gross_amount' => (float) $egpRows->sum('confirmed_gross_amount'),
-                'catalog_estimated_gross_amount' => (float) $egpRows->sum('catalog_estimated_gross_amount'),
+                'gross_amount' => Money::sum($egpRows->pluck('gross_amount'))->toFloat(),
+                'confirmed_gross_amount' => Money::sum($egpRows->pluck('confirmed_gross_amount'))->toFloat(),
+                'catalog_estimated_gross_amount' => Money::sum($egpRows->pluck('catalog_estimated_gross_amount'))->toFloat(),
                 'confirmed_gross_count' => (int) $egpRows->sum('confirmed_gross_count'),
                 'catalog_estimated_gross_count' => (int) $egpRows->sum('catalog_estimated_gross_count'),
-                'confirmed_fee_amount' => (float) $egpRows->sum('confirmed_fee_amount'),
+                'confirmed_fee_amount' => Money::sum($egpRows->pluck('confirmed_fee_amount'))->toFloat(),
                 'confirmed_fee_count' => (int) $egpRows->sum('confirmed_fee_count'),
-                'confirmed_net_amount' => (float) $egpRows->sum('confirmed_net_amount'),
-                'estimated_net_amount' => (float) $egpRows->sum('estimated_net_amount'),
+                'confirmed_net_amount' => Money::sum($egpRows->pluck('confirmed_net_amount'))->toFloat(),
+                'estimated_net_amount' => Money::sum($egpRows->pluck('estimated_net_amount'))->toFloat(),
                 'pending_settlement_count' => (int) $egpRows->sum('pending_settlement_count'),
             ],
             'has_other_currencies' => $rows->contains(
@@ -176,12 +177,11 @@ final class PaymentChannelReportService
                     ->format('Y-m');
                 $totals->put(
                     $month,
-                    (float) $totals->get($month, 0)
-                        + (float) $order->gateway_gross_amount
+                    Money::ofEgp($totals->get($month))->add($order->gateway_gross_amount)
                 );
             }, 500, 'id');
 
-        return $totals->sortKeys();
+        return $totals->map(fn (Money $total): float => $total->toFloat())->sortKeys();
     }
 
     /** @return array<string, mixed> */

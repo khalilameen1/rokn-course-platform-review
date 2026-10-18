@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Services\CourseBrowserPaymentService;
 use App\Services\KashierService;
+use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -22,7 +23,7 @@ final class CourseBrowserPaymentController extends Controller
         abort_unless($checkout !== null, 410);
         abort_unless(User::query()->whereKey($checkout->user_id)->where('active', true)->exists(), 410);
         $gatewayUrl = $kashier->getHppUrl((string) $order->order_ref,
-            number_format((float) $order->final_amount, 2, '.', ''), 'EGP', route('payment.callback'));
+            Money::ofEgp($order->final_amount)->toDecimalString(), 'EGP', route('payment.callback'));
         abort_unless(is_string($gatewayUrl)
             && preg_match('~\Ahttps://checkout\.kashier\.io(?:/|\?|$)~i', $gatewayUrl), 503);
 

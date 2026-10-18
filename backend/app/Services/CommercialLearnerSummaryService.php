@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Support\Money;
 use Illuminate\Support\Collection;
 
 /** Summarizes already-read learner rows without querying or repricing their contracts. */
@@ -24,9 +25,9 @@ final class CommercialLearnerSummaryService
         $estimatedComplete = $rows->every(
             fn (array $row): bool => $row['service_cost_with_estimates_egp'] !== null
         );
-        $net = $netComplete ? round((float) $rows->sum('cash_net_known_egp'), 2) : null;
-        $cost = $costComplete ? round((float) $rows->sum('service_cost_actual_egp'), 2) : null;
-        $margin = $net !== null && $cost !== null ? round($net - $cost, 2) : null;
+        $net = $netComplete ? Money::sum($rows->pluck('cash_net_known_egp'))->toFloat() : null;
+        $cost = $costComplete ? Money::sum($rows->pluck('service_cost_actual_egp'))->toFloat() : null;
+        $margin = $net !== null && $cost !== null ? Money::ofEgp($net)->sub($cost)->toFloat() : null;
         $aiRequests = (int) $rows->sum('ai_requests');
         $aiFailedRequests = (int) $rows->sum('ai_failed_requests');
         $aiUnansweredRequests = (int) $rows->sum('ai_unanswered_requests');
@@ -41,8 +42,8 @@ final class CommercialLearnerSummaryService
                 );
 
                 return [$serviceKey => $complete
-                    ? round((float) $rows->sum(fn (array $row): float => (float) $row['actual_cost_by_service_egp'][$serviceKey]
-                    ), 4)
+                    ? Money::sum($rows->map(fn (array $row): mixed => $row['actual_cost_by_service_egp'][$serviceKey]))
+                        ->toFloat(4)
                     : null];
             })->all();
         $estimatedCostByService = collect(CourseCostReportService::serviceLabels())
@@ -51,8 +52,8 @@ final class CommercialLearnerSummaryService
                 );
 
                 return [$serviceKey => $complete
-                    ? round((float) $rows->sum(fn (array $row): float => (float) $row['cost_with_estimates_by_service_egp'][$serviceKey]
-                    ), 4)
+                    ? Money::sum($rows->map(fn (array $row): mixed => $row['cost_with_estimates_by_service_egp'][$serviceKey]))
+                        ->toFloat(4)
                     : null];
             })->all();
 
@@ -69,7 +70,7 @@ final class CommercialLearnerSummaryService
             ),
             'coins' => (int) $rows->sum('total_coins'),
             'discount_coins' => (int) $rows->sum('discount_coins'),
-            'gross_egp' => round((float) $rows->sum('cash_gross_egp'), 2),
+            'gross_egp' => Money::sum($rows->pluck('cash_gross_egp'))->toFloat(),
             'net_egp' => $net,
             'ai_requests' => $aiRequests,
             'ai_failed_requests' => $aiFailedRequests,
@@ -90,23 +91,23 @@ final class CommercialLearnerSummaryService
             'service_breakdown_actual_egp' => $actualCostByService,
             'margin_egp' => $margin,
             'estimated_cost_egp' => $estimatedComplete
-                ? round((float) $rows->sum('service_cost_with_estimates_egp'), 2)
+                ? Money::sum($rows->pluck('service_cost_with_estimates_egp'))->toFloat()
                 : null,
             'service_breakdown_with_estimates_egp' => $estimatedCostByService,
             'estimated_margin_egp' => $netComplete && $estimatedComplete
-                ? round((float) $rows->sum('estimated_contribution_margin_egp'), 2)
+                ? Money::sum($rows->pluck('estimated_contribution_margin_egp'))->toFloat()
                 : null,
             'average_net_per_student_egp' => $students > 0 && $net !== null
-                ? round($net / $students, 2)
+                ? Money::ofEgp($net)->div($students)->toFloat()
                 : null,
             'average_cost_per_student_egp' => $students > 0 && $cost !== null
-                ? round($cost / $students, 2)
+                ? Money::ofEgp($cost)->div($students)->toFloat()
                 : null,
             'average_net_per_enrollment_egp' => $enrollments > 0 && $net !== null
-                ? round($net / $enrollments, 2)
+                ? Money::ofEgp($net)->div($enrollments)->toFloat()
                 : null,
             'average_cost_per_enrollment_egp' => $enrollments > 0 && $cost !== null
-                ? round($cost / $enrollments, 2)
+                ? Money::ofEgp($cost)->div($enrollments)->toFloat()
                 : null,
         ] + $this->unitEconomics($net, $cost, $margin);
     }
