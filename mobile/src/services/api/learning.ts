@@ -1,9 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  accountScopedStorageKey,
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
-  type AccountSessionBoundary,
 } from '../../constants/helpers';
 import {publicRequest} from '../../constants/api';
 import {getLearningCourses, type CourseProgress} from './courses';
@@ -14,8 +11,6 @@ import {
   payload,
   resourceList,
 } from './common';
-import {isServerTimestampFresh, serverNowMs} from '../../utils/serverClock';
-import {settleWithin} from '../../utils/settleWithin';
 
 type EarnedBadgeDto = {
   order?: unknown;
@@ -190,193 +185,22 @@ const getLearningPaths = async (): Promise<LearningPathProgress[]> => {
   });
 };
 
-const LEARNING_DASHBOARD_CACHE = '@rokn/learning-dashboard/v3';
-const LEARNING_DASHBOARD_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
-const dashboardCacheStates = new Map<
-  string,
-  {request: number; write: Promise<void>}
->();
-const dashboardCacheState = (scope: string) => {
-  let state = dashboardCacheStates.get(scope);
-  if (!state) {
-    state = {request: 0, write: Promise.resolve()};
-    dashboardCacheStates.set(scope, state);
-  }
-  return state;
-};
-
-const cacheLearningDashboard = (
-  dashboard: LearningDashboard,
-  boundary: AccountSessionBoundary,
-  request: number,
-) => {
-  const state = dashboardCacheState(boundary.scope);
-  // The caller may stop waiting, but native writes retain their actual order.
-  state.write = state.write
-    .then(async () => {
-      assertAccountSessionBoundary(boundary);
-      if (state.request !== request) return;
-      const key = await accountScopedStorageKey(
-        LEARNING_DASHBOARD_CACHE,
-        boundary,
-      );
-      assertAccountSessionBoundary(boundary);
-      if (state.request !== request) return;
-      await AsyncStorage.setItem(
-        key,
-        JSON.stringify({
-          version: 3,
-          savedAt: serverNowMs(),
-          dashboard: {...dashboard, courses: dashboard.courses.slice(0, 100)},
-        } satisfies LearningDashboardCache),
-      );
-      try {
-        assertAccountSessionBoundary(boundary);
-      } catch (error) {
-        // Logout may have removed this key while the native write was pending.
-        // Finish its cleanup before any new same-scope owner can write a cache.
-        await AsyncStorage.removeItem(key);
-        throw error;
-      }
-    })
-    .catch(() => undefined);
-  return state.write;
-};
-
-type LearningDashboardCache = {
-  version: 3;
-  savedAt: number;
-  dashboard: LearningDashboard;
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const normalizeCachedLearningDashboard = (
-  value: unknown,
-): LearningDashboard | null => {
-  if (!isRecord(value)) return null;
-  if (
-    !Array.isArray(value.courses) ||
-    value.courses.some(
-      course =>
-        !isRecord(course) ||
-        typeof course.id !== 'string' ||
-        !/^[1-9]\d*$/.test(course.id) ||
-        typeof course.title !== 'string' ||
-        course.title.trim().length === 0 ||
-        !Number.isFinite(course.progress) ||
-        Number(course.progress) < 0 ||
-        Number(course.progress) > 100 ||
-        !Number.isFinite(course.completedSections) ||
-        !Number.isSafeInteger(course.completedSections) ||
-        Number(course.completedSections) < 0 ||
-        !Number.isFinite(course.totalSections) ||
-        !Number.isSafeInteger(course.totalSections) ||
-        Number(course.totalSections) < 1 ||
-        Number(course.completedSections) > Number(course.totalSections) ||
-        !['freelance', 'language', 'religious'].includes(
-          String(course.category || ''),
-        ) ||
-        typeof course.accessType !== 'string' ||
-        course.accessType.length === 0 ||
-        typeof course.chatAvailable !== 'boolean' ||
-        typeof course.certificateAvailable !== 'boolean' ||
-        (course.nextSectionType !== undefined &&
-          (!['lesson', 'project'].includes(String(course.nextSectionType)) ||
-            typeof course.nextSectionId !== 'string' ||
-            !/^[1-9]\d*$/.test(course.nextSectionId) ||
-            typeof course.nextSectionTitle !== 'string' ||
-            course.nextSectionTitle.trim().length === 0)),
-    ) ||
-    !Array.isArray(value.paths) ||
-    value.paths.some(
-      path =>
-        !isRecord(path) ||
-        typeof path.id !== 'string' ||
-        path.id.length === 0 ||
-        typeof path.title !== 'string' ||
-        !Array.isArray(path.upcomingLevels) ||
-        !Number.isFinite(path.progress) ||
-        !Number.isFinite(path.remainingToNextLevel),
-    ) ||
-    !Array.isArray(value.badges) ||
-    value.badges.some(
-      badge =>
-        !isRecord(badge) ||
-        typeof badge.id !== 'string' ||
-        badge.id.length === 0 ||
-        typeof badge.title !== 'string',
-    ) ||
-    !Array.isArray(value.activityDays) ||
-    value.activityDays.some(
-      day => typeof day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(day),
-    )
-  ) {
-    return null;
-  }
-  const courses = value.courses as LearningCourse[];
-  const paths = value.paths as LearningPathProgress[];
-  const badges = value.badges as LearningDashboard['badges'];
-  const activityDays = value.activityDays as string[];
-  const currentStreakDays = Number(value.currentStreakDays);
-  if (!Number.isFinite(currentStreakDays)) return null;
-  return {
-    courses: courses.slice(0, 100),
-    paths: paths.slice(0, 50),
-    badges: badges.slice(0, 200),
-    activityDays: Array.from(new Set(activityDays)).slice(-31),
-    currentStreakDays: Math.max(0, Math.floor(currentStreakDays)),
-  };
-};
-
-const readLearningDashboardCache = async (
-  accountBoundary: AccountSessionBoundary,
-) => {
-  try {
-    await dashboardCacheState(accountBoundary.scope).write;
-    assertAccountSessionBoundary(accountBoundary);
-    const raw = await AsyncStorage.getItem(
-      await accountScopedStorageKey(LEARNING_DASHBOARD_CACHE, accountBoundary),
-    );
-    if (!raw) return null;
-    const cached = JSON.parse(raw) as Partial<LearningDashboardCache>;
-    if (
-      cached.version !== 3 ||
-      !isServerTimestampFresh(
-        Number(cached.savedAt),
-        LEARNING_DASHBOARD_CACHE_TTL_MS,
-      )
-    ) {
-      return null;
-    }
-    const dashboard = normalizeCachedLearningDashboard(cached.dashboard);
-    assertAccountSessionBoundary(accountBoundary);
-    return dashboard;
-  } catch {
-    assertAccountSessionBoundary(accountBoundary);
-    return null;
-  }
-};
-
-export const getCachedLearningDashboard = async () => {
-  const boundary = await captureAccountSessionBoundary();
-  const cached = await settleWithin(readLearningDashboardCache(boundary), null);
-  assertAccountSessionBoundary(boundary);
-  return cached;
-};
-
 type LearningDashboardReadOptions = {
-  /** Courses own the learning entry; enrichment and cache never delay them. */
+  /** Courses own the learning entry; enrichment never delays them. */
   onCoursesReady?: (courses: LearningCourse[]) => void;
+  /**
+   * The last dashboard this account showed (in memory or restored from the
+   * device). A failed secondary panel keeps its last known value from here.
+   */
+  previous?: LearningDashboard | null;
 };
 
 export const getLearningDashboard = async ({
   onCoursesReady,
+  previous = null,
 }: LearningDashboardReadOptions = {}): Promise<LearningDashboard> => {
   const accountBoundary = await captureAccountSessionBoundary();
-  const cacheRequest = ++dashboardCacheState(accountBoundary.scope).request;
-  const cachedDashboardRequest = getCachedLearningDashboard().catch(() => null);
+  const cachedDashboard = previous;
   const coursesRequest = getLearningCourses();
   const secondaryRequest = Promise.allSettled([
     publicRequest.get('user/profile', {
@@ -390,10 +214,7 @@ export const getLearningDashboard = async ({
   const courses = await coursesRequest;
   assertAccountSessionBoundary(accountBoundary);
   onCoursesReady?.(courses);
-  const [cachedDashboard, dashboardResults] = await Promise.all([
-    cachedDashboardRequest,
-    secondaryRequest,
-  ]);
+  const dashboardResults = await secondaryRequest;
   const [profileResult, streakResult, pathsResult] = dashboardResults;
   assertAccountSessionBoundary(accountBoundary);
   const partialFailure = [profileResult, streakResult, pathsResult].some(
@@ -465,14 +286,6 @@ export const getLearningDashboard = async ({
       ? {partialError: 'تعذّر تحديث بعض بيانات تقدمك\nنعرض آخر نسخة متاحة'}
       : {}),
   };
-  // The backend already caps active courses at 100. Keeping the complete
-  // metadata set prevents older active courses from disappearing offline.
-  if (!partialFailure) {
-    await settleWithin(
-      cacheLearningDashboard(dashboard, accountBoundary, cacheRequest),
-      undefined,
-    );
-  }
   assertAccountSessionBoundary(accountBoundary);
   return dashboard;
 };

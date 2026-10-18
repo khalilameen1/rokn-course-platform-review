@@ -1,5 +1,14 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
+import {
+  createTestQueryClient,
+  withQueryClient,
+} from './helpers/queryClient';
+
+let queryTestClient = createTestQueryClient();
+beforeEach(() => {
+  queryTestClient = createTestQueryClient();
+});
 import type {CourseDetails} from '../src/services/roknApi';
 
 const mockWallet = jest.fn();
@@ -100,7 +109,7 @@ describe('course plan entry has no unrelated provider dependency', () => {
       let renderer!: TestRenderer.ReactTestRenderer;
       try {
         await act(async () => {
-          renderer = TestRenderer.create(<Probe />);
+          renderer = TestRenderer.create(withQueryClient(<Probe />, queryTestClient));
         });
         expect(current.course.loading).toBe(false);
         expect(current.course.session).toBe(true);

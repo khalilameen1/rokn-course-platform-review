@@ -1,5 +1,11 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
+
+let queryTestClient = createTestQueryClient();
+beforeEach(() => {
+  queryTestClient = createTestQueryClient();
+});
 import AsyncStorage from '@react-native-async-storage/async-storage';
 const mockGet = jest.fn();
 const mockLearningCourses = jest.fn();
@@ -109,7 +115,9 @@ describe('Primary results — remaining reproductions and prepared repair accept
     let renderer!: TestRenderer.ReactTestRenderer;
     try {
       await act(async () => {
-        renderer = TestRenderer.create(<Probe />);
+        renderer = TestRenderer.create(
+          withQueryClient(<Probe />, queryTestClient),
+        );
         await tick();
       });
       expect(mockLearningCourses).toHaveBeenCalledTimes(1);
@@ -144,7 +152,9 @@ describe('Primary results — remaining reproductions and prepared repair accept
     let renderer!: TestRenderer.ReactTestRenderer;
     try {
       await act(async () => {
-        renderer = TestRenderer.create(<Probe />);
+        renderer = TestRenderer.create(
+          withQueryClient(<Probe />, queryTestClient),
+        );
         await tick();
       });
       expect(mockCertificates).toHaveBeenCalledTimes(1);
@@ -227,7 +237,9 @@ describe('Primary results — remaining reproductions and prepared repair accept
     let refresh!: ReturnType<typeof current.refreshProjectState>;
     try {
       await act(async () => {
-        renderer = TestRenderer.create(<Probe />);
+        renderer = TestRenderer.create(
+          withQueryClient(<Probe />, queryTestClient),
+        );
         await tick();
       });
       await act(async () => {

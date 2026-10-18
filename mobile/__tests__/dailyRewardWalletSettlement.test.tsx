@@ -1,6 +1,12 @@
 import React from 'react';
 import {AppState} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
+
+let queryTestClient = createTestQueryClient();
+beforeEach(() => {
+  queryTestClient = createTestQueryClient();
+});
 
 const mockPost = jest.fn();
 const mockGet = jest.fn();
@@ -68,10 +74,6 @@ jest.mock('../src/navigation/journeyNavigation', () => ({
 }));
 jest.mock('../src/services/productAnalytics', () => ({
   trackProductEvent: jest.fn(),
-}));
-jest.mock('../src/screens/wallet/walletCache', () => ({
-  readWalletCache: async () => null,
-  saveWalletCache: async () => true,
 }));
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   applyLocalLearningState: jest.fn(),
@@ -180,12 +182,16 @@ describe('daily reward settlement reaches the visible wallet', () => {
         mockCaptureBoundary.mockReturnValueOnce(ownerCapture.promise);
       }
       await act(async () => {
-        renderer = TestRenderer.create(<Home />);
+        renderer = TestRenderer.create(
+          withQueryClient(<Home />, queryTestClient),
+        );
       });
       expect(mockPost).toHaveBeenCalledTimes(
         registrationOrder === 'before' ? 1 : 0,
       );
-      await act(async () => renderer!.update(<Wallet />));
+      await act(async () =>
+        renderer!.update(withQueryClient(<Wallet />, queryTestClient)),
+      );
       expect(wallet.walletStatus).toBe('ready');
       expect(wallet.wallet?.balance).toBe(20);
       expect(mockGet).toHaveBeenCalledTimes(1);
@@ -213,9 +219,13 @@ describe('daily reward settlement reaches the visible wallet', () => {
     const credit = deferred<ReturnType<typeof response>>();
     mockPost.mockReturnValue(credit.promise);
     await act(async () => {
-      renderer = TestRenderer.create(<Home />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Home />, queryTestClient),
+      );
     });
-    await act(async () => renderer!.update(<Course />));
+    await act(async () =>
+      renderer!.update(withQueryClient(<Course />, queryTestClient)),
+    );
     expect(course.commerce.balance).toBe(20);
     expect(course.commerce.loading).toBe(false);
     expect(mockGet).toHaveBeenCalledTimes(1);
@@ -230,17 +240,19 @@ describe('daily reward settlement reaches the visible wallet', () => {
     expect(mockPost).toHaveBeenCalledTimes(1);
   });
 
-  it('emits once for joined daily callers and queues one fresh wallet/tasks read behind packages', async () => {
+  it('emits once for joined daily callers and reads one fresh wallet/tasks snapshot', async () => {
     const credit = deferred<ReturnType<typeof response>>();
-    const packages = deferred<[]>();
     const observed = jest.fn();
     stopObserving = subscribeWalletSettlements(observed);
     mockPost.mockReturnValue(credit.promise);
-    mockPackages.mockReturnValueOnce(packages.promise);
     await act(async () => {
-      renderer = TestRenderer.create(<Home />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Home />, queryTestClient),
+      );
     });
-    await act(async () => renderer!.update(<Wallet />));
+    await act(async () =>
+      renderer!.update(withQueryClient(<Wallet />, queryTestClient)),
+    );
     expect(wallet.wallet?.balance).toBe(20);
     let firstJoin!: ReturnType<typeof claimDailyReward>;
     let secondJoin!: ReturnType<typeof claimDailyReward>;
@@ -256,8 +268,8 @@ describe('daily reward settlement reaches the visible wallet', () => {
     expect(observed).toHaveBeenCalledTimes(1);
     expect(observed).toHaveBeenCalledWith(mockBoundary);
     expect(mockPost).toHaveBeenCalledTimes(1);
-    expect(mockGet).toHaveBeenCalledTimes(1);
-    await act(async () => packages.resolve([]));
+    // Rewards never read the store packages.
+    expect(mockPackages).not.toHaveBeenCalled();
     expect(mockGet).toHaveBeenCalledTimes(2);
     expect(mockTasks).toHaveBeenCalledTimes(2);
     expect(wallet.wallet?.balance).toBe(27);
@@ -271,9 +283,13 @@ describe('daily reward settlement reaches the visible wallet', () => {
       stopObserving = subscribeWalletSettlements(observed);
       mockPost.mockReturnValue(credit.promise);
       await act(async () => {
-        renderer = TestRenderer.create(<Home />);
+        renderer = TestRenderer.create(
+          withQueryClient(<Home />, queryTestClient),
+        );
       });
-      await act(async () => renderer!.update(<Wallet />));
+      await act(async () =>
+        renderer!.update(withQueryClient(<Wallet />, queryTestClient)),
+      );
       await act(async () => {
         if (failure === 'transport') credit.reject(new Error('lost response'));
         else credit.resolve(response({awarded: 7, balance: 'invalid'}));
@@ -289,9 +305,13 @@ describe('daily reward settlement reaches the visible wallet', () => {
     const firstAttempt = deferred<ReturnType<typeof response>>();
     mockPost.mockReturnValueOnce(firstAttempt.promise);
     await act(async () => {
-      renderer = TestRenderer.create(<Home />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Home />, queryTestClient),
+      );
     });
-    await act(async () => renderer!.update(<Wallet />));
+    await act(async () =>
+      renderer!.update(withQueryClient(<Wallet />, queryTestClient)),
+    );
     await act(async () => {
       mockBalance = 27;
       firstAttempt.reject(new Error('lost credited response'));
@@ -316,11 +336,15 @@ describe('daily reward settlement reaches the visible wallet', () => {
       stopObserving = subscribeWalletSettlements(observed);
       mockPost.mockReturnValue(credit.promise);
       await act(async () => {
-        renderer = TestRenderer.create(<Home />);
+        renderer = TestRenderer.create(
+          withQueryClient(<Home />, queryTestClient),
+        );
       });
       mockBoundary = {scope, epoch: 2};
       mockBalance = 50;
-      await act(async () => renderer!.update(<Wallet />));
+      await act(async () =>
+        renderer!.update(withQueryClient(<Wallet />, queryTestClient)),
+      );
       expect(wallet.wallet?.balance).toBe(50);
       await act(async () => {
         credit.resolve(response({awarded: 7, balance: 27, reward_balance: 27}));
@@ -335,9 +359,13 @@ describe('daily reward settlement reaches the visible wallet', () => {
     const credit = deferred<ReturnType<typeof response>>();
     mockPost.mockReturnValue(credit.promise);
     await act(async () => {
-      renderer = TestRenderer.create(<Home />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Home />, queryTestClient),
+      );
     });
-    await act(async () => renderer!.update(<Wallet />));
+    await act(async () =>
+      renderer!.update(withQueryClient(<Wallet />, queryTestClient)),
+    );
     await act(async () => renderer!.unmount());
     renderer = undefined;
     stopObserving = subscribeWalletSettlements(() => {
@@ -351,7 +379,9 @@ describe('daily reward settlement reaches the visible wallet', () => {
     });
     expect(mockGet).toHaveBeenCalledTimes(1);
     await act(async () => {
-      renderer = TestRenderer.create(<Wallet />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Wallet />, queryTestClient),
+      );
     });
     expect(wallet.wallet?.balance).toBe(27);
     expect(mockGet).toHaveBeenCalledTimes(2);

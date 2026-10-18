@@ -9,6 +9,8 @@ module.exports = {
     '/scripts/tests/',
     '/tools/rokn-recorder/test/',
     '/.codex-tmp/',
+    // Shared render helpers (QueryClientProvider wrapper), not suites.
+    '<rootDir>/__tests__/helpers/',
     // Local toolchain binaries and npm's own command named test.js are not
     // application suites. Keep all app tests, including failing ones, in scope.
     '<rootDir>/\\.tools/',

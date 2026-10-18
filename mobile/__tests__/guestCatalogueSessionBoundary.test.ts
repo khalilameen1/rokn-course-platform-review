@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {roknApiUrl} from '../src/constants/apiBaseUrl';
 
 const mockGet = jest.fn();
 
@@ -12,11 +11,7 @@ jest.mock('../src/constants/api', () => ({
   publicRequest: {get: (...args: unknown[]) => mockGet(...args)},
 }));
 
-import {
-  getCachedPublishedCourses,
-  getPublishedCoursesPage,
-  hasSession,
-} from '../src/services/api/courses';
+import {getPublishedCoursesPage, hasSession} from '../src/services/api/courses';
 import {resetSecureSessionForTests} from '../src/services/secureSession';
 
 describe('guest catalogue session boundary', () => {
@@ -44,7 +39,6 @@ describe('guest catalogue session boundary', () => {
       courses: [],
       page: 1,
       hasMore: false,
-      fromCache: false,
     });
     expect(mockGet).toHaveBeenCalledWith(
       'courses/list',
@@ -152,77 +146,8 @@ describe('guest catalogue session boundary', () => {
         }),
       ],
       page: 1,
-      fromCache: false,
     });
   });
-
-  it('uses cached catalogue only for availability failures, not an invalid 200 contract', async () => {
-    const valid = {
-      data: {
-        status: 200,
-        success: true,
-        data: {
-          courses: [{id: 52, title: 'كورس ركن'}],
-          catalogue_revision: 1,
-          pagination: {current_page: 1, last_page: 1, total: 1},
-        },
-      },
-    };
-    mockGet.mockResolvedValueOnce(valid);
-    await expect(getPublishedCoursesPage()).resolves.toMatchObject({
-      fromCache: false,
-    });
-
-    mockGet.mockRejectedValueOnce({status: 503});
-    await expect(getPublishedCoursesPage()).resolves.toMatchObject({
-      fromCache: true,
-      courses: [expect.objectContaining({id: '52'})],
-    });
-
-    mockGet.mockResolvedValueOnce({
-      data: {
-        status: 200,
-        success: true,
-        data: {
-          courses: [{id: null, title: ''}],
-          catalogue_revision: 1,
-          pagination: {current_page: 1, last_page: 1, total: 1},
-        },
-      },
-    });
-    await expect(getPublishedCoursesPage()).rejects.toThrow(
-      'COURSE_CATALOGUE_CONTRACT_INVALID',
-    );
-
-    expect(
-      (await AsyncStorage.getAllKeys()).some(key =>
-        key.includes(encodeURIComponent(roknApiUrl)),
-      ),
-    ).toBe(true);
-  });
-
-  it('does not revive an expired catalogue after an availability failure', async () => {
-    mockGet.mockResolvedValueOnce({
-      data: {
-        data: {
-          courses: [{id: 52, title: 'كورس ركن'}],
-          catalogue_revision: 1,
-          pagination: {current_page: 1, last_page: 1, total: 1},
-        },
-      },
-    });
-    await getPublishedCoursesPage();
-    await getCachedPublishedCourses();
-
-    const cacheKey = (await AsyncStorage.getAllKeys()).find(key =>
-      key.includes('@rokn/catalogue-page/v6:'),
-    );
-    expect(cacheKey).toBeTruthy();
-    const cached = JSON.parse((await AsyncStorage.getItem(cacheKey!))!);
-    cached.savedAt = Date.now() - 3 * 60 * 60 * 1000;
-    await AsyncStorage.setItem(cacheKey!, JSON.stringify(cached));
-
-    mockGet.mockRejectedValueOnce({status: 503});
-    await expect(getPublishedCoursesPage()).rejects.toEqual({status: 503});
-  });
+  // Device snapshot rules (availability failures only, 2 h age limit) are
+  // proven against the catalogue query in queryPersistence.test.tsx.
 });

@@ -1,184 +1,167 @@
 import {useFocusEffect} from '@react-navigation/native';
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {useQuery, useQueryClient} from '@tanstack/react-query';
+import {useCallback, useMemo, useRef, useState} from 'react';
 
-import {
-  assertAccountSessionBoundary,
-  captureAccountSessionBoundary,
-} from '../../constants/helpers';
+import {assertAccountSessionBoundary} from '../../constants/helpers';
 import {useAppForegroundState} from '../../hooks/useAppActiveState';
 import {friendlyNetworkMessage} from '../../services/networkExperience';
 import {
-  getCachedLearningDashboard,
   getLearningDashboard,
   hasSession,
   type LearningDashboard,
 } from '../../services/roknApi';
-import {settleWithin} from '../../utils/settleWithin';
+import {
+  captureScopedBoundary,
+  useAccountQueryScope,
+} from '../../services/query/accountQueryScope';
+import {isRestoredSnapshot} from '../../services/query/queryClient';
+import {accountQueryKeys} from '../../services/query/queryKeys';
+import {restoreBeforeFailing} from '../../services/query/queryPersistence';
 
+const EMPTY_PANELS = {
+  paths: [],
+  badges: [],
+  activityDays: [],
+  currentStreakDays: 0,
+} satisfies Omit<LearningDashboard, 'courses'>;
+
+const isAccountChange = (error: unknown) =>
+  error instanceof Error && error.message === 'ACCOUNT_CHANGED_DURING_REQUEST';
+
+/**
+ * ركني's learning dashboard as one account-scoped query.
+ *
+ * - The authoritative network read always starts; the device snapshot (6 h)
+ *   only improves first paint while it runs.
+ * - Courses are delivered into the query as soon as they arrive
+ *   (`onCoursesReady`), before profile, streak and paths settle.
+ * - Every focus of ركني and every return to the app refreshes (TanStack
+ *   React Native guide, "Refresh on Screen focus"); a refresh joins one
+ *   already running instead of starting another.
+ */
 export const useMyCornerData = (identityKey: string) => {
+  const client = useQueryClient();
   const appIsActive = useAppForegroundState();
-  const ownerRef = useRef(identityKey);
-  const [serverSession, setServerSession] = useState<boolean | null>(null);
-  const [dashboard, setDashboard] = useState<LearningDashboard | null>(null);
-  const [learningOwnershipFresh, setLearningOwnershipFresh] = useState(false);
-  const [dashboardError, setDashboardError] = useState('');
-  const [dashboardLoading, setDashboardLoading] = useState(false);
-  const reloadRef = useRef<(() => void) | null>(null);
-  const reload = useCallback(() => reloadRef.current?.(), []);
+  const {scope, failed: scopeFailed} = useAccountQueryScope(identityKey);
+  const keys = useMemo(() => accountQueryKeys(scope), [scope]);
+  const dashboardKey = useMemo(() => keys.learningDashboard(), [keys]);
+  /** Serial of the latest read; its courses are the fresh ownership facts. */
+  const readSerialRef = useRef(0);
+  const coursesReadSerialRef = useRef(0);
+  const [coursesReadSerial, setCoursesReadSerial] = useState(0);
 
-  useEffect(() => {
-    ownerRef.current = identityKey;
-    setServerSession(null);
-    setDashboard(null);
-    setLearningOwnershipFresh(false);
-    setDashboardError('');
-    setDashboardLoading(false);
-  }, [identityKey]);
+  const session = useQuery({
+    queryKey: keys.session(),
+    queryFn: () => hasSession(),
+    enabled: scope !== null,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+  const signedIn = session.data === true;
+
+  const dashboard = useQuery({
+    queryKey: dashboardKey,
+    queryFn: restoreBeforeFailing(async () => {
+      // Synchronous with the fetch start, before React sees `isFetching`.
+      const read = ++readSerialRef.current;
+      const boundary = await captureScopedBoundary(scope!);
+      return getLearningDashboard({
+        previous: client.getQueryData<LearningDashboard>(dashboardKey) ?? null,
+        onCoursesReady: courses => {
+          try {
+            assertAccountSessionBoundary(boundary);
+          } catch {
+            return;
+          }
+          client.setQueryData<LearningDashboard>(dashboardKey, current => ({
+            ...EMPTY_PANELS,
+            ...current,
+            courses,
+            partialError: undefined,
+          }));
+          if (readSerialRef.current === read) {
+            coursesReadSerialRef.current = read;
+            setCoursesReadSerial(read);
+          }
+        },
+      });
+    }),
+    // A manual query (TanStack "Disabling/Pausing Queries"): ركني reads on
+    // every focus, foreground return and retry (below), never on its own.
+    enabled: false,
+    staleTime: 0,
+  });
+
+  const refetchSession = session.refetch;
+  const refetchDashboard = dashboard.refetch;
+  // A retry button rendered before blur or unmount must not read afterwards.
+  const focusedRef = useRef(false);
+  const reload = useCallback(() => {
+    if (scope === null || !focusedRef.current) return;
+    void refetchSession({cancelRefetch: false}).then(result => {
+      if (result.data !== true) return;
+      // Focus, foreground and retry share one read. Once that read has
+      // delivered the courses, an explicit refresh replaces it instead of
+      // waiting for its slower secondary panels.
+      const coursesDelivered =
+        coursesReadSerialRef.current === readSerialRef.current &&
+        client.isFetching({queryKey: dashboardKey, exact: true}) > 0;
+      void refetchDashboard({cancelRefetch: coursesDelivered});
+    });
+  }, [client, dashboardKey, refetchDashboard, refetchSession, scope]);
 
   useFocusEffect(
     useCallback(() => {
-      if (!appIsActive) return () => undefined;
-      let active = true;
-      let loading = false;
-      let readGeneration = 0;
-      const stillOwned = (
-        boundary: Awaited<ReturnType<typeof captureAccountSessionBoundary>>,
-        generation: number,
-      ) => {
-        if (
-          !active ||
-          generation !== readGeneration ||
-          ownerRef.current !== identityKey
-        ) {
-          return false;
-        }
-        try {
-          assertAccountSessionBoundary(boundary);
-          return true;
-        } catch {
-          setLearningOwnershipFresh(false);
-          setDashboardLoading(false);
-          setDashboardError('تغيّر الحساب\nافتح ركني من جديد');
-          return false;
-        }
-      };
-
-      const load = async (generation: number) => {
-        const boundary = await captureAccountSessionBoundary().catch(
-          () => null,
-        );
-        const sessionAvailable = await hasSession();
-        if (!active || generation !== readGeneration) return;
-        if (!boundary) {
-          setServerSession(sessionAvailable);
-          setDashboardLoading(false);
-          setLearningOwnershipFresh(false);
-          if (sessionAvailable) {
-            setDashboardError('تعذّر تجهيز بيانات ركني\nحاول مرة أخرى');
-          }
-          return;
-        }
-        if (!stillOwned(boundary, generation)) return;
-        setServerSession(sessionAvailable);
-        if (!sessionAvailable) {
-          setDashboard(null);
-          setLearningOwnershipFresh(false);
-          setDashboardError('');
-          return;
-        }
-
-        // Start the authoritative network read before touching device storage.
-        // A slow or damaged cache may improve first paint but never owns it.
-        let coursesDelivered = false;
-        const freshDashboardRequest = getLearningDashboard({
-          onCoursesReady: courses => {
-            if (!stillOwned(boundary, generation)) return;
-            coursesDelivered = true;
-            setDashboard(current => ({
-              paths: [],
-              badges: [],
-              activityDays: [],
-              currentStreakDays: 0,
-              ...current,
-              courses,
-              partialError: undefined,
-            }));
-            setLearningOwnershipFresh(true);
-            setDashboardError('');
-            setDashboardLoading(false);
-            // A later explicit refresh may replace this read while secondary
-            // panels finish. Its generation owns both UI and cache delivery.
-            loading = false;
-          },
-        }).then(
-          value => ({ok: true as const, value}),
-          error => ({ok: false as const, error}),
-        );
-        const cached = await settleWithin(getCachedLearningDashboard(), null);
-        if (!stillOwned(boundary, generation)) return;
-        if (cached) setDashboard(current => current || cached);
-        try {
-          const result = await freshDashboardRequest;
-          if (!result.ok) throw result.error;
-          const fresh = result.value;
-          if (stillOwned(boundary, generation)) {
-            setDashboard(fresh);
-            setLearningOwnershipFresh(true);
-            setDashboardError(fresh.partialError || '');
-          }
-        } catch (error) {
-          if (stillOwned(boundary, generation)) {
-            setLearningOwnershipFresh(coursesDelivered);
-            setDashboardError(
-              coursesDelivered
-                ? 'تعذّر تحديث بعض بيانات تقدمك\nكورساتك جاهزة للاستكمال'
-                : cached
-                ? 'نعرض آخر تقدم محفوظ\nسنحدّثه عند عودة الاتصال'
-                : `${friendlyNetworkMessage(error, 'كورساتك')}\nتقدمك محفوظ`,
-            );
-          }
-        }
-      };
-
-      // Focus, foreground and explicit retry share one screen-owned read.
-      const refresh = () => {
-        if (!active || loading) return;
-        const generation = ++readGeneration;
-        loading = true;
-        setDashboardLoading(true);
-        setDashboardError('');
-        setLearningOwnershipFresh(false);
-        void load(generation)
-          .catch(error => {
-            if (!active || generation !== readGeneration) return;
-            setLearningOwnershipFresh(false);
-            setDashboardError(
-              `${friendlyNetworkMessage(error, 'كورساتك')}\nتقدمك محفوظ`,
-            );
-          })
-          .finally(() => {
-            if (generation !== readGeneration) return;
-            loading = false;
-            if (active) setDashboardLoading(false);
-          });
-      };
-      reloadRef.current = refresh;
-      refresh();
-
+      focusedRef.current = true;
+      if (appIsActive) reload();
       return () => {
-        active = false;
-        if (reloadRef.current === refresh) reloadRef.current = null;
+        focusedRef.current = false;
       };
-    }, [appIsActive, identityKey]),
+    }, [appIsActive, reload]),
   );
 
+  const dashboardQuery = client
+    .getQueryCache()
+    .find({queryKey: dashboardKey, exact: true});
+  const data = signedIn ? dashboard.data ?? null : null;
+  const error = dashboard.isError ? dashboard.error : null;
+  const fetching = dashboard.isFetching;
+  const coursesFreshThisRead =
+    coursesReadSerial > 0 && coursesReadSerial === readSerialRef.current;
+  const learningOwnershipFresh = Boolean(
+    data &&
+      !isRestoredSnapshot(dashboardQuery) &&
+      (fetching ? coursesFreshThisRead : !error || coursesFreshThisRead),
+  );
+
+  let dashboardError = '';
+  if (scopeFailed) {
+    dashboardError = 'تعذّر تجهيز بيانات ركني\nحاول مرة أخرى';
+  } else if (session.isError && !session.isFetching) {
+    dashboardError = `${friendlyNetworkMessage(
+      session.error,
+      'كورساتك',
+    )}\nتقدمك محفوظ`;
+  } else if (signedIn && !fetching && error) {
+    dashboardError = isAccountChange(error)
+      ? 'تغيّر الحساب\nافتح ركني من جديد'
+      : coursesFreshThisRead
+      ? 'تعذّر تحديث بعض بيانات تقدمك\nكورساتك جاهزة للاستكمال'
+      : data
+      ? 'نعرض آخر تقدم محفوظ\nسنحدّثه عند عودة الاتصال'
+      : `${friendlyNetworkMessage(error, 'كورساتك')}\nتقدمك محفوظ`;
+  } else if (signedIn && !fetching && data?.partialError) {
+    dashboardError = data.partialError;
+  }
+
   return {
-    dashboard,
+    dashboard: data,
     dashboardError,
-    dashboardLoading,
+    dashboardLoading:
+      signedIn && fetching && !(coursesFreshThisRead && data !== null),
     learningOwnershipFresh,
-    owned: ownerRef.current === identityKey,
+    owned: scope !== null || scopeFailed,
     reload,
-    serverSession,
+    serverSession: scope === null ? null : session.data ?? null,
   };
 };

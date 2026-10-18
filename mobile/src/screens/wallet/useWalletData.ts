@@ -1,57 +1,79 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {useFocusEffect} from '@react-navigation/native';
-import {AppState} from 'react-native';
-import type {CoinPackage} from '../../services/api/coinPackageMapper';
 import {
-  getCoinPackages,
-  getCoinTasks,
-  getWallet,
-  hasSession,
-  type CoinTask,
-  type WalletSnapshot,
-} from '../../services/roknApi';
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+} from '@tanstack/react-query';
+import {AppState} from 'react-native';
+import {hasSession, type CoinTask} from '../../services/roknApi';
 import {
   assertAccountSessionBoundary,
-  captureAccountSessionBoundary,
   type AccountSessionBoundary,
 } from '../../constants/helpers';
-import {settleWithin} from '../../utils/settleWithin';
 import {subscribeWalletSettlements} from '../../services/walletSettlement';
+import {useAccountQueryScope} from '../../services/query/accountQueryScope';
+import {accountQueryKeys} from '../../services/query/queryKeys';
 import {
-  readWalletCache,
-  saveWalletCache,
-  type WalletCache,
-} from './walletCache';
+  coinTasksQueryOptions,
+  walletQueryOptions,
+} from '../../services/query/walletQueries';
 
 export type WalletAreaStatus = 'idle' | 'loading' | 'ready' | 'error';
 
-export const useWalletData = (identityKey: string, loadPackages = true) => {
-  const [wallet, setWallet] = useState<WalletSnapshot | null>(null);
-  const [packages, setPackages] = useState<CoinPackage[]>([]);
-  const [tasks, setTasks] = useState<CoinTask[]>([]);
-  const [serverSession, setServerSession] = useState<boolean | null>(null);
-  const [walletStatus, setWalletStatus] = useState<WalletAreaStatus>('idle');
-  const [packagesStatus, setPackagesStatus] =
-    useState<WalletAreaStatus>('idle');
-  const [tasksStatus, setTasksStatus] = useState<WalletAreaStatus>('idle');
+const NO_TASKS: CoinTask[] = [];
+
+/**
+ * Per-area status, as before: a known value stays `ready` while it refreshes,
+ * a failed read is `error` (even over the saved copy, which stays visible),
+ * and nothing is read without a session.
+ */
+const areaStatus = (
+  signedIn: boolean,
+  result: UseQueryResult<unknown>,
+): WalletAreaStatus => {
+  if (!signedIn) return 'idle';
+  if (result.isFetching) return result.data !== undefined ? 'ready' : 'loading';
+  if (result.isError) return 'error';
+  return result.data !== undefined ? 'ready' : 'loading';
+};
+
+/**
+ * Rewards wallet and tasks as two account-scoped queries.
+ *
+ * A credit can land on the server while a read is in flight (an external
+ * task, a daily reward, a purchase). Returning to the screen or the app, and
+ * every wallet settlement, therefore asks for a snapshot that starts *after*
+ * that moment: `invalidateQueries` cancels the older read and starts a new
+ * one, so its late response can never overwrite the newer balance.
+ */
+export const useWalletData = (identityKey: string) => {
+  const client = useQueryClient();
+  const {scope} = useAccountQueryScope(identityKey);
+  const keys = accountQueryKeys(scope);
   const [manualRefreshing, setManualRefreshing] = useState(false);
-
-  const requestGenerationRef = useRef(0);
   const mountedRef = useRef(false);
-  const refocusPendingRef = useRef(false);
-  const refreshFlightRef = useRef<Promise<void> | null>(null);
-  const queuedRefreshRef = useRef<Promise<void> | null>(null);
   const manualRefreshRef = useRef<symbol | null>(null);
-  const ownerRef = useRef(identityKey);
-  const walletRef = useRef<WalletSnapshot | null>(null);
-  const packagesRef = useRef<CoinPackage[]>([]);
-  const tasksRef = useRef<CoinTask[]>([]);
-  const packagesKnownRef = useRef(false);
-  const tasksKnownRef = useRef(false);
 
-  walletRef.current = wallet;
-  packagesRef.current = packages;
-  tasksRef.current = tasks;
+  const session = useQuery({
+    queryKey: keys.session(),
+    queryFn: () => hasSession(),
+    enabled: scope !== null,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+  const signedIn = session.data === true;
+  // Manual queries (TanStack "Disabling/Pausing Queries"): Rewards reads on
+  // focus, foreground return, settlements and pull to refresh only.
+  const wallet = useQuery({...walletQueryOptions(scope), enabled: false});
+  const tasks = useQuery({...coinTasksQueryOptions(scope), enabled: false});
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const ownsBoundary = useCallback((boundary: AccountSessionBoundary) => {
     if (!mountedRef.current) return false;
@@ -65,176 +87,51 @@ export const useWalletData = (identityKey: string, loadPackages = true) => {
 
   const updateTask = useCallback(
     (taskId: string, update: Partial<Pick<CoinTask, 'status' | 'url'>>) => {
-      const next = tasksRef.current.map(task =>
-        task.id === taskId ? {...task, ...update} : task,
+      client.setQueryData<CoinTask[]>(
+        accountQueryKeys(scope).coinTasks(),
+        current =>
+          current?.map(task =>
+            task.id === taskId ? {...task, ...update} : task,
+          ),
       );
-      tasksRef.current = next;
-      setTasks(next);
     },
-    [],
+    [client, scope],
   );
 
-  const performRefresh = useCallback(async () => {
-    const requestGeneration = ++requestGenerationRef.current;
-    setWalletStatus(walletRef.current ? 'ready' : 'loading');
-    setPackagesStatus(packagesKnownRef.current ? 'ready' : 'loading');
-    setTasksStatus(tasksKnownRef.current ? 'ready' : 'loading');
+  const refetchSession = session.refetch;
+  const refetchWallet = wallet.refetch;
+  const refetchTasks = tasks.refetch;
+  const read = useCallback(
+    async (cancelRefetch: boolean) => {
+      if (!mountedRef.current || scope === null) return;
+      const sessionResult = await refetchSession({cancelRefetch: false});
+      if (!mountedRef.current || sessionResult.data !== true) return;
+      const ownedKeys = accountQueryKeys(scope);
+      await Promise.all(
+        [
+          [ownedKeys.wallet(), refetchWallet],
+          [ownedKeys.coinTasks(), refetchTasks],
+        ].map(async ([queryKey, refetch]) => {
+          const state = client.getQueryState(queryKey as readonly unknown[]);
+          const firstReadInFlight =
+            state?.fetchStatus === 'fetching' && state.data === undefined;
+          // TanStack only restarts a read that already has data; a first
+          // read still in flight is followed by one more, as before.
+          if (cancelRefetch && firstReadInFlight) {
+            await (refetch as typeof refetchWallet)({cancelRefetch: false});
+            if (!mountedRef.current) return;
+          }
+          await (refetch as typeof refetchWallet)({cancelRefetch});
+        }),
+      );
+    },
+    [client, refetchSession, refetchTasks, refetchWallet, scope],
+  );
 
-    let boundary: AccountSessionBoundary;
-    try {
-      boundary = await captureAccountSessionBoundary();
-    } catch {
-      if (requestGeneration === requestGenerationRef.current) {
-        setWalletStatus('error');
-        setPackagesStatus('error');
-        setTasksStatus('error');
-      }
-      return;
-    }
-
-    const requestOwnsData = () =>
-      requestGeneration === requestGenerationRef.current &&
-      ownsBoundary(boundary);
-    if (!requestOwnsData()) return;
-
-    let sessionAvailable = false;
-    try {
-      sessionAvailable = await hasSession();
-    } catch {
-      if (
-        requestGeneration === requestGenerationRef.current &&
-        ownsBoundary(boundary)
-      ) {
-        setWalletStatus('error');
-        setPackagesStatus('error');
-        setTasksStatus('error');
-      }
-      return;
-    }
-
-    if (!requestOwnsData()) return;
-
-    setServerSession(sessionAvailable);
-    if (!sessionAvailable) {
-      setWalletStatus('idle');
-      setPackagesStatus('idle');
-      setTasksStatus('idle');
-      return;
-    }
-
-    let walletReadFailed = false;
-    let packagesReadFailed = false;
-    let tasksReadFailed = false;
-    const walletRequest = getWallet().then(
-      value => {
-        if (requestOwnsData()) {
-          walletRef.current = value;
-          setWallet(value);
-          setWalletStatus('ready');
-        }
-        return value;
-      },
-      error => {
-        walletReadFailed = true;
-        if (requestOwnsData()) setWalletStatus('error');
-        throw error;
-      },
-    );
-    const packagesRequest = (
-      loadPackages ? getCoinPackages() : Promise.resolve([])
-    ).then(
-      value => {
-        if (requestOwnsData()) {
-          packagesKnownRef.current = true;
-          packagesRef.current = value;
-          setPackages(value);
-          setPackagesStatus('ready');
-        }
-        return value;
-      },
-      error => {
-        packagesReadFailed = true;
-        if (requestOwnsData()) setPackagesStatus('error');
-        throw error;
-      },
-    );
-    const tasksRequest = getCoinTasks().then(
-      value => {
-        if (requestOwnsData()) {
-          tasksKnownRef.current = true;
-          tasksRef.current = value;
-          setTasks(value);
-          setTasksStatus('ready');
-        }
-        return value;
-      },
-      error => {
-        tasksReadFailed = true;
-        if (requestOwnsData()) setTasksStatus('error');
-        throw error;
-      },
-    );
-    const remoteReads = Promise.allSettled([
-      walletRequest,
-      packagesRequest,
-      tasksRequest,
-    ]);
-
-    const cached = await settleWithin(readWalletCache(boundary), null);
-    if (!requestOwnsData()) return;
-    if (cached?.wallet && !walletRef.current) {
-      walletRef.current = cached.wallet;
-      setWallet(cached.wallet);
-      setWalletStatus(walletReadFailed ? 'error' : 'ready');
-    }
-    if (loadPackages && cached?.packages && !packagesKnownRef.current) {
-      packagesKnownRef.current = true;
-      packagesRef.current = cached.packages;
-      setPackages(cached.packages);
-      setPackagesStatus(packagesReadFailed ? 'error' : 'ready');
-    }
-    if (cached?.tasks && !tasksKnownRef.current) {
-      tasksKnownRef.current = true;
-      tasksRef.current = cached.tasks;
-      setTasks(cached.tasks);
-      setTasksStatus(tasksReadFailed ? 'error' : 'ready');
-    }
-
-    await remoteReads;
-    if (!requestOwnsData()) return;
-    const nextCache: WalletCache = {
-      version: 2,
-      ...(walletRef.current ? {wallet: walletRef.current} : {}),
-      ...(packagesKnownRef.current ? {packages: packagesRef.current} : {}),
-      ...(tasksKnownRef.current ? {tasks: tasksRef.current} : {}),
-    };
-    void saveWalletCache(boundary, nextCache).catch(() => undefined);
-  }, [loadPackages, ownsBoundary]);
-
-  const refresh = useCallback(() => {
-    if (!mountedRef.current) return Promise.resolve();
-    if (refreshFlightRef.current) return refreshFlightRef.current;
-    let flight: Promise<void>;
-    flight = performRefresh().finally(() => {
-      if (refreshFlightRef.current === flight) refreshFlightRef.current = null;
-    });
-    refreshFlightRef.current = flight;
-    return flight;
-  }, [performRefresh]);
-
-  const refreshAfterCurrent = useCallback(() => {
-    const current = refreshFlightRef.current;
-    if (!current) return refresh();
-    if (queuedRefreshRef.current) return queuedRefreshRef.current;
-    let queued: Promise<void>;
-    queued = current.finally(() => {
-      if (queuedRefreshRef.current !== queued) return;
-      queuedRefreshRef.current = null;
-      return refresh();
-    });
-    queuedRefreshRef.current = queued;
-    return queued;
-  }, [refresh]);
+  /** Joins a read already in flight (initial focus, pull to refresh). */
+  const refresh = useCallback(() => read(false), [read]);
+  /** A snapshot that starts after now (credit may have landed meanwhile). */
+  const refreshAfterCurrent = useCallback(() => read(true), [read]);
 
   useEffect(
     () =>
@@ -253,80 +150,58 @@ export const useWalletData = (identityKey: string, loadPackages = true) => {
     } finally {
       if (manualRefreshRef.current === operation) {
         manualRefreshRef.current = null;
-        setManualRefreshing(false);
+        if (mountedRef.current) setManualRefreshing(false);
       }
     }
   }, [refreshAfterCurrent]);
 
   useEffect(() => {
-    mountedRef.current = true;
-    requestGenerationRef.current += 1;
-    refreshFlightRef.current = null;
-    queuedRefreshRef.current = null;
     manualRefreshRef.current = null;
-    ownerRef.current = identityKey;
-    walletRef.current = null;
-    packagesRef.current = [];
-    tasksRef.current = [];
-    packagesKnownRef.current = false;
-    tasksKnownRef.current = false;
-    setServerSession(null);
-    setWallet(null);
-    setPackages([]);
-    setTasks([]);
-    setWalletStatus('idle');
-    setPackagesStatus('idle');
-    setTasksStatus('idle');
     setManualRefreshing(false);
-    void refresh();
-    return () => {
-      mountedRef.current = false;
-      requestGenerationRef.current += 1;
-      refreshFlightRef.current = null;
-      queuedRefreshRef.current = null;
-      manualRefreshRef.current = null;
-    };
-  }, [identityKey, refresh]);
+  }, [identityKey]);
 
+  // TanStack React Native guide, "Refresh on Screen focus": the first focus
+  // joins the mount read; every later focus and every return to the app
+  // while focused asks for a fresh snapshot.
+  const focusedBeforeRef = useRef(false);
+  const refreshRef = useRef(refresh);
+  const refreshAfterCurrentRef = useRef(refreshAfterCurrent);
+  refreshRef.current = refresh;
+  refreshAfterCurrentRef.current = refreshAfterCurrent;
   useFocusEffect(
     useCallback(() => {
-      if (refocusPendingRef.current) void refreshAfterCurrent();
-      else void refresh();
-      refocusPendingRef.current = false;
+      if (focusedBeforeRef.current) void refreshAfterCurrentRef.current();
+      else void refreshRef.current();
+      focusedBeforeRef.current = true;
       let previousState = AppState.currentState;
       const subscription = AppState.addEventListener('change', state => {
         const returnedToForeground =
           state === 'active' && previousState !== 'active';
         previousState = state;
-        // A live read may have fetched wallet/tasks before an external task
-        // credited them. Queue one post-return snapshot behind that read.
-        if (returnedToForeground) void refreshAfterCurrent();
+        if (returnedToForeground) void refreshAfterCurrentRef.current();
       });
-      // Keep a live read on blur, but follow it with a current snapshot when
-      // returning from another screen. Initial focus still joins mount's read.
-      return () => {
-        refocusPendingRef.current = mountedRef.current;
-        subscription.remove();
-      };
-    }, [refresh, refreshAfterCurrent]),
+      return () => subscription.remove();
+    }, []),
   );
+  // A newly resolved owner reads at once, even before another focus.
+  useEffect(() => {
+    if (scope !== null) void refreshRef.current();
+  }, [scope]);
 
   return {
     identityKey,
     manualRefreshing,
-    ownerReady: ownerRef.current === identityKey,
+    ownerReady: scope !== null,
     ownsBoundary,
-    packages,
-    packagesStatus,
     refresh,
     refreshAfterCurrent,
     refreshManually,
-    serverSession,
-    tasks,
-    tasksStatus,
+    serverSession: scope === null ? null : session.data ?? null,
+    tasks: signedIn ? tasks.data ?? NO_TASKS : NO_TASKS,
+    tasksStatus: areaStatus(signedIn, tasks),
     updateTask,
-    wallet,
-    walletStatus,
+    wallet: signedIn ? wallet.data ?? null : null,
+    walletStatus: areaStatus(signedIn, wallet),
   };
 };
 

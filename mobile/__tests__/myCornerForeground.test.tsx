@@ -1,6 +1,12 @@
 import React from 'react';
 import {AppState, Platform} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
+
+let queryTestClient = createTestQueryClient();
+beforeEach(() => {
+  queryTestClient = createTestQueryClient();
+});
 
 const mockGetDashboard = jest.fn();
 jest.mock('@react-navigation/native', () => ({
@@ -15,7 +21,6 @@ jest.mock('../src/constants/helpers', () => ({
 }));
 jest.mock('../src/services/roknApi', () => ({
   hasSession: async () => true,
-  getCachedLearningDashboard: async () => null,
   getLearningDashboard: () => mockGetDashboard(),
 }));
 import {useMyCornerData} from '../src/screens/myCorner/useMyCornerData';
@@ -52,7 +57,9 @@ describe('MyCorner foreground data ownership', () => {
     let renderer!: TestRenderer.ReactTestRenderer;
     try {
       await act(async () => {
-        renderer = TestRenderer.create(<Harness />);
+        renderer = TestRenderer.create(
+          withQueryClient(<Harness />, queryTestClient),
+        );
       });
       expect(mockGetDashboard).toHaveBeenCalledTimes(1);
       await act(async () => {

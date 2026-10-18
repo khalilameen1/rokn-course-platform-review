@@ -1,11 +1,7 @@
 import {extractApiToken} from '../../constants/helpers';
 import {peekSecureSession} from '../secureSession';
 
-export {
-  getCachedPublishedCourses,
-  getPublishedCourses,
-  getPublishedCoursesPage,
-} from './courseCatalogue';
+export {getPublishedCourses, getPublishedCoursesPage} from './courseCatalogue';
 export {
   getCourseDetails,
   getCourseDetailsSnapshot,
@@ -18,7 +14,6 @@ export {
   rateCourse,
   type CourseRatingResult,
 } from './courseRatings';
-export {subscribeToUnavailableCourses} from './courseAvailability';
 export type {
   CourseAccessPlan,
   CourseDetails,

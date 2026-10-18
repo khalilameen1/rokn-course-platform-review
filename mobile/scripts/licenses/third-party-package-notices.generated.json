@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
   "generatedFrom": "verified package-lock.json production closure",
-  "packageCount": 732,
-  "packagePathCount": 817,
+  "packageCount": 737,
+  "packagePathCount": 822,
   "packages": [
     {
       "coordinate": "@babel/code-frame@7.10.4",
@@ -5046,6 +5046,106 @@
           "path": "LICENSE",
           "sha256": "9cf2166507311f427e083ef7671da566949391cb745789abcff8bd43ac26d1f1",
           "text": "MIT License\n\nCopyright (c) 2024 Fabian Hiller\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
+        }
+      ]
+    },
+    {
+      "coordinate": "@tanstack/query-async-storage-persister@5.104.1",
+      "name": "@tanstack/query-async-storage-persister",
+      "version": "5.104.1",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-wSs/HrangoSMVW3zLifawRT9lA+fbiilPQmaY+YhxBOM/VS9oqx+MQvROHpW+hKwDpdvFmhyBjWiyDhTHL1YXg==",
+      "resolved": "https://registry.npmjs.org/@tanstack/query-async-storage-persister/-/query-async-storage-persister-5.104.1.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/@tanstack/query-async-storage-persister/-/query-async-storage-persister-5.104.1.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "277d2a8e459713d6c596bab89ef857cb8b2433223fa9edb49ccc403a6ceb08ee",
+          "text": "MIT License\n\nCopyright (c) 2021-present Tanner Linsley\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
+        }
+      ]
+    },
+    {
+      "coordinate": "@tanstack/query-core@5.104.1",
+      "name": "@tanstack/query-core",
+      "version": "5.104.1",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-TiRghcrGkUTE+M4JBxvpPSpBhxvIzQairw+cksrHYGr+2uwC77yW1SY9nYxnYRYOppvucf8rEg6b5byoz4rTpw==",
+      "resolved": "https://registry.npmjs.org/@tanstack/query-core/-/query-core-5.104.1.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/@tanstack/query-core/-/query-core-5.104.1.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "277d2a8e459713d6c596bab89ef857cb8b2433223fa9edb49ccc403a6ceb08ee",
+          "text": "MIT License\n\nCopyright (c) 2021-present Tanner Linsley\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
+        }
+      ]
+    },
+    {
+      "coordinate": "@tanstack/query-persist-client-core@5.104.1",
+      "name": "@tanstack/query-persist-client-core",
+      "version": "5.104.1",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-ONiadXqe56iNrw6RESqKILpTIVG9ZMI/DageTQnrBDt/nZ6WiP4G13iIiMwJEsiO12gQ3Gychx8tcFIPw4k25g==",
+      "resolved": "https://registry.npmjs.org/@tanstack/query-persist-client-core/-/query-persist-client-core-5.104.1.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/@tanstack/query-persist-client-core/-/query-persist-client-core-5.104.1.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "277d2a8e459713d6c596bab89ef857cb8b2433223fa9edb49ccc403a6ceb08ee",
+          "text": "MIT License\n\nCopyright (c) 2021-present Tanner Linsley\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
+        }
+      ]
+    },
+    {
+      "coordinate": "@tanstack/react-query-persist-client@5.104.1",
+      "name": "@tanstack/react-query-persist-client",
+      "version": "5.104.1",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-kU3YaqjkwEUzUUfPF0JVg56d6gJKWHaFVqOlQztwc4C2IT0P5sv/23orrSoQqjxKaUe6Ejw5IIQtA/G12uNmow==",
+      "resolved": "https://registry.npmjs.org/@tanstack/react-query-persist-client/-/react-query-persist-client-5.104.1.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/@tanstack/react-query-persist-client/-/react-query-persist-client-5.104.1.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "277d2a8e459713d6c596bab89ef857cb8b2433223fa9edb49ccc403a6ceb08ee",
+          "text": "MIT License\n\nCopyright (c) 2021-present Tanner Linsley\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
+        }
+      ]
+    },
+    {
+      "coordinate": "@tanstack/react-query@5.104.1",
+      "name": "@tanstack/react-query",
+      "version": "5.104.1",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-Zz70EgjahNI7aCz8BZxM3vUGU44ycxEAzMuCUjLeA7SVhhOkg3ZgPjPJPvHjs6Rmky/dtmnu1WzjGHNHmhCoZQ==",
+      "resolved": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.104.1.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.104.1.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "277d2a8e459713d6c596bab89ef857cb8b2433223fa9edb49ccc403a6ceb08ee",
+          "text": "MIT License\n\nCopyright (c) 2021-present Tanner Linsley\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
         }
       ]
     },

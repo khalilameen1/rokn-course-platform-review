@@ -1,5 +1,11 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
+
+let queryTestClient = createTestQueryClient();
+beforeEach(() => {
+  queryTestClient = createTestQueryClient();
+});
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const mockSnapshot = jest.fn();
@@ -27,8 +33,7 @@ jest.mock('../src/constants/helpers', () => ({
 jest.mock('../src/constants/distribution', () => ({
   CAN_START_NATIVE_CHECKOUT: false,
 }));
-jest.mock('../src/services/coinCheckout', () => ({
-}));
+jest.mock('../src/services/coinCheckout', () => ({}));
 jest.mock('../src/services/walletSettlement', () => ({
   subscribeWalletSettlements: () => () => undefined,
 }));
@@ -116,7 +121,9 @@ describe('course details optional local learning read', () => {
   };
   const mount = async () => {
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness />, queryTestClient),
+      );
     });
   };
   const passLocalReadBudget = async () => {
@@ -174,7 +181,7 @@ describe('course details optional local learning read', () => {
     getItem.mockReturnValueOnce(new Promise(() => undefined));
     mockOwner = {scope: 'learner-7', epoch: 2};
     await act(async () => {
-      renderer?.update(<Harness />);
+      renderer?.update(withQueryClient(<Harness />, queryTestClient));
     });
     await passLocalReadBudget();
 
@@ -252,7 +259,9 @@ describe('course details optional local learning read', () => {
         snapshot(nextId, true, 'التفاصيل الحالية'),
       );
       await act(async () => {
-        renderer?.update(<Harness courseId={nextId} />);
+        renderer?.update(
+          withQueryClient(<Harness courseId={nextId} />, queryTestClient),
+        );
       });
       const current = data.course.learningValue;
       expect(data.course.loading).toBe(false);

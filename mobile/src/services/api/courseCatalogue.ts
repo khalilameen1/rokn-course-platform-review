@@ -5,15 +5,8 @@ import {
 } from '../../constants/api';
 import type {Course} from '../../types/Course';
 import {normalizeText} from '../../utils/searchText';
-import {settleWithin} from '../../utils/settleWithin';
 import {truncateGraphemes} from '../../utils/unicodeText';
-import {transientReadFailureAllowsCache} from '../networkExperience';
 import {payload} from './common';
-import {
-  cacheCatalogueResult,
-  getCatalogueGeneration,
-  readCatalogueCache,
-} from './courseCatalogueCache';
 import {
   mapCatalogueCoursesPayload,
   type PublishedCoursesPage,
@@ -71,7 +64,6 @@ export const getPublishedCoursesPage = async ({
     Math.min(normalizedSearch ? 20 : 50, Math.floor(perPage)),
   );
   const retryDeadlineAt = Date.now() + DEFAULT_READ_RECOVERY_BUDGET_MS;
-  const generation = getCatalogueGeneration();
 
   try {
     const response = await publicRequest.get(
@@ -95,11 +87,6 @@ export const getPublishedCoursesPage = async ({
       } as RoknRequestConfig,
     );
     const data = payload(response);
-    if (generation !== getCatalogueGeneration()) {
-      throw Object.assign(new Error('CATALOGUE_CHANGED'), {
-        code: 'catalogue_changed',
-      });
-    }
     const responseRevision = Number(data?.catalogue_revision);
     if (!Number.isSafeInteger(responseRevision) || responseRevision < 1) {
       throw new Error('COURSE_CATALOGUE_CONTRACT_INVALID');
@@ -132,21 +119,17 @@ export const getPublishedCoursesPage = async ({
     ) {
       throw new Error('COURSE_CATALOGUE_CONTRACT_INVALID');
     }
-    const result = {
+    return {
       courses: mapCatalogueCoursesPayload(list, Boolean(normalizedSearch)),
       page: currentPage,
       hasMore: currentPage < lastPage,
       total,
       revision: responseRevision,
     };
-    if (!normalizedSearch) {
-      void cacheCatalogueResult(result, generation).catch(() => undefined);
-    }
-    return {...result, fromCache: false};
   } catch (error) {
-    const catalogueChanged =
-      !signal?.aborted &&
-      (generation !== getCatalogueGeneration() || isCatalogueChanged(error));
+    // A later page from another catalogue revision restarts at page one; the
+    // caller replaces its pages with that reset page.
+    const catalogueChanged = !signal?.aborted && isCatalogueChanged(error);
     if (catalogueChanged && revisionConflictRetry) {
       const replacement = await getPublishedCoursesPage({
         page: safePage > 1 ? 1 : safePage,
@@ -157,22 +140,9 @@ export const getPublishedCoursesPage = async ({
       });
       return safePage > 1 ? {...replacement, reset: true} : replacement;
     }
-    if (catalogueChanged) throw error;
-    if (!normalizedSearch && transientReadFailureAllowsCache(error)) {
-      const cached = await settleWithin(
-        readCatalogueCache(safePage, undefined, expectedRevision),
-        null,
-      );
-      if (cached) return cached;
-    }
     throw error;
   }
 };
 
 export const getPublishedCourses = async (): Promise<Course[]> =>
   (await getPublishedCoursesPage()).courses;
-
-export const getCachedPublishedCourses = async (): Promise<Course[]> => {
-  const cached = await readCatalogueCache(1);
-  return cached?.courses ?? [];
-};

@@ -6,6 +6,8 @@ import {
   type AccountSessionBoundary,
 } from '../../../constants/helpers';
 import {hasSession} from '../../../services/roknApi';
+import {queryClient} from '../../../services/query/queryClient';
+import {accountQueryKeys} from '../../../services/query/queryKeys';
 import {settleWithin} from '../../../utils/settleWithin';
 import {ownerKey, singleFlight} from './savedCollectionConcurrency';
 import {acceptRemoteCacheRepair} from './savedCollectionCacheRepair';
@@ -29,6 +31,11 @@ export const invalidateFolderList = (boundary: AccountSessionBoundary) => {
   // A post-mutation refresh must not join a pre-mutation network snapshot.
   folderListFlights.delete(key);
   folderListFlights.delete(`${key}:fresh`);
+  // Every confirmed folder or membership change passes here: ركني's saved
+  // lists read again instead of keeping pre-mutation names and counts.
+  void queryClient.invalidateQueries({
+    queryKey: accountQueryKeys(boundary.scope).savedFolders(),
+  });
 };
 
 export const savedFolderRevision = (boundary: AccountSessionBoundary) =>

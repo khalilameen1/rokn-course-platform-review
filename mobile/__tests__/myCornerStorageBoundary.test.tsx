@@ -43,10 +43,11 @@ import {
   buildMyCornerModel,
   learningResumeTarget,
 } from '../src/screens/myCorner/model';
-import {
-  getCachedLearningDashboard,
-  getLearningDashboard,
-} from '../src/services/api/learning';
+import type {LearningDashboard} from '../src/services/api/learning';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
+import {attachQueryPersistence} from '../src/services/query/queryPersistence';
+import {accountQueryKeys} from '../src/services/query/queryKeys';
+import type {QueryClient} from '@tanstack/react-query';
 
 const rawGet = jest.mocked(AsyncStorage.getItem).getMockImplementation()!;
 const rawSet = jest.mocked(AsyncStorage.setItem).getMockImplementation()!;
@@ -60,6 +61,12 @@ const deferred = () => {
 const flush = async () => {
   for (let index = 0; index < 30; index += 1) await Promise.resolve();
 };
+let client: QueryClient;
+/** The account's query entry, i.e. what the device snapshot will carry. */
+const savedDashboard = () =>
+  client.getQueryData<LearningDashboard>(
+    accountQueryKeys(mockBoundary.scope).learningDashboard(),
+  );
 
 describe('MyCorner authoritative courses with unavailable native cache', () => {
   beforeEach(async () => {
@@ -69,6 +76,8 @@ describe('MyCorner authoritative courses with unavailable native cache', () => {
     jest.mocked(AsyncStorage.setItem).mockImplementation(rawSet);
     await AsyncStorage.clear();
     mockBoundary = {scope: `learner-${++ownerSequence}`, epoch: ownerSequence};
+    client = createTestQueryClient();
+    attachQueryPersistence(client, {throttleTime: 0});
     mockCourseTitle = 'الكورس المشترى';
     mockGet.mockImplementation(async (route: string) => {
       const data =
@@ -100,6 +109,7 @@ describe('MyCorner authoritative courses with unavailable native cache', () => {
     });
   });
   afterEach(() => {
+    attachQueryPersistence(client).dispose();
     jest.mocked(AsyncStorage.getItem).mockImplementation(rawGet);
     jest.mocked(AsyncStorage.setItem).mockImplementation(rawSet);
     jest.useRealTimers();
@@ -123,7 +133,7 @@ describe('MyCorner authoritative courses with unavailable native cache', () => {
       let renderer!: TestRenderer.ReactTestRenderer;
       try {
         await act(async () => {
-          renderer = TestRenderer.create(<Harness />);
+          renderer = TestRenderer.create(withQueryClient(<Harness />, client));
           await flush();
         });
         expect(current.dashboard?.courses[0].id).toBe('3');
@@ -162,7 +172,7 @@ describe('MyCorner authoritative courses with unavailable native cache', () => {
     let renderer!: TestRenderer.ReactTestRenderer;
     try {
       await act(async () => {
-        renderer = TestRenderer.create(<Harness />);
+        renderer = TestRenderer.create(withQueryClient(<Harness />, client));
         await flush();
       });
       expect(current.dashboard).toBeNull();
@@ -195,7 +205,7 @@ describe('MyCorner authoritative courses with unavailable native cache', () => {
     let renderer!: TestRenderer.ReactTestRenderer;
     try {
       await act(async () => {
-        renderer = TestRenderer.create(<Harness />);
+        renderer = TestRenderer.create(withQueryClient(<Harness />, client));
         await flush();
       });
       expect(current.dashboard?.courses).toEqual([]);
@@ -232,7 +242,7 @@ describe('MyCorner authoritative courses with unavailable native cache', () => {
     let renderer!: TestRenderer.ReactTestRenderer;
     try {
       await act(async () => {
-        renderer = TestRenderer.create(<Harness />);
+        renderer = TestRenderer.create(withQueryClient(<Harness />, client));
         await flush();
       });
       expect(current.learningOwnershipFresh).toBe(true);
@@ -254,7 +264,7 @@ describe('MyCorner authoritative courses with unavailable native cache', () => {
       expect(current.dashboard?.courses[0].title).toBe(mockCourseTitle);
       expect(current.dashboard?.currentStreakDays).toBe(0);
       expect(current.dashboardLoading).toBe(false);
-      await expect(getCachedLearningDashboard()).resolves.toMatchObject({
+      expect(savedDashboard()).toMatchObject({
         courses: [{title: mockCourseTitle}],
         currentStreakDays: 0,
       });
@@ -273,14 +283,15 @@ describe('MyCorner authoritative courses with unavailable native cache', () => {
       const storage = deferred();
       if (kind.startsWith('read'))
         jest.mocked(AsyncStorage.getItem).mockImplementation(async key => {
-          if (key.startsWith('@rokn/learning-dashboard')) await storage.promise;
+          if (key.startsWith('@rokn/query-cache/account'))
+            await storage.promise;
           return rawGet(key);
         });
       else
         jest
           .mocked(AsyncStorage.setItem)
           .mockImplementation(async (key, value) => {
-            if (key.startsWith('@rokn/learning-dashboard'))
+            if (key.startsWith('@rokn/query-cache/account'))
               await storage.promise;
             return rawSet(key, value);
           });
@@ -300,7 +311,7 @@ describe('MyCorner authoritative courses with unavailable native cache', () => {
       let renderer!: TestRenderer.ReactTestRenderer;
       try {
         await act(async () => {
-          renderer = TestRenderer.create(<Harness />);
+          renderer = TestRenderer.create(withQueryClient(<Harness />, client));
           await flush();
         });
         expect(mockGet).toHaveBeenCalledWith(
@@ -342,92 +353,11 @@ describe('MyCorner authoritative courses with unavailable native cache', () => {
     },
   );
 
-  it.each([false, true])(
-    'serializes an old native cache write before a newer refresh (same account signed in again: %s)',
-    async newSession => {
-      const storage = deferred();
-      let firstWrite = true;
-      jest
-        .mocked(AsyncStorage.setItem)
-        .mockImplementation(async (key, value) => {
-          if (firstWrite) {
-            firstWrite = false;
-            await storage.promise;
-          }
-          return rawSet(key, value);
-        });
-      const old = getLearningDashboard();
-      await flush();
-      await jest.advanceTimersByTimeAsync(1000);
-      await expect(old).resolves.toMatchObject({
-        courses: [{title: 'الكورس المشترى'}],
-      });
-      if (newSession) {
-        mockBoundary = {...mockBoundary, epoch: mockBoundary.epoch + 1};
-        await AsyncStorage.clear();
-      }
-      mockCourseTitle = 'محتوى الكورس بعد التحديث';
-      const fresh = getLearningDashboard();
-      await flush();
-      await jest.advanceTimersByTimeAsync(2000);
-      await expect(fresh).resolves.toMatchObject({
-        courses: [{title: mockCourseTitle}],
-      });
-      // Timing out the old write must not release the actual native write slot.
-      expect(AsyncStorage.setItem).toHaveBeenCalledTimes(1);
-      storage.resolve();
-      await flush();
-      await expect(getCachedLearningDashboard()).resolves.toMatchObject({
-        courses: [{title: mockCourseTitle}],
-      });
-      expect(AsyncStorage.setItem).toHaveBeenCalledTimes(2);
-    },
-  );
-
-  it('removes a late native cache write after logout instead of resurrecting the deleted account cache', async () => {
-    const storage = deferred();
-    const scope = mockBoundary.scope;
-    jest.mocked(AsyncStorage.setItem).mockImplementation(async (key, value) => {
-      await storage.promise;
-      return rawSet(key, value);
-    });
-    const read = getLearningDashboard();
-    await flush();
-    await jest.advanceTimersByTimeAsync(1000);
-    await read;
-    mockBoundary = {scope: 'guest', epoch: mockBoundary.epoch + 1};
-    await AsyncStorage.clear();
-    storage.resolve();
-    await flush();
-    expect(await rawGet(`@rokn/learning-dashboard/v3:${scope}`)).toBeNull();
-  });
-
-  it('does not cache an older HTTP result after a newer dashboard refresh has succeeded', async () => {
-    const response = deferred();
-    const normalGet = mockGet.getMockImplementation()!;
-    let delayFirstCourse = true;
-    mockGet.mockImplementation(async (route: string) => {
-      const value = await normalGet(route);
-      if (route === 'learning/courses' && delayFirstCourse) {
-        delayFirstCourse = false;
-        await response.promise;
-      }
-      return value;
-    });
-    const old = getLearningDashboard();
-    await flush();
-    mockCourseTitle = 'الكورس الحالي';
-    await expect(getLearningDashboard()).resolves.toMatchObject({
-      courses: [{title: mockCourseTitle}],
-    });
-    response.resolve();
-    await expect(old).resolves.toMatchObject({
-      courses: [{title: 'الكورس المشترى'}],
-    });
-    await expect(getCachedLearningDashboard()).resolves.toMatchObject({
-      courses: [{title: mockCourseTitle}],
-    });
-  });
+  // Snapshot write ordering (a stalled older write lands before the newer
+  // one) and the logout race (a late write is undone) are proven against the
+  // persister in queryPersistence.test.tsx. Two reads of one dashboard can
+  // no longer race: one query key has one live fetch, and a replaced fetch's
+  // response is discarded (see the enrichment retirement test above).
 
   it('retains separate project activity and video resume timestamps through the real dashboard cache and still reads older snapshots', async () => {
     const normalGet = mockGet.getMockImplementation()!;
@@ -460,15 +390,43 @@ describe('MyCorner authoritative courses with unavailable native cache', () => {
       }
       return response;
     });
-    await getLearningDashboard();
-    const cached = await getCachedLearningDashboard();
+    let current!: ReturnType<typeof useMyCornerData>;
+    const Harness = () => {
+      current = useMyCornerData(mockBoundary.scope);
+      return null;
+    };
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(withQueryClient(<Harness />, client));
+      await flush();
+      await jest.advanceTimersByTimeAsync(100);
+    });
+    expect(current.dashboard?.courses).toHaveLength(2);
+    await act(async () => {
+      renderer.unmount();
+      for (let tick = 0; tick < 5; tick += 1) {
+        await jest.advanceTimersByTimeAsync(100);
+        await flush();
+      }
+    });
+    // A cold start restores what the previous process saved.
+    const restoreFromDevice = async () => {
+      const coldStart = createTestQueryClient();
+      const persistence = attachQueryPersistence(coldStart);
+      await persistence.activateAccountScope(mockBoundary.scope);
+      persistence.dispose();
+      return coldStart.getQueryData<LearningDashboard>(
+        accountQueryKeys(mockBoundary.scope).learningDashboard(),
+      );
+    };
+    const cached = await restoreFromDevice();
     expect(cached?.courses[0]).toMatchObject({
       lastActivityAt: '2026-10-05T12:00:00Z',
       lastWatchedAt: '2026-10-01T12:00:00Z',
       resumePositionSeconds: 34,
     });
     const model = buildMyCornerModel({
-      dashboard: cached,
+      dashboard: cached ?? null,
       selectedPathId: null,
       signedIn: true,
     });
@@ -478,14 +436,14 @@ describe('MyCorner authoritative courses with unavailable native cache', () => {
       projectId: '30',
     });
 
-    const key = `@rokn/learning-dashboard/v3:${mockBoundary.scope}`;
+    const key = `@rokn/query-cache/account/v1:${mockBoundary.scope}`;
     const oldSnapshot = JSON.parse((await rawGet(key))!);
-    oldSnapshot.dashboard.courses.forEach(
+    oldSnapshot.clientState.queries[0].state.data.courses.forEach(
       (course: {lastActivityAt?: string}) => delete course.lastActivityAt,
     );
     await rawSet(key, JSON.stringify(oldSnapshot));
     const legacyModel = buildMyCornerModel({
-      dashboard: await getCachedLearningDashboard(),
+      dashboard: (await restoreFromDevice()) ?? null,
       selectedPathId: null,
       signedIn: true,
     });

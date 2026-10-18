@@ -88,13 +88,11 @@ describe('production daily surfaces', () => {
     expect(carousel).not.toMatch(/autoPlay|react-native-reanimated-carousel/);
   });
 
-  it('bounds daily list image cost and coalesces wallet refreshes', () => {
+  it('bounds daily list image cost', () => {
     const notifications = source('src/screens/Notifications.tsx');
-    const wallet = source('src/screens/wallet/useWalletData.ts');
 
     expect(notifications).toContain('resizeMethod="resize"');
     expect(notifications).toContain('removeClippedSubviews=');
-    expect(wallet).toContain('refreshFlightRef.current');
-    expect(wallet).toContain('refreshAfterCurrent');
+    // Wallet refresh coalescing is proven by walletForegroundRefresh.test.tsx.
   });
 });

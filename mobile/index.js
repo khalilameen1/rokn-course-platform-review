@@ -12,6 +12,7 @@ import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
 import App from './App';
+import {AppQueryProvider} from './src/services/query/AppQueryProvider';
 import AppErrorBoundary from './src/components/ui/AppErrorBoundary';
 import {installGlobalErrorReporting} from './src/services/operationalTelemetry';
 import {initializeSentry} from './src/services/sentryTelemetry';
@@ -32,15 +33,17 @@ configureNotificationPresentation();
 const RNapp = () => {
   return (
     <Provider store={store}>
-      <AppErrorBoundary>
-        <GestureHandlerRootView style={{flex: 1}}>
-          <SafeAreaProvider>
-            <BottomSheetModalProvider>
-              <App />
-            </BottomSheetModalProvider>
-          </SafeAreaProvider>
-        </GestureHandlerRootView>
-      </AppErrorBoundary>
+      <AppQueryProvider>
+        <AppErrorBoundary>
+          <GestureHandlerRootView style={{flex: 1}}>
+            <SafeAreaProvider>
+              <BottomSheetModalProvider>
+                <App />
+              </BottomSheetModalProvider>
+            </SafeAreaProvider>
+          </GestureHandlerRootView>
+        </AppErrorBoundary>
+      </AppQueryProvider>
     </Provider>
   );
 };

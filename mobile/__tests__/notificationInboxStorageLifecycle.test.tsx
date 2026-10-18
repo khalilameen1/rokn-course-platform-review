@@ -1,10 +1,15 @@
 import React from 'react';
 import {AccessibilityInfo, AppState} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
+
+let queryTestClient = createTestQueryClient();
+beforeEach(() => {
+  queryTestClient = createTestQueryClient();
+});
 import type {Notification} from '../src/services/notificationMapper';
 
 const mockPage = jest.fn();
-const mockCourses = jest.fn();
 const mockGetItem = jest.fn();
 const mockSaveItem = jest.fn();
 let mockBoundary = {scope: 'account-a', epoch: 1};
@@ -16,7 +21,6 @@ jest.mock('@react-navigation/native', () => ({
 }));
 jest.mock('../src/services/roknApi', () => ({
   getNotificationsPage: (...args: unknown[]) => mockPage(...args),
-  getCachedPublishedCourses: (...args: unknown[]) => mockCourses(...args),
   markNotificationRead: jest.fn(),
   markAllNotificationsRead: jest.fn(),
   hasSession: async () => true,
@@ -88,7 +92,9 @@ describe('notification inbox optional storage lifecycle', () => {
   };
   const mount = async () => {
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness />, queryTestClient),
+      );
     });
   };
   const waitForOptionalCache = async () => {
@@ -103,7 +109,6 @@ describe('notification inbox optional storage lifecycle', () => {
     mockBoundary = {scope: 'account-a', epoch: 1};
     mockGetItem.mockResolvedValue(null);
     mockSaveItem.mockResolvedValue(true);
-    mockCourses.mockResolvedValue([]);
     mockPage.mockResolvedValue(page('2'));
     jest
       .spyOn(AccessibilityInfo, 'isScreenReaderEnabled')
@@ -145,9 +150,7 @@ describe('notification inbox optional storage lifecycle', () => {
     ]);
   });
 
-  it('shows received notifications when optional cached course images stall', async () => {
-    const courses = deferred<[]>();
-    mockCourses.mockReturnValueOnce(courses.promise);
+  it('shows received notifications before any catalogue artwork is known', async () => {
     await mount();
     expect(mockPage).toHaveBeenCalledTimes(1);
     expect(inbox.loading).toBe(false);
@@ -156,7 +159,6 @@ describe('notification inbox optional storage lifecycle', () => {
     expect(inbox.loading).toBe(false);
     expect(inbox.source.map(item => item.id)).toEqual(['2']);
     expect(inbox.notificationError).toBe('');
-    await act(async () => courses.resolve([]));
   });
 
   it('does not replace a delivered page with cache that arrives before its timeout', async () => {
@@ -238,37 +240,45 @@ describe('notification inbox optional storage lifecycle', () => {
     expect(inbox.hasMoreNotifications).toBe(false);
   });
 
-  it('adds optional course artwork after the page without delaying or replacing notifications', async () => {
-    const courses = deferred<Array<{id: string; image: {uri: string}}>>();
+  /** The browse catalogue the app already holds (loaded or restored). */
+  const holdCatalogue = (cover: {uri: string}) =>
+    queryTestClient.setQueryData(['public', 'catalogue', ''], {
+      pages: [
+        {
+          courses: [{id: '5', title: 'كورس', image: cover}],
+          page: 1,
+          hasMore: false,
+          total: 1,
+          revision: 1,
+          query: '',
+        },
+      ],
+      pageParams: [{page: 1}],
+    });
+
+  it('adds course artwork from the held catalogue without delaying notifications', async () => {
     const cover = {uri: 'https://rokn.app/cover.jpg'};
-    mockCourses.mockReturnValueOnce(courses.promise);
+    holdCatalogue(cover);
     mockPage.mockResolvedValueOnce({
       ...page('2'),
       notifications: [{...notification('2'), courseId: '5'}],
     });
     await mount();
-    expect(inbox.source[0]).toMatchObject({id: '2', image: undefined});
     expect(inbox.loading).toBe(false);
-    await act(async () => courses.resolve([{id: '5', image: cover}]));
     expect(inbox.source[0]).toMatchObject({id: '2', image: cover});
     expect(mockPage).toHaveBeenCalledTimes(1);
   });
 
-  it('ignores optional artwork from an overtaken refresh', async () => {
-    const courses = deferred<Array<{id: string; image: {uri: string}}>>();
-    const currentCover = {uri: 'https://rokn.app/current.jpg'};
-    mockCourses.mockReturnValueOnce(courses.promise);
+  it('uses the artwork of the catalogue current at each refresh', async () => {
+    holdCatalogue({uri: 'https://rokn.app/old.jpg'});
     mockPage.mockResolvedValue({
       ...page('2'),
       notifications: [{...notification('2'), courseId: '5'}],
     });
     await mount();
-    mockCourses.mockResolvedValueOnce([{id: '5', image: currentCover}]);
+    const currentCover = {uri: 'https://rokn.app/current.jpg'};
+    holdCatalogue(currentCover);
     await act(async () => inbox.refreshNotifications());
-    expect(inbox.source[0].image).toEqual(currentCover);
-    await act(async () =>
-      courses.resolve([{id: '5', image: {uri: 'https://rokn.app/old.jpg'}}]),
-    );
     expect(inbox.source[0].image).toEqual(currentCover);
   });
 

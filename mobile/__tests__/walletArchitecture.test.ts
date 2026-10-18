@@ -19,7 +19,6 @@ describe('wallet architecture', () => {
     const view = source('src/screens/wallet/WalletView.tsx');
     const controller = source('src/screens/wallet/useWalletController.ts');
     const data = source('src/screens/wallet/useWalletData.ts');
-    const cache = source('src/screens/wallet/walletCache.ts');
 
     expect(view).not.toContain('services/roknApi');
     expect(view).not.toContain('captureAccountSessionBoundary');
@@ -30,11 +29,11 @@ describe('wallet architecture', () => {
     expect(controller).not.toContain('openCoinCheckout');
     expect(controller).not.toContain('useRoute');
     expect(controller).not.toContain('useWalletCheckout');
-    expect(controller).toContain('useWalletData(identityKey, false)');
+    expect(controller).toContain('useWalletData(identityKey)');
     expect(view).not.toContain('WalletPackageRail');
     expect(view).not.toContain('CAN_START_COIN_CHECKOUT');
-    expect(cache).toContain("WALLET_CACHE_KEY = '@rokn/wallet-cache/v2'");
-    expect(data).toContain('getCoinPackages');
+    // Rewards never read the store catalogue.
+    expect(data).not.toContain('getCoinPackages');
     expect(view).not.toContain('StyleSheet.create');
     expect(controller).not.toContain('<PremiumCard');
     expect(controller).not.toContain('<StatusView');
@@ -42,13 +41,10 @@ describe('wallet architecture', () => {
   });
 
   it('queues an authoritative refresh after a mutation and account switch', () => {
-    const data = source('src/screens/wallet/useWalletData.ts');
     const tasks = source('src/screens/wallet/useWalletTasks.ts');
 
-    expect(data).toContain('queuedRefreshRef.current');
-    expect(data).toContain('return queuedRefreshRef.current');
-    expect(data).toContain('ownerRef.current = identityKey');
-    expect(data).toContain('void refresh();');
+    // The post-mutation refresh and account switch of the wallet read are
+    // proven by walletForegroundRefresh.test.tsx.
     expect(tasks).toContain(
       'const operationKey = `${boundary.scope}:${boundary.epoch}:${task.id}`',
     );

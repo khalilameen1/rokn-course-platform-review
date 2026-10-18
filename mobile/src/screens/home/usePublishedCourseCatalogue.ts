@@ -1,24 +1,24 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
-import {type NativeScrollEvent, type NativeSyntheticEvent} from 'react-native';
-import type {Course} from '../../types/Course';
-import {normalizeText} from '../../utils/searchText';
-import {settleWithin} from '../../utils/settleWithin';
 import {
-  getCachedPublishedCourses,
-  getPublishedCoursesPage,
-  subscribeToUnavailableCourses,
-} from '../../services/roknApi';
+  keepPreviousData,
+  useInfiniteQuery,
+  useQueryClient,
+  type InfiniteQueryObserverResult,
+} from '@tanstack/react-query';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {type NativeScrollEvent, type NativeSyntheticEvent} from 'react-native';
+import {normalizeText} from '../../utils/searchText';
 import {
   friendlyNetworkMessage,
-  networkFailureKind,
+  transientReadFailureAllowsCache,
 } from '../../services/networkExperience';
-
-type LoadOptions = {
-  append?: boolean;
-  blocking?: boolean;
-  page?: number;
-  query?: string;
-};
+import {
+  catalogueCourses,
+  catalogueQueryOptions,
+  keepPagesFromLastReset,
+  type CatalogueData,
+} from '../../services/query/catalogueQueries';
+import {isRestoredSnapshot} from '../../services/query/queryClient';
+import {publicQueryKeys} from '../../services/query/queryKeys';
 
 type Params = {
   active: boolean;
@@ -28,6 +28,22 @@ type Params = {
 
 const CACHE_NOTICE = 'نعرض النسخة المحفوظة\nسنحدّثها عند عودة الاتصال';
 const OFFLINE_NOTICE = 'نعرض النسخة المحفوظة\nأعد المحاولة عند عودة الاتصال';
+const LOAD_MORE_ERROR = 'تعذّر تحميل المزيد\nحاول مرة أخرى';
+const SEARCH_DEBOUNCE_MS = 350;
+/** A key no normalized search can produce (searches are trimmed). */
+const IDLE_SEARCH = ' ';
+const RETRY_INTERVAL_MS = 20_000;
+const RETRY_ATTEMPTS = 3;
+/** The browse snapshot's device age limit; older copies are not "saved". */
+const BROWSE_SNAPSHOT_MAX_AGE_MS = 2 * 60 * 60 * 1000;
+
+type CatalogueResult = InfiniteQueryObserverResult<CatalogueData, Error>;
+
+/** A next-page failure keeps the list; only a list read can fail the list. */
+const listError = (result: CatalogueResult) =>
+  result.isError && !result.isFetchNextPageError && !result.isFetching
+    ? result.error
+    : null;
 
 /** Published course discovery. This state is public and account-neutral. */
 export const usePublishedCourseCatalogue = ({
@@ -35,278 +51,215 @@ export const usePublishedCourseCatalogue = ({
   appIsActive,
   searchQuery,
 }: Params) => {
+  const client = useQueryClient();
   const currentQuery = normalizeText(searchQuery);
-  const [courses, setCourses] = useState<Course[] | null>(null);
-  const [failure, setFailure] = useState<{
-    query: string;
-    message: string;
-  } | null>(null);
-  const error = failure?.query === currentQuery ? failure.message : '';
-  const [staleNotice, setStaleNotice] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [loadMoreError, setLoadMoreError] = useState('');
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-
-  const controllerRef = useRef<AbortController | null>(null);
-  const requestIdRef = useRef(0);
+  const [requestedQuery, setRequestedQuery] = useState(currentQuery);
+  const [manualRefreshing, setManualRefreshing] = useState(false);
+  // Home opened straight into a search reads the browse list only once the
+  // learner actually returns to browsing, as before.
+  const [browseWanted, setBrowseWanted] = useState(currentQuery === '');
+  useEffect(() => {
+    if (currentQuery === '') setBrowseWanted(true);
+  }, [currentQuery]);
   const refreshFlightRef = useRef<Promise<void> | null>(null);
-  const loadingMoreRef = useRef(false);
-  const browseCoursesRef = useRef<Course[]>([]);
-  const catalogueRevisionRef = useRef<number | undefined>(undefined);
-  const loadedQueryRef = useRef<string | null>(null);
-  const requestedQueryRef = useRef('');
-  const activeQueryRef = useRef(currentQuery);
-  const lastAttemptAtRef = useRef(0);
-  const lastSuccessAtRef = useRef(0);
-  const wasActiveRef = useRef(active);
-  const wasAppActiveRef = useRef(appIsActive);
-  activeQueryRef.current = currentQuery;
 
-  const load = useCallback(
-    async ({
-      append = false,
-      blocking = true,
-      page: requestedPage = 1,
-      query = '',
-    }: LoadOptions = {}) => {
-      if (append && loadingMoreRef.current) return;
+  // TanStack "Disable queries on out of focus screens": Home keeps its data
+  // while another screen is on top, and resubscribing refetches stale lists.
+  const browse = useInfiniteQuery({
+    ...catalogueQueryOptions(''),
+    enabled: browseWanted || currentQuery === '',
+    subscribed: active,
+  });
+  // Browsing has no search observer: two observers with different options
+  // on the browse entry would keep re-applying their options to it.
+  const search = useInfiniteQuery({
+    ...catalogueQueryOptions(requestedQuery || IDLE_SEARCH),
+    enabled: requestedQuery !== '',
+    subscribed: active,
+    placeholderData: keepPreviousData,
+  });
 
-      controllerRef.current?.abort();
-      const controller = new AbortController();
-      controllerRef.current = controller;
-      const requestId = ++requestIdRef.current;
-      const normalizedQuery = normalizeText(query);
-      requestedQueryRef.current = normalizedQuery;
-      lastAttemptAtRef.current = Date.now();
-      loadingMoreRef.current = append;
-
-      if (!append) setLoadMoreError('');
-      if (append) {
-        setLoadingMore(true);
-        setLoadMoreError('');
-      } else if (blocking) {
-        setLoading(
-          normalizedQuery !== '' || browseCoursesRef.current.length === 0,
-        );
-        setFailure(null);
-      }
-
-      try {
-        const result = await getPublishedCoursesPage({
-          page: requestedPage,
-          perPage: 30,
-          revision: append ? catalogueRevisionRef.current : undefined,
-          search: query,
-          signal: controller.signal,
-        });
-        if (
-          requestId !== requestIdRef.current ||
-          normalizedQuery !== activeQueryRef.current
-        ) {
-          return;
-        }
-
-        setCourses(current => {
-          if (!append || result.reset || !current) {
-            if (!normalizedQuery) browseCoursesRef.current = result.courses;
-            return result.courses;
-          }
-
-          const merged = new Map(current.map(course => [course.id, course]));
-          result.courses.forEach(course => merged.set(course.id, course));
-          const next = [...merged.values()];
-          if (!normalizedQuery) browseCoursesRef.current = next;
-          return next;
-        });
-        catalogueRevisionRef.current = result.revision;
-        loadedQueryRef.current = normalizedQuery;
-        setPage(result.page);
-        setHasMore(result.hasMore);
-        setFailure(null);
-        setLoadMoreError('');
-        if (result.fromCache) {
-          setStaleNotice(CACHE_NOTICE);
-        } else {
-          lastSuccessAtRef.current = Date.now();
-          setStaleNotice('');
-        }
-      } catch (requestError) {
-        if (networkFailureKind(requestError) === 'cancelled') return;
-        if (
-          requestId !== requestIdRef.current ||
-          normalizedQuery !== activeQueryRef.current
-        ) {
-          return;
-        }
-
-        if (append) {
-          setLoadMoreError('تعذّر تحميل المزيد\nحاول مرة أخرى');
-          return;
-        }
-
-        const hasBrowseSnapshot = browseCoursesRef.current.length > 0;
-        const isSearch = normalizedQuery !== '';
-        if (hasBrowseSnapshot && !isSearch) setStaleNotice(OFFLINE_NOTICE);
-        setFailure(
-          hasBrowseSnapshot && !isSearch
-            ? null
-            : {
-                query: normalizedQuery,
-                message: friendlyNetworkMessage(
-                  requestError,
-                  isSearch ? 'نتائج البحث' : 'الكورسات',
-                ),
-              },
-        );
-      } finally {
-        if (requestId === requestIdRef.current) {
-          if (controllerRef.current === controller)
-            controllerRef.current = null;
-          loadingMoreRef.current = false;
-          setLoading(false);
-          setLoadingMore(false);
-        }
-      }
-    },
-    [],
-  );
-
+  // Typing waits 350 ms before asking the server. Clearing the field, or
+  // returning to a query whose result is already cached, applies at once and
+  // abandons the unfinished request for the other query.
   useEffect(() => {
-    let mounted = true;
-
-    void load({query: activeQueryRef.current});
-    void settleWithin(getCachedPublishedCourses(), []).then(cached => {
-      if (
-        !mounted ||
-        !cached.length ||
-        activeQueryRef.current ||
-        lastSuccessAtRef.current ||
-        browseCoursesRef.current.length
-      ) {
-        return;
-      }
-      browseCoursesRef.current = cached;
-      setCourses(cached);
-      setFailure(null);
-      setStaleNotice(CACHE_NOTICE);
-      setLoading(false);
-    });
-
-    return () => {
-      mounted = false;
-      controllerRef.current?.abort();
-      controllerRef.current = null;
-      requestIdRef.current += 1;
-      loadingMoreRef.current = false;
-    };
-  }, [load]);
-
-  useEffect(
-    () =>
-      subscribeToUnavailableCourses(courseId => {
-        browseCoursesRef.current = browseCoursesRef.current.filter(
-          course => course.id !== courseId,
-        );
-        setCourses(current =>
-          current ? current.filter(course => course.id !== courseId) : current,
-        );
-      }),
-    [],
-  );
-
-  useEffect(() => {
-    const returnedToScreen = active && !wasActiveRef.current;
-    const returnedToApp = appIsActive && !wasAppActiveRef.current;
-    wasActiveRef.current = active;
-    wasAppActiveRef.current = appIsActive;
-
-    if (!active || !appIsActive || (!returnedToScreen && !returnedToApp))
-      return;
-    const now = Date.now();
-    if (!returnedToScreen && now - lastAttemptAtRef.current < 3_000) return;
-    if (
-      !returnedToScreen &&
-      !error &&
-      !staleNotice &&
-      now - lastSuccessAtRef.current < 2 * 60 * 1000
-    ) {
+    if (currentQuery === requestedQuery) return;
+    const cached =
+      currentQuery === '' ||
+      client.getQueryData(publicQueryKeys.cataloguePages(currentQuery)) !==
+        undefined;
+    if (cached) {
+      setRequestedQuery(currentQuery);
       return;
     }
-    void load({
-      blocking: browseCoursesRef.current.length === 0,
-      query: activeQueryRef.current,
-    });
-  }, [active, appIsActive, error, load, staleNotice]);
-
-  useEffect(() => {
-    if (!active || !appIsActive || (!error && !staleNotice)) return;
-    let attempts = 0;
-    const timer = setInterval(() => {
-      if (controllerRef.current) return;
-      if (attempts >= 3) return clearInterval(timer);
-      attempts += 1;
-      void load({
-        blocking: browseCoursesRef.current.length === 0,
-        query: activeQueryRef.current,
-      });
-    }, 20_000);
-    return () => clearInterval(timer);
-  }, [active, appIsActive, error, load, staleNotice]);
-
-  useEffect(() => {
-    const query = normalizeText(searchQuery);
-    if (controllerRef.current && query === requestedQueryRef.current) return;
-
-    // Returning to already loaded results still abandons the other query.
-    // Keep pagination with those results, not with an unfinished request.
-    controllerRef.current?.abort();
-    controllerRef.current = null;
-    requestIdRef.current += 1;
-    loadingMoreRef.current = false;
-    setLoadingMore(false);
-    setLoadMoreError('');
-    if (query === loadedQueryRef.current) {
-      setLoading(false);
-      setFailure(null);
-      return;
-    }
-    setLoading(Boolean(query) || browseCoursesRef.current.length === 0);
-    const timer = setTimeout(() => void load({query}), 350);
+    const timer = setTimeout(
+      () => setRequestedQuery(currentQuery),
+      SEARCH_DEBOUNCE_MS,
+    );
     return () => clearTimeout(timer);
-  }, [load, searchQuery]);
+  }, [client, currentQuery, requestedQuery]);
+
+  // The result owner for the typed query: the observer once it follows that
+  // query, otherwise that query's cached result (returning to an earlier
+  // search shows it on the very first render, before the observer switches).
+  const observerFollowsInput = requestedQuery === currentQuery;
+  const currentSearchData = !currentQuery
+    ? undefined
+    : observerFollowsInput
+    ? search.isPlaceholderData
+      ? undefined
+      : search.data
+    : client.getQueryData<CatalogueData>(
+        publicQueryKeys.cataloguePages(currentQuery),
+      );
+
+  const browseCoursesList = useMemo(
+    () => catalogueCourses(browse.data),
+    [browse.data],
+  );
+  const currentSearchCourses = useMemo(
+    () => catalogueCourses(currentSearchData),
+    [currentSearchData],
+  );
+  const previousSearchCourses = useMemo(
+    () => catalogueCourses(search.data),
+    [search.data],
+  );
+
+  const current = currentQuery ? search : browse;
+  const hasCurrentResult = currentQuery
+    ? currentSearchData !== undefined
+    : browse.data !== undefined;
+  const currentListError = currentQuery
+    ? observerFollowsInput
+      ? listError(search)
+      : null
+    : listError(browse);
+  const currentSearchQueryLoaded = hasCurrentResult
+    ? currentQuery
+    : search.data?.pages[0]?.query ?? '';
+
+  const browseQuery = client
+    .getQueryCache()
+    .find({queryKey: publicQueryKeys.cataloguePages(''), exact: true});
+  // The saved-copy notice stays while a retry runs, until a read succeeds.
+  const browseFailure =
+    browse.isError && !browse.isFetchNextPageError ? browse.error : null;
+  let staleNotice = '';
+  if (browse.data !== undefined) {
+    if (browseFailure) {
+      const savedCopyUsable =
+        transientReadFailureAllowsCache(browseFailure) &&
+        Date.now() - browse.dataUpdatedAt <= BROWSE_SNAPSHOT_MAX_AGE_MS;
+      staleNotice = savedCopyUsable ? CACHE_NOTICE : OFFLINE_NOTICE;
+    } else if (isRestoredSnapshot(browseQuery)) {
+      staleNotice = CACHE_NOTICE;
+    }
+  }
+
+  const error = currentListError
+    ? currentQuery
+      ? friendlyNetworkMessage(currentListError, 'نتائج البحث')
+      : browse.data === undefined
+      ? friendlyNetworkMessage(currentListError, 'الكورسات')
+      : ''
+    : '';
+
+  // Pull to refresh on a search shows its skeleton again; browsing keeps
+  // the visible list while the refresh runs, exactly as before.
+  const visibleLoading =
+    !error &&
+    (currentQuery
+      ? !hasCurrentResult ||
+        (manualRefreshing && observerFollowsInput && search.isFetching)
+      : browse.data === undefined);
+  const searchResultsReady =
+    Boolean(currentQuery) && hasCurrentResult && !visibleLoading && !error;
+
+  const refreshCurrent = useCallback(async () => {
+    const target = currentQuery ? search : browse;
+    if (currentQuery && requestedQuery !== currentQuery) {
+      setRequestedQuery(currentQuery);
+      return;
+    }
+    await target.refetch();
+  }, [browse, currentQuery, requestedQuery, search]);
 
   const refresh = useCallback(() => {
     if (refreshFlightRef.current) return refreshFlightRef.current;
-    const flight = load({query: normalizeText(searchQuery)}).finally(() => {
-      if (refreshFlightRef.current === flight) refreshFlightRef.current = null;
-    });
+    setManualRefreshing(true);
+    const flight = refreshCurrent()
+      .catch(() => undefined)
+      .finally(() => {
+        if (refreshFlightRef.current === flight) {
+          refreshFlightRef.current = null;
+          setManualRefreshing(false);
+        }
+      });
     refreshFlightRef.current = flight;
     return flight;
-  }, [load, searchQuery]);
+  }, [refreshCurrent]);
+
+  // Foreground return refetches stale lists through focusManager; a list
+  // showing an error or a saved copy also retries (up to 3 times, 20 s apart).
+  const retryNeeded = Boolean(error || (!currentQuery && staleNotice));
+  const isFetchingRef = useRef(current.isFetching);
+  isFetchingRef.current = current.isFetching;
+  const refetchRef = useRef(current.refetch);
+  refetchRef.current = current.refetch;
+  useEffect(() => {
+    if (!active || !appIsActive || !retryNeeded) return;
+    let attempts = 0;
+    const timer = setInterval(() => {
+      if (isFetchingRef.current) return;
+      if (attempts >= RETRY_ATTEMPTS) return clearInterval(timer);
+      attempts += 1;
+      void refetchRef.current().catch(() => undefined);
+    }, RETRY_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [active, appIsActive, retryNeeded]);
+
+  // Returning to Home while it shows an error or a saved copy asks again even
+  // when the data is not yet stale.
+  const wasActiveRef = useRef(active);
+  useEffect(() => {
+    const returned = active && !wasActiveRef.current;
+    wasActiveRef.current = active;
+    if (returned && retryNeeded && !isFetchingRef.current) {
+      void refetchRef.current().catch(() => undefined);
+    }
+  }, [active, retryNeeded]);
 
   const loadMore = useCallback(
     (manualRetry = false) => {
       if (
-        loading ||
-        loadingMore ||
-        controllerRef.current ||
-        loadedQueryRef.current !== activeQueryRef.current ||
+        visibleLoading ||
+        (currentQuery !== '' && !observerFollowsInput) ||
+        current.isFetching ||
+        !hasCurrentResult ||
         error ||
-        !hasMore ||
-        (!manualRetry && loadMoreError)
+        !current.hasNextPage ||
+        (!manualRetry && current.isFetchNextPageError)
       ) {
         return;
       }
-      void load({
-        append: true,
-        blocking: false,
-        page: page + 1,
-        query: loadedQueryRef.current ?? '',
+      const key = publicQueryKeys.cataloguePages(currentQuery);
+      void current.fetchNextPage({cancelRefetch: false}).then(result => {
+        // A revision change answers with page one: that page starts over.
+        const data = result.data;
+        const restarted = data && keepPagesFromLastReset(data);
+        if (data && restarted !== data) client.setQueryData(key, restarted);
       });
     },
-    [error, hasMore, load, loading, loadingMore, loadMoreError, page],
+    [
+      client,
+      current,
+      currentQuery,
+      error,
+      hasCurrentResult,
+      observerFollowsInput,
+      visibleLoading,
+    ],
   );
 
   const handleScroll = useCallback(
@@ -324,35 +277,31 @@ export const usePublishedCourseCatalogue = ({
 
   const retryLoadMore = useCallback(() => loadMore(true), [loadMore]);
 
-  const browseCourses =
-    !currentQuery && loadedQueryRef.current
-      ? browseCoursesRef.current
-      : courses ?? [];
-
-  const hasCurrentResult = loadedQueryRef.current === currentQuery;
-  // Input changes render before the debounce effect starts its request. Derive
-  // the visible phase from the result owner, not the preceding query's flags.
-  // A current failed request is a failure, never an empty successful search.
-  const awaitingResult =
-    !hasCurrentResult &&
-    !error &&
-    (Boolean(currentQuery) || browseCoursesRef.current.length === 0);
-  const visibleLoading =
-    awaitingResult || (loading && requestedQueryRef.current === currentQuery);
-  const searchResultsReady =
-    Boolean(currentQuery) && hasCurrentResult && !visibleLoading && !error;
+  // While a search is pending, the previously loaded list stays the result
+  // owner, as before; the search view itself shows its skeleton.
+  const courses = currentQuery
+    ? currentSearchCourses ?? previousSearchCourses ?? browseCoursesList
+    : browseCoursesList;
+  const followsCurrent = !currentQuery || observerFollowsInput;
 
   return {
-    browseCourses,
+    browseCourses: currentQuery ? courses ?? [] : browseCoursesList ?? [],
     courses,
     error,
     handleScroll,
-    hasMore: hasMore && loadedQueryRef.current === activeQueryRef.current,
+    hasMore: followsCurrent && hasCurrentResult && Boolean(current.hasNextPage),
     loadMore: retryLoadMore,
     loading: visibleLoading,
-    loadingMore: loadingMore && requestedQueryRef.current === currentQuery,
-    loadMoreError: hasCurrentResult ? loadMoreError : '',
-    loadedSearchQuery: loadedQueryRef.current ?? '',
+    loadingMore:
+      followsCurrent && hasCurrentResult && current.isFetchingNextPage,
+    loadMoreError:
+      followsCurrent &&
+      hasCurrentResult &&
+      current.isFetchNextPageError &&
+      !current.isFetching
+        ? LOAD_MORE_ERROR
+        : '',
+    loadedSearchQuery: currentQuery ? currentSearchQueryLoaded : '',
     refresh,
     searchResultsReady,
     staleNotice: currentQuery ? '' : staleNotice,

@@ -3,6 +3,12 @@ import {
   publicRequest,
   type RoknRequestConfig,
 } from '../../constants/api';
+import {isCourseRevisionChangedError} from './courseReadFailures';
+
+export {
+  courseReadFailureStatus,
+  isCourseRevisionChangedError,
+} from './courseReadFailures';
 
 /** Return the alias-resolution response untouched to the attachment owner. */
 export const requestCourseAttachmentRenewal = (
@@ -13,35 +19,6 @@ export const requestCourseAttachmentRenewal = (
     timeout: 10_000,
     roknNetworkRetryCount: Number.MAX_SAFE_INTEGER,
   } as RoknRequestConfig);
-
-export const courseReadFailureStatus = (error: unknown): number => {
-  const failure = error as {
-    status?: unknown;
-    response?: {status?: unknown};
-  } | null;
-  return Number(failure?.status ?? failure?.response?.status ?? 0) || 0;
-};
-
-export const isCourseRevisionChangedError = (error: unknown): boolean => {
-  const failure = error as {
-    code?: unknown;
-    data?: {code?: unknown; data?: {code?: unknown}};
-    response?: {data?: {code?: unknown; data?: {code?: unknown}}};
-  } | null;
-  const code = String(
-    failure?.data?.code ??
-      failure?.data?.data?.code ??
-      failure?.response?.data?.code ??
-      failure?.response?.data?.data?.code ??
-      failure?.code ??
-      '',
-  )
-    .trim()
-    .toLowerCase();
-  return (
-    courseReadFailureStatus(error) === 409 && code === 'course_revision_changed'
-  );
-};
 
 /** Both course presentation and playback read a fresh, stable publication. */
 export const requestCourseDetails = async (

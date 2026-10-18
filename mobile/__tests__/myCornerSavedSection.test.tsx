@@ -1,6 +1,12 @@
 import React from 'react';
 import {RefreshControl, Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
+
+let queryTestClient = createTestQueryClient();
+beforeEach(() => {
+  queryTestClient = createTestQueryClient();
+});
 import type {SavedFolderOption} from '../src/components/VideoPlayer/courseLearning/savedFolderIndex';
 import type {LearningDashboard} from '../src/services/roknApi';
 
@@ -33,12 +39,14 @@ jest.mock('../src/hooks/useAppActiveState', () => ({
 }));
 jest.mock('../src/services/roknApi', () => ({
   hasSession: async () => mockAuthenticated,
-  getCachedLearningDashboard: async () => null,
   getLearningDashboard: () => mockGet(),
 }));
-jest.mock('../src/components/VideoPlayer/courseLearning/savedFolderIndex', () => ({
-  getSavedFolderOptions: (...args: unknown[]) => mockFolders(...args),
-}));
+jest.mock(
+  '../src/components/VideoPlayer/courseLearning/savedFolderIndex',
+  () => ({
+    getSavedFolderOptions: (...args: unknown[]) => mockFolders(...args),
+  }),
+);
 jest.mock('../src/components/view/HeaderWithBack', () => () => null);
 jest.mock('../src/components/ui/RasterImage', () => ({
   RasterImage: () => null,
@@ -131,11 +139,18 @@ describe('ركني saved collections', () => {
     mockFolders.mockResolvedValue([
       folder('8', 'أفكار تصميم', 3, 'https://cdn.example/cover.jpg'),
       folder('5', 'المشاهدة لاحقًا', 1),
-      folder('9', 'مراجعة', 12, 'https://rokn.example/images/default-folder.png'),
+      folder(
+        '9',
+        'مراجعة',
+        12,
+        'https://rokn.example/images/default-folder.png',
+      ),
       folder('4', 'قائمة فاضية', 0),
     ]);
     await act(async () => {
-      renderer = TestRenderer.create(<MyCorner />);
+      renderer = TestRenderer.create(
+        withQueryClient(<MyCorner />, queryTestClient),
+      );
     });
 
     expect(mockFolders).toHaveBeenCalledTimes(1);
@@ -158,7 +173,9 @@ describe('ركني saved collections', () => {
       .findByType(SavedPreview)
       .findAllByType(CourseArtwork);
     expect(covers).toHaveLength(1);
-    expect(covers[0].props.source).toEqual({uri: 'https://cdn.example/cover.jpg'});
+    expect(covers[0].props.source).toEqual({
+      uri: 'https://cdn.example/cover.jpg',
+    });
   });
 
   it('opens the library on the tapped list and keeps an unfiltered entry', async () => {
@@ -167,7 +184,9 @@ describe('ركني saved collections', () => {
       folder('8', 'أفكار تصميم', 3),
     ]);
     await act(async () => {
-      renderer = TestRenderer.create(<MyCorner />);
+      renderer = TestRenderer.create(
+        withQueryClient(<MyCorner />, queryTestClient),
+      );
     });
 
     await act(async () => cards(renderer)[1].props.onPress());
@@ -188,7 +207,9 @@ describe('ركني saved collections', () => {
   it('omits a count the cache no longer knows instead of showing zero', async () => {
     mockFolders.mockResolvedValue([folder('8', 'أفكار تصميم')]);
     await act(async () => {
-      renderer = TestRenderer.create(<MyCorner />);
+      renderer = TestRenderer.create(
+        withQueryClient(<MyCorner />, queryTestClient),
+      );
     });
     expect(cardLabels(renderer)).toEqual(['أفكار تصميم']);
   });
@@ -197,7 +218,9 @@ describe('ركني saved collections', () => {
     const read = deferred<SavedFolderOption[]>();
     mockFolders.mockReturnValue(read.promise);
     await act(async () => {
-      renderer = TestRenderer.create(<MyCorner />);
+      renderer = TestRenderer.create(
+        withQueryClient(<MyCorner />, queryTestClient),
+      );
     });
     expect(renderer.root.findAllByType(CourseShelf)).toHaveLength(1);
     expect(savedHeading(renderer)).toBeUndefined();
@@ -215,7 +238,9 @@ describe('ركني saved collections', () => {
     async (_case, folders) => {
       mockFolders.mockResolvedValue(folders);
       await act(async () => {
-        renderer = TestRenderer.create(<MyCorner />);
+        renderer = TestRenderer.create(
+          withQueryClient(<MyCorner />, queryTestClient),
+        );
       });
       expect(savedHeading(renderer)?.props.actionLabel).toBe('عرض الكل');
       expect(hasText(renderer, 'احفظ أي درس وهتلاقيه هنا')).toBe(true);
@@ -227,7 +252,9 @@ describe('ركني saved collections', () => {
     mockGet.mockResolvedValue(dashboardWith([]));
     mockFolders.mockResolvedValue([]);
     await act(async () => {
-      renderer = TestRenderer.create(<MyCorner />);
+      renderer = TestRenderer.create(
+        withQueryClient(<MyCorner />, queryTestClient),
+      );
     });
     expect(savedHeading(renderer)).toBeUndefined();
     expect(hasText(renderer, 'احفظ أي درس وهتلاقيه هنا')).toBe(false);
@@ -236,7 +263,9 @@ describe('ركني saved collections', () => {
   it('keeps the full-library entry when the first read fails', async () => {
     mockFolders.mockRejectedValue(new Error('offline'));
     await act(async () => {
-      renderer = TestRenderer.create(<MyCorner />);
+      renderer = TestRenderer.create(
+        withQueryClient(<MyCorner />, queryTestClient),
+      );
     });
     expect(savedHeading(renderer)?.props.actionLabel).toBe('عرض الكل');
     expect(hasText(renderer, 'احفظ أي درس وهتلاقيه هنا')).toBe(false);
@@ -246,7 +275,9 @@ describe('ركني saved collections', () => {
   it('does not read or show saved lists while signed out', async () => {
     mockAuthenticated = false;
     await act(async () => {
-      renderer = TestRenderer.create(<MyCorner />);
+      renderer = TestRenderer.create(
+        withQueryClient(<MyCorner />, queryTestClient),
+      );
     });
     expect(mockFolders).not.toHaveBeenCalled();
     expect(renderer.root.findAllByType(SavedPreview)).toHaveLength(0);
@@ -256,7 +287,9 @@ describe('ركني saved collections', () => {
     const read = deferred<SavedFolderOption[]>();
     mockFolders.mockReturnValue(read.promise);
     await act(async () => {
-      renderer = TestRenderer.create(<MyCorner />);
+      renderer = TestRenderer.create(
+        withQueryClient(<MyCorner />, queryTestClient),
+      );
     });
     mockBoundary = {scope: 'learner', epoch: 2};
     await act(async () => read.resolve([folder('5', 'المشاهدة لاحقًا', 1)]));
@@ -266,7 +299,9 @@ describe('ركني saved collections', () => {
   it('refreshes the lists with pull to refresh', async () => {
     mockFolders.mockResolvedValue([folder('5', 'المشاهدة لاحقًا', 1)]);
     await act(async () => {
-      renderer = TestRenderer.create(<MyCorner />);
+      renderer = TestRenderer.create(
+        withQueryClient(<MyCorner />, queryTestClient),
+      );
     });
     mockFolders.mockResolvedValue([
       folder('5', 'المشاهدة لاحقًا', 2),

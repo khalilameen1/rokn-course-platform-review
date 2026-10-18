@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
   "generatedFrom": "package-lock.json production dependency closure",
-  "packageCount": 732,
-  "packagePathCount": 817,
-  "inventoryHash": "5152310e43522350552e158f45ae2c24fe802a0023e546ed39200909625ae5ed",
+  "packageCount": 737,
+  "packagePathCount": 822,
+  "inventoryHash": "325e65d151dde4071d10cd0e5124b1619f4bd9920ed9082cf56d067e8c2ec02c",
   "packages": [
     {
       "name": "@babel/code-frame",
@@ -2511,6 +2511,56 @@
       "license": "MIT",
       "declaredLicense": "MIT",
       "sourceUrl": "https://www.npmjs.com/package/%40standard-schema%2Futils/v/0.3.0",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "@tanstack/query-async-storage-persister",
+      "version": "5.104.1",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/%40tanstack%2Fquery-async-storage-persister/v/5.104.1",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "@tanstack/query-core",
+      "version": "5.104.1",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/%40tanstack%2Fquery-core/v/5.104.1",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "@tanstack/query-persist-client-core",
+      "version": "5.104.1",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/%40tanstack%2Fquery-persist-client-core/v/5.104.1",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "@tanstack/react-query-persist-client",
+      "version": "5.104.1",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/%40tanstack%2Freact-query-persist-client/v/5.104.1",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "@tanstack/react-query",
+      "version": "5.104.1",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/%40tanstack%2Freact-query/v/5.104.1",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null

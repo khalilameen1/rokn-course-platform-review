@@ -1,6 +1,3 @@
-import fs from 'fs';
-import path from 'path';
-
 let mockAccountEpoch = 1;
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -148,25 +145,7 @@ describe('wallet economy reliability', () => {
     );
   });
 
-  it('uses a new cache schema and keeps stale data visibly in error state', () => {
-    const cache = fs.readFileSync(
-      path.resolve(__dirname, '../src/screens/wallet/walletCache.ts'),
-      'utf8',
-    );
-    const walletData = fs.readFileSync(
-      path.resolve(__dirname, '../src/screens/wallet/useWalletData.ts'),
-      'utf8',
-    );
-
-    expect(cache).toContain("const WALLET_CACHE_KEY = '@rokn/wallet-cache/v2'");
-    expect(cache).not.toContain(
-      "const WALLET_CACHE_KEY = '@rokn/wallet-cache/v1'",
-    );
-    expect(walletData).toContain(
-      "setPackagesStatus(packagesReadFailed ? 'error' : 'ready')",
-    );
-    expect(walletData).toContain(
-      "setTasksStatus(tasksReadFailed ? 'error' : 'ready')",
-    );
-  });
+  // The wallet snapshot (per-account key, validation, no age limit) is
+  // proven in queryPersistence.test.tsx; a failed read keeping its saved
+  // copy visibly in error state is proven in accountQueryIsolation.test.tsx.
 });

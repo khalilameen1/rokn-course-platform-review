@@ -51,10 +51,9 @@ import {
   type CoinTask,
 } from '../src/services/api/coinTasks';
 import {useWalletTasks} from '../src/screens/wallet/useWalletTasks';
-import {
-  readWalletCache,
-  saveWalletCache,
-} from '../src/screens/wallet/walletCache';
+import {createTestQueryClient} from './helpers/queryClient';
+import {attachQueryPersistence} from '../src/services/query/queryPersistence';
+import {accountQueryKeys} from '../src/services/query/queryKeys';
 import {subscribeWalletSettlements} from '../src/services/walletSettlement';
 
 const oldUrl = 'https://www.instagram.com/old-campaign/';
@@ -304,10 +303,29 @@ describe('task commands use server evidence, wallet cache owns display recovery'
       actionKey: 'link_whatsapp',
       status: 'started' as const,
     };
-    await saveWalletCache(mockBoundary, {version: 2, tasks: [cached]});
-    const recovered = await readWalletCache(mockBoundary);
-    expect(recovered?.tasks).toEqual([cached]);
-    expect([...disk.keys()]).toEqual(['@rokn/wallet-cache/v2:user-1']);
+    // A previous process saved the account snapshot with this task.
+    const previous = createTestQueryClient();
+    const saving = attachQueryPersistence(previous, {throttleTime: 0});
+    await saving.activateAccountScope('user-1');
+    previous.setQueryData(accountQueryKeys('user-1').coinTasks(), [cached]);
+    for (let wait = 0; wait < 100 && !disk.size; wait += 1) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    saving.dispose();
+    // Let that persister finish before storage spying starts.
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect([...disk.keys()]).toEqual(['@rokn/query-cache/account/v1:user-1']);
+    const restored = createTestQueryClient();
+    const restoring = attachQueryPersistence(restored);
+    await restoring.activateAccountScope('user-1');
+    restoring.dispose();
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const recovered = {
+      tasks: restored.getQueryData<CoinTask[]>(
+        accountQueryKeys('user-1').coinTasks(),
+      ),
+    };
+    expect(recovered.tasks).toEqual([cached]);
     mockPost.mockResolvedValue(start());
     nativeGet.mockClear();
     nativeSet.mockClear();

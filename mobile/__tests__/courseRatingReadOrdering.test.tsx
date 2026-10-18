@@ -1,5 +1,11 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
+
+let queryTestClient = createTestQueryClient();
+beforeEach(() => {
+  queryTestClient = createTestQueryClient();
+});
 
 const mockSnapshot = jest.fn();
 const mockRate = jest.fn();
@@ -13,15 +19,16 @@ jest.mock('../src/services/roknApi', () => ({
   rateCourse: (...args: unknown[]) => mockRate(...args),
   deleteCourseRating: (...args: unknown[]) => mockDelete(...args),
 }));
+// Each signed-in learner owns their own storage scope.
+let mockScope = 'learner';
 jest.mock('../src/constants/helpers', () => ({
-  captureAccountSessionBoundary: async () => ({scope: 'learner', epoch: 1}),
+  captureAccountSessionBoundary: async () => ({scope: mockScope, epoch: 1}),
   assertAccountSessionBoundary: jest.fn(),
 }));
 jest.mock('../src/constants/distribution', () => ({
   CAN_START_NATIVE_CHECKOUT: false,
 }));
-jest.mock('../src/services/coinCheckout', () => ({
-}));
+jest.mock('../src/services/coinCheckout', () => ({}));
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   mapCoursePayload: () => ({}),
   applyLocalLearningState: async (value: unknown) => value,
@@ -85,10 +92,13 @@ describe('rating acknowledgements and course refresh share one current version',
   const mount = async (initial = course()) => {
     mockSnapshot.mockResolvedValue(snapshot(initial));
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness />, queryTestClient),
+      );
     });
   };
   beforeEach(() => {
+    mockScope = 'learner';
     jest.clearAllMocks();
     mockSnapshot.mockReset();
     mockRate.mockReset();
@@ -202,8 +212,14 @@ describe('rating acknowledgements and course refresh share one current version',
     mockSnapshot.mockResolvedValue(
       snapshot(course({userRating: null, ratingVersion: 0})),
     );
+    mockScope = 'second-learner';
     await act(async () => {
-      renderer!.update(<Harness identityKey="second-learner" />);
+      renderer!.update(
+        withQueryClient(
+          <Harness identityKey="second-learner" />,
+          queryTestClient,
+        ),
+      );
     });
     expect(rating.rating).toBeNull();
     expect(data.course.value?.ratingVersion).toBe(0);
@@ -313,7 +329,9 @@ describe('rating acknowledgements and course refresh share one current version',
       snapshot(course({id: '4', userRating: 3, ratingVersion: 1})),
     );
     await act(async () => {
-      renderer!.update(<Harness courseId="4" />);
+      renderer!.update(
+        withQueryClient(<Harness courseId="4" />, queryTestClient),
+      );
     });
     await act(async () => {
       mutation.resolve({

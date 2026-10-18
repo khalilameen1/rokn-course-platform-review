@@ -2,6 +2,12 @@ import React from 'react';
 import {AppState} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
+
+let queryTestClient = createTestQueryClient();
+beforeEach(() => {
+  queryTestClient = createTestQueryClient();
+});
 
 const mockPost = jest.fn();
 const mockGet = jest.fn();
@@ -64,10 +70,6 @@ jest.mock('../src/services/roknApi', () => ({
 }));
 jest.mock('../src/services/systemActions', () => ({
   openExternalUrlOnce: jest.fn(),
-}));
-jest.mock('../src/screens/wallet/walletCache', () => ({
-  readWalletCache: async () => null,
-  saveWalletCache: async () => true,
 }));
 jest.mock('../src/services/coinCheckout', () => ({}));
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
@@ -155,7 +157,9 @@ describe('explicit task claim settlement after leaving its initiating wallet', (
       const claim = deferred<ReturnType<typeof response>>();
       mockPost.mockReturnValue(claim.promise);
       await act(async () => {
-        renderer = TestRenderer.create(<Wallet key="original" />);
+        renderer = TestRenderer.create(
+          withQueryClient(<Wallet key="original" />, queryTestClient),
+        );
       });
       let submitting!: Promise<void>;
       await act(async () => {
@@ -167,7 +171,10 @@ describe('explicit task claim settlement after leaving its initiating wallet', (
       if (!staysMounted)
         await act(async () => {
           renderer!.update(
-            showsWallet ? <Wallet key="replacement" /> : <Course />,
+            withQueryClient(
+              showsWallet ? <Wallet key="replacement" /> : <Course />,
+              queryTestClient,
+            ),
           );
         });
       expect(
@@ -236,7 +243,9 @@ describe('explicit task claim settlement after leaving its initiating wallet', (
       const stop = subscribeWalletSettlements(observed);
       try {
         await act(async () => {
-          renderer = TestRenderer.create(<Wallet />);
+          renderer = TestRenderer.create(
+            withQueryClient(<Wallet />, queryTestClient),
+          );
         });
         const claiming = claimCoinTask(task, {...mockBoundary}).catch(
           error => error,
@@ -276,7 +285,9 @@ describe('explicit task claim settlement after leaving its initiating wallet', (
         mockBoundary = {scope, epoch: mockBoundary.epoch + 1};
         mockBalance = 50;
         await act(async () => {
-          renderer = TestRenderer.create(<Wallet />);
+          renderer = TestRenderer.create(
+            withQueryClient(<Wallet />, queryTestClient),
+          );
         });
         await act(async () => {
           claim.resolve(

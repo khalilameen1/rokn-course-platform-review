@@ -1,4 +1,5 @@
 import {useFocusEffect} from '@react-navigation/native';
+import {useQueryClient} from '@tanstack/react-query';
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   AccessibilityInfo,
@@ -6,7 +7,6 @@ import {
   type ImageSourcePropType,
 } from 'react-native';
 import {
-  getCachedPublishedCourses,
   getNotificationsPage,
   hasSession,
   markAllNotificationsRead,
@@ -25,6 +25,7 @@ import {
   type AccountSessionBoundary,
 } from '../../constants/helpers';
 import {networkFailureKind} from '../../services/networkExperience';
+import {knownCatalogueCourses} from '../../services/query/catalogueQueries';
 import {formatRoknRelativeDate} from '../../utils/dateTime';
 import {settleWithin} from '../../utils/settleWithin';
 import {
@@ -51,6 +52,7 @@ export function useNotificationsInbox() {
   const [courseImages, setCourseImages] = useState<
     Record<string, ImageSourcePropType>
   >({});
+  const queryClient = useQueryClient();
   const notificationGenerationRef = useRef(0);
   const authoritativePageGenerationRef = useRef(0);
   const notificationMutationRevisionRef = useRef(0);
@@ -155,14 +157,15 @@ export function useNotificationsInbox() {
         signal: controller.signal,
         ownerBoundary: boundary,
       });
-      void settleWithin(getCachedPublishedCourses(), []).then(cachedCourses => {
-        if (!ownsRead()) return;
-        setCourseImages(
-          Object.fromEntries(
-            cachedCourses.map(course => [course.id, course.image]),
-          ),
-        );
-      });
+      // Course artwork comes from the catalogue already loaded or restored.
+      setCourseImages(
+        Object.fromEntries(
+          knownCatalogueCourses(queryClient).map(course => [
+            course.id,
+            course.image,
+          ]),
+        ),
+      );
       void settleWithin(
         readCachedNotifications(scopedCacheKey, boundary),
         [],
@@ -228,7 +231,7 @@ export function useNotificationsInbox() {
         setLoading(false);
       }
     }
-  }, []);
+  }, [queryClient]);
 
   const loadMoreNotifications = useCallback(async () => {
     if (

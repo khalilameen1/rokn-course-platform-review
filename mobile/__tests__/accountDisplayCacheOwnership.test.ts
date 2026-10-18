@@ -1,5 +1,4 @@
 import type {Notification} from '../src/services/notificationMapper';
-import type {CoinTask} from '../src/services/api/coinTasks';
 
 const mockRead = jest.fn();
 const mockSave = jest.fn();
@@ -20,10 +19,6 @@ jest.mock('../src/constants/helpers', () => ({
 }));
 
 import {
-  readWalletCache,
-  saveWalletCache,
-} from '../src/screens/wallet/walletCache';
-import {
   notificationCacheKey,
   readCachedNotifications,
   saveCachedNotifications,
@@ -37,16 +32,6 @@ const deferred = <T>() => {
   return {promise, resolve};
 };
 const flush = () => new Promise<void>(done => setImmediate(done));
-const task = (id: string): CoinTask => ({
-  id: `production-${id}`,
-  serverId: id,
-  title: 'تابع ركن',
-  description: '',
-  reward: 7,
-  actionKey: 'follow_instagram',
-  requiresExternalVisit: true,
-  status: 'available',
-});
 const notification = (id: string): Notification => ({
   id,
   type: 'admin_message',
@@ -60,13 +45,6 @@ const notification = (id: string): Notification => ({
 });
 type Boundary = typeof mockBoundary;
 const owners = [
-  {
-    name: 'wallet',
-    save: (boundary: Boundary, id: string) =>
-      saveWalletCache(boundary, {version: 2, tasks: [task(id)]}),
-    read: async (boundary: Boundary) =>
-      (await readWalletCache(boundary))?.tasks?.map(item => item.serverId),
-  },
   {
     name: 'notifications',
     save: async (boundary: Boundary, id: string) =>
@@ -191,67 +169,6 @@ describe.each(owners)('$name cache ownership', owner => {
   });
 });
 
-describe('wallet read barrier', () => {
-  it('waits only for the same account pending writes before reading its snapshot', async () => {
-    const gate = deferred<void>();
-    mockSave.mockImplementationOnce(async (key: string, value: unknown) => {
-      await gate.promise;
-      disk.set(key, value);
-      return true;
-    });
-    const write = saveWalletCache(
-      {...mockBoundary},
-      {version: 2, tasks: [task('1')]},
-    );
-    const read = readWalletCache({...mockBoundary});
-    try {
-      await flush();
-      expect(mockRead).not.toHaveBeenCalled();
-    } finally {
-      gate.resolve();
-      await write;
-    }
-    await expect(read).resolves.toMatchObject({tasks: [task('1')]});
-  });
-
-  it('does not wait for an old account write to read the current account offline cache', async () => {
-    const gate = deferred<void>();
-    mockSave.mockReturnValueOnce(gate.promise);
-    const first = saveWalletCache(
-      {...mockBoundary},
-      {version: 2, tasks: []},
-    ).catch(error => error);
-    await flush();
-    mockBoundary = {scope: 'account-b', epoch: mockBoundary.epoch + 1};
-    disk.set('@rokn/wallet-cache/v2:account-b', {
-      version: 2,
-      tasks: [task('2')],
-    });
-    const settled = jest.fn();
-    const read = readWalletCache({...mockBoundary}).then(settled);
-    try {
-      await flush();
-      expect(settled).toHaveBeenCalledWith({version: 2, tasks: [task('2')]});
-    } finally {
-      gate.resolve();
-      await Promise.all([first, read]);
-    }
-  });
-
-  it('does not put a suspended optional read in the write queue', async () => {
-    const gate = deferred<unknown>();
-    mockRead.mockReturnValueOnce(gate.promise);
-    const read = readWalletCache({...mockBoundary});
-    await flush();
-    try {
-      await saveWalletCache(
-        {...mockBoundary},
-        {version: 2, tasks: [task('2')]},
-      );
-      expect(mockSave).toHaveBeenCalledTimes(1);
-    } finally {
-      gate.resolve(null);
-      await read;
-    }
-  });
-});
+// The wallet snapshot moved into the account query snapshot; its per-account
+// key, old-session write refusal and failed-write recovery are proven in
+// queryPersistence.test.tsx.

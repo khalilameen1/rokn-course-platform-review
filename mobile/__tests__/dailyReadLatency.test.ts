@@ -29,11 +29,9 @@ describe('daily read latency budget', () => {
     const publicCatalogue = source(
       'src/screens/home/usePublishedCourseCatalogue.ts',
     );
-    const accessOverlay = source('src/screens/home/useCourseAccessOverlay.ts');
 
     expect(learningCourses).toContain('signal: options.signal');
-    expect(publicCatalogue).toContain('signal: controller.signal');
-    expect(accessOverlay).toContain('signal: controller.signal');
+    // Abandoned catalogue reads are aborted: homeCatalogueQueryOwnership.
     expect(publicCatalogue).not.toContain('hasSession');
     expect(homeCatalogue).toContain('usePublishedCourseCatalogue({');
     expect(homeCatalogue).toContain('useCourseAccessOverlay({');
@@ -49,13 +47,9 @@ describe('daily read latency budget', () => {
     );
     expect(home).not.toContain('const retryDelays = [5_000, 20_000, 60_000]');
     expect(wallet).not.toContain('claimDailyReward');
-    expect(wallet).toContain('const walletRequest = getWallet().then(');
   });
 
   it('does not let best-effort device cache work own a daily screen spinner', () => {
-    const home = source('src/screens/home/usePublishedCourseCatalogue.ts');
-    const courseDetails = source('src/services/api/courseDetails.ts');
-    const wallet = source('src/screens/wallet/useWalletData.ts');
     const portfolio = source(
       'src/screens/Profile/gallery/usePortfolioLibrary.ts',
     );
@@ -63,9 +57,9 @@ describe('daily read latency budget', () => {
       'src/screens/Profile/certificates/useCertificatesController.ts',
     );
 
-    expect(home).toContain('settleWithin(getCachedPublishedCourses(), [])');
-    expect(courseDetails).toContain('await settleWithin(');
-    expect(wallet).toContain('settleWithin(readWalletCache(boundary), null)');
+    // Catalogue, course details, dashboard and wallet reads start before
+    // the device snapshot settles (queryPersistence restore budget): proven
+    // by courseCatalogueUnavailableRecovery and myCornerStorageBoundary.
     expect(portfolio).toContain(
       'settleWithin(getCachedPortfolio(boundary), [])',
     );

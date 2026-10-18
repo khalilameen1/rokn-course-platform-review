@@ -4,7 +4,7 @@ import {AppState} from 'react-native';
 /** NetInfo reports several states while Wi-Fi and cellular hand over. */
 export const CONNECTIVITY_RECOVERY_DEBOUNCE_MS = 1_500;
 
-const isOnline = (state: Pick<NetInfoState, 'isConnected' | 'isInternetReachable'>) =>
+export const isOnline = (state: Pick<NetInfoState, 'isConnected' | 'isInternetReachable'>) =>
   // `isInternetReachable` is null until NetInfo has probed; only a known
   // unreachable internet (captive portal, dead Wi-Fi) counts as offline.
   state.isConnected === true && state.isInternetReachable !== false;

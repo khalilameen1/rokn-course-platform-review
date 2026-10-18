@@ -1,15 +1,16 @@
 import React from 'react';
 import {AppState, type AppStateStatus} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
+import type {QueryClient} from '@tanstack/react-query';
 import type {AccountSessionBoundary} from '../src/constants/helpers';
 import type {CoinTask, WalletSnapshot} from '../src/services/roknApi';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
 
 const mockWallet = jest.fn();
 const mockPackages = jest.fn();
 const mockTasks = jest.fn();
 const mockHasSession = jest.fn();
 const mockCaptureBoundary = jest.fn();
-const mockSaveCache = jest.fn();
 let mockBoundary = {scope: 'account-a', epoch: 1};
 let mockFocused = true;
 
@@ -37,10 +38,6 @@ jest.mock('../src/constants/helpers', () => ({
       throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
     }
   },
-}));
-jest.mock('../src/screens/wallet/walletCache', () => ({
-  readWalletCache: async () => null,
-  saveWalletCache: (...args: unknown[]) => mockSaveCache(...args),
 }));
 
 import {useWalletData} from '../src/screens/wallet/useWalletData';
@@ -76,32 +73,19 @@ const deferred = <T,>() => {
 };
 
 describe('wallet foreground snapshot after external task credit', () => {
-  it('loads rewards without consulting store packages, including foreground refresh', async () => {
-    const Rewards = () => {
-      data = useWalletData('account-a', false);
-      return null;
-    };
-    mockPackages.mockRejectedValue(new Error('STORE_UNAVAILABLE'));
-    await act(async () => {
-      renderer = TestRenderer.create(<Rewards />);
-    });
-    expect(data.wallet?.rewardBalance).toBe(100);
-    expect(data.tasks).toHaveLength(1);
-    await emit('background', 'active');
-    expect(mockPackages).not.toHaveBeenCalled();
-    expect(data.walletStatus).toBe('ready');
-    expect(mockWallet).toHaveBeenCalledTimes(2);
-  });
   let renderer: TestRenderer.ReactTestRenderer | undefined;
   let data!: ReturnType<typeof useWalletData>;
   let listeners: Set<(state: AppStateStatus) => void>;
+  let client: QueryClient;
   const Harness = ({identityKey = 'account-a'}: {identityKey?: string}) => {
     data = useWalletData(identityKey);
     return null;
   };
+  const render = (identityKey = 'account-a') =>
+    withQueryClient(<Harness identityKey={identityKey} />, client);
   const mount = async () => {
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(render());
     });
   };
   const emit = async (...states: AppStateStatus[]) => {
@@ -114,7 +98,7 @@ describe('wallet foreground snapshot after external task credit', () => {
   };
   const setFocused = async (focused: boolean) => {
     mockFocused = focused;
-    await act(async () => renderer!.update(<Harness />));
+    await act(async () => renderer!.update(render()));
   };
   const returnToWallet = async (via: 'app' | 'screen') => {
     if (via === 'app') await emit('background', 'active');
@@ -126,6 +110,7 @@ describe('wallet foreground snapshot after external task credit', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    client = createTestQueryClient();
     mockBoundary = {scope: 'account-a', epoch: 1};
     mockFocused = true;
     mockCaptureBoundary.mockImplementation(async () => ({...mockBoundary}));
@@ -133,7 +118,6 @@ describe('wallet foreground snapshot after external task credit', () => {
     mockWallet.mockResolvedValue(wallet(100));
     mockTasks.mockResolvedValue([task('started')]);
     mockPackages.mockResolvedValue([]);
-    mockSaveCache.mockResolvedValue(undefined);
     AppState.currentState = 'active';
     listeners = new Set();
     jest
@@ -153,49 +137,69 @@ describe('wallet foreground snapshot after external task credit', () => {
     jest.restoreAllMocks();
   });
 
+  it('loads rewards without consulting store packages, including foreground refresh', async () => {
+    await mount();
+    expect(data.wallet?.rewardBalance).toBe(100);
+    expect(data.tasks).toHaveLength(1);
+    await emit('background', 'active');
+    expect(mockPackages).not.toHaveBeenCalled();
+    expect(data.walletStatus).toBe('ready');
+    expect(mockWallet).toHaveBeenCalledTimes(2);
+  });
+
   it.each(['resolved', 'rejected'] as const)(
-    'queues one fresh wallet/tasks read behind slow packages (%s)',
+    'replaces a read in flight with one fresh wallet/tasks snapshot after a return (%s)',
     async settlement => {
-      const oldPackages = deferred<[]>();
-      const freshPackages = deferred<[]>();
-      mockPackages
-        .mockReturnValueOnce(oldPackages.promise)
-        .mockReturnValueOnce(freshPackages.promise);
       await mount();
       expect(data.wallet?.balance).toBe(100);
-      expect(data.tasks[0].status).toBe('started');
-      expect(mockWallet).toHaveBeenCalledTimes(1);
-      expect(mockTasks).toHaveBeenCalledTimes(1);
+      const oldWallet = deferred<WalletSnapshot>();
+      const oldTasks = deferred<CoinTask[]>();
+      mockWallet.mockReturnValueOnce(oldWallet.promise);
+      mockTasks.mockReturnValueOnce(oldTasks.promise);
+      await act(async () => {
+        void data.refresh();
+      });
+      expect(mockWallet).toHaveBeenCalledTimes(2);
 
       await emit('background');
-      // WhatsApp settles on the server while the pre-return package read is
-      // still pending. The earlier wallet/task responses are now out of date.
+      // WhatsApp settles on the server while that read is still pending. Its
+      // response is now out of date.
       mockWallet.mockResolvedValue(wallet(115));
       mockTasks.mockResolvedValue([task('claimed')]);
       await emit('active', 'active', 'background', 'active', 'active');
-      expect(mockWallet).toHaveBeenCalledTimes(1);
-
       await act(async () => {
-        if (settlement === 'resolved') oldPackages.resolve([]);
-        else oldPackages.reject(new Error('old packages unavailable'));
+        if (settlement === 'resolved') {
+          oldWallet.resolve(wallet(100));
+          oldTasks.resolve([task('started')]);
+        } else {
+          oldWallet.reject(new Error('old wallet unavailable'));
+          oldTasks.reject(new Error('old tasks unavailable'));
+        }
       });
-      expect(mockWallet).toHaveBeenCalledTimes(2);
-      expect(mockTasks).toHaveBeenCalledTimes(2);
-      expect(mockPackages).toHaveBeenCalledTimes(2);
       expect(data.wallet?.balance).toBe(115);
       expect(data.tasks[0].status).toBe('claimed');
+      const reads = mockWallet.mock.calls.length;
 
-      // Duplicate active notifications are not another trip out of the app
-      // and must not enqueue a third snapshot behind this fresh one.
+      // Duplicate active notifications are not another trip out of the app.
       await emit('active', 'active');
-      await act(async () => freshPackages.resolve([]));
-      await emit('active');
-      expect(mockWallet).toHaveBeenCalledTimes(2);
-      expect(mockTasks).toHaveBeenCalledTimes(2);
+      expect(mockWallet).toHaveBeenCalledTimes(reads);
       expect(data.walletStatus).toBe('ready');
       expect(data.tasksStatus).toBe('ready');
     },
   );
+
+  it('follows a first read still in flight with one fresh snapshot', async () => {
+    const firstWallet = deferred<WalletSnapshot>();
+    mockWallet.mockReturnValueOnce(firstWallet.promise);
+    await mount();
+    expect(data.walletStatus).toBe('loading');
+    mockWallet.mockResolvedValue(wallet(115));
+    await emit('background', 'active');
+    expect(mockWallet).toHaveBeenCalledTimes(1);
+    await act(async () => firstWallet.resolve(wallet(100)));
+    expect(mockWallet).toHaveBeenCalledTimes(2);
+    expect(data.wallet?.balance).toBe(115);
+  });
 
   it('refreshes once immediately when returning without an in-flight read', async () => {
     await mount();
@@ -208,8 +212,6 @@ describe('wallet foreground snapshot after external task credit', () => {
   });
 
   it('refreshes after screen refocus without duplicating initial mount or repeated focus reads', async () => {
-    const oldPackages = deferred<[]>();
-    mockPackages.mockReturnValueOnce(oldPackages.promise);
     await mount();
     expect(mockWallet).toHaveBeenCalledTimes(1);
     await setFocused(false);
@@ -218,65 +220,53 @@ describe('wallet foreground snapshot after external task credit', () => {
     mockTasks.mockResolvedValue([task('claimed')]);
     await setFocused(true);
     await setFocused(true);
-    await returnToWallet('screen');
-    expect(mockWallet).toHaveBeenCalledTimes(1);
-    await act(async () => oldPackages.resolve([]));
     expect(mockWallet).toHaveBeenCalledTimes(2);
     expect(mockTasks).toHaveBeenCalledTimes(2);
     expect(data.wallet?.balance).toBe(115);
     expect(data.tasks[0].status).toBe('claimed');
     expect(listeners.size).toBe(1);
-    await setFocused(true);
-    expect(mockWallet).toHaveBeenCalledTimes(2);
   });
 
   it.each(['app', 'screen'] as const)(
-    'drops the old account queued %s return refresh and late response',
+    'drops the old account %s return refresh and its late response',
     async via => {
-      const oldPackages = deferred<[]>();
-      mockPackages.mockReturnValueOnce(oldPackages.promise);
       await mount();
+      const oldWallet = deferred<WalletSnapshot>();
+      mockWallet.mockReturnValueOnce(oldWallet.promise);
       await returnToWallet(via);
 
       mockBoundary = {scope: 'account-b', epoch: 2};
       mockWallet.mockResolvedValue(wallet(40));
       mockTasks.mockResolvedValue([task('available')]);
-      await act(async () =>
-        renderer!.update(<Harness identityKey="account-b" />),
-      );
-      expect(mockWallet).toHaveBeenCalledTimes(2);
+      await act(async () => renderer!.update(render('account-b')));
       expect(data.wallet?.balance).toBe(40);
       expect(data.tasks[0].status).toBe('available');
 
-      await act(async () => oldPackages.resolve([]));
-      expect(mockWallet).toHaveBeenCalledTimes(2);
-      expect(mockTasks).toHaveBeenCalledTimes(2);
+      await act(async () => oldWallet.resolve(wallet(100)));
       expect(data.wallet?.balance).toBe(40);
-      expect(mockSaveCache).toHaveBeenCalledTimes(1);
-      expect(mockSaveCache.mock.calls[0][0]).toEqual(mockBoundary);
+      expect(client.getQueryData(['account-a', 'wallet'])).toBeUndefined();
     },
   );
 
   it.each(['app', 'screen'] as const)(
-    'cancels queued %s return work and removes the listener on unmount',
+    'stops %s return work and removes the listener on unmount',
     async via => {
-      const oldPackages = deferred<[]>();
-      mockPackages.mockReturnValueOnce(oldPackages.promise);
       await mount();
+      const oldWallet = deferred<WalletSnapshot>();
+      mockWallet.mockReturnValueOnce(oldWallet.promise);
       await returnToWallet(via);
       const previousController = data;
       await act(async () => renderer!.unmount());
       renderer = undefined;
       expect(listeners.size).toBe(0);
+      const reads = mockWallet.mock.calls.length;
 
-      await act(async () => oldPackages.resolve([]));
+      await act(async () => oldWallet.resolve(wallet(100)));
       await previousController.refreshAfterCurrent();
       expect(
         previousController.ownsBoundary(mockBoundary as AccountSessionBoundary),
       ).toBe(false);
-      expect(mockWallet).toHaveBeenCalledTimes(1);
-      expect(mockTasks).toHaveBeenCalledTimes(1);
-      expect(mockSaveCache).not.toHaveBeenCalled();
+      expect(mockWallet).toHaveBeenCalledTimes(reads);
     },
   );
 
@@ -290,7 +280,6 @@ describe('wallet foreground snapshot after external task credit', () => {
     await act(async () =>
       boundary.resolve(mockBoundary as AccountSessionBoundary),
     );
-    expect(mockCaptureBoundary).toHaveBeenCalledTimes(1);
     expect(mockHasSession).not.toHaveBeenCalled();
     expect(mockWallet).not.toHaveBeenCalled();
     expect(mockTasks).not.toHaveBeenCalled();

@@ -1,5 +1,14 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
+import {
+  createTestQueryClient,
+  withQueryClient,
+} from './helpers/queryClient';
+
+let queryTestClient = createTestQueryClient();
+beforeEach(() => {
+  queryTestClient = createTestQueryClient();
+});
 
 const mockGetWallet = jest.fn();
 jest.mock('../src/services/roknApi', () => ({
@@ -53,7 +62,7 @@ describe('course wallet read ordering', () => {
       let renderer!: TestRenderer.ReactTestRenderer;
       try {
         await act(async () => {
-          renderer = TestRenderer.create(<Harness />);
+          renderer = TestRenderer.create(withQueryClient(<Harness />, queryTestClient));
         });
         expect(mockGetWallet).toHaveBeenCalledTimes(1);
         // The foreground read started before the authoritative top-up/purchase

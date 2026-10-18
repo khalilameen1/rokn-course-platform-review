@@ -1,11 +1,11 @@
 import React from 'react';
 import {FlatList, Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
 
 const mockPage = jest.fn();
 jest.mock('../src/services/roknApi', () => ({
   getPublishedCoursesPage: (...args: unknown[]) => mockPage(...args),
-  getCachedPublishedCourses: jest.fn(async () => []),
   subscribeToUnavailableCourses: jest.fn(() => () => undefined),
 }));
 jest.mock('../src/components/view/CourseCarousel', () => () => null);
@@ -42,7 +42,6 @@ const page = (courses: Course[], currentPage = 1, hasMore = true): Page => ({
   total: 50,
   revision: 12,
   reset: false,
-  fromCache: false,
 });
 
 describe('home catalogue visible pagination continuation', () => {
@@ -87,7 +86,9 @@ describe('home catalogue visible pagination continuation', () => {
       );
   const mount = async (query: string) => {
     await act(async () => {
-      renderer = TestRenderer.create(<Harness query={query} />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness query={query} />, createTestQueryClient()),
+      );
     });
   };
 

@@ -1,24 +1,11 @@
+import {requestCourseDetails} from './courseDetailsRequest';
+import {courseReadFailureStatus as errorStatus} from './courseReadFailures';
 import {
-  courseReadFailureStatus as errorStatus,
-  isCourseRevisionChangedError,
-  requestCourseDetails,
-} from './courseDetailsRequest';
-import {
-  accountScopedStorageKey,
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
 } from '../../constants/helpers';
-import {settleWithin} from '../../utils/settleWithin';
 import {payload} from './common';
 import {publishUnavailableCourse} from './courseAvailability';
-import {
-  COURSE_DETAILS_CACHE_KEY,
-  cacheCourseDetails,
-  readCourseDetailsCache,
-  removeCourseDetailsCache,
-  touchCourseDetailsCache,
-} from './courseDetailsCache';
-import {invalidateCatalogueCache} from './courseCatalogueCache';
 import {mapCourseDetailsPayload, type CourseDetails} from './courseContracts';
 import {numericRouteId} from './courseFields';
 
@@ -30,22 +17,22 @@ export type CourseDetailsSnapshot = {
   /**
    * The exact successful API envelope used to build `course`. Consumers that
    * need the learning graph project this same immutable response instead of
-   * issuing a second details request. Cached guest details deliberately have
-   * no learning envelope because they never drive owned-course playback.
+   * issuing a second details request.
    */
   responsePayload: unknown | null;
 };
 
+/**
+ * One authoritative details read. The device copy (guests only) is owned by
+ * the course-details query; this fetcher never falls back to it, so an owned
+ * course can never be unlocked or played from stale entitlements.
+ */
 export const getCourseDetailsSnapshot = async (
   courseId: string,
   options: {signal?: AbortSignal} = {},
 ): Promise<CourseDetailsSnapshot> => {
   const id = numericRouteId(courseId, 'COURSE');
   const account = await captureAccountSessionBoundary();
-  const cacheKey = await accountScopedStorageKey(
-    COURSE_DETAILS_CACHE_KEY,
-    account,
-  );
   try {
     const response = await requestCourseDetails(id, {
       optionalAuthorization: true,
@@ -59,32 +46,12 @@ export const getCourseDetailsSnapshot = async (
     if (!course.id || course.id !== id) {
       throw new Error('API_CONTRACT_INVALID_COURSE_DETAILS_ID');
     }
-    void cacheCourseDetails(id, course, cacheKey).catch(() => undefined);
-    assertAccountSessionBoundary(account);
     return {course, responsePayload};
   } catch (error) {
     assertAccountSessionBoundary(account);
-    if (isCourseRevisionChangedError(error)) {
-      await settleWithin(removeCourseDetailsCache(id, cacheKey), undefined);
-      throw error;
-    }
-    if (isCourseUnavailableError(error)) {
-      await settleWithin(removeCourseDetailsCache(id, cacheKey), undefined);
-      if ([404, 410].includes(errorStatus(error))) {
-        await settleWithin(invalidateCatalogueCache(), undefined);
-        publishUnavailableCourse(id);
-      }
-      throw error;
-    }
-    if (!account.scope.startsWith('guest-')) throw error;
-    const cached = await settleWithin(
-      readCourseDetailsCache(id, cacheKey, true),
-      null,
-    );
-    if (!cached) throw error;
-    await settleWithin(touchCourseDetailsCache(id, cacheKey), undefined);
-    assertAccountSessionBoundary(account);
-    return {course: cached, responsePayload: null};
+    // Retired courses leave every catalogue list and device snapshot.
+    if ([404, 410].includes(errorStatus(error))) publishUnavailableCourse(id);
+    throw error;
   }
 };
 

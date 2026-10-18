@@ -60,15 +60,13 @@ describe('public course metadata placement', () => {
     const publicCatalogue = source(
       'src/screens/home/usePublishedCourseCatalogue.ts',
     );
-    const accessOverlay = source('src/screens/home/useCourseAccessOverlay.ts');
 
     expect(catalogueHook).toContain('usePublishedCourseCatalogue({');
     expect(catalogueHook).toContain('useCourseAccessOverlay({');
     expect(publicCatalogue).not.toContain('hasSession');
     expect(publicCatalogue).not.toContain('identityKey');
-    expect(accessOverlay).toContain('setCourses([]);');
-    expect(accessOverlay).toContain('ownerRef.current = identityKey;');
-    expect(accessOverlay).toContain('ownerRef.current === identityKey');
+    // Clearing the previous owner's decoration on an account switch is proven
+    // by accountQueryIsolation.test.tsx.
   });
 
   it('keeps home pagination at the feed boundary and opts search into rail pagination', () => {
@@ -90,7 +88,8 @@ describe('public course metadata placement', () => {
     );
     expect(homeFeed).not.toContain('onEndReached=');
     expect(catalogueHook).toContain('handleScroll');
-    expect(catalogueHook).toContain('(!manualRetry && loadMoreError)');
+    // A failed next page waits for an explicit retry: proven by
+    // homeCatalogueContinuation.test.tsx.
   });
 
   it('shows search loading and failures instead of local fallback results', () => {

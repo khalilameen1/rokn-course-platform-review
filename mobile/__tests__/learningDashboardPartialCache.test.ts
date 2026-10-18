@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {createHash} from 'crypto';
 
 const mockGet = jest.fn();
 const mockGetLearningCourses = jest.fn();
@@ -25,43 +24,57 @@ jest.mock('../src/services/secureSession', () => {
   return {...actual, peekSecureSession: () => mockPeekSession()};
 });
 
-import {getLearningDashboard} from '../src/services/api/learning';
+import {
+  getLearningDashboard,
+  type LearningDashboard,
+} from '../src/services/api/learning';
 
-describe('learning dashboard partial cache', () => {
+describe('learning dashboard partial read', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     await AsyncStorage.clear();
   });
 
-  it('keeps the last complete secondary panels and does not overwrite that cache with partial empties', async () => {
-    const accountHash = createHash('sha256').update('44').digest('hex').slice(0, 24);
-    const cacheKey = `@rokn/learning-dashboard/v3:user-${accountHash}`;
-    const cached = {
-      version: 3,
-      savedAt: Date.now(),
-      dashboard: {
-        courses: [{id: '1', title: 'قديم', progress: 20, completedSections: 1, totalSections: 5, category: 'freelance', accessType: 'paid', chatAvailable: false, certificateAvailable: true}],
-        paths: [{id: '8', title: 'المسار', upcomingLevels: [], progress: 40, remainingToNextLevel: 60, completedSections: 2, totalSections: 5}],
-        badges: [{id: '9', title: 'شارة'}],
-        activityDays: ['2026-09-01'],
-        currentStreakDays: 3,
-      },
-    };
-    const serialized = JSON.stringify(cached);
-    await AsyncStorage.setItem(cacheKey, serialized);
+  const previous = {
+    courses: [{id: '1', title: 'قديم', progress: 20, completedSections: 1, totalSections: 5, category: 'freelance', accessType: 'paid', chatAvailable: false, certificateAvailable: true}],
+    paths: [{id: '8', title: 'المسار', upcomingLevels: [], progress: 40, remainingToNextLevel: 60, completedSections: 2, totalSections: 5}],
+    badges: [{id: '9', title: 'شارة'}],
+    activityDays: ['2026-09-01'],
+    currentStreakDays: 3,
+  } as unknown as LearningDashboard;
+
+  it('keeps the last known secondary panels instead of partial empties', async () => {
     mockGetLearningCourses.mockResolvedValue([
       {id: '2', title: 'حديث', progress: 10, completedSections: 1, totalSections: 10, category: 'technology'},
     ]);
     mockGet.mockRejectedValue(new Error('secondary endpoint unavailable'));
+    const delivered = jest.fn();
 
-    await expect(getLearningDashboard()).resolves.toMatchObject({
+    await expect(
+      getLearningDashboard({previous, onCoursesReady: delivered}),
+    ).resolves.toMatchObject({
       courses: [{id: '2', title: 'حديث'}],
-      paths: cached.dashboard.paths,
-      badges: cached.dashboard.badges,
-      activityDays: cached.dashboard.activityDays,
+      paths: previous.paths,
+      badges: previous.badges,
+      activityDays: previous.activityDays,
       currentStreakDays: 3,
-      partialError: expect.any(String),
+      partialError: expect.stringContaining('نعرض آخر نسخة متاحة'),
     });
-    await expect(AsyncStorage.getItem(cacheKey)).resolves.toBe(serialized);
+    // Courses are published before the secondary panels settle.
+    expect(delivered).toHaveBeenCalledWith([
+      expect.objectContaining({id: '2'}),
+    ]);
+    // The read itself never writes device storage; the query snapshot does.
+    await expect(AsyncStorage.getAllKeys()).resolves.toEqual([]);
+  });
+
+  it('rejects before delivering courses when the learning library fails', async () => {
+    mockGetLearningCourses.mockRejectedValue(new Error('offline'));
+    mockGet.mockResolvedValue({data: {data: {}}});
+    const delivered = jest.fn();
+    await expect(
+      getLearningDashboard({previous, onCoursesReady: delivered}),
+    ).rejects.toThrow('offline');
+    expect(delivered).not.toHaveBeenCalled();
   });
 });

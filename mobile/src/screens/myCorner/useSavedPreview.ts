@@ -1,5 +1,6 @@
 import {useFocusEffect} from '@react-navigation/native';
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {useQuery} from '@tanstack/react-query';
+import {useCallback} from 'react';
 
 // The folder index alone, not the player runtime behind courseLearningApi.
 import {
@@ -7,13 +8,17 @@ import {
   type SavedFolderOption,
 } from '../../components/VideoPlayer/courseLearning/savedFolderIndex';
 import {isWatchLaterFolderName} from '../../components/VideoPlayer/courseLearning/savedFolderNames';
-import {
-  assertAccountSessionBoundary,
-  captureAccountSessionBoundary,
-} from '../../constants/helpers';
+import {assertAccountSessionBoundary} from '../../constants/helpers';
 import {useAppForegroundState} from '../../hooks/useAppActiveState';
+import {
+  captureScopedBoundary,
+  useAccountQueryScope,
+} from '../../services/query/accountQueryScope';
+import {accountQueryKeys} from '../../services/query/queryKeys';
 
 export type SavedPreviewStatus = 'loading' | 'ready' | 'error';
+
+const NO_COLLECTIONS: SavedCollection[] = [];
 
 export type SavedCollection = {
   id: string;
@@ -55,58 +60,44 @@ export const savedCollections = (
 };
 
 /**
- * The learner's saved lists for ركني. It reads through the same account-scoped
- * folder index and offline cache as the full library and the player sheet.
+ * The learner's saved lists for ركني, as one account-scoped query. It reads
+ * through the same account-scoped folder index (and its offline copy) as the
+ * full library and the player sheet; confirmed save/remove/folder changes
+ * invalidate it (`invalidateFolderList`). Every focus and return to the app
+ * reads again; a failed refresh keeps the cards already shown.
  */
 export const useSavedPreview = (identityKey: string, enabled: boolean) => {
   const appIsActive = useAppForegroundState();
-  const ownerRef = useRef(identityKey);
-  const [collections, setCollections] = useState<SavedCollection[]>([]);
-  const [status, setStatus] = useState<SavedPreviewStatus>('loading');
-  const reloadRef = useRef<(() => void) | null>(null);
-  const reload = useCallback(() => reloadRef.current?.(), []);
+  const {scope} = useAccountQueryScope(identityKey);
+  const folders = useQuery({
+    queryKey: accountQueryKeys(scope).savedFolders(),
+    queryFn: async () => {
+      const boundary = await captureScopedBoundary(scope!);
+      const options = await getSavedFolderOptions();
+      assertAccountSessionBoundary(boundary);
+      return savedCollections(options);
+    },
+    // A manual query: ركني reads on every focus and foreground return.
+    enabled: false,
+    staleTime: 0,
+  });
 
-  useEffect(() => {
-    ownerRef.current = identityKey;
-    setCollections([]);
-    setStatus('loading');
-  }, [identityKey]);
+  const refetch = folders.refetch;
+  const reload = useCallback(() => {
+    if (!enabled || scope === null) return;
+    void refetch({cancelRefetch: false});
+  }, [enabled, refetch, scope]);
 
   useFocusEffect(
     useCallback(() => {
-      if (!enabled || !appIsActive) return undefined;
-      let active = true;
-      let readGeneration = 0;
-      // Focus, foreground and pull to refresh share one screen-owned read.
-      const refresh = () => {
-        const generation = ++readGeneration;
-        const owns = () =>
-          active &&
-          generation === readGeneration &&
-          ownerRef.current === identityKey;
-        void (async () => {
-          try {
-            const boundary = await captureAccountSessionBoundary();
-            const folders = await getSavedFolderOptions();
-            assertAccountSessionBoundary(boundary);
-            if (!owns()) return;
-            setCollections(savedCollections(folders));
-            setStatus('ready');
-          } catch {
-            if (!owns()) return;
-            // Keep cards already shown; a failed refresh does not empty them.
-            setStatus(current => (current === 'ready' ? current : 'error'));
-          }
-        })();
-      };
-      reloadRef.current = refresh;
-      refresh();
-      return () => {
-        active = false;
-        if (reloadRef.current === refresh) reloadRef.current = null;
-      };
-    }, [appIsActive, enabled, identityKey]),
+      if (appIsActive) reload();
+    }, [appIsActive, reload]),
   );
 
-  return {collections, reload, status};
+  const status: SavedPreviewStatus = folders.data
+    ? 'ready'
+    : folders.isError && !folders.isFetching
+    ? 'error'
+    : 'loading';
+  return {collections: folders.data ?? NO_COLLECTIONS, reload, status};
 };

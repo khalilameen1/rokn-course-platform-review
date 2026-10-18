@@ -48,7 +48,6 @@ export type PublishedCoursesPage = {
   page: number;
   hasMore: boolean;
   total: number;
-  fromCache: boolean;
   revision: number;
   reset?: boolean;
 };

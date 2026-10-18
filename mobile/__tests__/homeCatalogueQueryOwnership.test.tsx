@@ -1,10 +1,10 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
 
 const mockPage = jest.fn();
 jest.mock('../src/services/roknApi', () => ({
   getPublishedCoursesPage: (...args: unknown[]) => mockPage(...args),
-  getCachedPublishedCourses: jest.fn(async () => []),
   subscribeToUnavailableCourses: jest.fn(() => () => undefined),
 }));
 
@@ -23,7 +23,6 @@ const page = (id: string, currentPage = 1): Page => ({
   total: 90,
   revision: 12,
   reset: false,
-  fromCache: false,
 });
 
 const deferred = () => {
@@ -61,11 +60,15 @@ describe('home catalogue query ownership', () => {
   };
   const mount = async () => {
     await act(async () => {
-      renderer = TestRenderer.create(<Harness query="" />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness query="" />, client),
+      );
     });
   };
   const change = async (query: string, runDebounce = true) => {
-    await act(async () => renderer!.update(<Harness query={query} />));
+    await act(async () =>
+      renderer!.update(withQueryClient(<Harness query={query} />, client)),
+    );
     if (runDebounce) {
       await act(async () => jest.advanceTimersByTime(350));
     }
@@ -78,8 +81,10 @@ describe('home catalogue query ownership', () => {
       searchQuery: query,
     }).map(course => course.id);
 
+  let client = createTestQueryClient();
   beforeEach(() => {
     jest.useFakeTimers();
+    client = createTestQueryClient();
     frames = [];
     mockPage.mockReset().mockResolvedValue(page('home'));
   });
@@ -132,25 +137,24 @@ describe('home catalogue query ownership', () => {
   });
 
   it('does not confuse an empty query with a successfully loaded home page', async () => {
+    // The home read is not abandoned by a search: returning to Home waits
+    // for that same read instead of treating the empty query as loaded.
     const initial = deferred();
     mockPage.mockReturnValueOnce(initial.promise);
     await mount();
     const abandoned = deferred();
     mockPage.mockReturnValueOnce(abandoned.promise);
     await change('تصميم');
-    mockPage.mockResolvedValueOnce(page('home-fresh'));
     await change('');
-    expect(mockPage).toHaveBeenCalledTimes(3);
-    expect(current.browseCourses.map(course => course.id)).toEqual([
-      'home-fresh',
-    ]);
+    expect(mockPage).toHaveBeenCalledTimes(2);
+    expect(current.loading).toBe(true);
+    expect(current.browseCourses).toEqual([]);
     await act(async () => {
-      initial.resolve(page('old-home'));
+      initial.resolve(page('home'));
       abandoned.resolve(page('design'));
     });
-    expect(current.browseCourses.map(course => course.id)).toEqual([
-      'home-fresh',
-    ]);
+    expect(current.loading).toBe(false);
+    expect(current.browseCourses.map(course => course.id)).toEqual(['home']);
   });
 
   it('does not append the previous search while the next search is debouncing', async () => {

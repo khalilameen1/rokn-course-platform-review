@@ -16,7 +16,7 @@ export const useWalletController = () => {
   const showCoinRules = useCallback(() => setWalletModal('rules'), []);
   useEffect(() => setWalletModal(null), [identityKey]);
   // Rewards never load the store catalogue or initiate a top-up.
-  const data = useWalletData(identityKey, false);
+  const data = useWalletData(identityKey);
   const tasks = useWalletTasks(data, showCoinRules);
   const usingRemoteWallet = data.serverSession === true;
 

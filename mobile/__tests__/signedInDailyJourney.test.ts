@@ -181,8 +181,8 @@ describe('signed-in daily journey', () => {
     const myCorner = source('src/screens/MyCorner.tsx');
     const myCornerData = source('src/screens/myCorner/useMyCornerData.ts');
 
-    expect(myCornerData).toContain('}, [appIsActive, identityKey]),');
-    expect(myCornerData).toContain('ownerRef.current !== identityKey');
+    // Reloading for a new account (and never showing the previous one) is
+    // proven by accountQueryIsolation.test.tsx.
     expect(myCorner).toContain("navigation.navigate('CourseDetails'");
     expect(myCorner).toContain("navigation.navigate('Reels', target)");
     expect(myCorner).not.toContain('WatchHistorySection');

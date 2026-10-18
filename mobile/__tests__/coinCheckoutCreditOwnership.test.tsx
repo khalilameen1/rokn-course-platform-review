@@ -1,6 +1,12 @@
 import React from 'react';
 import {Alert} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
+
+let queryTestClient = createTestQueryClient();
+beforeEach(() => {
+  queryTestClient = createTestQueryClient();
+});
 import type {WalletSnapshot} from '../src/services/roknApi';
 
 const mockPost = jest.fn();
@@ -79,10 +85,6 @@ jest.mock('../src/services/roknApi', () => ({
 jest.mock('../src/services/productAnalytics', () => ({
   trackProductEvent: jest.fn(),
 }));
-jest.mock('../src/screens/wallet/walletCache', () => ({
-  readWalletCache: async () => null,
-  saveWalletCache: async () => undefined,
-}));
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   applyLocalLearningState: jest.fn(),
   mapCoursePayload: jest.fn(),
@@ -145,7 +147,7 @@ describe('checkout credit survives its initiating screen', () => {
   };
   const mount = async (element = <Wallet />) => {
     await act(async () => {
-      renderer = TestRenderer.create(element);
+      renderer = TestRenderer.create(withQueryClient(element, queryTestClient));
     });
   };
   const removeScreen = async () => {

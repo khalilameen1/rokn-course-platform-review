@@ -1,6 +1,12 @@
 import React from 'react';
 import {AccessibilityInfo, AppState} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
+
+let queryTestClient = createTestQueryClient();
+beforeEach(() => {
+  queryTestClient = createTestQueryClient();
+});
 import type {Notification} from '../src/services/notificationMapper';
 
 const mockPage = jest.fn();
@@ -18,7 +24,6 @@ jest.mock('../src/services/roknApi', () => ({
   getNotificationsPage: (...args: unknown[]) => mockPage(...args),
   markAllNotificationsRead: (...args: unknown[]) => mockMarkAll(...args),
   markNotificationRead: (...args: unknown[]) => mockMarkRead(...args),
-  getCachedPublishedCourses: async () => [],
   hasSession: async () => true,
 }));
 jest.mock('../src/constants/helpers', () => ({
@@ -82,7 +87,9 @@ describe('notification read acknowledgement ownership', () => {
   };
   const mount = async () => {
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness />, queryTestClient),
+      );
     });
   };
   const readState = () => inbox.source.map(({id, read}) => ({id, read}));

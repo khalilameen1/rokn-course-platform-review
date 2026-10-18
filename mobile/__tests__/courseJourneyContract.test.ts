@@ -292,8 +292,8 @@ describe('course journey contract', () => {
     );
     expect(selectors).toContain('const owned = remoteCourse?.owned === true;');
     expect(loader).not.toContain('const [remoteOwned, setRemoteOwned]');
-    expect(loader).toContain('ownershipWriteEpochRef.current');
-    expect(loader).toContain('const [remoteNotice, setRemoteNotice]');
+    // A purchase that lands while a details read is in flight stays owned:
+    // proven by courseDetailsQuery.test.tsx.
     expect(loader).not.toContain('setNotice: Dispatch');
     expect(details).toContain('notice={notice}');
     expect(details).toContain('{notice || course.notice}');
@@ -332,7 +332,6 @@ describe('course journey contract', () => {
 
     expect(loader).toContain('getCourseDetailsSnapshot(');
     expect(loader).toContain('mapCoursePayload(snapshot.responsePayload)');
-    expect(loader).toContain('useState<RemoteCourseSnapshot | null>(null)');
     expect(loader).not.toContain('setRemoteLearningCourse');
     expect(outline).not.toContain('loadCourseLearningData');
     expect(outline).not.toContain('publicRequest');

@@ -6,9 +6,9 @@
 
 This file retains the legal documents published with every production package, including NOTICE files. An exact name/version/integrity-bound review record is used only when an npm package publishes no standalone legal file.
 
-- Unique packages: 732
-- Resolved production package paths: 817
-- Exact package-root legal documents: 604
+- Unique packages: 737
+- Resolved production package paths: 822
+- Exact package-root legal documents: 609
 - Reviewed legal-file absence records: 128
 
 ## Explicit license choices
@@ -30,7 +30,7 @@ This file retains the legal documents published with every production package, i
 | CC0-1.0 | 1 |
 | FSL-1.1-MIT | 9 |
 | ISC | 38 |
-| MIT | 559 |
+| MIT | 564 |
 | MPL-2.0 | 12 |
 | Python-2.0 | 1 |
 | Unlicense | 2 |
@@ -20788,6 +20788,186 @@ SHA-256: `9cf2166507311f427e083ef7671da566949391cb745789abcff8bd43ac26d1f1`
 MIT License
 
 Copyright (c) 2024 Fabian Hiller
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### @tanstack/query-async-storage-persister@5.104.1
+
+- Selected license: `MIT`
+- Declared license: `MIT`
+- Legal source: `package-root`
+- Exact source: [npm](https://www.npmjs.com/package/%40tanstack%2Fquery-async-storage-persister/v/5.104.1)
+- Integrity: `sha512-wSs/HrangoSMVW3zLifawRT9lA+fbiilPQmaY+YhxBOM/VS9oqx+MQvROHpW+hKwDpdvFmhyBjWiyDhTHL1YXg==`
+
+#### LICENSE
+
+SHA-256: `277d2a8e459713d6c596bab89ef857cb8b2433223fa9edb49ccc403a6ceb08ee`
+
+```text
+MIT License
+
+Copyright (c) 2021-present Tanner Linsley
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### @tanstack/query-core@5.104.1
+
+- Selected license: `MIT`
+- Declared license: `MIT`
+- Legal source: `package-root`
+- Exact source: [npm](https://www.npmjs.com/package/%40tanstack%2Fquery-core/v/5.104.1)
+- Integrity: `sha512-TiRghcrGkUTE+M4JBxvpPSpBhxvIzQairw+cksrHYGr+2uwC77yW1SY9nYxnYRYOppvucf8rEg6b5byoz4rTpw==`
+
+#### LICENSE
+
+SHA-256: `277d2a8e459713d6c596bab89ef857cb8b2433223fa9edb49ccc403a6ceb08ee`
+
+```text
+MIT License
+
+Copyright (c) 2021-present Tanner Linsley
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### @tanstack/query-persist-client-core@5.104.1
+
+- Selected license: `MIT`
+- Declared license: `MIT`
+- Legal source: `package-root`
+- Exact source: [npm](https://www.npmjs.com/package/%40tanstack%2Fquery-persist-client-core/v/5.104.1)
+- Integrity: `sha512-ONiadXqe56iNrw6RESqKILpTIVG9ZMI/DageTQnrBDt/nZ6WiP4G13iIiMwJEsiO12gQ3Gychx8tcFIPw4k25g==`
+
+#### LICENSE
+
+SHA-256: `277d2a8e459713d6c596bab89ef857cb8b2433223fa9edb49ccc403a6ceb08ee`
+
+```text
+MIT License
+
+Copyright (c) 2021-present Tanner Linsley
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### @tanstack/react-query-persist-client@5.104.1
+
+- Selected license: `MIT`
+- Declared license: `MIT`
+- Legal source: `package-root`
+- Exact source: [npm](https://www.npmjs.com/package/%40tanstack%2Freact-query-persist-client/v/5.104.1)
+- Integrity: `sha512-kU3YaqjkwEUzUUfPF0JVg56d6gJKWHaFVqOlQztwc4C2IT0P5sv/23orrSoQqjxKaUe6Ejw5IIQtA/G12uNmow==`
+
+#### LICENSE
+
+SHA-256: `277d2a8e459713d6c596bab89ef857cb8b2433223fa9edb49ccc403a6ceb08ee`
+
+```text
+MIT License
+
+Copyright (c) 2021-present Tanner Linsley
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### @tanstack/react-query@5.104.1
+
+- Selected license: `MIT`
+- Declared license: `MIT`
+- Legal source: `package-root`
+- Exact source: [npm](https://www.npmjs.com/package/%40tanstack%2Freact-query/v/5.104.1)
+- Integrity: `sha512-Zz70EgjahNI7aCz8BZxM3vUGU44ycxEAzMuCUjLeA7SVhhOkg3ZgPjPJPvHjs6Rmky/dtmnu1WzjGHNHmhCoZQ==`
+
+#### LICENSE
+
+SHA-256: `277d2a8e459713d6c596bab89ef857cb8b2433223fa9edb49ccc403a6ceb08ee`
+
+```text
+MIT License
+
+Copyright (c) 2021-present Tanner Linsley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

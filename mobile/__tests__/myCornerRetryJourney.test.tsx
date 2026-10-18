@@ -1,13 +1,18 @@
 import React from 'react';
 import {RefreshControl} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
+
+let queryTestClient = createTestQueryClient();
+beforeEach(() => {
+  queryTestClient = createTestQueryClient();
+});
 
 const mockNavigate = jest.fn();
 const mockGet = jest.fn();
 let mockAuthenticated = true;
 let mockSessionError = false;
 let mockBoundary = {scope: 'learner', epoch: 1};
-const mockCached = jest.fn();
 let mockFocused = true;
 
 jest.mock('@react-navigation/native', () => ({
@@ -39,7 +44,6 @@ jest.mock('../src/services/roknApi', () => ({
     if (mockSessionError) throw new Error('session read failed');
     return mockAuthenticated;
   },
-  getCachedLearningDashboard: () => mockCached(),
   getLearningDashboard: () => mockGet(),
 }));
 // The saved lists below the courses have their own suite.
@@ -58,6 +62,7 @@ import {CourseShelf} from '../src/screens/myCorner/CourseShelf';
 import {StatusView} from '../src/components/ui/PremiumUI';
 import {LearningDashboardSkeleton} from '../src/components/ui/Skeleton';
 import type {LearningDashboard} from '../src/services/roknApi';
+import {markRestoredSnapshot} from '../src/services/query/queryClient';
 
 const dashboard: LearningDashboard = {
   courses: [
@@ -112,7 +117,6 @@ describe('MyCorner recovers within the same screen', () => {
   beforeEach(() => {
     mockNavigate.mockReset();
     mockGet.mockReset().mockResolvedValue(dashboard);
-    mockCached.mockReset().mockResolvedValue(null);
     mockAuthenticated = true;
     mockSessionError = false;
     mockFocused = true;
@@ -125,10 +129,23 @@ describe('MyCorner recovers within the same screen', () => {
   it.each([false, true])(
     'retries a failed read with cached courses=%s without leaving or duplicating requests',
     async cached => {
-      if (cached) mockCached.mockResolvedValue(dashboard);
+      if (cached) {
+        // A previous process saved this account's dashboard.
+        queryTestClient.setQueryData(
+          ['learner', 'learning-dashboard'],
+          dashboard,
+        );
+        markRestoredSnapshot(
+          queryTestClient
+            .getQueryCache()
+            .find({queryKey: ['learner', 'learning-dashboard']})!,
+        );
+      }
       mockGet.mockRejectedValueOnce(new Error('offline'));
       await act(async () => {
-        renderer = TestRenderer.create(<MyCorner />);
+        renderer = TestRenderer.create(
+          withQueryClient(<MyCorner />, queryTestClient),
+        );
       });
       expect(mockGet).toHaveBeenCalledTimes(1);
       const retry = retryButton(renderer);
@@ -158,7 +175,9 @@ describe('MyCorner recovers within the same screen', () => {
 
   it('can refresh owned courses after a server update without changing tabs', async () => {
     await act(async () => {
-      renderer = TestRenderer.create(<MyCorner />);
+      renderer = TestRenderer.create(
+        withQueryClient(<MyCorner />, queryTestClient),
+      );
     });
     const refresh = renderer.root.findAllByType(RefreshControl)[0];
     expect(refresh).toBeDefined();
@@ -183,7 +202,9 @@ describe('MyCorner recovers within the same screen', () => {
   it('keeps a successful empty library distinct from an error', async () => {
     mockGet.mockResolvedValue({...dashboard, courses: []});
     await act(async () => {
-      renderer = TestRenderer.create(<MyCorner />);
+      renderer = TestRenderer.create(
+        withQueryClient(<MyCorner />, queryTestClient),
+      );
     });
     const empty = renderer.root.findByType(StatusView);
     expect(empty.props.state).toBe('empty');
@@ -202,7 +223,9 @@ describe('MyCorner recovers within the same screen', () => {
   it('shows recovery rather than an endless skeleton when session lookup fails', async () => {
     mockSessionError = true;
     await act(async () => {
-      renderer = TestRenderer.create(<MyCorner />);
+      renderer = TestRenderer.create(
+        withQueryClient(<MyCorner />, queryTestClient),
+      );
     });
     expect(renderer.root.findAllByType(LearningDashboardSkeleton)).toHaveLength(
       0,
@@ -220,12 +243,16 @@ describe('MyCorner recovers within the same screen', () => {
     async exit => {
       mockGet.mockRejectedValueOnce(new Error('offline'));
       await act(async () => {
-        renderer = TestRenderer.create(<MyCorner />);
+        renderer = TestRenderer.create(
+          withQueryClient(<MyCorner />, queryTestClient),
+        );
       });
       const retry = retryButton(renderer);
       if (exit === 'blur') {
         mockFocused = false;
-        await act(async () => renderer.update(<MyCorner />));
+        await act(async () =>
+          renderer.update(withQueryClient(<MyCorner />, queryTestClient)),
+        );
       } else await act(async () => renderer.unmount());
       await act(async () => retry());
       expect(mockGet).toHaveBeenCalledTimes(1);
@@ -235,7 +262,9 @@ describe('MyCorner recovers within the same screen', () => {
   it('ignores an old retry result after changing accounts', async () => {
     mockGet.mockRejectedValueOnce(new Error('offline'));
     await act(async () => {
-      renderer = TestRenderer.create(<MyCorner />);
+      renderer = TestRenderer.create(
+        withQueryClient(<MyCorner />, queryTestClient),
+      );
     });
     const retry = retryButton(renderer);
     const oldRead = deferred<LearningDashboard>();
@@ -243,7 +272,9 @@ describe('MyCorner recovers within the same screen', () => {
     await act(async () => retry());
     mockBoundary = {scope: 'second-learner', epoch: 2};
     mockGet.mockResolvedValue({...dashboard, courses: []});
-    await act(async () => renderer.update(<MyCorner />));
+    await act(async () =>
+      renderer.update(withQueryClient(<MyCorner />, queryTestClient)),
+    );
     await act(async () => oldRead.resolve(dashboard));
     expect(renderer.root.findAllByType(CourseShelf)).toHaveLength(0);
     expect(renderer.root.findByType(StatusView).props.state).toBe('empty');
@@ -252,7 +283,9 @@ describe('MyCorner recovers within the same screen', () => {
   it('does not turn a guest sign-in action into an authenticated retry', async () => {
     mockAuthenticated = false;
     await act(async () => {
-      renderer = TestRenderer.create(<MyCorner />);
+      renderer = TestRenderer.create(
+        withQueryClient(<MyCorner />, queryTestClient),
+      );
     });
     expect(renderer.root.findByType(StatusView).props.actionLabel).toBe(
       'تسجيل الدخول',

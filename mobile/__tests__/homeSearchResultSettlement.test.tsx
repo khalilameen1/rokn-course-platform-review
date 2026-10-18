@@ -1,6 +1,7 @@
 import React from 'react';
 import {Text, TextInput} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
+import {withQueryClient} from './helpers/queryClient';
 
 const mockPage = jest.fn();
 const mockTrack = jest.fn(async (_event: unknown) => undefined);
@@ -18,7 +19,6 @@ jest.mock('../src/constants/helpers', () => ({
 }));
 jest.mock('../src/services/roknApi', () => ({
   getPublishedCoursesPage: (...args: unknown[]) => mockPage(...args),
-  getCachedPublishedCourses: jest.fn(async () => []),
   subscribeToUnavailableCourses: jest.fn(() => () => undefined),
 }));
 jest.mock('../src/services/productAnalytics', () => ({
@@ -118,7 +118,6 @@ const page = (id?: string): Page => ({
   total: id ? 1 : 0,
   revision: 12,
   reset: false,
-  fromCache: false,
 });
 const deferred = () => {
   let resolve!: (value: Page) => void;
@@ -140,7 +139,7 @@ describe('Home renders and records only settled search results', () => {
   const input = () => renderer!.root.findByType(TextInput);
   const mount = async () => {
     await act(async () => {
-      renderer = TestRenderer.create(<Home />);
+      renderer = TestRenderer.create(withQueryClient(<Home />));
     });
     await act(async () => {
       renderer!.root
