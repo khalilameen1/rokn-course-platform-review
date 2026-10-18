@@ -144,7 +144,7 @@ final class LandingViewTest extends TestCase
             app()->setLocale($locale);
             $data = $this->pageData($locale);
             unset($data['downloadChannels'], $data['directDiscountPercent'], $data['howPlatformWorksVideoUrl']);
-            $data['errors'] = new ViewErrorBag();
+            $data['errors'] = new ViewErrorBag;
 
             foreach (['about', 'contact', 'privacy', 'terms', 'returns', 'account-deletion'] as $page) {
                 $html = view('static.'.$page, $data)->render();

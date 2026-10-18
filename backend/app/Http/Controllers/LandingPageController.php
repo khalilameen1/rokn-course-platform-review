@@ -21,8 +21,7 @@ class LandingPageController extends Controller
         AppReleaseChannelService $releases,
         PublicAppSettingsService $publicSettings,
         WelcomeRewardOfferService $welcomeOffer
-    ): View
-    {
+    ): View {
         $locale = $request->query('lang');
 
         if ($locale && in_array($locale, config('app.locales', ['ar', 'en']))) {
@@ -35,7 +34,7 @@ class LandingPageController extends Controller
         $setting = Setting::first();
         $designSetting = DesignSetting::getDefaultSettings();
         $downloadChannels = $releases->urls($setting);
-        $directDownloadIsPreview = !$downloadChannels['direct']
+        $directDownloadIsPreview = ! $downloadChannels['direct']
             && filled(config('app_downloads.android_preview_path'));
         if ($directDownloadIsPreview) {
             $downloadChannels['direct'] = route('app-download.preview');
