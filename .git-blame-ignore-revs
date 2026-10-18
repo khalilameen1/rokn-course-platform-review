@@ -1,0 +1,4 @@
+# Formatting-only commits; `git blame --ignore-revs-file .git-blame-ignore-revs`
+# (GitHub applies this file automatically).
+# style(backend): apply the Laravel Pint preset across the backend
+061139fb71a0d3696ab81510be909d178ac8bd65

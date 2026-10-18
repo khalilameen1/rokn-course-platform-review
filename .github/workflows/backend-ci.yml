@@ -223,6 +223,18 @@ jobs:
       - name: Audit all locked dependencies
         run: composer audit --locked --no-interaction
 
+      # ARCHITECTURE.md B8: one style (Laravel Pint preset) and Larastan with a
+      # baseline that may only shrink; B1 is enforced by disallowed calls.
+      - name: Check code style (Laravel Pint)
+        run: vendor/bin/pint --test
+
+      - name: Static analysis (Larastan)
+        env:
+          CACHE_DRIVER: array
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ":memory:"
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=2G
+
       - name: Verify website wallet and shared payment contracts
         env:
           CACHE_DRIVER: array

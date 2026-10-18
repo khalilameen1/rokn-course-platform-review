@@ -1,0 +1,38 @@
+# Static analysis for the doctrine in ../ARCHITECTURE.md.
+# Larastan (https://github.com/larastan/larastan) understands Laravel's magic;
+# phpstan-disallowed-calls (https://github.com/spaze/phpstan-disallowed-calls)
+# enforces rule B1: controllers delegate, services own transactions and locks.
+# phpstan-baseline.neon holds pre-existing findings and may only shrink.
+
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/spaze/phpstan-disallowed-calls/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    level: 5
+    paths:
+        - app
+    tmpDir: storage/framework/phpstan
+    reportUnmatchedIgnoredErrors: true
+
+    disallowedStaticCalls:
+        # Larastan resolves the DB facade to Illuminate\Database\Connection.
+        -
+            method:
+                - 'Illuminate\Database\Connection::transaction()'
+                - 'Illuminate\Database\Connection::beginTransaction()'
+            message: 'controllers delegate; transactions live in the owning service (ARCHITECTURE.md B1)'
+            disallowIn:
+                - app/Http/Controllers/*
+
+    disallowedMethodCalls:
+        -
+            method:
+                - 'Illuminate\Database\Eloquent\Builder::lockForUpdate()'
+                - 'Illuminate\Database\Query\Builder::lockForUpdate()'
+                - 'Illuminate\Database\Eloquent\Builder::sharedLock()'
+                - 'Illuminate\Database\Query\Builder::sharedLock()'
+            message: 'controllers delegate; locks live in the owning service (ARCHITECTURE.md B1, B4)'
+            disallowIn:
+                - app/Http/Controllers/*

@@ -1,0 +1,135 @@
+# Rokn architecture: one way per concern
+
+This is the single doctrine for the backend, the mobile app and the
+dashboard. Every concern below has exactly one accepted way. A second way is
+a defect, even when it works. Where the code still deviates, the count is
+recorded in **Convergence** at the end and may only go down; the enforcing
+tool is named next to each rule so the doctrine cannot drift silently.
+
+Each rule names the established implementation it follows. Rokn adapts
+those; it does not invent parallel mechanisms.
+
+## Backend (Laravel 12)
+
+### B1. HTTP layer: validate, call one service, shape the response
+A controller action validates input (`$request->validate()` or a FormRequest),
+calls **one** application service method, and returns a response. It does
+not open transactions, take locks, write financial or enrollment tables, or
+catch generic exceptions to hand-build a 500.
+- Reference: Laravel docs, "Controllers" and "Validation"; the thin-controller
+  / service-layer convention used by Laravel's first-party apps (Forge, Vapor).
+- Enforced by: `phpstan-disallowed-calls` (no `DB::transaction`,
+  `lockForUpdate`, `sharedLock` in `App\Http\Controllers`).
+
+### B2. One response envelope, one error path
+Scope: the learner API under `/api/v1`. Provider-facing endpoints (Kashier,
+Bunny and store webhooks, health checks, `.well-known` files) answer in the
+format the provider defines. Every learner API response is `{status, success, message, data[, code, retryable],
+server_time}` built by `App\Services\ApiResponseService` (`success`, `error`,
+`resource`); `ApplyAPILocale` finalises it in one pass. Refusals throw a coded
+exception (`CourseCheckoutRejected`, `KashierCheckoutConflict`, ...) that is
+rendered into the same envelope with a stable `code`
+(`App\Support\ApiErrorContract`). Clients branch on `code`, never on text. No
+controller builds the envelope by hand or defines its own `error()` helper.
+- Reference: Laravel exception rendering (`render()` on the exception /
+  `withExceptions`), RFC 9457 problem-details idea of a stable machine code.
+
+### B3. One writer per aggregate
+Enrollments: `CourseEnrollmentWriter`. Wallet balances: `WalletService`.
+Order approval: `OrderLifecycleService`. Portfolio publication:
+`PortfolioModerationService`. Saved lists: `SavedLibraryService`. A new way to
+change an aggregate is a new method on its owner.
+- Reference: DDD aggregate root (Evans); Laravel Cashier owning subscriptions.
+
+### B4. Locks and transactions
+Order is user, then course, then other rows. Readers that need a stable
+course take `sharedLock()`; only publishing takes the course exclusively.
+Transactions live in services and retry deadlocks (`DB::transaction(fn, 3)`).
+- Reference: MySQL 8 manual, "How to Minimize and Handle Deadlocks".
+
+### B5. Side effects after commit go through the outbox
+Work that must happen because a transaction committed (notifications,
+rewards, grants, history merges) is recorded as an `InternalSignal` in the
+same transaction and handled by `InternalSignalHandler` on a queue. A plain
+queued job is only for self-contained heavy work (AI generation, media).
+- Reference: transactional outbox pattern (microservices.io).
+
+### B6. GET never writes
+Repairs, remaps and backfills run on write paths, signals, jobs or migrations.
+- Reference: RFC 9110 safe methods.
+
+### B7. Schema changes are append-only migrations
+`database/migration-lock.json` checksums every merged migration.
+- Reference: Flyway checksums. Enforced by: `MigrationLockTest`.
+
+### B8. Static analysis and style
+Larastan (PHPStan for Laravel) at the configured level with a baseline that may
+only shrink; Laravel Pint for formatting.
+- Enforced by: CI.
+
+## Mobile (React Native)
+
+### M1. Server state: TanStack Query
+All reads of server data go through TanStack Query: one `queryClient`, one key
+factory, every user-scoped key prefixed with the account scope, one persister.
+No screen keeps its own copy of server data in `useState` + AsyncStorage.
+- Reference: TanStack Query v5 (React Native guide, persistQueryClient).
+
+### M2. Offline writes: one durable outbox engine
+Writes that must survive app kills or offline time (progress, project
+submissions, portfolio media, account writes, telemetry) are items in
+`services/durableOutbox.ts` with a typed payload and a deliver function. A
+feature does not build its own queue, retry clock or storage format.
+Successful deliveries invalidate the related queries.
+- Reference: the outbox pattern on the client; exponential backoff with
+  jitter (AWS Architecture Blog).
+
+### M3. Layers
+Network calls only in `src/services/api/*`. Device storage only in
+`src/services/*` storage modules. Screens and components call hooks; hooks
+call services.
+- Enforced by: ESLint `no-restricted-imports` / `no-restricted-syntax`.
+
+### M4. Navigation
+Root tabs and stacks are described once; flat destinations become nested
+navigation only through `src/navigation/rootRoutes.ts`.
+- Reference: React Navigation 7, "Nesting navigators".
+
+### M5. Copy
+Learner-facing text is Egyptian Arabic, with one vocabulary for the same
+situation (a failed save always reads the same way). Learner-facing AI text
+goes through `AiPromptPolicy` / `CoachReplyText` on the backend.
+
+### M6. Account isolation
+Anything stored or cached for a learner is keyed by the account scope and
+removed on logout or account switch; a response that lands after an account
+switch is discarded (`assertAccountSessionBoundary`).
+
+## Dashboard
+
+### D1. Plain modules on one registry
+Course studio code is plain browser modules under `public/admin/assets/js`
+registered through `core.provide`; third-party code is published by
+`scripts/publish-admin-vendor-assets.mjs` and pinned in the public asset
+inventory. Uploads use tus-js-client.
+
+## Tests
+Behaviour through HTTP, services, hooks or rendered output. No new tests that
+read source text (`SourceTextTestRatchetTest`).
+
+## Convergence
+Counts of code that still follows a second way. Each may only go down.
+
+| Rule | Deviation | Count (2026-10-18) |
+|---|---|---|
+| B1 | Controllers opening transactions or locks | 21 |
+| B2 | Controllers building the envelope by hand (`response()->json([...])`) | 36 |
+| B2 | Controllers with their own `error()` helper | 6 |
+| B2 | Controllers hand-building a 500 | 5 |
+| M1 | Read domains with a hand-written cache | being migrated |
+| M2 | Feature-owned offline queues outside `durableOutbox` | 3 |
+| M3 | Files calling HTTP outside `services/` | 8 |
+| M3 | Files touching AsyncStorage outside `services/`, `constants/`, `utils/` | 11 |
+| M5 | Standard-Arabic retry copy ("حاول مرة أخرى") in the app | 39 |
+| Tests | Backend test files that read source text (`SourceTextTestRatchetTest` baseline) | 29 |
+| B8 | Larastan baseline entries | 1550 |

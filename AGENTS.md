@@ -8,6 +8,8 @@ Preserve approved designs, existing user changes and compatibility across mobile
 
 ## Engineering rules
 
+`ARCHITECTURE.md` is the single doctrine: one accepted way per concern across backend, mobile and dashboard, with the tool that enforces it and the convergence counts that may only go down. Follow it; a second way to do the same thing is a defect even when it works.
+
 These came out of the October 2026 launch review. Each one closes a failure that actually happened in this codebase.
 
 - **Controllers delegate.** An HTTP controller validates, calls one application service, and shapes the response. Transactions, locks, wallet and enrollment writes live in services.
