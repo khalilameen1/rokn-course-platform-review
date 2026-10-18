@@ -84,6 +84,25 @@ final class ApiRateLimitSecurityTest extends TestCase
             ->assertStatus(429);
     }
 
+    public function test_social_sign_in_ip_ceiling_is_configurable_and_counts_rotating_identities(): void
+    {
+        $ip = '198.51.100.79';
+        config(['rate_limits.auth_ip_per_minute' => 3, 'rate_limits.auth_ip_per_hour' => 100]);
+        RateLimiter::clear('auth:ip-minute:'.$ip);
+        RateLimiter::clear('auth:ip-hour:'.$ip);
+
+        // Three learners behind one carrier address, each with its own device.
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            $this->withServerVariables(['REMOTE_ADDR' => $ip])
+                ->postJson('/api/v1/social-login', ['device_id' => 'device-'.$attempt])
+                ->assertStatus(422);
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => $ip])
+            ->postJson('/api/v1/social-login', ['device_id' => 'device-4'])
+            ->assertStatus(429);
+    }
+
     public function test_read_and_write_ip_ceilings_use_separate_buckets(): void
     {
         $ip = '198.51.100.78';

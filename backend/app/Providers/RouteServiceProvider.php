@@ -72,10 +72,13 @@ class RouteServiceProvider extends ServiceProvider
             return [
                 Limit::perMinute(12)->by('auth:identity:'.$identity),
                 Limit::perHour(90)->by('auth:identity-hour:'.$identity),
-                // A shared school connection remains usable while a rotating
-                // identity flood still has a finite origin-wide ceiling.
-                Limit::perMinute(300)->by('auth:ip-minute:'.$ip),
-                Limit::perHour(3000)->by('auth:ip-hour:'.$ip),
+                // A shared campus or carrier-NAT connection remains usable
+                // while a rotating identity flood still has a finite
+                // origin-wide ceiling (see config/rate_limits.php).
+                Limit::perMinute(max(1, (int) config('rate_limits.auth_ip_per_minute', 1200)))
+                    ->by('auth:ip-minute:'.$ip),
+                Limit::perHour(max(1, (int) config('rate_limits.auth_ip_per_hour', 20000)))
+                    ->by('auth:ip-hour:'.$ip),
             ];
         });
 

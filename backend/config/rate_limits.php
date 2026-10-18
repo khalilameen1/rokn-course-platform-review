@@ -9,6 +9,14 @@ return [
     'api_read_ip_per_minute' => (int) env('API_READ_IP_PER_MINUTE', 1200),
     'api_write_identity_per_minute' => (int) env('API_WRITE_IDENTITY_PER_MINUTE', 90),
     'api_write_ip_per_minute' => (int) env('API_WRITE_IP_PER_MINUTE', 450),
+    // Sign-in is social only (Google, Apple, TikTok): the credential is a
+    // provider-signed token, so the per-IP ceiling bounds floods, not
+    // guessing. Egyptian mobile carriers put thousands of learners behind one
+    // CGNAT address and a sign-in costs about three requests, so the ceiling
+    // matches the shared read ceiling rather than a per-household figure.
+    // Per-identity limits stay tight.
+    'auth_ip_per_minute' => (int) env('AUTH_IP_PER_MINUTE', 1200),
+    'auth_ip_per_hour' => (int) env('AUTH_IP_PER_HOUR', 20000),
     // Browser redirects can legitimately repeat, while a per-order bucket
     // prevents one payment from being replayed without punishing shared NATs.
     'kashier_callback_order_per_minute' => (int) env('KASHIER_CALLBACK_ORDER_PER_MINUTE', 30),
