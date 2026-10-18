@@ -135,6 +135,17 @@ import {
 } from '../src/services/pendingAccountWrites';
 import {learnerCopy} from '../src/constants/learnerCopy';
 
+// React Native exports these through lazy getters. Resolve the installed
+// preset's native fixtures before timed hooks: a cold Babel cache otherwise
+// spends the first modal test's 5s behavior budget compiling native modules.
+// Keep the preset components and the real choice rows; do not replace them.
+const nativeChoiceFixture = jest.requireActual<typeof import('react-native')>(
+  'react-native',
+);
+for (const component of ['Modal', 'Pressable', 'ScrollView', 'Text', 'View'] as const) {
+  void nativeChoiceFixture[component];
+}
+
 let preferences!: ReturnType<typeof useSettingsPreferences>;
 const PreferencesHarness = () => {
   preferences = useSettingsPreferences({
