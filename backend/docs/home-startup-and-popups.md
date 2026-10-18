@@ -100,10 +100,8 @@ application code is claimed or copied. There is no image readiness registry,
 onLoad startup dependency, prefetch-everything promise or additional splash
 deadline. The approved startup composition/animation remains unchanged.
 
-The backend uses its existing Intervention Image 2.7.2 encoding implementation
-and existing tracked upload/reference-aware cleanup services. That installed
-legacy major is retained here; this is not a claim that v2 is currently
-maintained or a new dependency upgrade. Course authoring stages the unchanged
+The backend uses its Intervention Image 4 (GD driver) encoding implementation
+and existing tracked upload/reference-aware cleanup services. Course authoring stages the unchanged
 original plus a separate proportional static WebP, quality 82 and maximum edge
 1280px, in one Photo ownership transaction. EXIF orientation is read from the
 original temporary file and the original/alpha are retained. `Photo.path`

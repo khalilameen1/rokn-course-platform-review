@@ -162,7 +162,7 @@ final class CertificateArtworkRenderer
     {
         $text = $alreadyShaped ? $value : $this->shape($value);
         // GD decodes numeric entities in both imagettfbbox and imagettftext.
-        // Preserve the literal snapshot, as Intervention\Image\Gd\Font does:
+        // Preserve the literal snapshot, as the legacy renderer does:
         // an authored "&#65;" must not silently become "A" on the credential.
         $text = preg_replace('/&(#(?:x[a-fA-F0-9]+|[0-9]+);)/', '&#38;\\1', $text) ?? $text;
         $bounds = $this->measure($text, $size, $weight);

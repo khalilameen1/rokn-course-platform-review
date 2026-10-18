@@ -9,8 +9,6 @@ use App\Services\StoredFileUploadService;
 use App\Support\PublicDiskUrl;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Intervention\Image\Facades\Image;
 
 trait HasPhoto
 {
@@ -154,12 +152,6 @@ trait HasPhoto
                 return $existing;
             }
         }
-        /*$image = Image::make($file);
-        $image->fit(1900, 750, function ($constraint) {
-            $constraint->aspectRatio();
-        });
-        Storage::disk('public')->put($path, (string) $image->encode());*/
-        // Storage::disk('public')->put($path, Image::make($file)->encode('jpg', 50));
         $name = $this->storeTrackedImageBytes($file, $path, $operationIdentity);
         if (! is_string($name) || trim($name) === '') {
             throw new \RuntimeException('Image storage failed');

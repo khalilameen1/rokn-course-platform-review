@@ -10,7 +10,8 @@ use App\Models\SupportCaseMessage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Intervention\Image\Facades\Image;
+use Intervention\Image\Encoders\JpegEncoder;
+use Intervention\Image\Laravel\Facades\Image;
 
 /** Screenshot identity, sanitization and staged attachment persistence. */
 final readonly class SupportCaseScreenshotService
@@ -24,18 +25,13 @@ final readonly class SupportCaseScreenshotService
         UploadedFile $upload
     ): array {
         try {
-            $image = Image::make($upload->getRealPath());
+            // Decoding applies the EXIF orientation when the extension exists.
+            $image = Image::decodePath($upload->getRealPath());
         } catch (\Throwable) {
             abort(422, "تعذّرت قراءة الصورة\nاختر صورة أخرى");
         }
-        if (function_exists('exif_read_data')) {
-            $image->orientate();
-        }
-        $image->resize(2048, 2048, static function ($constraint): void {
-            $constraint->aspectRatio();
-            $constraint->upsize();
-        });
-        $encoded = (string) $image->encode('jpg', 86);
+        $image->scaleDown(2048, 2048);
+        $encoded = $image->encode(new JpegEncoder(quality: 86))->toString();
         abort_if($encoded === '', 422, "تعذّرت قراءة الصورة\nاختر صورة أخرى");
         $sha = hash('sha256', $encoded);
         $directory = ($report->created_at ?: now())->format('Y/m');
