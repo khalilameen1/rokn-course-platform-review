@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\InvalidatesCourseCatalogue;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -52,7 +53,7 @@ final class CourseRating extends Model
     /**
      * Get the user who rated the course.
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
@@ -60,7 +61,7 @@ final class CourseRating extends Model
     /**
      * Get the course that was rated.
      */
-    public function course()
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }

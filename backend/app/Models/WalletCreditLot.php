@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class WalletCreditLot extends Model
 {
@@ -45,7 +47,8 @@ final class WalletCreditLot extends Model
         'metadata' => 'array',
     ];
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class)->withTrashed();
     }
@@ -58,12 +61,14 @@ final class WalletCreditLot extends Model
         return $this->belongsTo(Order::class, 'source_order_id')->withTrashed();
     }
 
-    public function creditTransaction()
+    /** @return BelongsTo<WalletTransaction, $this> */
+    public function creditTransaction(): BelongsTo
     {
         return $this->belongsTo(WalletTransaction::class, 'credit_transaction_id');
     }
 
-    public function allocations()
+    /** @return HasMany<WalletDebitAllocation, $this> */
+    public function allocations(): HasMany
     {
         return $this->hasMany(WalletDebitAllocation::class, 'credit_lot_id');
     }

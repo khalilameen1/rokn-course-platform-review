@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class SupportCaseEvent extends Model
 {
@@ -15,12 +16,14 @@ final class SupportCaseEvent extends Model
 
     protected $casts = ['metadata' => 'array', 'created_at' => 'datetime'];
 
-    public function report()
+    /** @return BelongsTo<FeedbackReport, $this> */
+    public function report(): BelongsTo
     {
         return $this->belongsTo(FeedbackReport::class, 'feedback_report_id');
     }
 
-    public function actor()
+    /** @return BelongsTo<User, $this> */
+    public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_id');
     }

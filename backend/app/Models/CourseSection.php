@@ -7,6 +7,8 @@ use App\Traits\InvalidatesCourseCatalogue;
 use App\Traits\ResolvesLocalizedAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CourseSection extends Model
@@ -50,7 +52,7 @@ class CourseSection extends Model
     }
 
     /** Get the learner content owned by this position in the course map. */
-    public function sectionable()
+    public function sectionable(): MorphTo
     {
         return $this->morphTo();
     }
@@ -58,7 +60,7 @@ class CourseSection extends Model
     /**
      * Get the course that owns this section.
      */
-    public function course()
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
@@ -66,7 +68,7 @@ class CourseSection extends Model
     /**
      * Get the module that owns this section (if any).
      */
-    public function module()
+    public function module(): BelongsTo
     {
         return $this->belongsTo(CourseModule::class, 'module_id');
     }
@@ -74,7 +76,7 @@ class CourseSection extends Model
     /**
      * Get the project for this section (if section_type is project).
      */
-    public function project()
+    public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class, 'sectionable_id');
     }

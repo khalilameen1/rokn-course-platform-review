@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class CourseAuthoringRevision extends Model
 {
@@ -39,12 +40,14 @@ final class CourseAuthoringRevision extends Model
         'retain_until' => 'immutable_datetime',
     ];
 
-    public function canonicalCourse()
+    /** @return BelongsTo<Course, $this> */
+    public function canonicalCourse(): BelongsTo
     {
         return $this->belongsTo(Course::class, 'canonical_course_id');
     }
 
-    public function revisionCourse()
+    /** @return BelongsTo<Course, $this> */
+    public function revisionCourse(): BelongsTo
     {
         return $this->belongsTo(Course::class, 'revision_course_id');
     }

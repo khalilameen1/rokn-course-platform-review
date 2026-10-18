@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\CertificateArtworkRenderer;
 use App\Services\CertificateTextTemplateService;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -91,7 +92,8 @@ class Certificate extends Model
         });
     }
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }

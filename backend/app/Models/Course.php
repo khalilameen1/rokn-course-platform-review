@@ -9,6 +9,9 @@ use App\Traits\InvalidatesCourseCatalogue;
 use App\Traits\ResolvesLocalizedAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Course extends Model
@@ -127,7 +130,8 @@ class Course extends Model
         $this->attributes['description_en'] = $value;
     }
 
-    public function sections()
+    /** @return HasMany<CourseSection, $this> */
+    public function sections(): HasMany
     {
         return $this->hasMany(CourseSection::class)->orderBy('order');
     }
@@ -135,27 +139,30 @@ class Course extends Model
     /**
      * Get the modules for this course.
      */
-    public function modules()
+    public function modules(): HasMany
     {
         return $this->hasMany(CourseModule::class)->orderBy('order');
     }
 
-    public function lessons()
+    public function lessons(): HasMany
     {
         return $this->hasMany('App\Models\Lesson', 'list_id', 'id');
     }
 
-    public function grade()
+    /** @return BelongsTo<Grade, $this> */
+    public function grade(): BelongsTo
     {
         return $this->belongsTo(Grade::class);
     }
 
-    public function level()
+    /** @return BelongsTo<Level, $this> */
+    public function level(): BelongsTo
     {
         return $this->belongsTo(Level::class);
     }
 
-    public function socialGroups()
+    /** @return HasMany<SocialGroup, $this> */
+    public function socialGroups(): HasMany
     {
         return $this->hasMany(SocialGroup::class, 'list_id');
     }
@@ -176,7 +183,7 @@ class Course extends Model
     /**
      * Get the PDFs associated with this course.
      */
-    public function pdfs()
+    public function pdfs(): HasMany
     {
         return $this->hasMany(CoursePdf::class)->ordered();
     }
@@ -184,7 +191,7 @@ class Course extends Model
     /**
      * Get active PDFs for this course.
      */
-    public function activePdfs()
+    public function activePdfs(): HasMany
     {
         return $this->hasMany(CoursePdf::class)->active()->ordered();
     }
@@ -192,7 +199,7 @@ class Course extends Model
     /**
      * Get the classifications for this course.
      */
-    public function classifications()
+    public function classifications(): BelongsToMany
     {
         return $this->belongsToMany(Classification::class, 'classification_course');
     }
@@ -200,7 +207,7 @@ class Course extends Model
     /**
      * Get the path associated with this course.
      */
-    public function coursePath()
+    public function coursePath(): BelongsTo
     {
         return $this->belongsTo(Path::class, 'path_id');
     }
@@ -208,13 +215,14 @@ class Course extends Model
     /**
      * Get the ratings for this course.
      */
-    public function ratings()
+    public function ratings(): HasMany
     {
         return $this->hasMany(CourseRating::class)
             ->whereBetween('rating', [1, 5]);
     }
 
-    public function orders()
+    /** @return HasMany<Order, $this> */
+    public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
     }
@@ -246,7 +254,8 @@ class Course extends Model
         return (bool) $this->is_catalog_visible && $this->isPublishedForLearning();
     }
 
-    public function enrollments()
+    /** @return HasMany<CourseEnrollment, $this> */
+    public function enrollments(): HasMany
     {
         return $this->hasMany(CourseEnrollment::class);
     }
@@ -263,7 +272,8 @@ class Course extends Model
             });
     }
 
-    public function accessPlans()
+    /** @return HasMany<CourseAccessPlan, $this> */
+    public function accessPlans(): HasMany
     {
         return $this->hasMany(CourseAccessPlan::class)->orderBy('sort_order');
     }
@@ -299,7 +309,7 @@ class Course extends Model
     /**
      * Get the teachers associated with this course.
      */
-    public function teachers()
+    public function teachers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'course_teacher', 'course_id', 'teacher_id')
                     // Legacy instructors were administrator accounts before a
@@ -313,7 +323,7 @@ class Course extends Model
     /**
      * Get the primary teacher for this course (backward compatibility).
      */
-    public function teacher()
+    public function teacher(): BelongsTo
     {
         return $this->belongsTo(User::class, 'teacher_id');
     }

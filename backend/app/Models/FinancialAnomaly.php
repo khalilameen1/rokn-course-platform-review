@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class FinancialAnomaly extends Model
 {
@@ -28,22 +29,26 @@ final class FinancialAnomaly extends Model
         'resolved_at' => 'datetime',
     ];
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function course()
+    /** @return BelongsTo<Course, $this> */
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
 
-    public function enrollment()
+    /** @return BelongsTo<CourseEnrollment, $this> */
+    public function enrollment(): BelongsTo
     {
         return $this->belongsTo(CourseEnrollment::class);
     }
 
-    public function order()
+    /** @return BelongsTo<Order, $this> */
+    public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
     }

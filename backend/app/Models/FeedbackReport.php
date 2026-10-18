@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class FeedbackReport extends Model
 {
@@ -33,42 +35,50 @@ final class FeedbackReport extends Model
         'version' => 'integer',
     ];
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function course()
+    /** @return BelongsTo<Course, $this> */
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
 
-    public function lesson()
+    /** @return BelongsTo<Lesson, $this> */
+    public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
     }
 
-    public function assignee()
+    /** @return BelongsTo<User, $this> */
+    public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
-    public function attachments()
+    /** @return HasMany<FeedbackAttachment, $this> */
+    public function attachments(): HasMany
     {
         return $this->hasMany(FeedbackAttachment::class);
     }
 
-    public function messages()
+    /** @return HasMany<SupportCaseMessage, $this> */
+    public function messages(): HasMany
     {
         return $this->hasMany(SupportCaseMessage::class);
     }
 
-    public function events()
+    /** @return HasMany<SupportCaseEvent, $this> */
+    public function events(): HasMany
     {
         return $this->hasMany(SupportCaseEvent::class);
     }
 
-    public function order()
+    /** @return BelongsTo<Order, $this> */
+    public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
     }

@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Support\AfterCommitCacheInvalidation;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 
@@ -95,19 +97,21 @@ class Package extends Model
     /**
      * Get the purchases of this package.
      */
-    public function purchases()
+    public function purchases(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'package_user')
             ->withPivot('order_id', 'price', 'coins', 'created_at')
             ->withTimestamps();
     }
 
-    public function storePurchases()
+    /** @return HasMany<StorePurchase, $this> */
+    public function storePurchases(): HasMany
     {
         return $this->hasMany(StorePurchase::class);
     }
 
-    public function orders()
+    /** @return HasMany<Order, $this> */
+    public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class ProjectFeedbackMessage extends Model
 {
@@ -28,12 +29,14 @@ final class ProjectFeedbackMessage extends Model
         'provider_annotations' => 'array',
     ];
 
-    public function thread()
+    /** @return BelongsTo<ProjectFeedbackThread, $this> */
+    public function thread(): BelongsTo
     {
         return $this->belongsTo(ProjectFeedbackThread::class, 'thread_id');
     }
 
-    public function usageEvent()
+    /** @return BelongsTo<AiUsageEvent, $this> */
+    public function usageEvent(): BelongsTo
     {
         return $this->belongsTo(AiUsageEvent::class, 'usage_event_id');
     }

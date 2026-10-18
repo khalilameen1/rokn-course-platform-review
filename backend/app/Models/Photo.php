@@ -40,10 +40,8 @@ class Photo extends Model
 
     /**
      * Gets the owning models.
-     *
-     * @return MorphTo
      */
-    public function photoable()
+    public function photoable(): MorphTo
     {
         return $this->morphTo();
     }

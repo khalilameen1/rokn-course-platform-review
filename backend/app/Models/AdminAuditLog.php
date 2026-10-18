@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class AdminAuditLog extends Model
 {
@@ -17,7 +18,8 @@ final class AdminAuditLog extends Model
         'occurred_at' => 'datetime',
     ];
 
-    public function actor()
+    /** @return BelongsTo<User, $this> */
+    public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_id')->withTrashed();
     }

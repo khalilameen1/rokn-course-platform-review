@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property string|null $playback_session_id
@@ -38,22 +39,26 @@ class WatchingLog extends Model
         'completed_at' => 'datetime',
     ];
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function lesson()
+    /** @return BelongsTo<Lesson, $this> */
+    public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
     }
 
-    public function course()
+    /** @return BelongsTo<Course, $this> */
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
 
-    public function courseSection()
+    /** @return BelongsTo<CourseSection, $this> */
+    public function courseSection(): BelongsTo
     {
         return $this->belongsTo(CourseSection::class);
     }

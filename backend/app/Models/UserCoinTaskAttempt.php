@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class UserCoinTaskAttempt extends Model
 {
@@ -30,12 +31,14 @@ class UserCoinTaskAttempt extends Model
         'metadata' => 'array',
     ];
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function method()
+    /** @return BelongsTo<CoinEarningMethod, $this> */
+    public function method(): BelongsTo
     {
         return $this->belongsTo(CoinEarningMethod::class, 'coin_earning_method_id');
     }

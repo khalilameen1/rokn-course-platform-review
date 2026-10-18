@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class WalletDebitAllocation extends Model
 {
@@ -22,17 +23,20 @@ final class WalletDebitAllocation extends Model
         'allocated_at' => 'datetime',
     ];
 
-    public function walletTransaction()
+    /** @return BelongsTo<WalletTransaction, $this> */
+    public function walletTransaction(): BelongsTo
     {
         return $this->belongsTo(WalletTransaction::class);
     }
 
-    public function creditLot()
+    /** @return BelongsTo<WalletCreditLot, $this> */
+    public function creditLot(): BelongsTo
     {
         return $this->belongsTo(WalletCreditLot::class, 'credit_lot_id');
     }
 
-    public function courseOrder()
+    /** @return BelongsTo<Order, $this> */
+    public function courseOrder(): BelongsTo
     {
         return $this->belongsTo(Order::class, 'course_order_id');
     }

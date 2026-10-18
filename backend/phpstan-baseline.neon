@@ -1,39 +1,15 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$last_used_at\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Auth/ApiTokenGuard.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$user_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Auth/ApiTokenGuard.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'
 			identifier: property.notFound
 			count: 2
 			path: app/Console/Commands/ActivateWatchOnlyBasic.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$bill\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$payment_status\.$#'
 			identifier: property.notFound
-			count: 3
-			path: app/Console/Commands/AuditOrderState.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Console/Commands/AuditOrderState.php
-
-		-
-			message: '#^Relation ''bill'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
+			count: 2
 			path: app/Console/Commands/AuditOrderState.php
 
 		-
@@ -43,33 +19,21 @@ parameters:
 			path: app/Console/Commands/AuditOrderState.php
 
 		-
-			message: '#^Relation ''package'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Console/Commands/AuditOrderState.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Console/Commands/AuditOrderState.php
-
-		-
-			message: '#^Relation ''portfolioItems'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Console/Commands/DispatchPendingPortfolioCleanup.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Order\:\:\$provider\.$#'
 			identifier: property.notFound
 			count: 6
 			path: app/Console/Commands/FinishedOrders.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$user\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$access_token\.$#'
 			identifier: property.notFound
-			count: 6
+			count: 2
+			path: app/Console/Commands/FinishedOrders.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$device_os\.$#'
+			identifier: property.notFound
+			count: 2
 			path: app/Console/Commands/FinishedOrders.php
 
 		-
@@ -103,42 +67,6 @@ parameters:
 			path: app/Console/Commands/ProductionPreflight.php
 
 		-
-			message: '#^Relation ''accessPlan'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Console/Commands/ReconcileFinancialAnomalies.php
-
-		-
-			message: '#^Relation ''accessPlanOrder'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Console/Commands/ReconcileFinancialAnomalies.php
-
-		-
-			message: '#^Relation ''order'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Console/Commands/ReconcileFinancialAnomalies.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Console/Commands/RecoverPendingLessonMedia.php
-
-		-
-			message: '#^Relation ''mediaState'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Console/Commands/RecoverPendingLessonMedia.php
-
-		-
-			message: '#^Relation ''messages'' is not found in App\\Models\\ProjectSubmission model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Console/Commands/RecoverStalledAiFeedback.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\CourseCheckout\:\:\$resume_attempts\.$#'
 			identifier: property.notFound
 			count: 1
@@ -151,38 +79,32 @@ parameters:
 			path: app/Console/Commands/RetryStalledNotificationPushes.php
 
 		-
-			message: '#^Relation ''pushDeliveries'' is not found in App\\Models\\StudentNotification model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
 			count: 4
-			path: app/Console/Commands/RetryStalledNotificationPushes.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 2
 			path: app/Console/Commands/SendLearningNudges.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$enrollments\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_ar\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Console/Commands/SendLearningNudges.php
 
 		-
-			message: '#^Relation ''enrollments'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Console/Commands/SendLearningNudges.php
-
-		-
-			message: '#^Relation ''lessonWatchEvidence'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_en\.$#'
+			identifier: property.notFound
 			count: 1
 			path: app/Console/Commands/SendLearningNudges.php
 
 		-
-			message: '#^Relation ''sectionProgress'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isPublishedForLearning\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Console/Commands/SendLearningNudges.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:first\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\CourseEnrollment\)\: bool given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Console/Commands/SendLearningNudges.php
 
@@ -223,174 +145,6 @@ parameters:
 			path: app/Helpers/functions.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ProjectFeedbackMessage\:\:\$thread\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/AiContentReportController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/API/AiContentReportController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:lockForUpdate\(\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/API/AiContentReportController.php
-
-		-
-			message: '#^Relation ''thread'' is not found in App\\Models\\ProjectFeedbackMessage model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/API/AiContentReportController.php
-
-		-
-			message: '#^Relation ''courseSection'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/BunnyStreamWebhookController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CoinEarningMethod\:\:\$campaign_key\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CoinEarningMethodController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CoinEarningMethod\:\:\$completed_by_learner\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CoinEarningMethodController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CoinEarningMethod\:\:\$is_consumed\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CoinEarningMethodController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CoinEarningMethod\:\:\$task_state\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CoinEarningMethodController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CoinEarningMethod\:\:\$total_claim_limit\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/CoinEarningMethodController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CoinEarningMethod\:\:\$user_earnings_count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CoinEarningMethodController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasOne\:\:verified\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: app/Http/Controllers/API/CoinEarningMethodController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 2
-			path: app/Http/Controllers/API/CoinEarningMethodController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:lockForUpdate\(\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 4
-			path: app/Http/Controllers/API/CoinEarningMethodController.php
-
-		-
-			message: '#^Relation ''userEarnings'' is not found in App\\Models\\CoinEarningMethod model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/API/CoinEarningMethodController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>amount" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/CoinEarningMethodController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/CoinEarningMethodController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Bill\:\:\$order\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CourseAuthorizationController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$approvedBy\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CourseAuthorizationController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$coupon\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CourseAuthorizationController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CourseAuthorizationController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$courseCode\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CourseAuthorizationController.php
-
-		-
-			message: '#^Relation ''approvedBy'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/CourseAuthorizationController.php
-
-		-
-			message: '#^Relation ''bill'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/CourseAuthorizationController.php
-
-		-
-			message: '#^Relation ''coupon'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/CourseAuthorizationController.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/CourseAuthorizationController.php
-
-		-
-			message: '#^Relation ''courseCode'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/CourseAuthorizationController.php
-
-		-
-			message: '#^Relation ''order'' is not found in App\\Models\\Bill model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/CourseAuthorizationController.php
-
-		-
 			message: '#^Negated boolean expression is always false\.$#'
 			identifier: booleanNot.alwaysFalse
 			count: 1
@@ -409,63 +163,39 @@ parameters:
 			path: app/Http/Controllers/API/CourseChatController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CourseChatUpgradeController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/API/CourseChatUpgradeController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:sharedLock\(\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/API/CourseChatUpgradeController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>minimum_paid_coins" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/CourseChatUpgradeController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CourseCode\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 7
-			path: app/Http/Controllers/API/CourseCodeController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CourseCode\:\:\$lesson\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$description_ar\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Controllers/API/CourseCodeController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseCode\:\:\$usages\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 6
+			path: app/Http/Controllers/API/CourseCodeController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_ar\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Http/Controllers/API/CourseCodeController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Controllers/API/CourseCodeController.php
 
 		-
-			message: '#^Relation ''course'' is not found in App\\Models\\CourseCode model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$used_at\.$#'
+			identifier: property.notFound
 			count: 1
 			path: app/Http/Controllers/API/CourseCodeController.php
 
 		-
-			message: '#^Relation ''lesson'' is not found in App\\Models\\CourseCode model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\CourseCode\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
 			count: 1
-			path: app/Http/Controllers/API/CourseCodeController.php
-
-		-
-			message: '#^Relation ''usages'' is not found in App\\Models\\CourseCode model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
 			path: app/Http/Controllers/API/CourseCodeController.php
 
 		-
@@ -475,106 +205,10 @@ parameters:
 			path: app/Http/Controllers/API/CoursePdfController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'
-			identifier: property.notFound
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\<string, mixed\>, Closure\(App\\Models\\CoursePdf\)\: array\<string, mixed\> given\.$#'
+			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/API/CoursePurchaseController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/API/CoursePurchaseController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:sharedLock\(\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/API/CoursePurchaseController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>amount" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/CoursePurchaseController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>discount_amount" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/CoursePurchaseController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/CoursePurchaseController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>paid_coins" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/CoursePurchaseController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>reward_coins" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/CoursePurchaseController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>total_coins" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/CoursePurchaseController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CourseRating\:\:\$average_rating\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CourseRatingController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CourseRating\:\:\$ratings_count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CourseRatingController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CourseRating\:\:\$version\.$#'
-			identifier: property.notFound
-			count: 6
-			path: app/Http/Controllers/API/CourseRatingController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 2
-			path: app/Http/Controllers/API/CourseRatingController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:lockForUpdate\(\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 5
-			path: app/Http/Controllers/API/CourseRatingController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>ratings_count" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/CourseRatingController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>version" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 2
-			path: app/Http/Controllers/API/CourseRatingController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/API/EngagementController.php
+			path: app/Http/Controllers/API/CoursePdfController.php
 
 		-
 			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\User\|null given\.$#'
@@ -625,129 +259,45 @@ parameters:
 			path: app/Http/Controllers/API/OperationalHealthController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Path\:\:\$courses\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/API/PathController.php
-
-		-
-			message: '#^Relation ''courses'' is not found in App\\Models\\Path model\.$#'
-			identifier: larastan.relationExistence
-			count: 4
-			path: app/Http/Controllers/API/PathController.php
-
-		-
-			message: '#^Relation ''interests'' is not found in App\\Models\\Path model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Parameter \#1 \$courses of method App\\Services\\CourseDurationService\:\:attachMany\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\Course\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 2
 			path: app/Http/Controllers/API/PathController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\PortfolioItem\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/PortfolioController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Project\:\:\$section\.$#'
-			identifier: property.notFound
-			count: 5
-			path: app/Http/Controllers/API/PortfolioController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ProjectSubmission\:\:\$project\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/PortfolioController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 2
-			path: app/Http/Controllers/API/PortfolioController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:lockForUpdate\(\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 3
-			path: app/Http/Controllers/API/PortfolioController.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\PortfolioItem model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/PortfolioController.php
-
-		-
-			message: '#^Relation ''mediaFiles'' is not found in App\\Models\\PortfolioItem model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/PortfolioController.php
-
-		-
-			message: '#^Relation ''section'' is not found in App\\Models\\Project model\.$#'
-			identifier: larastan.relationExistence
-			count: 4
-			path: app/Http/Controllers/API/PortfolioController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>requirements_text" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/PortfolioController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/API/PortfolioProfileController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:lockForUpdate\(\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/API/PortfolioProfileController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$profile_revision\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/ProfileController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 2
-			path: app/Http/Controllers/API/ProfileController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:lockForUpdate\(\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 2
-			path: app/Http/Controllers/API/ProfileController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Project\:\:\$section\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course\.$#'
 			identifier: property.notFound
 			count: 2
 			path: app/Http/Controllers/API/ProjectController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Project\|Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), App\\Models\\Project\>\:\:\$section\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/ProjectController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
 			count: 1
 			path: app/Http/Controllers/API/ProjectController.php
 
 		-
-			message: '#^Relation ''section'' is not found in App\\Models\\Project model\.$#'
-			identifier: larastan.relationExistence
-			count: 3
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$module\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/API/ProjectController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/API/ProjectController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/API/ProjectController.php
+
+		-
+			message: '#^Parameter \#2 \$section of method App\\Services\\CourseSectionAccessService\:\:canAccessSection\(\) expects App\\Models\\CourseSection, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
 			path: app/Http/Controllers/API/ProjectController.php
 
 		-
@@ -757,46 +307,10 @@ parameters:
 			path: app/Http/Controllers/API/PublicContentController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\SavedFolder\:\:\$lessons_count\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/SavedSectionController.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\:\:getCollection\(\)\.$#'
 			identifier: method.notFound
 			count: 2
 			path: app/Http/Controllers/API/SavedSectionController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$auth_provider\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/SignController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$auth_provider_user_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/SignController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$device_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/SignController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$issued_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/SignController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/API/SignController.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>recommended_provider_badge_ar" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -811,223 +325,13 @@ parameters:
 			path: app/Http/Controllers/API/SignController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Contact\:\:\$request_fingerprint\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/TasksController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/API/TasksController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$app_build\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$app_version\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$device_class\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$device_id\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$expired_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$issued_at\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$last_used_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$platform\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$session_id\.$#'
-			identifier: property.notFound
-			count: 7
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$user_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Anonymous function with return type void returns null but should not return anything\.$#'
-			identifier: return.void
-			count: 2
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 2
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:lockForUpdate\(\) \(as Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:lockForUpdate\(\)\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:lockForUpdate\(\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:each\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: mixed, Closure\(App\\Models\\ApiToken\)\: void given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:first\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\ApiToken\)\: bool given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Parameter \#1 \$groupBy of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:groupBy\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: non\-falsy\-string\)\|list\<Closure\|string\>\|string, Closure\(App\\Models\\ApiToken\)\: non\-falsy\-string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/UserSessionController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\|Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), App\\Models\\Lesson\>\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\|Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), App\\Models\\Lesson\>\:\:\$courseSection\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\WatchingLog\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\WatchingLog\:\:\$courseSection\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\WatchingLog\:\:\$last_playback_sequence\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\WatchingLog\:\:\$lesson\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\WatchingLog\:\:\$playback_session_id\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 2
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:lockForUpdate\(\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 3
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
 			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
 			identifier: greater.alwaysTrue
 			count: 1
 			path: app/Http/Controllers/API/WatchHistoryController.php
 
 		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\WatchingLog model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Relation ''courseSection'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Relation ''courseSection'' is not found in App\\Models\\WatchingLog model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Relation ''lesson'' is not found in App\\Models\\WatchingLog model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Relation ''mediaState'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Relation ''sections'' is not found in App\\Models\\WatchingLog model\.$#'
+			message: '#^Relation ''photo'' is not found in App\\Models\\Course model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
 			path: app/Http/Controllers/API/WatchHistoryController.php
@@ -1035,29 +339,11 @@ parameters:
 		-
 			message: '#^Using nullsafe property access "\?\-\>duration_seconds" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
-			count: 2
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 3
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>last_heartbeat_at" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Http/Controllers/API/WatchHistoryController.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>name_ar" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 2
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name_en" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Http/Controllers/API/WatchHistoryController.php
@@ -1069,20 +355,8 @@ parameters:
 			path: app/Http/Controllers/API/WatchHistoryController.php
 
 		-
-			message: '#^Variable \$duration on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.variable
-			count: 1
-			path: app/Http/Controllers/API/WatchHistoryController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$verified_at\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/WhatsAppConnectionController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
 			count: 1
 			path: app/Http/Controllers/API/WhatsAppConnectionController.php
 
@@ -1115,18 +389,6 @@ parameters:
 			identifier: argument.type
 			count: 2
 			path: app/Http/Controllers/API/WhatsAppConnectionController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/Admin/AboutsController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:lockForUpdate\(\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/Admin/AboutsController.php
 
 		-
 			message: '#^Relation ''photo'' is not found in App\\Models\\AdminNotification model\.$#'
@@ -1193,30 +455,6 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: app/Http/Controllers/Admin/CoinEarningMethodController.php
-
-		-
-			message: '#^Relation ''resolvedUser'' is not found in App\\Models\\Contact model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Admin/ContactsController.php
-
-		-
-			message: '#^Relation ''resolver'' is not found in App\\Models\\Contact model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Admin/ContactsController.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Coupon model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Admin/CouponController.php
-
-		-
-			message: '#^Relation ''redemptions'' is not found in App\\Models\\Coupon model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Admin/CouponController.php
 
 		-
 			message: '#^Call to an undefined method Barryvdh\\DomPDF\\PDF\:\:setAuthor\(\)\.$#'
@@ -1291,18 +529,6 @@ parameters:
 			path: app/Http/Controllers/Admin/CourseCodeController.php
 
 		-
-			message: '#^Relation ''course'' is not found in App\\Models\\CourseCode model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Admin/CourseCodeController.php
-
-		-
-			message: '#^Relation ''lesson'' is not found in App\\Models\\CourseCode model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Admin/CourseCodeController.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1321,6 +547,18 @@ parameters:
 			path: app/Http/Controllers/Admin/CoursePdfController.php
 
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/CoursePdfController.php
+
+		-
+			message: '#^Parameter \#2 \$pdf of method App\\Services\\AdminCoursePdfPresenter\:\:one\(\) expects App\\Models\\CoursePdf, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Admin/CoursePdfController.php
+
+		-
 			message: '#^Parameter \#4 \$parents of method App\\Services\\AdminAuthoringCreateIntentService\:\:resourceReceipt\(\) expects array\<string, int\|string\>, array\<string, App\\Models\\Course\> given\.$#'
 			identifier: argument.type
 			count: 1
@@ -1333,45 +571,9 @@ parameters:
 			path: app/Http/Controllers/Admin/CourseSectionController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseSection\:\:\$sectionable\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/CourseSectionController.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\FeedbackAttachment\:\:\$scan_status\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$assignee\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$attachments\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$messages\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$order\.$#'
-			identifier: property.notFound
-			count: 2
 			path: app/Http/Controllers/Admin/FeedbackController.php
 
 		-
@@ -1384,66 +586,6 @@ parameters:
 			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$requester_email\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\SupportCaseMessage\:\:\$attachments\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Relation ''assignee'' is not found in App\\Models\\FeedbackReport model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Relation ''attachments'' is not found in App\\Models\\FeedbackReport model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\FeedbackReport model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Relation ''events'' is not found in App\\Models\\FeedbackReport model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Relation ''lesson'' is not found in App\\Models\\FeedbackReport model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Relation ''messages'' is not found in App\\Models\\FeedbackReport model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Relation ''order'' is not found in App\\Models\\FeedbackReport model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\FeedbackReport model\.$#'
-			identifier: larastan.relationExistence
-			count: 3
 			path: app/Http/Controllers/Admin/FeedbackController.php
 
 		-
@@ -1483,24 +625,6 @@ parameters:
 			path: app/Http/Controllers/Admin/LevelController.php
 
 		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 3
-			path: app/Http/Controllers/Admin/MfaController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:lockForUpdate\(\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 3
-			path: app/Http/Controllers/Admin/MfaController.php
-
-		-
-			message: '#^Parameter \#1 \$boolean of function abort_if expects bool, Carbon\\Carbon\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Admin/MfaController.php
-
-		-
 			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\User\|null given\.$#'
 			identifier: argument.type
 			count: 5
@@ -1525,22 +649,10 @@ parameters:
 			path: app/Http/Controllers/Admin/OperatingCostPoolController.php
 
 		-
-			message: '#^Relation ''course'' is not found in App\\Models\\OperatingCostPool model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/Admin/OperatingCostPoolController.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Http/Controllers/Admin/OperatingCostPoolController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$package\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/OrdersController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Order\:\:\$payment_operation_label\.$#'
@@ -1549,9 +661,33 @@ parameters:
 			path: app/Http/Controllers/Admin/OrdersController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$user\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
 			identifier: property.notFound
-			count: 3
+			count: 1
+			path: app/Http/Controllers/Admin/OrdersController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/OrdersController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_ar\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/OrdersController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/OrdersController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$phone\.$#'
+			identifier: property.notFound
+			count: 1
 			path: app/Http/Controllers/Admin/OrdersController.php
 
 		-
@@ -1657,39 +793,9 @@ parameters:
 			path: app/Http/Controllers/Admin/PathController.php
 
 		-
-			message: '#^Relation ''interests'' is not found in App\\Models\\Path model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Admin/PathController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/Admin/PlaybackOperationsController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:lockForUpdate\(\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/Admin/PlaybackOperationsController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\User\>\:\:shareable\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/PortfolioPreviewController.php
-
-		-
 			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\PortfolioMedia\|null given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/Admin/PortfolioPreviewController.php
-
-		-
-			message: '#^Relation ''portfolioItems'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
 			path: app/Http/Controllers/Admin/PortfolioPreviewController.php
 
 		-
@@ -1753,36 +859,6 @@ parameters:
 			path: app/Http/Controllers/Admin/TeacherController.php
 
 		-
-			message: '#^Relation ''teachingCourses'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Admin/TeacherController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$device_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/UserSessionController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$user_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/UserSessionController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/Admin/UserSessionController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:lockForUpdate\(\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/Admin/UserSessionController.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -1819,18 +895,6 @@ parameters:
 			path: app/Http/Controllers/HomeController.php
 
 		-
-			message: '#^Calling Illuminate\\Database\\Connection\:\:transaction\(\) \(as Illuminate\\Support\\Facades\\DB\:\:transaction\(\)\) is forbidden, controllers delegate; transactions live in the owning service \(ARCHITECTURE\.md B1\)\.$#'
-			identifier: disallowed.method
-			count: 2
-			path: app/Http/Controllers/PortfolioReportController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:lockForUpdate\(\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/PortfolioReportController.php
-
-		-
 			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, array\|null given\.$#'
 			identifier: argument.type
 			count: 1
@@ -1861,18 +925,6 @@ parameters:
 			path: app/Http/Controllers/PublicCertificateController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Certificate\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/PublicCertificateController.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\Certificate model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/PublicCertificateController.php
-
-		-
 			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -1889,12 +941,6 @@ parameters:
 			identifier: identical.alwaysTrue
 			count: 1
 			path: app/Http/Controllers/PublicPortfolioMediaController.php
-
-		-
-			message: '#^Calling Illuminate\\Database\\Eloquent\\Builder\:\:lockForUpdate\(\) is forbidden, controllers delegate; locks live in the owning service \(ARCHITECTURE\.md B1, B4\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: app/Http/Controllers/WebWalletAuthController.php
 
 		-
 			message: '#^PHPDoc type array of property App\\Http\\Kernel\:\:\$middleware is not covariant with PHPDoc type array\<int, string\> of overridden property Illuminate\\Foundation\\Http\\Kernel\:\:\$middleware\.$#'
@@ -2251,13 +1297,19 @@ parameters:
 			path: app/Http/Resources/BaseCourseResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseSection\:\:\$sectionable\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Resources/BaseCourseResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$mediaState\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_opened\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/BaseCourseResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$thumbnail_path\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Resources/BaseCourseResource.php
@@ -2269,8 +1321,26 @@ parameters:
 			path: app/Http/Resources/BaseCourseResource.php
 
 		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:hasReadyMediaState\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Resources/BaseCourseResource.php
+
+		-
 			message: '#^Method App\\Http\\Resources\\BaseCourseResource\:\:getBasicSectionContent\(\) should return array but returns null\.$#'
 			identifier: return.type
+			count: 1
+			path: app/Http/Resources/BaseCourseResource.php
+
+		-
+			message: '#^Parameter \#1 \$lesson of method App\\Http\\Resources\\BaseCourseResource\:\:lessonDurationSeconds\(\) expects App\\Models\\Lesson, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Resources/BaseCourseResource.php
+
+		-
+			message: '#^Parameter \#1 \$lesson of method App\\Services\\LessonMediaDeliveryService\:\:forLesson\(\) expects App\\Models\\Lesson, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Http/Resources/BaseCourseResource.php
 
@@ -2677,13 +1747,25 @@ parameters:
 			path: app/Http/Resources/CourseResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseRating\:\:\$version\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 2
 			path: app/Http/Resources/CourseResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseSection\:\:\$sectionable\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_opened\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CourseResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$submission_text_enabled\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CourseResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$thumbnail_path\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Resources/CourseResource.php
@@ -2695,6 +1777,12 @@ parameters:
 			path: app/Http/Resources/CourseResource.php
 
 		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:hasReadyMediaState\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Resources/CourseResource.php
+
+		-
 			message: '#^If condition is always true\.$#'
 			identifier: if.alwaysTrue
 			count: 2
@@ -2703,6 +1791,30 @@ parameters:
 		-
 			message: '#^Method App\\Http\\Resources\\CourseResource\:\:getFullSectionContent\(\) should return array but returns null\.$#'
 			identifier: return.type
+			count: 1
+			path: app/Http/Resources/CourseResource.php
+
+		-
+			message: '#^Parameter \#1 \$lesson of method App\\Http\\Resources\\BaseCourseResource\:\:lessonDurationSeconds\(\) expects App\\Models\\Lesson, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Resources/CourseResource.php
+
+		-
+			message: '#^Parameter \#1 \$lesson of method App\\Services\\LessonMediaDeliveryService\:\:forLesson\(\) expects App\\Models\\Lesson, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Resources/CourseResource.php
+
+		-
+			message: '#^Parameter \#1 \$project of method App\\Services\\ProjectSubmissionFilePolicy\:\:allowedMimeTypes\(\) expects App\\Models\\Project\|null, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Resources/CourseResource.php
+
+		-
+			message: '#^Parameter \#1 \$project of static method App\\Services\\ProjectSubmissionFilePolicy\:\:maximumFiles\(\) expects App\\Models\\Project, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Http/Resources/CourseResource.php
 
@@ -4195,12 +3307,6 @@ parameters:
 			path: app/Jobs/DeliverStudentNotificationChunk.php
 
 		-
-			message: '#^Relation ''enrollments'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Jobs/DeliverStudentNotificationChunk.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>inbox_count" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -4225,20 +3331,8 @@ parameters:
 			path: app/Jobs/GenerateCourseChatReply.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ProjectSubmission\:\:\$feedbackThread\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateProjectFeedback.php
-
-		-
 			message: '#^Left side of && is always true\.$#'
 			identifier: booleanAnd.leftAlwaysTrue
-			count: 1
-			path: app/Jobs/GenerateProjectFeedback.php
-
-		-
-			message: '#^Relation ''project'' is not found in App\\Models\\ProjectSubmission model\.$#'
-			identifier: larastan.relationExistence
 			count: 1
 			path: app/Jobs/GenerateProjectFeedback.php
 
@@ -4261,27 +3355,9 @@ parameters:
 			path: app/Jobs/GenerateProjectFeedback.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ProjectFeedbackMessage\:\:\$thread\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Jobs/GenerateProjectFeedbackReply.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ProjectFeedbackThread\:\:\$submission\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateProjectFeedbackReply.php
-
-		-
 			message: '#^Left side of && is always true\.$#'
 			identifier: booleanAnd.leftAlwaysTrue
 			count: 2
-			path: app/Jobs/GenerateProjectFeedbackReply.php
-
-		-
-			message: '#^Relation ''thread'' is not found in App\\Models\\ProjectFeedbackMessage model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
 			path: app/Jobs/GenerateProjectFeedbackReply.php
 
 		-
@@ -4291,22 +3367,10 @@ parameters:
 			path: app/Jobs/GenerateProjectFeedbackReply.php
 
 		-
-			message: '#^Using nullsafe property access on non\-nullable type mixed\. Use \-\> instead\.$#'
+			message: '#^Using nullsafe property access on non\-nullable type App\\Models\\ProjectSubmission\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 3
 			path: app/Jobs/GenerateProjectFeedbackReply.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ProbeLessonMedia.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Jobs/ProbeLessonMedia.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Certificate\:\:\$recovery_attempts\.$#'
@@ -4319,30 +3383,6 @@ parameters:
 			identifier: property.notFound
 			count: 2
 			path: app/Jobs/RecoverPendingCertificate.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\FinancialAnomaly\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Jobs/SendFinancialAnomalyAlert.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\FinancialAnomaly\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/SendFinancialAnomalyAlert.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\FinancialAnomaly model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Jobs/SendFinancialAnomalyAlert.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\FinancialAnomaly model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Jobs/SendFinancialAnomalyAlert.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$active\.$#'
@@ -4493,12 +3533,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Models/AdminNotification.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApiToken\:\:\$expired_at\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Models/ApiToken.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Bank\:\:\$content_ar\.$#'
@@ -4729,12 +3763,6 @@ parameters:
 			path: app/Models/CoinEarningMethod.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CoinEarningMethod\:\:\$total_claim_limit\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Models/CoinEarningMethod.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Coupon\:\:\$car_licence\.$#'
 			identifier: property.notFound
 			count: 1
@@ -4879,14 +3907,8 @@ parameters:
 			path: app/Models/Course.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$ratings\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Models/Course.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$sections\.$#'
-			identifier: property.notFound
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:students\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: app/Models/Course.php
 
@@ -4897,15 +3919,27 @@ parameters:
 			path: app/Models/CourseAccessPlan.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseCode\:\:\$course\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Models/CourseCode.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseCode\:\:\$lesson\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_ar\.$#'
 			identifier: property.notFound
-			count: 3
+			count: 1
+			path: app/Models/CourseCode.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/CourseCode.php
+
+		-
+			message: '#^Right side of && is always false\.$#'
+			identifier: booleanAnd.rightAlwaysFalse
+			count: 1
 			path: app/Models/CourseCode.php
 
 		-
@@ -4915,20 +3949,14 @@ parameters:
 			path: app/Models/CourseEnrollment.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseModule\:\:\$projectSection\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$project\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Models/CourseModule.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseRating\:\:\$version\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/CourseRating.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CourseSection\:\:\$project\.$#'
-			identifier: property.notFound
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:userPassed\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: app/Models/CourseSection.php
 
@@ -4937,12 +3965,6 @@ parameters:
 			identifier: new.static
 			count: 1
 			path: app/Models/DesignSetting.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$mediaState\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Lesson.php
 
 		-
 			message: '#^Call to an undefined static method App\\Models\\Lesson\:\:restored\(\)\.$#'
@@ -5101,9 +4123,15 @@ parameters:
 			path: app/Models/PortfolioMedia.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Project\:\:\$section\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$module\.$#'
+			identifier: property.notFound
+			count: 1
 			path: app/Models/Project.php
 
 		-
@@ -5209,6 +4237,12 @@ parameters:
 			path: app/Models/User.php
 
 		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:completed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/User.php
+
+		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:unread\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -5263,22 +4297,10 @@ parameters:
 			path: app/Services/AcquisitionRewardTombstoneService.php
 
 		-
-			message: '#^Relation ''actor'' is not found in App\\Models\\AdminAuditLog model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminAuditLogReadService.php
-
-		-
 			message: '#^Parameter \#1 \$boolean of function abort_if expects bool, Carbon\\Carbon\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Services/AdminBunnyCleanupReviewService.php
-
-		-
-			message: '#^Relation ''courses'' is not found in App\\Models\\Classification model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminClassificationReadService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Coupon\:\:\$course_id\.$#'
@@ -5383,18 +4405,6 @@ parameters:
 			path: app/Services/AdminCourseCodeReadService.php
 
 		-
-			message: '#^Relation ''course'' is not found in App\\Models\\CourseCode model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
-
-		-
-			message: '#^Relation ''lesson'' is not found in App\\Models\\CourseCode model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'
 			identifier: property.notFound
 			count: 1
@@ -5419,38 +4429,14 @@ parameters:
 			path: app/Services/AdminCourseOutlinePresenter.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$modules\.$#'
-			identifier: property.notFound
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\<string, mixed\>, Closure\(App\\Models\\CourseModule\)\: array\<string, mixed\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Services/AdminCourseOutlinePresenter.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseModule\:\:\$sections\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseOutlinePresenter.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CourseSection\:\:\$sectionable\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseOutlinePresenter.php
-
-		-
-			message: '#^Relation ''modules'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminCourseOutlinePresenter.php
-
-		-
-			message: '#^Relation ''sectionable'' is not found in App\\Models\\CourseSection model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminCourseOutlinePresenter.php
-
-		-
-			message: '#^Relation ''sections'' is not found in App\\Models\\CourseModule model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\<string, mixed\>, Closure\(App\\Models\\CourseSection\)\: array\<string, mixed\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Services/AdminCourseOutlinePresenter.php
 
@@ -5473,27 +4459,9 @@ parameters:
 			path: app/Services/AdminCourseOutlinePresenter.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$accessPlans\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCoursePageService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$active_enrollments_count\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Services/AdminCoursePageService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$modules\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCoursePageService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$pdfs\.$#'
-			identifier: property.notFound
-			count: 2
 			path: app/Services/AdminCoursePageService.php
 
 		-
@@ -5503,51 +4471,27 @@ parameters:
 			path: app/Services/AdminCoursePageService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$teachers\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$sections\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/AdminCoursePageService.php
 
 		-
-			message: '#^Relation ''accessPlans'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\User\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/AdminCoursePageService.php
+
+		-
+			message: '#^Parameter \#2 \$pdf of method App\\Services\\AdminCoursePdfPresenter\:\:one\(\) expects App\\Models\\CoursePdf, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
 			path: app/Services/AdminCoursePageService.php
 
 		-
 			message: '#^Relation ''activeEnrollments'' is not found in App\\Models\\Course model\.$#'
 			identifier: larastan.relationExistence
 			count: 2
-			path: app/Services/AdminCoursePageService.php
-
-		-
-			message: '#^Relation ''classifications'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 3
-			path: app/Services/AdminCoursePageService.php
-
-		-
-			message: '#^Relation ''lessons'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminCoursePageService.php
-
-		-
-			message: '#^Relation ''level'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminCoursePageService.php
-
-		-
-			message: '#^Relation ''modules'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminCoursePageService.php
-
-		-
-			message: '#^Relation ''pdfs'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
 			path: app/Services/AdminCoursePageService.php
 
 		-
@@ -5558,24 +4502,6 @@ parameters:
 
 		-
 			message: '#^Relation ''photo'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminCoursePageService.php
-
-		-
-			message: '#^Relation ''ratings'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 4
-			path: app/Services/AdminCoursePageService.php
-
-		-
-			message: '#^Relation ''sections'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminCoursePageService.php
-
-		-
-			message: '#^Relation ''teachers'' is not found in App\\Models\\Course model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/AdminCoursePageService.php
@@ -5593,10 +4519,16 @@ parameters:
 			path: app/Services/AdminCoursePdfApplicationService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$accessPlans\.$#'
-			identifier: property.notFound
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:first\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\CoursePdf\)\: bool given\.$#'
+			identifier: argument.type
 			count: 1
-			path: app/Services/AdminCourseReportService.php
+			path: app/Services/AdminCoursePdfApplicationService.php
+
+		-
+			message: '#^Parameter \#2 \$pdf of method App\\Services\\AdminCoursePdfPresenter\:\:one\(\) expects App\\Models\\CoursePdf, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/AdminCoursePdfApplicationService.php
 
 		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|\(callable\(stdClass, int\)\: bool\)\|null, Closure\(App\\Models\\Order\)\: bool given\.$#'
@@ -5619,12 +4551,6 @@ parameters:
 		-
 			message: '#^Parameter \#1 \$orders of method App\\Services\\CourseFinancialLedgerReportService\:\:allocationsForOrders\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\Order\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Support\\Collection\<int, stdClass\> given\.$#'
 			identifier: argument.type
-			count: 1
-			path: app/Services/AdminCourseReportService.php
-
-		-
-			message: '#^Relation ''accessPlan'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/AdminCourseReportService.php
 
@@ -5671,28 +4597,10 @@ parameters:
 			path: app/Services/AdminCourseReportService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseSection\:\:\$sectionable\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseSectionApplicationService.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 2
 			path: app/Services/AdminCourseSectionApplicationService.php
-
-		-
-			message: '#^Relation ''orders'' is not found in App\\Models\\Package model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminEconomyReadService.php
-
-		-
-			message: '#^Relation ''userEarnings'' is not found in App\\Models\\CoinEarningMethod model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminEconomyReadService.php
 
 		-
 			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
@@ -5721,12 +4629,6 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Course\>\:\:orWhereKey\(\)\.$#'
 			identifier: method.notFound
-			count: 1
-			path: app/Services/AdminNotificationCampaignReadService.php
-
-		-
-			message: '#^Relation ''notifications'' is not found in App\\Models\\NotificationCampaign model\.$#'
-			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/AdminNotificationCampaignReadService.php
 
@@ -5803,30 +4705,6 @@ parameters:
 			path: app/Services/AdminPackageAuthoringService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Path\:\:\$interests\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminPathReadService.php
-
-		-
-			message: '#^Relation ''interests'' is not found in App\\Models\\Path model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminPathReadService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$latestPaymentReconciliationFinding\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminPaymentOperationsReadService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$storePurchase\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminPaymentOperationsReadService.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:financiallyEffective\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -5845,55 +4723,7 @@ parameters:
 			path: app/Services/AdminPaymentOperationsReadService.php
 
 		-
-			message: '#^Relation ''approvedBy'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminPaymentOperationsReadService.php
-
-		-
-			message: '#^Relation ''coupon'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminPaymentOperationsReadService.php
-
-		-
 			message: '#^Relation ''course'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminPaymentOperationsReadService.php
-
-		-
-			message: '#^Relation ''courseCode'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminPaymentOperationsReadService.php
-
-		-
-			message: '#^Relation ''courseFundingCheckout'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminPaymentOperationsReadService.php
-
-		-
-			message: '#^Relation ''latestPaymentReconciliationFinding'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminPaymentOperationsReadService.php
-
-		-
-			message: '#^Relation ''package'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminPaymentOperationsReadService.php
-
-		-
-			message: '#^Relation ''storePurchase'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminPaymentOperationsReadService.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\Order model\.$#'
 			identifier: larastan.relationExistence
 			count: 2
 			path: app/Services/AdminPaymentOperationsReadService.php
@@ -5917,12 +4747,6 @@ parameters:
 			path: app/Services/AdminPaymentOperationsReadService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$mediaState\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Services/AdminProductOperationsReadService.php
-
-		-
 			message: '#^Offset ''ready'' on array\{ready\: bool, required_channels\: list\<string\>, channels\: array\<string, array\{ready\: bool, reason\: string\|null, release_id\: int\|null\}\>\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 3
@@ -5935,112 +4759,10 @@ parameters:
 			path: app/Services/AdminProductOperationsReadService.php
 
 		-
-			message: '#^Relation ''accessPlans'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminProductOperationsReadService.php
-
-		-
 			message: '#^Relation ''activeEnrollments'' is not found in App\\Models\\Course model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/AdminProductOperationsReadService.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\FinancialAnomaly model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminProductOperationsReadService.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminProductOperationsReadService.php
-
-		-
-			message: '#^Relation ''mediaState'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 5
-			path: app/Services/AdminProductOperationsReadService.php
-
-		-
-			message: '#^Relation ''modules'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminProductOperationsReadService.php
-
-		-
-			message: '#^Relation ''order'' is not found in App\\Models\\FinancialAnomaly model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminProductOperationsReadService.php
-
-		-
-			message: '#^Relation ''parentOrder'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminProductOperationsReadService.php
-
-		-
-			message: '#^Relation ''ratings'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminProductOperationsReadService.php
-
-		-
-			message: '#^Relation ''sections'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminProductOperationsReadService.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\FinancialAnomaly model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminProductOperationsReadService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ProjectSubmission\:\:\$feedbackThread\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminProjectSubmissionReviewReadService.php
-
-		-
-			message: '#^Relation ''aiInputAttachments'' is not found in App\\Models\\ProjectSubmission model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminProjectSubmissionReviewReadService.php
-
-		-
-			message: '#^Relation ''feedbackThread'' is not found in App\\Models\\ProjectSubmission model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminProjectSubmissionReviewReadService.php
-
-		-
-			message: '#^Relation ''project'' is not found in App\\Models\\ProjectSubmission model\.$#'
-			identifier: larastan.relationExistence
-			count: 4
-			path: app/Services/AdminProjectSubmissionReviewReadService.php
-
-		-
-			message: '#^Relation ''reviewer'' is not found in App\\Models\\ProjectSubmission model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminProjectSubmissionReviewReadService.php
-
-		-
-			message: '#^Relation ''usageEvent'' is not found in App\\Models\\ProjectFeedbackMessage model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminProjectSubmissionReviewReadService.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\ProjectSubmission model\.$#'
-			identifier: larastan.relationExistence
-			count: 3
-			path: app/Services/AdminProjectSubmissionReviewReadService.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>recommended_provider_bonus_coins" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -6061,14 +4783,14 @@ parameters:
 			path: app/Services/AdminStudentAuthoringService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$course\.$#'
+			message: '#^Access to an undefined property App\\Models\\StudentSectionProgress\:\:\$completed_at\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/AdminStudentProgressReadService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\StudentSectionProgress\:\:\$completed_at\.$#'
-			identifier: property.notFound
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:active\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: app/Services/AdminStudentProgressReadService.php
 
@@ -6081,24 +4803,6 @@ parameters:
 		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:map\(\) contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
-			count: 1
-			path: app/Services/AdminStudentProgressReadService.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminStudentProgressReadService.php
-
-		-
-			message: '#^Relation ''enrollments'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminStudentProgressReadService.php
-
-		-
-			message: '#^Relation ''order'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/AdminStudentProgressReadService.php
 
@@ -6139,88 +4843,16 @@ parameters:
 			path: app/Services/AdminStudentReadService.php
 
 		-
-			message: '#^Relation ''courseCode'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminStudentReadService.php
-
-		-
-			message: '#^Relation ''deviceTokens'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminStudentReadService.php
-
-		-
-			message: '#^Relation ''enrollments'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminStudentReadService.php
-
-		-
-			message: '#^Relation ''interests'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminStudentReadService.php
-
-		-
-			message: '#^Relation ''latestNote'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminStudentReadService.php
-
-		-
-			message: '#^Relation ''package'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminStudentReadService.php
-
-		-
-			message: '#^Relation ''paymentMethod'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminStudentReadService.php
-
-		-
 			message: '#^Relation ''photo'' is not found in App\\Models\\User model\.$#'
 			identifier: larastan.relationExistence
 			count: 2
 			path: app/Services/AdminStudentReadService.php
 
 		-
-			message: '#^Relation ''portfolioItems'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminStudentReadService.php
-
-		-
-			message: '#^Relation ''project'' is not found in App\\Models\\ProjectSubmission model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminStudentReadService.php
-
-		-
-			message: '#^Relation ''socialAccounts'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminStudentReadService.php
-
-		-
-			message: '#^Relation ''teachers'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminTeacherAuthoringService.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Services/AiConversationContextService.php
-
-		-
-			message: '#^Relation ''thread'' is not found in App\\Models\\ProjectFeedbackMessage model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AiEntitlementBudgetService.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -6295,12 +4927,6 @@ parameters:
 			path: app/Services/AiPlatformUsageMonitor.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseSection\:\:\$sectionable\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/BunnyDirectUploadService.php
-
-		-
 			message: '#^Parameter \#1 \$content of method Illuminate\\Http\\Client\\PendingRequest\<false\>\:\:withBody\(\) expects Psr\\Http\\Message\\StreamInterface\|string, resource given\.$#'
 			identifier: argument.type
 			count: 1
@@ -6355,33 +4981,9 @@ parameters:
 			path: app/Services/CertificateArtworkRenderer.php
 
 		-
-			message: '#^Relation ''mediaState'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/CertificateEligibilityService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Services/CertificateIssuanceSnapshotService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CourseAuthoringRevision\:\:\$revisionCourse\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CertificateIssuanceSnapshotService.php
-
-		-
-			message: '#^Relation ''revisionCourse'' is not found in App\\Models\\CourseAuthoringRevision model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/CertificateIssuanceSnapshotService.php
-
-		-
-			message: '#^Relation ''section'' is not found in App\\Models\\Project model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
 			path: app/Services/CertificateIssuanceSnapshotService.php
 
 		-
@@ -6415,26 +5017,8 @@ parameters:
 			path: app/Services/CertificateQrDestinationService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Certificate\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CertificateQrDestinationService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Certificate\:\:\$certificate_design_version\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Services/CertificateService.php
-
-		-
-			message: '#^Relation ''section'' is not found in App\\Models\\Project model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CertificateService.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\Certificate model\.$#'
-			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/CertificateService.php
 
@@ -6475,13 +5059,7 @@ parameters:
 			path: app/Services/CourseAccessPlanService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$accessPlan\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CourseAccessPlanService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$order\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$payment_method\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/CourseAccessPlanService.php
@@ -6491,6 +5069,12 @@ parameters:
 			identifier: property.notFound
 			count: 2
 			path: app/Services/CourseAuthoringConcurrencyService.php
+
+		-
+			message: '#^Parameter \#1 \$section of method App\\Services\\CourseAuthoringDeletionService\:\:deleteSection\(\) expects App\\Models\\CourseSection, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/CourseAuthoringDeletionService.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Support\\Collection\<int, App\\Models\\Order\>\:\:modelKeys\(\)\.$#'
@@ -6511,7 +5095,7 @@ parameters:
 			path: app/Services/CourseCashAttributionService.php
 
 		-
-			message: '#^Relation ''creditLot'' is not found in App\\Models\\WalletDebitAllocation model\.$#'
+			message: '#^Relation ''sourceOrder'' is not found in App\\Models\\WalletCreditLot model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/CourseCashAttributionService.php
@@ -6529,38 +5113,20 @@ parameters:
 			path: app/Services/CourseCatalogueQueryService.php
 
 		-
-			message: '#^Relation ''courses'' is not found in App\\Models\\Classification model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CourseCatalogueQueryService.php
-
-		-
-			message: '#^Relation ''mediaState'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CourseCatalogueQueryService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/CourseChatPromptContextService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$modules\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$sections\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/CourseChatPromptContextService.php
 
 		-
-			message: '#^Relation ''courseSection'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CourseChatPromptContextService.php
-
-		-
-			message: '#^Relation ''modules'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
 			count: 1
 			path: app/Services/CourseChatPromptContextService.php
 
@@ -6577,27 +5143,45 @@ parameters:
 			path: app/Services/CourseCheckoutQuoteService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$accessPlanOrder\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/CourseCodeRedemptionService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$access_plan_snapshot\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/CourseCommercialReportService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$order\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$approved_at\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/CourseCommercialReportService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$user\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 1
 			path: app/Services/CourseCommercialReportService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$courseCode\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$role\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 1
+			path: app/Services/CourseCommercialReportService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isInstitutionalGrant\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/CourseCommercialReportService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:trashed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
 			path: app/Services/CourseCommercialReportService.php
 
 		-
@@ -6637,48 +5221,6 @@ parameters:
 			path: app/Services/CourseCommercialReportService.php
 
 		-
-			message: '#^Relation ''accessPlan'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CourseCommercialReportService.php
-
-		-
-			message: '#^Relation ''accessPlan'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CourseCommercialReportService.php
-
-		-
-			message: '#^Relation ''accessPlanOrder'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CourseCommercialReportService.php
-
-		-
-			message: '#^Relation ''courseCode'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CourseCommercialReportService.php
-
-		-
-			message: '#^Relation ''order'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CourseCommercialReportService.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CourseCommercialReportService.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CourseCommercialReportService.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>code" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -6697,12 +5239,6 @@ parameters:
 			path: app/Services/CourseCompletionService.php
 
 		-
-			message: '#^Relation ''courseSection'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CourseCompletionService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Coupon\:\:\$course_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -6713,18 +5249,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Services/CourseCouponService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$modules\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CourseDurationService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$sections\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CourseDurationService.php
 
 		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:mapWithKeys\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\<int, int\>, Closure\(App\\Models\\Lesson\)\: non\-empty\-array\<int, int\> given\.$#'
@@ -6739,38 +5263,32 @@ parameters:
 			path: app/Services/CourseDurationService.php
 
 		-
-			message: '#^Relation ''mediaState'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CourseDurationService.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>duration_seconds" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Services/CourseDurationService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$accessPlan\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/CourseEntitlementService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$accessPlanOrder\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$courseCode\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/CourseEntitlementService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$order\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
-			count: 5
+			count: 1
 			path: app/Services/CourseEntitlementService.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$payment_method\.$#'
 			identifier: property.notFound
+			count: 4
+			path: app/Services/CourseEntitlementService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isFinanciallyEffective\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: app/Services/CourseEntitlementService.php
 
@@ -6823,8 +5341,8 @@ parameters:
 			path: app/Services/CourseEntitlementService.php
 
 		-
-			message: '#^Relation ''sections'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Parameter \#1 \$order of method App\\Services\\CourseEntitlementService\:\:isPaidOrder\(\) expects App\\Models\\Order\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
 			count: 2
 			path: app/Services/CourseEntitlementService.php
 
@@ -6841,20 +5359,8 @@ parameters:
 			path: app/Services/CourseHeroSelectionService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$sections\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CourseLeaderboardService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$enrollments\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CourseLeaderboardService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$sectionProgress\.$#'
-			identifier: property.notFound
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:active\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: app/Services/CourseLeaderboardService.php
 
@@ -6865,15 +5371,9 @@ parameters:
 			path: app/Services/CourseLeaderboardService.php
 
 		-
-			message: '#^Relation ''enrollments'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/CourseLeaderboardService.php
-
-		-
-			message: '#^Relation ''sections'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
+			message: '#^Parameter \#1 \$enrollment of method App\\Services\\CourseAccessPlanService\:\:projectsEnabledForEnrollment\(\) expects App\\Models\\CourseEnrollment, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
 			path: app/Services/CourseLeaderboardService.php
 
 		-
@@ -6895,31 +5395,13 @@ parameters:
 			path: app/Services/CoursePlanUpgradeAction.php
 
 		-
-			message: '#^Relation ''accessPlan'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CoursePlanUpgradeAction.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CoursePlanUpgradeAction.php
-
-		-
-			message: '#^Relation ''order'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CoursePlanUpgradeAction.php
-
-		-
 			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
 			identifier: notIdentical.alwaysTrue
 			count: 1
 			path: app/Services/CoursePlanUpgradeAction.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$order\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$payment_method\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/CoursePlanUpgradeEligibilityService.php
@@ -6931,25 +5413,13 @@ parameters:
 			path: app/Services/CoursePresentationService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$modules\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Services/CoursePresentationService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$preview_reels_count\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/CoursePresentationService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$teacher\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CoursePresentationService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$teachers\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/CoursePresentationService.php
@@ -6967,109 +5437,97 @@ parameters:
 			path: app/Services/CoursePresentationService.php
 
 		-
-			message: '#^Relation ''modules'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CoursePresentationService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$accessPlans\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CoursePublishingService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$activePdfs\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/CoursePublishingService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$classifications\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/CoursePublishingService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$modules\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Services/CoursePublishingService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$photo\.$#'
 			identifier: property.notFound
 			count: 4
 			path: app/Services/CoursePublishingService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$sections\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CoursePublishingService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$teacher\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/CoursePublishingService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$teachers\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$active\.$#'
 			identifier: property.notFound
 			count: 4
 			path: app/Services/CoursePublishingService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$mediaState\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bio_ar\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/CoursePublishingService.php
 
 		-
-			message: '#^Relation ''accessPlans'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bio_en\.$#'
+			identifier: property.notFound
 			count: 1
 			path: app/Services/CoursePublishingService.php
 
 		-
-			message: '#^Relation ''activePdfs'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$external_url\.$#'
+			identifier: property.notFound
 			count: 1
 			path: app/Services/CoursePublishingService.php
 
 		-
-			message: '#^Relation ''classifications'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$file_path\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/CoursePublishingService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/CoursePublishingService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_ar\.$#'
+			identifier: property.notFound
 			count: 2
 			path: app/Services/CoursePublishingService.php
 
 		-
-			message: '#^Relation ''modules'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_en\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/CoursePublishingService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$sections\.$#'
+			identifier: property.notFound
+			count: 5
+			path: app/Services/CoursePublishingService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$storage_disk\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/CoursePublishingService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/CoursePublishingService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title_ar\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/CoursePublishingService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title_en\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/CoursePublishingService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isExternal\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: app/Services/CoursePublishingService.php
 
 		-
 			message: '#^Relation ''photo'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/CoursePublishingService.php
-
-		-
-			message: '#^Relation ''sections'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CoursePublishingService.php
-
-		-
-			message: '#^Relation ''teacher'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/CoursePublishingService.php
-
-		-
-			message: '#^Relation ''teachers'' is not found in App\\Models\\Course model\.$#'
 			identifier: larastan.relationExistence
 			count: 2
 			path: app/Services/CoursePublishingService.php
@@ -7087,14 +5545,14 @@ parameters:
 			path: app/Services/CoursePurchaseAction.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$order\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bill\.$#'
 			identifier: property.notFound
-			count: 3
+			count: 1
 			path: app/Services/CoursePurchaseAction.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$bill\.$#'
-			identifier: property.notFound
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isFinanciallyEffective\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: app/Services/CoursePurchaseAction.php
 
@@ -7105,31 +5563,13 @@ parameters:
 			path: app/Services/CoursePurchaseAction.php
 
 		-
-			message: '#^Relation ''accessPlan'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CoursePurchaseAction.php
-
-		-
-			message: '#^Relation ''bill'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CoursePurchaseAction.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$sections\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/CourseRatingEligibilityService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/CourseReadService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$modules\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$sections\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/CourseReadService.php
@@ -7159,21 +5599,21 @@ parameters:
 			path: app/Services/CourseReadService.php
 
 		-
-			message: '#^Relation ''modules'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CourseReadService.php
-
-		-
-			message: '#^Relation ''sections'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/CourseReadService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CourseSection\:\:\$sectionable\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course_id\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 1
+			path: app/Services/CourseRevisionGraphService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/CourseRevisionGraphService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:each\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: mixed, Closure\(App\\Models\\CoursePdf\)\: void given\.$#'
+			identifier: argument.type
+			count: 1
 			path: app/Services/CourseRevisionGraphService.php
 
 		-
@@ -7189,20 +5629,14 @@ parameters:
 			path: app/Services/CourseRevisionLearnerReadService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$course\.$#'
+			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/CourseRevisionResolver.php
 
 		-
-			message: '#^Relation ''courseSection'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CourseRevisionResolver.php
-
-		-
-			message: '#^Relation ''mediaState'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Parameter \#1 \$course of method App\\Services\\CourseRevisionResolver\:\:activeArchiveForCourse\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Services/CourseRevisionResolver.php
 
@@ -7219,16 +5653,16 @@ parameters:
 			path: app/Services/CourseSearchService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseSection\:\:\$course\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/CourseSectionAccessService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseSection\:\:\$sectionable\.$#'
-			identifier: property.notFound
+			message: '#^Parameter \#2 \$course of method App\\Services\\CourseModuleAccessService\:\:hasCourseAccess\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
 			count: 1
-			path: app/Services/CourseSectionContentService.php
+			path: app/Services/CourseSectionAccessService.php
 
 		-
 			message: '#^Method App\\Services\\CourseSectionSequenceService\:\:learningByCourse\(\) should return Illuminate\\Support\\Collection\<int, Illuminate\\Support\\Collection\<int, mixed\>\> but returns Illuminate\\Support\\Collection\<\(int\|string\), Illuminate\\Support\\Collection\>\.$#'
@@ -7261,12 +5695,6 @@ parameters:
 			path: app/Services/DeviceLoginService.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:each\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: mixed, Closure\(App\\Models\\ApiToken\)\: void given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/DeviceLoginService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$action_label_ar\.$#'
 			identifier: property.notFound
 			count: 1
@@ -7295,24 +5723,6 @@ parameters:
 			identifier: property.notFound
 			count: 2
 			path: app/Services/EngagementMessageService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CoinEarningMethod\:\:\$total_claim_limit\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/EngagementTaskReadService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CoinEarningMethod\:\:\$user_earnings_count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/EngagementTaskReadService.php
-
-		-
-			message: '#^Relation ''userEarnings'' is not found in App\\Models\\CoinEarningMethod model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/EngagementTaskReadService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\FinancialAnomaly\:\:\$expected_total\.$#'
@@ -7411,15 +5821,21 @@ parameters:
 			path: app/Services/KashierCallbackSignatureService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$package\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 2
 			path: app/Services/KashierCheckoutFlowService.php
 
 		-
-			message: '#^Relation ''package'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 4
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_ar\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/KashierCheckoutFlowService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_en\.$#'
+			identifier: property.notFound
+			count: 2
 			path: app/Services/KashierCheckoutFlowService.php
 
 		-
@@ -7441,46 +5857,10 @@ parameters:
 			path: app/Services/KashierCheckoutOrderService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$package\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Services/KashierNotificationFlowService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$user\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$wallet_coins\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/KashierNotificationFlowService.php
-
-		-
-			message: '#^Relation ''package'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 3
-			path: app/Services/KashierNotificationFlowService.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 3
-			path: app/Services/KashierNotificationFlowService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$package\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/KashierOrderSettlementService.php
-
-		-
-			message: '#^Relation ''package'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/KashierOrderSettlementService.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/KashierOrderSettlementService.php
 
 		-
 			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
@@ -7495,38 +5875,26 @@ parameters:
 			path: app/Services/LearningAchievementSignalService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$course\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$classifications\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/LearningDashboardService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\WatchingLog\:\:\$courseSection\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
-			count: 2
-			path: app/Services/LearningDashboardService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\WatchingLog\:\:\$lesson\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/LearningDashboardService.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/LearningDashboardService.php
-
-		-
-			message: '#^Relation ''financialHolds'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/LearningDashboardService.php
 
 		-
-			message: '#^Relation ''sections'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$image\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/LearningDashboardService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
 			count: 1
 			path: app/Services/LearningDashboardService.php
 
@@ -7541,18 +5909,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Services/LearningDashboardService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$courseSection\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/LearningEvidenceService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$mediaState\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/LearningEvidenceService.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>duration_seconds" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -7609,12 +5965,6 @@ parameters:
 			path: app/Services/LegacyCertificateArtworkRenderer.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$mediaState\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/LessonMediaDeliveryService.php
-
-		-
 			message: '#^Expression on left side of \?\? is not nullable\.$#'
 			identifier: nullCoalesce.expr
 			count: 1
@@ -7663,27 +6013,9 @@ parameters:
 			path: app/Services/MediaHealthService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$lessons\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/MediaReconciliationService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$photo\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Services/MediaReconciliationService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/MediaReconciliationService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$mediaState\.$#'
-			identifier: property.notFound
-			count: 2
 			path: app/Services/MediaReconciliationService.php
 
 		-
@@ -7699,26 +6031,20 @@ parameters:
 			path: app/Services/MediaReconciliationService.php
 
 		-
-			message: '#^Parameter \#1 \$value of method Illuminate\\Support\\Collection\<int,string\>\:\:prepend\(\) expects ''1080p''\|''360p''\|''480p''\|''720p'', ''auto'' given\.$#'
+			message: '#^Parameter \#1 \$course of method App\\Services\\MediaReconciliationService\:\:courseIssues\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Services/MediaReconciliationService.php
 
 		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Parameter \#1 \$lesson of method App\\Services\\MediaReconciliationService\:\:inspectLesson\(\) expects App\\Models\\Lesson, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Services/MediaReconciliationService.php
 
 		-
-			message: '#^Relation ''lessons'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/MediaReconciliationService.php
-
-		-
-			message: '#^Relation ''mediaState'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Parameter \#1 \$value of method Illuminate\\Support\\Collection\<int,string\>\:\:prepend\(\) expects ''1080p''\|''360p''\|''480p''\|''720p'', ''auto'' given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Services/MediaReconciliationService.php
 
@@ -7753,31 +6079,7 @@ parameters:
 			path: app/Services/MediaReconciliationService.php
 
 		-
-			message: '#^Relation ''classifications'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/ModeratorHomeReadService.php
-
-		-
-			message: '#^Relation ''modules'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/ModeratorHomeReadService.php
-
-		-
 			message: '#^Relation ''photo'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/ModeratorHomeReadService.php
-
-		-
-			message: '#^Relation ''sections'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/ModeratorHomeReadService.php
-
-		-
-			message: '#^Relation ''teachers'' is not found in App\\Models\\Course model\.$#'
 			identifier: larastan.relationExistence
 			count: 2
 			path: app/Services/ModeratorHomeReadService.php
@@ -7801,33 +6103,9 @@ parameters:
 			path: app/Services/OrderLifecycleService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$package\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/OrderLifecycleService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/OrderLifecycleService.php
-
-		-
 			message: '#^Relation ''course'' is not found in App\\Models\\Order model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
-			path: app/Services/OrderLifecycleService.php
-
-		-
-			message: '#^Relation ''package'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/OrderLifecycleService.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
 			path: app/Services/OrderLifecycleService.php
 
 		-
@@ -8059,18 +6337,6 @@ parameters:
 			path: app/Services/PaymentChannelReportService.php
 
 		-
-			message: '#^Relation ''enrollments'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/PlatformCommercialReportService.php
-
-		-
-			message: '#^Relation ''orders'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/PlatformCommercialReportService.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -8085,42 +6351,30 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Services/PlaybackManifestService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/PlaybackManifestService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$courseSection\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/PlaybackManifestService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$mediaState\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/PlaybackManifestService.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/PlaybackManifestService.php
-
-		-
-			message: '#^Relation ''courseSection'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
 			count: 2
 			path: app/Services/PlaybackManifestService.php
 
 		-
-			message: '#^Relation ''mediaState'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Services/PlaybackManifestService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_coming_soon\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/PlaybackManifestService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isPublishedForLearning\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/PlaybackManifestService.php
+
+		-
+			message: '#^Parameter \#1 \$course of method App\\Services\\CourseRevisionResolver\:\:activeArchiveForCourse\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Services/PlaybackManifestService.php
 
@@ -8132,6 +6386,12 @@ parameters:
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/PlaybackManifestService.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type App\\Models\\CourseSection\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Services/PlaybackManifestService.php
@@ -8161,6 +6421,12 @@ parameters:
 			path: app/Services/PlaybackSessionService.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\PortfolioItem\:\:\$request_fingerprint\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/PortfolioItemService.php
+
+		-
 			message: '#^Access to an undefined property App\\Models\\PortfolioMedia\:\:\$content_sha256\.$#'
 			identifier: property.notFound
 			count: 1
@@ -8185,6 +6451,18 @@ parameters:
 			path: app/Services/PortfolioMediaAuthoringService.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\PortfolioItem\:\:\$cover_media_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/PortfolioMediaMutationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\PortfolioMedia\:\:\$client_request_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/PortfolioMediaMutationService.php
+
+		-
 			message: '#^Offset ''state'' on array\{state\: string, details\: array\|null, http_status\: int\|null\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 2
@@ -8203,56 +6481,20 @@ parameters:
 			path: app/Services/PortfolioModerationService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\PortfolioItem\:\:\$course\.$#'
+			message: '#^Access to an undefined property App\\Models\\PortfolioMedia\:\:\$public_id\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Services/PortfolioReviewReadService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\PortfolioItem\:\:\$mediaFiles\.$#'
-			identifier: property.notFound
-			count: 2
 			path: app/Services/PortfolioReviewReadService.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\Relation\<\*, \*, \*\>\:\:available\(\)\.$#'
 			identifier: method.notFound
-			count: 1
+			count: 2
 			path: app/Services/PortfolioReviewReadService.php
 
 		-
-			message: '#^Relation ''mediaFiles'' is not found in App\\Models\\PortfolioItem model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/PortfolioReviewReadService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$accessPlanOrder\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/PortfolioUploadAccessService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$order\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/PortfolioUploadAccessService.php
-
-		-
-			message: '#^Relation ''accessPlan'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/PortfolioUploadAccessService.php
-
-		-
-			message: '#^Relation ''accessPlanOrder'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/PortfolioUploadAccessService.php
-
-		-
-			message: '#^Relation ''order'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isFinanciallyEffective\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: app/Services/PortfolioUploadAccessService.php
 
@@ -8365,15 +6607,9 @@ parameters:
 			path: app/Services/ProductionCapabilityService.php
 
 		-
-			message: '#^Relation ''project'' is not found in App\\Models\\ProjectSubmission model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course_id\.$#'
+			identifier: property.notFound
 			count: 1
-			path: app/Services/ProjectAttachmentDownloadService.php
-
-		-
-			message: '#^Relation ''thread'' is not found in App\\Models\\ProjectFeedbackMessage model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
 			path: app/Services/ProjectAttachmentDownloadService.php
 
 		-
@@ -8381,36 +6617,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Services/ProjectAttachmentDownloadService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ProjectFeedbackThread\:\:\$enrollment\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/ProjectFeedbackThreadService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ProjectFeedbackThread\:\:\$submission\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Services/ProjectFeedbackThreadService.php
-
-		-
-			message: '#^Relation ''enrollment'' is not found in App\\Models\\ProjectFeedbackThread model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/ProjectFeedbackThreadService.php
-
-		-
-			message: '#^Relation ''submission'' is not found in App\\Models\\ProjectFeedbackThread model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/ProjectFeedbackThreadService.php
-
-		-
-			message: '#^Relation ''thread'' is not found in App\\Models\\ProjectFeedbackMessage model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/ProjectFeedbackThreadService.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>reserved_requests" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -8435,12 +6641,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Services/ProjectFeedbackThreadService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ProjectSubmission\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ProjectReportRetryService.php
 
 		-
 			message: '#^Offset ''alpha'' on array\{red\: int\<0, 255\>, green\: int\<0, 255\>, blue\: int\<0, 255\>, alpha\: int\<0, 127\>\} on left side of \?\? always exists and is not nullable\.$#'
@@ -8479,40 +6679,22 @@ parameters:
 			path: app/Services/ProjectSubmissionFileRetentionService.php
 
 		-
-			message: '#^Relation ''aiInputAttachments'' is not found in App\\Models\\ProjectSubmission model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/ProjectSubmissionFileRetentionService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Project\:\:\$section\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course_id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/ProjectSubmissionOrchestrator.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ProjectSubmission\:\:\$aiInputAttachments\.$#'
-			identifier: property.notFound
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
 			count: 1
-			path: app/Services/ProjectSubmissionPresenter.php
+			path: app/Services/ProjectSubmissionOrchestrator.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ProjectSubmission\:\:\$feedbackThread\.$#'
-			identifier: property.notFound
+			message: '#^Parameter \#2 \$section of method App\\Services\\CourseSectionAccessService\:\:canAccessSection\(\) expects App\\Models\\CourseSection, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
 			count: 1
-			path: app/Services/ProjectSubmissionPresenter.php
-
-		-
-			message: '#^Relation ''aiInputAttachments'' is not found in App\\Models\\ProjectSubmission model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/ProjectSubmissionPresenter.php
-
-		-
-			message: '#^Relation ''feedbackThread'' is not found in App\\Models\\ProjectSubmission model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/ProjectSubmissionPresenter.php
+			path: app/Services/ProjectSubmissionOrchestrator.php
 
 		-
 			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
@@ -8527,14 +6709,8 @@ parameters:
 			path: app/Services/ProjectSubmissionReviewService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Project\:\:\$section\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Services/ProjectSubmissionService.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\CourseSection model\.$#'
-			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/ProjectSubmissionService.php
 
@@ -8569,12 +6745,6 @@ parameters:
 			path: app/Services/PublicPortfolioService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\PortfolioItem\:\:\$mediaFiles\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/PublicPortfolioService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\PortfolioItem\:\:\$public_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -8593,45 +6763,21 @@ parameters:
 			path: app/Services/RecoveryEvidenceService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$course\.$#'
-			identifier: property.notFound
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isPublishedForLearning\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: app/Services/SavedLibraryService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$courseSection\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/SavedLibraryService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\SavedFolder\:\:\$lessons_count\.$#'
-			identifier: property.notFound
-			count: 1
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\:\:publishedLearningGraph\(\)\.$#'
+			identifier: method.notFound
+			count: 2
 			path: app/Services/SavedLibraryService.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\Relation\<\*, \*, \*\>\:\:publishedLearningGraph\(\)\.$#'
 			identifier: method.notFound
 			count: 1
-			path: app/Services/SavedLibraryService.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/SavedLibraryService.php
-
-		-
-			message: '#^Relation ''courseSection'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/SavedLibraryService.php
-
-		-
-			message: '#^Relation ''lessons'' is not found in App\\Models\\SavedFolder model\.$#'
-			identifier: larastan.relationExistence
-			count: 4
 			path: app/Services/SavedLibraryService.php
 
 		-
@@ -8647,18 +6793,6 @@ parameters:
 			path: app/Services/SocialAuthProviderRegistry.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\StorePurchase\>\:\:financiallyEffective\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/StorePurchaseFinalizationService.php
-
-		-
-			message: '#^Relation ''order'' is not found in App\\Models\\StorePurchase model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/StorePurchaseFinalizationService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Package\:\:\$apple_product_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -8671,39 +6805,9 @@ parameters:
 			path: app/Services/StorePurchaseService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\StorePurchase\:\:\$order\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Services/StorePurchaseService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StorePurchase\:\:\$package\.$#'
-			identifier: property.notFound
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
 			count: 1
-			path: app/Services/StorePurchaseService.php
-
-		-
-			message: '#^Relation ''order'' is not found in App\\Models\\StorePurchase model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/StorePurchaseService.php
-
-		-
-			message: '#^Relation ''package'' is not found in App\\Models\\StorePurchase model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/StorePurchaseService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StorePurchase\:\:\$order\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Services/StoreServerNotificationService.php
-
-		-
-			message: '#^Relation ''order'' is not found in App\\Models\\StorePurchase model\.$#'
-			identifier: larastan.relationExistence
-			count: 3
 			path: app/Services/StoreServerNotificationService.php
 
 		-
@@ -8749,44 +6853,14 @@ parameters:
 			path: app/Services/StudentHomeNotificationReadService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$course\.$#'
-			identifier: property.notFound
+			message: '#^Method App\\Services\\StudentNotificationPresentationService\:\:courseFor\(\) should return App\\Models\\Course\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
 			count: 2
 			path: app/Services/StudentNotificationPresentationService.php
 
 		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Lesson model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/StudentNotificationPresentationService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/StudentProgressSummaryService.php
-
-		-
-			message: '#^Method App\\Services\\StudentProgressSummaryService\:\:latestForUsers\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{user\: App\\Models\\User, has_enrollment\: bool, course\: mixed, enrolled_at\: Carbon\\Carbon\|null, progress\: array\<string, mixed\>\}\|array\{user\: App\\Models\\User, has_enrollment\: bool, course\: null, progress\: null\}\>\.$#'
+			message: '#^Method App\\Services\\StudentProgressSummaryService\:\:latestForUsers\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{user\: App\\Models\\User, has_enrollment\: bool, course\: Illuminate\\Database\\Eloquent\\Model\|null, enrolled_at\: Carbon\\Carbon\|null, progress\: array\<string, mixed\>\}\|array\{user\: App\\Models\\User, has_enrollment\: bool, course\: null, progress\: null\}\>\.$#'
 			identifier: return.type
-			count: 1
-			path: app/Services/StudentProgressSummaryService.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\User\>\:\:mapWithKeys\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Services/StudentProgressSummaryService.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/StudentProgressSummaryService.php
-
-		-
-			message: '#^Relation ''order'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/StudentProgressSummaryService.php
 
@@ -8821,48 +6895,6 @@ parameters:
 			path: app/Services/SupportCaseCompensationService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$attachments\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/SupportCaseReadService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/SupportCaseReadService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$messages\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/SupportCaseReadService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\SupportCaseMessage\:\:\$attachments\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/SupportCaseReadService.php
-
-		-
-			message: '#^Relation ''attachments'' is not found in App\\Models\\FeedbackReport model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/SupportCaseReadService.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\FeedbackReport model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/SupportCaseReadService.php
-
-		-
-			message: '#^Relation ''messages'' is not found in App\\Models\\FeedbackReport model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/SupportCaseReadService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$closed_at\.$#'
 			identifier: property.notFound
 			count: 1
@@ -8881,12 +6913,6 @@ parameters:
 			path: app/Services/SupportCaseService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/SupportCaseService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$version\.$#'
 			identifier: property.notFound
 			count: 6
@@ -8899,56 +6925,56 @@ parameters:
 			path: app/Services/SupportCaseSubmissionService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$level\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$coursePath\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/UserPathProgressService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$sections\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/UserPathProgressService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CourseEnrollment\:\:\$course\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$level\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/UserPathProgressService.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Support\\HigherOrderCollectionProxy\<string, App\\Models\\CourseEnrollment, Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\CourseEnrollment\>\>\:\:\$course\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$path_id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/UserPathProgressService.php
 
 		-
-			message: '#^Parameter \#1 \$array \(list\<array\{path\: array\{id\: mixed, title\: mixed, title_ar\: mixed, title_en\: mixed\}, levels\: mixed, current_level\: array\{id\: mixed, name_ar\: mixed, name_en\: mixed, badge_image_url\: mixed, order\: int\}\|null, next_level\: array\{id\: mixed, name_ar\: mixed, name_en\: mixed, badge_image_url\: mixed, order\: int\}\|null, required_progress_percentage\: float, current_level_progress_percentage\: float, enrolled_courses_count\: mixed, total_sections\: mixed, \.\.\.\}\>\) of array_values is already a list, call has no effect\.$#'
+			message: '#^Parameter \#1 \$array \(list\<array\{path\: array\{id\: mixed, title\: mixed, title_ar\: mixed, title_en\: mixed\}, levels\: mixed, current_level\: array\{id\: mixed, name_ar\: mixed, name_en\: mixed, badge_image_url\: mixed, order\: int\}\|null, next_level\: array\{id\: mixed, name_ar\: mixed, name_en\: mixed, badge_image_url\: mixed, order\: int\}\|null, required_progress_percentage\: float, current_level_progress_percentage\: float, enrolled_courses_count\: int\<0, max\>, total_sections\: int\<0, max\>, \.\.\.\}\>\) of array_values is already a list, call has no effect\.$#'
 			identifier: arrayValues.list
 			count: 1
 			path: app/Services/UserPathProgressService.php
 
 		-
-			message: '#^Relation ''course'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/UserPathProgressService.php
-
-		-
-			message: '#^Relation ''level'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\|null\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model\|null, int\|string\)\: bool\)\|null, Closure\(App\\Models\\Course\)\: bool given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Services/UserPathProgressService.php
 
 		-
-			message: '#^Relation ''sections'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\|null\>\:\:flatMap\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model\|null, int\|string\)\: \(array\<mixed\>\|Illuminate\\Support\\Collection\<int\|string, mixed\>\), Closure\(App\\Models\\Course\)\: Illuminate\\Support\\Collection\<int\|string, mixed\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Services/UserPathProgressService.php
 
 		-
-			message: '#^Relation ''sections'' is not found in App\\Models\\CourseEnrollment model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\|null\>\:\:sortBy\(\) expects array\<array\{string, string\}\|\(callable\(Illuminate\\Database\\Eloquent\\Model\|null, Illuminate\\Database\\Eloquent\\Model\|null\)\: mixed\)\|\(callable\(Illuminate\\Database\\Eloquent\\Model\|null, int\|string\)\: mixed\)\|string\>\|\(callable\(Illuminate\\Database\\Eloquent\\Model\|null, int\|string\)\: mixed\)\|string, Closure\(App\\Models\\Course\)\: \(lowercase\-string&non\-falsy\-string\) given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/UserPathProgressService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\|null\>\:\:first\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model\|null, int\)\: bool\)\|null, Closure\(App\\Models\\Course\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/UserPathProgressService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\|null\>\:\:mapWithKeys\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model\|null, int\)\: array\<int\<0, max\>, array\{total\: int\<0, max\>, completed\: int\<0, max\>, percentage\: float\|int\<0, max\>\}\>, Closure\(App\\Models\\Course\)\: non\-empty\-array\<int\<0, max\>, array\{total\: int\<0, max\>, completed\: int\<0, max\>, percentage\: float\|int\<0, max\>\}\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Services/UserPathProgressService.php
 
@@ -8977,22 +7003,34 @@ parameters:
 			path: app/Services/WalletService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\WatchingLog\:\:\$last_playback_sequence\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/WatchHistoryCanonicalizationService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\WatchingLog\:\:\$playback_session_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/WatchHistoryCanonicalizationService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\WatchingLog\:\:\$playback_session_started_at\.$#'
 			identifier: property.notFound
 			count: 2
 			path: app/Services/WatchHistoryCanonicalizationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/WatchHistoryRecorder.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_coming_soon\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/WatchHistoryRecorder.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isPublishedForLearning\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/WatchHistoryRecorder.php
+
+		-
+			message: '#^Parameter \#1 \$course of method App\\Services\\CourseRevisionResolver\:\:activeArchiveForCourse\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/WatchHistoryRecorder.php
 
 		-
 			message: '#^Comparison operation "\>" between int\<1, 65535\> and 65535 is always false\.$#'
@@ -9011,18 +7049,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Services/WelcomeRewardOfferService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CoinEarningMethod\:\:\$campaign_key\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/WhatsAppLinkService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CoinEarningMethod\:\:\$total_claim_limit\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/WhatsAppLinkService.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasOne\:\:verified\(\)\.$#'
@@ -9077,12 +7103,6 @@ parameters:
 			identifier: larastan.relationExistence
 			count: 1
 			path: app/Support/LevelEditorVersion.php
-
-		-
-			message: '#^Relation ''enrollments'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Support/NotificationRecipientSelector.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$action_label_ar\.$#'
@@ -9169,7 +7189,7 @@ parameters:
 			path: app/Support/NotificationTemplateEditorVersion.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CourseSection\:\:\$course\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Support/ProjectSubmissionEvaluationSnapshot.php
@@ -9181,12 +7201,6 @@ parameters:
 			path: app/Support/ProjectSubmissionEvaluationSnapshot.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\CoinEarningMethod\:\:\$campaign_key\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/RewardConfigurationVersion.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\CoinEarningMethod\:\:\$ends_at\.$#'
 			identifier: property.notFound
 			count: 1
@@ -9194,12 +7208,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Models\\CoinEarningMethod\:\:\$starts_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/RewardConfigurationVersion.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\CoinEarningMethod\:\:\$total_claim_limit\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Support/RewardConfigurationVersion.php

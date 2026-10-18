@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -151,7 +154,7 @@ class CourseCode extends Model
     /**
      * Get the course associated with this code
      */
-    public function course()
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
@@ -159,7 +162,7 @@ class CourseCode extends Model
     /**
      * Get the lesson associated with this code
      */
-    public function lesson()
+    public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
     }
@@ -167,7 +170,7 @@ class CourseCode extends Model
     /**
      * Get all usages of this code
      */
-    public function usages()
+    public function usages(): HasMany
     {
         return $this->hasMany(CourseCodeUsage::class);
     }
@@ -175,7 +178,7 @@ class CourseCode extends Model
     /**
      * Orders that preserve this code as part of their financial provenance.
      */
-    public function orders()
+    public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
     }
@@ -183,7 +186,7 @@ class CourseCode extends Model
     /**
      * Get users who have used this code
      */
-    public function users()
+    public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'course_code_usages', 'course_code_id', 'user_id')
             ->withPivot('used_at', 'ip_address')

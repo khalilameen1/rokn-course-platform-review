@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\PortfolioModerationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 class PortfolioMedia extends Model
@@ -73,7 +74,8 @@ class PortfolioMedia extends Model
         return $query->whereNull('deletion_lease_id');
     }
 
-    public function portfolioItem()
+    /** @return BelongsTo<PortfolioItem, $this> */
+    public function portfolioItem(): BelongsTo
     {
         return $this->belongsTo(PortfolioItem::class);
     }

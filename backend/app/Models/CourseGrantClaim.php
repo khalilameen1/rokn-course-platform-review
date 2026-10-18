@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class CourseGrantClaim extends Model
 {
@@ -31,22 +32,26 @@ final class CourseGrantClaim extends Model
         'reassigned_at' => 'datetime',
     ];
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function course()
+    /** @return BelongsTo<Course, $this> */
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
 
-    public function courseCode()
+    /** @return BelongsTo<CourseCode, $this> */
+    public function courseCode(): BelongsTo
     {
         return $this->belongsTo(CourseCode::class);
     }
 
-    public function usage()
+    /** @return BelongsTo<CourseCodeUsage, $this> */
+    public function usage(): BelongsTo
     {
         return $this->belongsTo(CourseCodeUsage::class, 'course_code_usage_id');
     }

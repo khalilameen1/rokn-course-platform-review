@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class WalletTransaction extends Model
 {
@@ -50,22 +54,26 @@ class WalletTransaction extends Model
         'occurred_at' => 'datetime',
     ];
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class)->withTrashed();
     }
 
-    public function source()
+    /** @return MorphTo<Model, $this> */
+    public function source(): MorphTo
     {
         return $this->morphTo();
     }
 
-    public function paidCreditLot()
+    /** @return HasOne<WalletCreditLot, $this> */
+    public function paidCreditLot(): HasOne
     {
         return $this->hasOne(WalletCreditLot::class, 'credit_transaction_id');
     }
 
-    public function paidDebitAllocations()
+    /** @return HasMany<WalletDebitAllocation, $this> */
+    public function paidDebitAllocations(): HasMany
     {
         return $this->hasMany(WalletDebitAllocation::class, 'wallet_transaction_id');
     }

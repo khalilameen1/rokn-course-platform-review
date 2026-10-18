@@ -6,6 +6,8 @@ use App\Traits\InvalidatesCourseCatalogue;
 use App\Traits\ResolvesLocalizedAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Path extends Model
 {
@@ -29,7 +31,7 @@ class Path extends Model
     /**
      * Get the courses for this path.
      */
-    public function courses()
+    public function courses(): HasMany
     {
         return $this->hasMany(Course::class);
     }
@@ -37,7 +39,7 @@ class Path extends Model
     /**
      * Get the interests (classifications) for this path.
      */
-    public function interests()
+    public function interests(): BelongsToMany
     {
         return $this->belongsToMany(Classification::class, 'classification_path');
     }

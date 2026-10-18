@@ -6,6 +6,8 @@ use App\Services\CourseRevisionLearnerReadService;
 use App\Traits\ResolvesLocalizedAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class Project extends Model
 {
@@ -57,12 +59,13 @@ class Project extends Model
     /**
      * Get the section that owns this project.
      */
-    public function section()
+    public function section(): MorphOne
     {
         return $this->morphOne(CourseSection::class, 'sectionable');
     }
 
-    public function submissions()
+    /** @return HasMany<ProjectSubmission, $this> */
+    public function submissions(): HasMany
     {
         return $this->hasMany(ProjectSubmission::class);
     }

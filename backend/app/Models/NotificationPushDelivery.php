@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class NotificationPushDelivery extends Model
 {
@@ -44,7 +45,8 @@ final class NotificationPushDelivery extends Model
         'failed_at' => 'datetime',
     ];
 
-    public function notification()
+    /** @return BelongsTo<StudentNotification, $this> */
+    public function notification(): BelongsTo
     {
         return $this->belongsTo(StudentNotification::class, 'student_notification_id');
     }

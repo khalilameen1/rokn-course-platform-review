@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Support\UnicodeText;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class SavedFolder extends Model
 {
@@ -32,7 +34,7 @@ class SavedFolder extends Model
     /**
      * Get the user that owns the saved folder.
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
@@ -40,7 +42,7 @@ class SavedFolder extends Model
     /**
      * Get the lessons saved in this folder.
      */
-    public function lessons()
+    public function lessons(): BelongsToMany
     {
         return $this->belongsToMany(Lesson::class, 'saved_folder_lessons')
             ->withTimestamps();

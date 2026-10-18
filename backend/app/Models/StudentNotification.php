@@ -6,6 +6,7 @@ use App\Support\RoknLocale;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class StudentNotification extends Model
@@ -63,25 +64,22 @@ class StudentNotification extends Model
 
     /**
      * Get the user that owns the notification.
-     *
-     * @return BelongsTo
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
     /**
      * Get the notifiable entity (polymorphic).
-     *
-     * @return MorphTo
      */
-    public function notifiable()
+    public function notifiable(): MorphTo
     {
         return $this->morphTo();
     }
 
-    public function pushDeliveries()
+    /** @return HasMany<NotificationPushDelivery, $this> */
+    public function pushDeliveries(): HasMany
     {
         return $this->hasMany(NotificationPushDelivery::class, 'student_notification_id');
     }

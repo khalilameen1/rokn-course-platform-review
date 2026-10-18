@@ -6,6 +6,9 @@ use App\Services\CourseRevisionLearnerReadService;
 use App\Traits\ResolvesLocalizedAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class CourseModule extends Model
 {
@@ -51,7 +54,7 @@ class CourseModule extends Model
     /**
      * Get the course that owns this module.
      */
-    public function course()
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
@@ -59,7 +62,7 @@ class CourseModule extends Model
     /**
      * Get the sections in this module.
      */
-    public function sections()
+    public function sections(): HasMany
     {
         return $this->hasMany(CourseSection::class, 'module_id')->orderBy('order');
     }
@@ -67,7 +70,7 @@ class CourseModule extends Model
     /**
      * Get the project section in this module (if any).
      */
-    public function projectSection()
+    public function projectSection(): HasOne
     {
         return $this->hasOne(CourseSection::class, 'module_id')
             ->where('sectionable_type', Project::class);

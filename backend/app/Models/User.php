@@ -10,6 +10,7 @@ use App\Traits\HasPhoto;
 use App\Traits\InvalidatesCourseCatalogue;
 use App\Traits\ResolvesLocalizedAttributes;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -236,12 +237,14 @@ class User extends Authenticatable
         'lesson_progress_statistics',
     ];
 
-    public function notes()
+    /** @return HasMany<UserNote, $this> */
+    public function notes(): HasMany
     {
         return $this->hasMany(UserNote::class);
     }
 
-    public function latestNote()
+    /** @return HasOne<UserNote, $this> */
+    public function latestNote(): HasOne
     {
         return $this->hasOne(UserNote::class)->latestOfMany();
     }
@@ -273,12 +276,13 @@ class User extends Authenticatable
     /**
      * Get student section progress for this user.
      */
-    public function sectionProgress()
+    public function sectionProgress(): HasMany
     {
         return $this->hasMany(StudentSectionProgress::class);
     }
 
-    public function lessonWatchEvidence()
+    /** @return HasMany<LessonWatchEvidence, $this> */
+    public function lessonWatchEvidence(): HasMany
     {
         return $this->hasMany(LessonWatchEvidence::class);
     }
@@ -294,7 +298,7 @@ class User extends Authenticatable
     /**
      * Get the course enrollments for the user.
      */
-    public function enrollments()
+    public function enrollments(): HasMany
     {
         return $this->hasMany(CourseEnrollment::class);
     }
@@ -322,10 +326,8 @@ class User extends Authenticatable
 
     /**
      * Get the student notifications for the user.
-     *
-     * @return HasMany
      */
-    public function studentNotifications()
+    public function studentNotifications(): HasMany
     {
         return $this->hasMany(StudentNotification::class, 'user_id');
     }
@@ -343,7 +345,7 @@ class User extends Authenticatable
     /**
      * Get the packages purchased by the user.
      */
-    public function purchasedPackages()
+    public function purchasedPackages(): BelongsToMany
     {
         return $this->belongsToMany(Package::class, 'package_user')
             ->withPivot('order_id', 'price', 'coins', 'created_at')
@@ -358,32 +360,38 @@ class User extends Authenticatable
         return $this->purchasedPackages()->exists();
     }
 
-    public function portfolioItems()
+    /** @return HasMany<PortfolioItem, $this> */
+    public function portfolioItems(): HasMany
     {
         return $this->hasMany(PortfolioItem::class);
     }
 
-    public function coinEarnings()
+    /** @return HasMany<UserCoinEarning, $this> */
+    public function coinEarnings(): HasMany
     {
         return $this->hasMany(UserCoinEarning::class);
     }
 
-    public function walletTransactions()
+    /** @return HasMany<WalletTransaction, $this> */
+    public function walletTransactions(): HasMany
     {
         return $this->hasMany(WalletTransaction::class);
     }
 
-    public function coinTaskAttempts()
+    /** @return HasMany<UserCoinTaskAttempt, $this> */
+    public function coinTaskAttempts(): HasMany
     {
         return $this->hasMany(UserCoinTaskAttempt::class);
     }
 
-    public function deviceTokens()
+    /** @return HasMany<UserDeviceToken, $this> */
+    public function deviceTokens(): HasMany
     {
         return $this->hasMany(UserDeviceToken::class);
     }
 
-    public function socialAccounts()
+    /** @return HasMany<SocialAccount, $this> */
+    public function socialAccounts(): HasMany
     {
         return $this->hasMany(SocialAccount::class);
     }
@@ -391,7 +399,7 @@ class User extends Authenticatable
     /**
      * Get the levels earned by the user.
      */
-    public function earnedLevels()
+    public function earnedLevels(): BelongsToMany
     {
         return $this->belongsToMany(Level::class, 'user_level')
             ->withPivot('id', 'earned_at', 'course_id')
@@ -432,7 +440,7 @@ class User extends Authenticatable
     /**
      * Get the orders for the user.
      */
-    public function orders()
+    public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
     }
@@ -452,7 +460,7 @@ class User extends Authenticatable
     /**
      * Get the courses that the user teaches.
      */
-    public function teachingCourses()
+    public function teachingCourses(): BelongsToMany
     {
         return $this->belongsToMany(Course::class, 'course_teacher', 'teacher_id', 'course_id')
             ->withTimestamps();
@@ -461,7 +469,7 @@ class User extends Authenticatable
     /**
      * Get the interests (classifications) for this user.
      */
-    public function interests()
+    public function interests(): BelongsToMany
     {
         return $this->belongsToMany(Classification::class, 'classification_user')
             ->withTimestamps();

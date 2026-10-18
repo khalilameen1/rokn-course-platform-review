@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property string|null $request_fingerprint
@@ -37,12 +38,14 @@ class Contact extends Model
         'resolution_metadata' => 'array',
     ];
 
-    public function resolver()
+    /** @return BelongsTo<User, $this> */
+    public function resolver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'resolved_by')->withTrashed();
     }
 
-    public function resolvedUser()
+    /** @return BelongsTo<User, $this> */
+    public function resolvedUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'resolved_user_id')->withTrashed();
     }

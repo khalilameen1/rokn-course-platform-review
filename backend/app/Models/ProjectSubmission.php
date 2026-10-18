@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ProjectSubmission extends Model
 {
@@ -53,22 +56,26 @@ class ProjectSubmission extends Model
         'score' => 'integer',
     ];
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function project()
+    /** @return BelongsTo<Project, $this> */
+    public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
     }
 
-    public function reviewer()
+    /** @return BelongsTo<User, $this> */
+    public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by')->withTrashed();
     }
 
-    public function feedbackThread()
+    /** @return HasOne<ProjectFeedbackThread, $this> */
+    public function feedbackThread(): HasOne
     {
         return $this->hasOne(ProjectFeedbackThread::class, 'submission_id');
     }
@@ -111,7 +118,8 @@ class ProjectSubmission extends Model
         ];
     }
 
-    public function aiInputAttachments()
+    /** @return HasMany<AiInputAttachment, $this> */
+    public function aiInputAttachments(): HasMany
     {
         return $this->hasMany(AiInputAttachment::class, 'owner_id')
             ->where('owner_type', AiInputAttachment::OWNER_PROJECT_SUBMISSION);

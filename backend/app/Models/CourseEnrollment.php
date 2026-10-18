@@ -6,6 +6,9 @@ use App\Support\CourseAccessPlanSnapshot;
 use App\Traits\InvalidatesCourseCatalogue;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class CourseEnrollment extends Model
 {
@@ -65,7 +68,7 @@ class CourseEnrollment extends Model
     /**
      * Get the user for this enrollment.
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class)->withTrashed();
     }
@@ -73,7 +76,7 @@ class CourseEnrollment extends Model
     /**
      * Get the course for this enrollment.
      */
-    public function course()
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
@@ -81,33 +84,37 @@ class CourseEnrollment extends Model
     /**
      * Get the order for this enrollment.
      */
-    public function order()
+    public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
     }
 
-    public function accessPlan()
+    /** @return BelongsTo<CourseAccessPlan, $this> */
+    public function accessPlan(): BelongsTo
     {
         return $this->belongsTo(CourseAccessPlan::class, 'access_plan_id');
     }
 
-    public function accessPlanOrder()
+    /** @return BelongsTo<Order, $this> */
+    public function accessPlanOrder(): BelongsTo
     {
         return $this->belongsTo(Order::class, 'access_plan_order_id');
     }
 
-    public function aiUsage()
+    /** @return HasOne<AiEntitlementUsage, $this> */
+    public function aiUsage(): HasOne
     {
         return $this->hasOne(AiEntitlementUsage::class, 'enrollment_id');
     }
 
     /** One enrollment owns one independent budget aggregate per AI feature. */
-    public function aiUsages()
+    public function aiUsages(): HasMany
     {
         return $this->hasMany(AiEntitlementUsage::class, 'enrollment_id');
     }
 
-    public function financialHolds()
+    /** @return HasMany<FinancialEntitlementHold, $this> */
+    public function financialHolds(): HasMany
     {
         return $this->hasMany(FinancialEntitlementHold::class, 'enrollment_id');
     }

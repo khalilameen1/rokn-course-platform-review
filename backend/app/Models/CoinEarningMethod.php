@@ -140,7 +140,8 @@ class CoinEarningMethod extends Model
         return $this->hasMany(UserCoinEarning::class, 'coin_earning_method_id');
     }
 
-    public function attempts()
+    /** @return HasMany<UserCoinTaskAttempt, $this> */
+    public function attempts(): HasMany
     {
         return $this->hasMany(UserCoinTaskAttempt::class);
     }

@@ -6,6 +6,9 @@ use App\Support\CourseAccessPlanSnapshot;
 use App\Support\PaymentEvidencePath;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\URL;
 
@@ -173,7 +176,7 @@ class Order extends Model
     /**
      * Get the user that owns the order.
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class)->withTrashed();
     }
@@ -190,7 +193,7 @@ class Order extends Model
     /**
      * Get the course code used for this order.
      */
-    public function courseCode()
+    public function courseCode(): BelongsTo
     {
         return $this->belongsTo(CourseCode::class);
     }
@@ -198,7 +201,7 @@ class Order extends Model
     /**
      * Get the payment method used for this order.
      */
-    public function paymentMethod()
+    public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class);
     }
@@ -206,7 +209,7 @@ class Order extends Model
     /**
      * Get the coupon used for this order.
      */
-    public function coupon()
+    public function coupon(): BelongsTo
     {
         return $this->belongsTo(Coupon::class)->withTrashed();
     }
@@ -214,7 +217,7 @@ class Order extends Model
     /**
      * Get the admin who approved the order.
      */
-    public function approvedBy()
+    public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
     }
@@ -222,7 +225,7 @@ class Order extends Model
     /**
      * Get the bill for this order.
      */
-    public function bill()
+    public function bill(): HasOne
     {
         return $this->hasOne(Bill::class);
     }
@@ -230,62 +233,71 @@ class Order extends Model
     /**
      * Get the package being purchased in this order.
      */
-    public function package()
+    public function package(): BelongsTo
     {
         return $this->belongsTo(Package::class);
     }
 
-    public function courseFundingCheckout()
+    /** @return HasOne<CourseCheckout, $this> */
+    public function courseFundingCheckout(): HasOne
     {
         return $this->hasOne(CourseCheckout::class, 'funding_order_id');
     }
 
-    public function storePurchase()
+    /** @return HasOne<StorePurchase, $this> */
+    public function storePurchase(): HasOne
     {
         return $this->hasOne(StorePurchase::class);
     }
 
-    public function walletTransaction()
+    /** @return BelongsTo<WalletTransaction, $this> */
+    public function walletTransaction(): BelongsTo
     {
         return $this->belongsTo(WalletTransaction::class, 'wallet_transaction_id');
     }
 
-    public function accessPlan()
+    /** @return BelongsTo<CourseAccessPlan, $this> */
+    public function accessPlan(): BelongsTo
     {
         return $this->belongsTo(CourseAccessPlan::class, 'access_plan_id');
     }
 
-    public function parentOrder()
+    public function parentOrder(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_order_id');
     }
 
-    public function upgradeOrders()
+    public function upgradeOrders(): HasMany
     {
         return $this->hasMany(self::class, 'parent_order_id');
     }
 
-    public function financialEvents()
+    /** @return HasMany<OrderFinancialEvent, $this> */
+    public function financialEvents(): HasMany
     {
         return $this->hasMany(OrderFinancialEvent::class);
     }
 
-    public function latestPaymentReconciliationFinding()
+    /** @return HasOne<PaymentReconciliationFinding, $this> */
+    public function latestPaymentReconciliationFinding(): HasOne
     {
         return $this->hasOne(PaymentReconciliationFinding::class)->latestOfMany('last_seen_at');
     }
 
-    public function paidCreditLot()
+    /** @return HasOne<WalletCreditLot, $this> */
+    public function paidCreditLot(): HasOne
     {
         return $this->hasOne(WalletCreditLot::class, 'source_order_id');
     }
 
-    public function paidDebitAllocations()
+    /** @return HasMany<WalletDebitAllocation, $this> */
+    public function paidDebitAllocations(): HasMany
     {
         return $this->hasMany(WalletDebitAllocation::class, 'course_order_id');
     }
 
-    public function financialEntitlementHolds()
+    /** @return HasMany<FinancialEntitlementHold, $this> */
+    public function financialEntitlementHolds(): HasMany
     {
         return $this->hasMany(FinancialEntitlementHold::class, 'source_order_id');
     }

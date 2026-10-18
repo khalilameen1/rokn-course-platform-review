@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class NotificationCampaign extends Model
 {
@@ -75,12 +76,14 @@ final class NotificationCampaign extends Model
         'failed_at' => 'datetime',
     ];
 
-    public function notifications()
+    /** @return HasMany<StudentNotification, $this> */
+    public function notifications(): HasMany
     {
         return $this->hasMany(StudentNotification::class, 'delivery_key', 'delivery_key');
     }
 
-    public function recipients()
+    /** @return HasMany<NotificationCampaignRecipient, $this> */
+    public function recipients(): HasMany
     {
         return $this->hasMany(NotificationCampaignRecipient::class);
     }

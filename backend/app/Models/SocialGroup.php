@@ -6,6 +6,7 @@ use App\Traits\ResolvesLocalizedAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class SocialGroup extends Model
 {
@@ -26,7 +27,8 @@ class SocialGroup extends Model
         return $this->localizedValue('description_ar', 'description_en');
     }
 
-    public function courseSection()
+    /** @return MorphOne<CourseSection, $this> */
+    public function courseSection(): MorphOne
     {
         return $this->morphOne(CourseSection::class, 'sectionable');
     }

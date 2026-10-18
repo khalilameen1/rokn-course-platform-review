@@ -7,6 +7,9 @@ use App\Support\UnicodeText;
 use App\Traits\HasPhoto;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Coupon extends Model
@@ -52,19 +55,22 @@ class Coupon extends Model
         $this->attributes['code'] = $normalized !== '' ? $normalized : null;
     }
 
-    public function customers()
+    /** @return BelongsToMany<User, $this> */
+    public function customers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'coupon_redemptions')
             ->withPivot(['course_id', 'order_id', 'coupon_code', 'discount_percentage', 'discount_coins', 'redeemed_at'])
             ->withTimestamps();
     }
 
-    public function redemptions()
+    /** @return HasMany<CouponRedemption, $this> */
+    public function redemptions(): HasMany
     {
         return $this->hasMany(CouponRedemption::class);
     }
 
-    public function course()
+    /** @return BelongsTo<Course, $this> */
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }

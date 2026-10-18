@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class FeedbackAttachment extends Model
 {
@@ -11,12 +12,14 @@ final class FeedbackAttachment extends Model
         'mime_type', 'size_bytes', 'width', 'height', 'sha256', 'scan_status',
     ];
 
-    public function report()
+    /** @return BelongsTo<FeedbackReport, $this> */
+    public function report(): BelongsTo
     {
         return $this->belongsTo(FeedbackReport::class, 'feedback_report_id');
     }
 
-    public function message()
+    /** @return BelongsTo<SupportCaseMessage, $this> */
+    public function message(): BelongsTo
     {
         return $this->belongsTo(SupportCaseMessage::class, 'support_case_message_id');
     }

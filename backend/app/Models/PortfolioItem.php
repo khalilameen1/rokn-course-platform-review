@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Services\PortfolioModerationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class PortfolioItem extends Model
@@ -83,24 +85,28 @@ class PortfolioItem extends Model
             ->whereHas('mediaFiles', fn ($media) => $media->available());
     }
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function mediaFiles()
+    /** @return HasMany<PortfolioMedia, $this> */
+    public function mediaFiles(): HasMany
     {
         return $this->hasMany(PortfolioMedia::class)
             ->orderBy('sort_order')
             ->orderBy('id');
     }
 
-    public function course()
+    /** @return BelongsTo<Course, $this> */
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class)->withTrashed();
     }
 
-    public function sourceProject()
+    /** @return BelongsTo<Project, $this> */
+    public function sourceProject(): BelongsTo
     {
         return $this->belongsTo(Project::class, 'source_project_id');
     }

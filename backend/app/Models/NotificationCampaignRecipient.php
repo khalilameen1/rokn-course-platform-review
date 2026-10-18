@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class NotificationCampaignRecipient extends Model
 {
@@ -34,7 +35,8 @@ final class NotificationCampaignRecipient extends Model
         'resolved_at' => 'datetime',
     ];
 
-    public function campaign()
+    /** @return BelongsTo<NotificationCampaign, $this> */
+    public function campaign(): BelongsTo
     {
         return $this->belongsTo(NotificationCampaign::class, 'notification_campaign_id');
     }

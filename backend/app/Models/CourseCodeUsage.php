@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CourseCodeUsage extends Model
 {
@@ -24,7 +25,7 @@ class CourseCodeUsage extends Model
     /**
      * Get the course code that was used
      */
-    public function courseCode()
+    public function courseCode(): BelongsTo
     {
         return $this->belongsTo(CourseCode::class);
     }
@@ -32,7 +33,7 @@ class CourseCodeUsage extends Model
     /**
      * Get the user who used the code
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }

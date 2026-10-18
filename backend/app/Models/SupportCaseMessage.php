@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class SupportCaseMessage extends Model
 {
@@ -21,17 +23,20 @@ final class SupportCaseMessage extends Model
         'visibility', 'body', 'client_request_id', 'request_fingerprint',
     ];
 
-    public function report()
+    /** @return BelongsTo<FeedbackReport, $this> */
+    public function report(): BelongsTo
     {
         return $this->belongsTo(FeedbackReport::class, 'feedback_report_id');
     }
 
-    public function author()
+    /** @return BelongsTo<User, $this> */
+    public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
     }
 
-    public function attachments()
+    /** @return HasMany<FeedbackAttachment, $this> */
+    public function attachments(): HasMany
     {
         return $this->hasMany(FeedbackAttachment::class, 'support_case_message_id');
     }

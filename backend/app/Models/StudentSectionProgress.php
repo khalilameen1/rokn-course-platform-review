@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StudentSectionProgress extends Model
 {
@@ -34,7 +35,7 @@ class StudentSectionProgress extends Model
     /**
      * Get the user that owns the section progress.
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
@@ -42,7 +43,7 @@ class StudentSectionProgress extends Model
     /**
      * Get the course section that this progress belongs to.
      */
-    public function courseSection()
+    public function courseSection(): BelongsTo
     {
         return $this->belongsTo(CourseSection::class);
     }

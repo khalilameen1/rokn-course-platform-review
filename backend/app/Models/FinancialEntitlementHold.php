@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class FinancialEntitlementHold extends Model
 {
@@ -45,37 +46,44 @@ final class FinancialEntitlementHold extends Model
         'resolved_at' => 'datetime',
     ];
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function course()
+    /** @return BelongsTo<Course, $this> */
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
 
-    public function courseOrder()
+    /** @return BelongsTo<Order, $this> */
+    public function courseOrder(): BelongsTo
     {
         return $this->belongsTo(Order::class, 'course_order_id');
     }
 
-    public function sourceOrder()
+    /** @return BelongsTo<Order, $this> */
+    public function sourceOrder(): BelongsTo
     {
         return $this->belongsTo(Order::class, 'source_order_id');
     }
 
-    public function enrollment()
+    /** @return BelongsTo<CourseEnrollment, $this> */
+    public function enrollment(): BelongsTo
     {
         return $this->belongsTo(CourseEnrollment::class);
     }
 
-    public function certificate()
+    /** @return BelongsTo<Certificate, $this> */
+    public function certificate(): BelongsTo
     {
         return $this->belongsTo(Certificate::class);
     }
 
-    public function resolver()
+    /** @return BelongsTo<User, $this> */
+    public function resolver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'resolved_by');
     }

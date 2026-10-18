@@ -6,6 +6,8 @@ namespace App\Models;
 
 use App\Traits\InvalidatesCourseCatalogue;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class CourseAccessPlan extends Model
 {
@@ -74,12 +76,14 @@ final class CourseAccessPlan extends Model
         'sort_order' => 'integer',
     ];
 
-    public function course()
+    /** @return BelongsTo<Course, $this> */
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
 
-    public function enrollments()
+    /** @return HasMany<CourseEnrollment, $this> */
+    public function enrollments(): HasMany
     {
         return $this->hasMany(CourseEnrollment::class, 'access_plan_id');
     }

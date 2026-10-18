@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Traits\ResolvesLocalizedAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Link extends Model
@@ -16,7 +18,8 @@ class Link extends Model
         'description_ar', 'description_en',
     ];
 
-    public function course()
+    /** @return BelongsTo<Course, $this> */
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class, 'list_id', 'id');
     }
@@ -31,7 +34,8 @@ class Link extends Model
         return $this->localizedValue('description_ar', 'description_en');
     }
 
-    public function courseSection()
+    /** @return MorphOne<CourseSection, $this> */
+    public function courseSection(): MorphOne
     {
         return $this->morphOne(CourseSection::class, 'sectionable');
     }

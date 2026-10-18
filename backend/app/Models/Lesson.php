@@ -6,7 +6,11 @@ use App\Traits\InvalidatesCourseCatalogue;
 use App\Traits\ResolvesLocalizedAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class Lesson extends Model
 {
@@ -66,7 +70,7 @@ class Lesson extends Model
         return $this->video_source_type === 'bunny' && ! empty($this->bunny_video_id);
     }
 
-    public function course()
+    public function course(): BelongsTo
     {
         return $this->belongsTo('App\Models\Course', 'list_id', 'id');
     }
@@ -84,12 +88,14 @@ class Lesson extends Model
             });
     }
 
-    public function courseSection()
+    /** @return MorphOne<CourseSection, $this> */
+    public function courseSection(): MorphOne
     {
         return $this->morphOne(CourseSection::class, 'sectionable');
     }
 
-    public function savedFolders()
+    /** @return BelongsToMany<SavedFolder, $this> */
+    public function savedFolders(): BelongsToMany
     {
         return $this->belongsToMany(SavedFolder::class, 'saved_folder_lessons')
             ->withTimestamps();
@@ -121,7 +127,8 @@ class Lesson extends Model
             && $state->integrity_status !== 'quarantined';
     }
 
-    public function playbackSessions()
+    /** @return HasMany<PlaybackSession, $this> */
+    public function playbackSessions(): HasMany
     {
         return $this->hasMany(PlaybackSession::class);
     }

@@ -7,6 +7,8 @@ use App\Support\PublicDiskUrl;
 use App\Traits\HasPhoto;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Level extends Model
 {
@@ -25,7 +27,7 @@ class Level extends Model
     /**
      * Get the courses for this level.
      */
-    public function courses()
+    public function courses(): HasMany
     {
         return $this->hasMany(Course::class);
     }
@@ -33,7 +35,7 @@ class Level extends Model
     /**
      * Get the users who have earned this level badge.
      */
-    public function users()
+    public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'user_level')
             ->withPivot('id', 'earned_at', 'course_id')

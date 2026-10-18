@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class AiUsageEvent extends Model
 {
@@ -21,12 +22,14 @@ final class AiUsageEvent extends Model
         'completed_at' => 'datetime',
     ];
 
-    public function enrollment()
+    /** @return BelongsTo<CourseEnrollment, $this> */
+    public function enrollment(): BelongsTo
     {
         return $this->belongsTo(CourseEnrollment::class);
     }
 
-    public function plan()
+    /** @return BelongsTo<CourseAccessPlan, $this> */
+    public function plan(): BelongsTo
     {
         return $this->belongsTo(CourseAccessPlan::class, 'access_plan_id');
     }
