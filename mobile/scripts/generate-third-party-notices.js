@@ -178,6 +178,8 @@ const LEGAL_FILE_ABSENCE_ALLOWLIST = new Set([
   'boolbase@1.0.0',
   'bplist-parser@0.3.1',
   'bser@2.1.1',
+  'combine-errors@3.0.3',
+  'custom-error-instance@2.1.1',
   'expo@55.0.31',
   'expo-apple-authentication@55.0.17',
   'expo-application@55.0.19',
@@ -319,6 +321,11 @@ const collectProductionPackagePaths = lock => {
 
 const selectLicense = ({name, version, declaredLicense}) => {
   if (name === 'base-64' && version === '0.1.0' && !declaredLicense) {
+    return 'MIT';
+  }
+  // tus-js-client's Node build dependency. Its npm tarball has no license
+  // field and no legal file; its README states MIT (MatthewMueller/combine-errors).
+  if (name === 'combine-errors' && version === '3.0.3' && !declaredLicense) {
     return 'MIT';
   }
   if (
@@ -1040,6 +1047,7 @@ const renderMarkdown = (inventory, snapshot) => {
     '## Explicit license choices',
     '',
     '- `base-64@0.1.0`: MIT, based on its legacy manifest and `LICENSE-MIT.txt`.',
+    '- `combine-errors@3.0.3`: MIT, based on the License section of its published README (no manifest license field or legal file).',
     '- `node-forge@1.4.0`: BSD-3-Clause is selected from its BSD-3-Clause/GPL-2.0 choice; the original package legal file is retained unmodified below.',
     '- Packages offering MIT or another listed license are used under MIT.',
     '',

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
   "generatedFrom": "verified package-lock.json production closure",
-  "packageCount": 737,
-  "packagePathCount": 822,
+  "packageCount": 754,
+  "packagePathCount": 839,
   "packages": [
     {
       "coordinate": "@babel/code-frame@7.10.4",
@@ -6910,6 +6910,26 @@
       ]
     },
     {
+      "coordinate": "combine-errors@3.0.3",
+      "name": "combine-errors",
+      "version": "3.0.3",
+      "selectedLicense": "MIT",
+      "declaredLicense": null,
+      "integrity": "sha512-C8ikRNRMygCwaTx+Ek3Yr+OuZzgZjduCOfSQBjbM8V3MfgcjSTeto/GXP6PAwKvJz/v15b7GHZvx5rOlczFw/Q==",
+      "resolved": "https://registry.npmjs.org/combine-errors/-/combine-errors-3.0.3.tgz",
+      "legalSource": "reviewed-metadata-fallback",
+      "sourceReference": "https://registry.npmjs.org/combine-errors/-/combine-errors-3.0.3.tgz",
+      "publishedLegalFileCount": 0,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt",
+          "sha256": "4367eb44f5d2f9b8efdfc1459ad529fc1b9c7c23d109dda9856394e3b082775b",
+          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: combine-errors@3.0.3\nExact npm tarball: https://registry.npmjs.org/combine-errors/-/combine-errors-3.0.3.tgz\nTarball integrity: sha512-C8ikRNRMygCwaTx+Ek3Yr+OuZzgZjduCOfSQBjbM8V3MfgcjSTeto/GXP6PAwKvJz/v15b7GHZvx5rOlczFw/Q==\nDeclared license: <legacy manifest field>\nSelected license: MIT\nAuthor metadata: Matthew Mueller <mattmuelle@gmail.com>\nRepository metadata: git://github.com/MatthewMueller/combine-errors.git\nHomepage metadata: <not published>\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nStandard terms source: @babel/code-frame@7.29.7/LICENSE\n\nMIT License\n\nCopyright (c) 2014-present Sebastian McKenzie and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+        }
+      ]
+    },
+    {
       "coordinate": "combined-stream@1.0.8",
       "name": "combined-stream",
       "version": "1.0.8",
@@ -7186,6 +7206,26 @@
           "path": "LICENSE",
           "sha256": "0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6",
           "text": "Copyright (c) Felix Böhm\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:\n\nRedistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.\n\nRedistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.\n\nTHIS IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS,\nEVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
+        }
+      ]
+    },
+    {
+      "coordinate": "custom-error-instance@2.1.1",
+      "name": "custom-error-instance",
+      "version": "2.1.1",
+      "selectedLicense": "ISC",
+      "declaredLicense": "ISC",
+      "integrity": "sha512-p6JFxJc3M4OTD2li2qaHkDCw9SfMw82Ldr6OC9Je1aXiGfhx2W8p3GaoeaGrPJTUN9NirTM/KTxHWMUdR1rsUg==",
+      "resolved": "https://registry.npmjs.org/custom-error-instance/-/custom-error-instance-2.1.1.tgz",
+      "legalSource": "reviewed-metadata-fallback",
+      "sourceReference": "https://registry.npmjs.org/custom-error-instance/-/custom-error-instance-2.1.1.tgz",
+      "publishedLegalFileCount": 0,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt",
+          "sha256": "65b922a25ef021872b91acdbfb9bd71c51d474b99d0c73216ff78444d8c0ae12",
+          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: custom-error-instance@2.1.1\nExact npm tarball: https://registry.npmjs.org/custom-error-instance/-/custom-error-instance-2.1.1.tgz\nTarball integrity: sha512-p6JFxJc3M4OTD2li2qaHkDCw9SfMw82Ldr6OC9Je1aXiGfhx2W8p3GaoeaGrPJTUN9NirTM/KTxHWMUdR1rsUg==\nDeclared license: ISC\nSelected license: ISC\nAuthor metadata: James Speirs\nRepository metadata: git+https://github.com/Gi60s/custom-error-instance.git\nHomepage metadata: https://github.com/Gi60s/custom-error-instance#readme\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nStandard terms source: @isaacs/ttlcache@1.4.1/LICENSE\n\nThe ISC License\n\nCopyright (c) 2022-2023 - Isaac Z. Schlueter and Contributors\n\nPermission to use, copy, modify, and/or distribute this software for any\npurpose with or without fee is hereby granted, provided that the above\ncopyright notice and this permission notice appear in all copies.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\" AND THE AUTHOR DISCLAIMS ALL WARRANTIES\nWITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF\nMERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR\nANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES\nWHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN\nACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR\nIN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE."
         }
       ]
     },
@@ -9450,6 +9490,26 @@
       ]
     },
     {
+      "coordinate": "is-stream@2.0.1",
+      "name": "is-stream",
+      "version": "2.0.1",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-hFoiJiTl63nn+kstHGBtewWSKnQLpyb155KHheA1l39uvtO9nWIop1p3udqPcUd/xbF1VLMO4n7OI6p7RbngDg==",
+      "resolved": "https://registry.npmjs.org/is-stream/-/is-stream-2.0.1.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/is-stream/-/is-stream-2.0.1.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "license",
+          "sha256": "1529f88b3675095087120854c6fa2cc1113ab2da2f88c4f6aa4ffe52e98ef81b",
+          "text": "MIT License\n\nCopyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+        }
+      ]
+    },
+    {
       "coordinate": "is-wsl@2.2.0",
       "name": "is-wsl",
       "version": "2.2.0",
@@ -9726,6 +9786,26 @@
           "path": "ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt",
           "sha256": "cfe585d3b98a89f87d69a0cdf97fc69778861a4d511208a99ee309aef04a9c56",
           "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: jimp-compact@0.16.1\nExact npm tarball: https://registry.npmjs.org/jimp-compact/-/jimp-compact-0.16.1.tgz\nTarball integrity: sha512-dZ6Ra7u1G8c4Letq/B5EzAxj4tLFHL+cGtdpR+PVm4yzPDj+lCk+AbivWt1eOM+ikzkowtyV7qSqX6qr3t71Ww==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: <not published>\nRepository metadata: nuxt-community/jimp-compact\nHomepage metadata: <not published>\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nStandard terms source: @babel/code-frame@7.29.7/LICENSE\n\nMIT License\n\nCopyright (c) 2014-present Sebastian McKenzie and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+        }
+      ]
+    },
+    {
+      "coordinate": "js-base64@3.9.4",
+      "name": "js-base64",
+      "version": "3.9.4",
+      "selectedLicense": "BSD-3-Clause",
+      "declaredLicense": "BSD-3-Clause",
+      "integrity": "sha512-PtOMXpEGuP0RRiRXsjzHzl44dMHxSu2CPvAhinupR1tBa88me+1DPqsobl7eupn5UukjLkln1ZnAOAOXOrYG0Q==",
+      "resolved": "https://registry.npmjs.org/js-base64/-/js-base64-3.9.4.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/js-base64/-/js-base64-3.9.4.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE.md",
+          "sha256": "6a690d6450ab88726f3452284ed4a87a9d6507e290076907a42ddf1c12119a23",
+          "text": "Copyright (c) 2014, Dan Kogai\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n* Redistributions of source code must retain the above copyright notice, this\n  list of conditions and the following disclaimer.\n\n* Redistributions in binary form must reproduce the above copyright notice,\n  this list of conditions and the following disclaimer in the documentation\n  and/or other materials provided with the distribution.\n\n* Neither the name of {{{project}}} nor the names of its\n  contributors may be used to endorse or promote products derived from\n  this software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\nAND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\nFOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
         }
       ]
     },
@@ -10190,6 +10270,126 @@
       ]
     },
     {
+      "coordinate": "lodash._baseiteratee@4.7.0",
+      "name": "lodash._baseiteratee",
+      "version": "4.7.0",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-nqB9M+wITz0BX/Q2xg6fQ8mLkyfF7MU7eE+MNBNjTHFKeKaZAPEzEg+E8LWxKWf1DQVflNEn9N49yAuqKh2mWQ==",
+      "resolved": "https://registry.npmjs.org/lodash._baseiteratee/-/lodash._baseiteratee-4.7.0.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/lodash._baseiteratee/-/lodash._baseiteratee-4.7.0.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "95da58f9567fa87531d5516b69c1b369bc99a645c87b35c9d5ce339c91ff172a",
+          "text": "Copyright jQuery Foundation and other contributors <https://jquery.org/>\n\nBased on Underscore.js, copyright Jeremy Ashkenas,\nDocumentCloud and Investigative Reporters & Editors <http://underscorejs.org/>\n\nThis software consists of voluntary contributions made by many\nindividuals. For exact contribution history, see the revision history\navailable at https://github.com/lodash/lodash\n\nThe following license applies to all parts of this software except as\ndocumented below:\n\n====\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n\n====\n\nCopyright and related rights for sample code are waived via CC0. Sample\ncode is defined as all source code displayed within the prose of the\ndocumentation.\n\nCC0: http://creativecommons.org/publicdomain/zero/1.0/\n\n====\n\nFiles located in the node_modules and vendor directories are externally\nmaintained libraries used by this software which have their own\nlicenses; we recommend you read them, as their terms may differ from the\nterms above."
+        }
+      ]
+    },
+    {
+      "coordinate": "lodash._basetostring@4.12.0",
+      "name": "lodash._basetostring",
+      "version": "4.12.0",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-SwcRIbyxnN6CFEEK4K1y+zuApvWdpQdBHM/swxP962s8HIxPO3alBH5t3m/dl+f4CMUug6sJb7Pww8d13/9WSw==",
+      "resolved": "https://registry.npmjs.org/lodash._basetostring/-/lodash._basetostring-4.12.0.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/lodash._basetostring/-/lodash._basetostring-4.12.0.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "95da58f9567fa87531d5516b69c1b369bc99a645c87b35c9d5ce339c91ff172a",
+          "text": "Copyright jQuery Foundation and other contributors <https://jquery.org/>\n\nBased on Underscore.js, copyright Jeremy Ashkenas,\nDocumentCloud and Investigative Reporters & Editors <http://underscorejs.org/>\n\nThis software consists of voluntary contributions made by many\nindividuals. For exact contribution history, see the revision history\navailable at https://github.com/lodash/lodash\n\nThe following license applies to all parts of this software except as\ndocumented below:\n\n====\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n\n====\n\nCopyright and related rights for sample code are waived via CC0. Sample\ncode is defined as all source code displayed within the prose of the\ndocumentation.\n\nCC0: http://creativecommons.org/publicdomain/zero/1.0/\n\n====\n\nFiles located in the node_modules and vendor directories are externally\nmaintained libraries used by this software which have their own\nlicenses; we recommend you read them, as their terms may differ from the\nterms above."
+        }
+      ]
+    },
+    {
+      "coordinate": "lodash._baseuniq@4.6.0",
+      "name": "lodash._baseuniq",
+      "version": "4.6.0",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-Ja1YevpHZctlI5beLA7oc5KNDhGcPixFhcqSiORHNsp/1QTv7amAXzw+gu4YOvErqVlMVyIJGgtzeepCnnur0A==",
+      "resolved": "https://registry.npmjs.org/lodash._baseuniq/-/lodash._baseuniq-4.6.0.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/lodash._baseuniq/-/lodash._baseuniq-4.6.0.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "95da58f9567fa87531d5516b69c1b369bc99a645c87b35c9d5ce339c91ff172a",
+          "text": "Copyright jQuery Foundation and other contributors <https://jquery.org/>\n\nBased on Underscore.js, copyright Jeremy Ashkenas,\nDocumentCloud and Investigative Reporters & Editors <http://underscorejs.org/>\n\nThis software consists of voluntary contributions made by many\nindividuals. For exact contribution history, see the revision history\navailable at https://github.com/lodash/lodash\n\nThe following license applies to all parts of this software except as\ndocumented below:\n\n====\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n\n====\n\nCopyright and related rights for sample code are waived via CC0. Sample\ncode is defined as all source code displayed within the prose of the\ndocumentation.\n\nCC0: http://creativecommons.org/publicdomain/zero/1.0/\n\n====\n\nFiles located in the node_modules and vendor directories are externally\nmaintained libraries used by this software which have their own\nlicenses; we recommend you read them, as their terms may differ from the\nterms above."
+        }
+      ]
+    },
+    {
+      "coordinate": "lodash._createset@4.0.3",
+      "name": "lodash._createset",
+      "version": "4.0.3",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-GTkC6YMprrJZCYU3zcqZj+jkXkrXzq3IPBcF/fIPpNEAB4hZEtXU8zp/RwKOvZl43NUmwDbyRk3+ZTbeRdEBXA==",
+      "resolved": "https://registry.npmjs.org/lodash._createset/-/lodash._createset-4.0.3.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/lodash._createset/-/lodash._createset-4.0.3.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "95da58f9567fa87531d5516b69c1b369bc99a645c87b35c9d5ce339c91ff172a",
+          "text": "Copyright jQuery Foundation and other contributors <https://jquery.org/>\n\nBased on Underscore.js, copyright Jeremy Ashkenas,\nDocumentCloud and Investigative Reporters & Editors <http://underscorejs.org/>\n\nThis software consists of voluntary contributions made by many\nindividuals. For exact contribution history, see the revision history\navailable at https://github.com/lodash/lodash\n\nThe following license applies to all parts of this software except as\ndocumented below:\n\n====\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n\n====\n\nCopyright and related rights for sample code are waived via CC0. Sample\ncode is defined as all source code displayed within the prose of the\ndocumentation.\n\nCC0: http://creativecommons.org/publicdomain/zero/1.0/\n\n====\n\nFiles located in the node_modules and vendor directories are externally\nmaintained libraries used by this software which have their own\nlicenses; we recommend you read them, as their terms may differ from the\nterms above."
+        }
+      ]
+    },
+    {
+      "coordinate": "lodash._root@3.0.1",
+      "name": "lodash._root",
+      "version": "3.0.1",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-O0pWuFSK6x4EXhM1dhZ8gchNtG7JMqBtrHdoUFUWXD7dJnNSUze1GuyQr5sOs0aCvgGeI3o/OJW8f4ca7FDxmQ==",
+      "resolved": "https://registry.npmjs.org/lodash._root/-/lodash._root-3.0.1.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/lodash._root/-/lodash._root-3.0.1.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "b68aa6f0205ecae04cce9b177ac1278439ac96826cccb5f581212eb6401e6867",
+          "text": "The MIT License (MIT)\n\nCopyright 2012-2016 The Dojo Foundation <http://dojofoundation.org/>\nBased on Underscore.js, copyright 2009-2016 Jeremy Ashkenas,\nDocumentCloud and Investigative Reporters & Editors <http://underscorejs.org/>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
+        }
+      ]
+    },
+    {
+      "coordinate": "lodash._stringtopath@4.8.0",
+      "name": "lodash._stringtopath",
+      "version": "4.8.0",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-SXL66C731p0xPDC5LZg4wI5H+dJo/EO4KTqOMwLYCH3+FmmfAKJEZCm6ohGpI+T1xwsDsJCfL4OnhorllvlTPQ==",
+      "resolved": "https://registry.npmjs.org/lodash._stringtopath/-/lodash._stringtopath-4.8.0.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/lodash._stringtopath/-/lodash._stringtopath-4.8.0.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "95da58f9567fa87531d5516b69c1b369bc99a645c87b35c9d5ce339c91ff172a",
+          "text": "Copyright jQuery Foundation and other contributors <https://jquery.org/>\n\nBased on Underscore.js, copyright Jeremy Ashkenas,\nDocumentCloud and Investigative Reporters & Editors <http://underscorejs.org/>\n\nThis software consists of voluntary contributions made by many\nindividuals. For exact contribution history, see the revision history\navailable at https://github.com/lodash/lodash\n\nThe following license applies to all parts of this software except as\ndocumented below:\n\n====\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n\n====\n\nCopyright and related rights for sample code are waived via CC0. Sample\ncode is defined as all source code displayed within the prose of the\ndocumentation.\n\nCC0: http://creativecommons.org/publicdomain/zero/1.0/\n\n====\n\nFiles located in the node_modules and vendor directories are externally\nmaintained libraries used by this software which have their own\nlicenses; we recommend you read them, as their terms may differ from the\nterms above."
+        }
+      ]
+    },
+    {
       "coordinate": "lodash.camelcase@4.3.0",
       "name": "lodash.camelcase",
       "version": "4.3.0",
@@ -10239,6 +10439,26 @@
       "resolved": "https://registry.npmjs.org/lodash.throttle/-/lodash.throttle-4.1.1.tgz",
       "legalSource": "package-root",
       "sourceReference": "https://registry.npmjs.org/lodash.throttle/-/lodash.throttle-4.1.1.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "95da58f9567fa87531d5516b69c1b369bc99a645c87b35c9d5ce339c91ff172a",
+          "text": "Copyright jQuery Foundation and other contributors <https://jquery.org/>\n\nBased on Underscore.js, copyright Jeremy Ashkenas,\nDocumentCloud and Investigative Reporters & Editors <http://underscorejs.org/>\n\nThis software consists of voluntary contributions made by many\nindividuals. For exact contribution history, see the revision history\navailable at https://github.com/lodash/lodash\n\nThe following license applies to all parts of this software except as\ndocumented below:\n\n====\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n\n====\n\nCopyright and related rights for sample code are waived via CC0. Sample\ncode is defined as all source code displayed within the prose of the\ndocumentation.\n\nCC0: http://creativecommons.org/publicdomain/zero/1.0/\n\n====\n\nFiles located in the node_modules and vendor directories are externally\nmaintained libraries used by this software which have their own\nlicenses; we recommend you read them, as their terms may differ from the\nterms above."
+        }
+      ]
+    },
+    {
+      "coordinate": "lodash.uniqby@4.5.0",
+      "name": "lodash.uniqby",
+      "version": "4.5.0",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-IRt7cfTtHy6f1aRVA5n7kT8rgN3N1nH6MOWLcHfpWG2SH19E3JksLK38MktLxZDhlAjCP9jpIXkOnRXlu6oByQ==",
+      "resolved": "https://registry.npmjs.org/lodash.uniqby/-/lodash.uniqby-4.5.0.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/lodash.uniqby/-/lodash.uniqby-4.5.0.tgz",
       "publishedLegalFileCount": 1,
       "apacheNotice": null,
       "files": [
@@ -11990,6 +12210,26 @@
       ]
     },
     {
+      "coordinate": "proper-lockfile@4.1.2",
+      "name": "proper-lockfile",
+      "version": "4.1.2",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-TjNPblN4BwAWMXU8s9AEz4JmQxnD1NNL7bNOY/AKUzyamc379FWASUhc/K1pL2noVb+XmZKLL68cjzLsiOAMaA==",
+      "resolved": "https://registry.npmjs.org/proper-lockfile/-/proper-lockfile-4.1.2.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/proper-lockfile/-/proper-lockfile-4.1.2.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "5e7b89989b946961a7f3a87fc689adf92798f4322e2a27f1852c94ff2f9fa7f6",
+          "text": "The MIT License (MIT)\n\nCopyright (c) 2018 Made With MOXY Lda <hello@moxy.studio>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE."
+        }
+      ]
+    },
+    {
       "coordinate": "protobufjs@7.6.6",
       "name": "protobufjs",
       "version": "7.6.6",
@@ -12051,6 +12291,26 @@
           "path": "LICENSE",
           "sha256": "6e2ce8b28e108ee2d1e2b6b552d8237a19268936ae8fb408e8e4c47ca6af78da",
           "text": "The MIT License\n\nCopyright (C) 2016-2018 Rob Wu <rob@robwu.nl>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of\nthis software and associated documentation files (the \"Software\"), to deal in\nthe Software without restriction, including without limitation the rights to\nuse, copy, modify, merge, publish, distribute, sublicense, and/or sell copies\nof the Software, and to permit persons to whom the Software is furnished to do\nso, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS\nFOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR\nCOPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER\nIN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN\nCONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+        }
+      ]
+    },
+    {
+      "coordinate": "querystringify@2.2.0",
+      "name": "querystringify",
+      "version": "2.2.0",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-FIqgj2EUvTa7R50u0rGsyTftzjYmv/a3hO345bZNrqabNqjtgiDMgmo4mkUjd+nzU5oF3dClKqFIPUKybUyqoQ==",
+      "resolved": "https://registry.npmjs.org/querystringify/-/querystringify-2.2.0.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/querystringify/-/querystringify-2.2.0.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "ed5d3c561ae3156fd96acf90f758092b129bc98541846c8e4fe01ab3e0c3f2bb",
+          "text": "The MIT License (MIT)\n\nCopyright (c) 2015 Unshift.io, Arnout Kazemier,  the Contributors.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
         }
       ]
     },
@@ -12755,6 +13015,26 @@
       ]
     },
     {
+      "coordinate": "requires-port@1.0.0",
+      "name": "requires-port",
+      "version": "1.0.0",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-KigOCHcocU3XODJxsu8i/j8T9tzT4adHiecwORRQ0ZZFcp7ahwXuRU1m+yuO90C5ZUyGeGfocHDI14M3L3yDAQ==",
+      "resolved": "https://registry.npmjs.org/requires-port/-/requires-port-1.0.0.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/requires-port/-/requires-port-1.0.0.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "ed5d3c561ae3156fd96acf90f758092b129bc98541846c8e4fe01ab3e0c3f2bb",
+          "text": "The MIT License (MIT)\n\nCopyright (c) 2015 Unshift.io, Arnout Kazemier,  the Contributors.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
+        }
+      ]
+    },
+    {
       "coordinate": "reselect@5.1.1",
       "name": "reselect",
       "version": "5.1.1",
@@ -12851,6 +13131,26 @@
           "path": "license",
           "sha256": "2bc4beb49d4852de32aecc72c9db954596cfcfcdc980fd7693adc89d5aa5d31f",
           "text": "The MIT License (MIT)\n\nCopyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE."
+        }
+      ]
+    },
+    {
+      "coordinate": "retry@0.12.0",
+      "name": "retry",
+      "version": "0.12.0",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-9LkiTwjUh6rT555DtE9rTX+BKByPfrMzEAtnlEtdEwr3Nkffwiihqe2bWADg+OQRjt9gl6ICdmB/ZFDCGAtSow==",
+      "resolved": "https://registry.npmjs.org/retry/-/retry-0.12.0.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/retry/-/retry-0.12.0.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "License",
+          "sha256": "1418710b026fba5ae364100975702fddc0867d17b13940e3779a62cea33258d4",
+          "text": "Copyright (c) 2011:\nTim Koschützki (tim@debuggable.com)\nFelix Geisendörfer (felix@debuggable.com)\n\n Permission is hereby granted, free of charge, to any person obtaining a copy\n of this software and associated documentation files (the \"Software\"), to deal\n in the Software without restriction, including without limitation the rights\n to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\n copies of the Software, and to permit persons to whom the Software is\n furnished to do so, subject to the following conditions:\n\n The above copyright notice and this permission notice shall be included in\n all copies or substantial portions of the Software.\n\n THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\n THE SOFTWARE."
         }
       ]
     },
@@ -13875,6 +14175,26 @@
       ]
     },
     {
+      "coordinate": "tus-js-client@4.3.1",
+      "name": "tus-js-client",
+      "version": "4.3.1",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-ZLeYmjrkaU1fUsKbIi8JML52uAocjEZtBx4DKjRrqzrZa0O4MYwT6db+oqePlspV+FxXJAyFBc/L5gwUi2OFsg==",
+      "resolved": "https://registry.npmjs.org/tus-js-client/-/tus-js-client-4.3.1.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/tus-js-client/-/tus-js-client-4.3.1.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "bf7f0bc8d57dced8d15793e93e7b4a873d6441dc98bd6ad88cb4beb58f8a31eb",
+          "text": "The MIT License (MIT)\n\nCopyright (c) 2015 tus - Resumable File Uploads\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
+        }
+      ]
+    },
+    {
       "coordinate": "type-detect@4.0.8",
       "name": "type-detect",
       "version": "4.0.8",
@@ -14071,6 +14391,26 @@
           "path": "LICENSE",
           "sha256": "1017334f27eb733285b56c0ddc7769dd22db678d49d792ac174ea54ccdb0e303",
           "text": "The MIT License (MIT)\n\nCopyright 2022 Andrey Sitnik <andrey@sitnik.es> and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of\nthis software and associated documentation files (the \"Software\"), to deal in\nthe Software without restriction, including without limitation the rights to\nuse, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of\nthe Software, and to permit persons to whom the Software is furnished to do so,\nsubject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS\nFOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR\nCOPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER\nIN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN\nCONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+        }
+      ]
+    },
+    {
+      "coordinate": "url-parse@1.5.10",
+      "name": "url-parse",
+      "version": "1.5.10",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-WypcfiRhfeUP9vvF0j6rw0J3hrWrw6iZv3+22h6iRMJ/8z1Tj6XfLP4DsUix5MhMPnXpiHDoKyoZ/bdCkwBCiQ==",
+      "resolved": "https://registry.npmjs.org/url-parse/-/url-parse-1.5.10.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/url-parse/-/url-parse-1.5.10.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "ed5d3c561ae3156fd96acf90f758092b129bc98541846c8e4fe01ab3e0c3f2bb",
+          "text": "The MIT License (MIT)\n\nCopyright (c) 2015 Unshift.io, Arnout Kazemier,  the Contributors.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
         }
       ]
     },
