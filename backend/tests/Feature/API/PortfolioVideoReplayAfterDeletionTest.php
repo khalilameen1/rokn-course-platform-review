@@ -5,18 +5,21 @@ declare(strict_types=1);
 namespace Tests\Feature\API;
 
 use App\Models\BunnyVideoCleanupCandidate;
+use App\Models\Course;
+use App\Models\CourseEnrollment;
 use App\Models\PortfolioDeletedUpload;
 use App\Models\PortfolioItem;
 use App\Models\PortfolioVideoUpload;
 use App\Models\User;
-use App\Services\BunnyService;
 use App\Services\BunnyDeliveryService;
 use App\Services\BunnyMediaRegistry;
+use App\Services\BunnyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Mockery;
+use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -25,12 +28,16 @@ final class PortfolioVideoReplayAfterDeletionTest extends TestCase
     use RefreshDatabase;
 
     private const REQUEST_ID = '11111111-1111-4111-8111-111111111111';
+
     private const VIDEO_ID = '22222222-2222-4222-8222-222222222222';
 
     private PortfolioItem $item;
-    private \Mockery\MockInterface $bunny;
-    private \Mockery\MockInterface $delivery;
-    private \Mockery\MockInterface $mediaRegistry;
+
+    private MockInterface $bunny;
+
+    private MockInterface $delivery;
+
+    private MockInterface $mediaRegistry;
 
     protected function setUp(): void
     {
@@ -38,10 +45,10 @@ final class PortfolioVideoReplayAfterDeletionTest extends TestCase
         $user = new User(['name' => 'Learner', 'email' => 'video-replay@example.test', 'password' => 'unused']);
         $user->forceFill(['role' => 'student', 'active' => true])->save();
         $this->actingAs($user, 'api');
-        $course = \App\Models\Course::query()->forceCreate([
+        $course = Course::query()->forceCreate([
             'tenant_id' => 1, 'name_ar' => 'كورس بشهادة', 'price' => 100,
         ]);
-        \App\Models\CourseEnrollment::query()->forceCreate([
+        CourseEnrollment::query()->forceCreate([
             'tenant_id' => $course->tenant_id,
             'user_id' => $user->id, 'course_id' => $course->id, 'is_active' => true,
         ]);
@@ -66,13 +73,12 @@ final class PortfolioVideoReplayAfterDeletionTest extends TestCase
             'authorization_expires_in_seconds' => 1800,
         ]);
         $this->mediaRegistry->shouldReceive('queueVideoCleanup')->andReturnUsing(
-            fn (string $guid, $lessonId, string $reason, int $hours): BunnyVideoCleanupCandidate =>
-                BunnyVideoCleanupCandidate::query()->updateOrCreate(['video_guid' => $guid], [
-                    'reason' => $reason,
-                    'eligible_after' => now()->addHours($hours),
-                    'requires_review' => false,
-                    'reviewed_at' => now(),
-                ])
+            fn (string $guid, $lessonId, string $reason, int $hours): BunnyVideoCleanupCandidate => BunnyVideoCleanupCandidate::query()->updateOrCreate(['video_guid' => $guid], [
+                'reason' => $reason,
+                'eligible_after' => now()->addHours($hours),
+                'requires_review' => false,
+                'reviewed_at' => now(),
+            ])
         );
         $this->bunny->shouldReceive('verifyDirectUpload')->andReturnTrue();
         $this->bunny->shouldReceive('inspectRemoteVideo')->andReturn([

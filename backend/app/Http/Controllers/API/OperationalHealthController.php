@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Services\ProductionCapabilityService;
 use App\Services\AppReleasePolicyService;
+use App\Services\ProductionCapabilityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -242,15 +242,15 @@ final class OperationalHealthController extends Controller
             'app_links_android' => 'capabilities.app_links.android.ready',
             'app_links_apple' => 'capabilities.app_links.apple.ready',
         ] as $name => $path) {
-            if (!array_key_exists($name, $checks)) {
+            if (! array_key_exists($name, $checks)) {
                 $optionalChecks[$name] = (bool) data_get($report, $path);
             }
         }
-        $ready = !in_array(false, $checks, true);
+        $ready = ! in_array(false, $checks, true);
 
         $status = $ready ? 'launch_ready' : 'launch_blocked';
         $time = now()->toIso8601String();
-        if (!$this->mayReadLaunchDetails($request)) {
+        if (! $this->mayReadLaunchDetails($request)) {
             // The verdict stays public for deploy gates; which provider is
             // missing or broken is operator information.
             return response()->json([
@@ -340,7 +340,7 @@ final class OperationalHealthController extends Controller
     private function scanCriticalSchema(): bool
     {
         foreach (self::CRITICAL_TABLES as $table) {
-            if (!$this->tableExists($table)) {
+            if (! $this->tableExists($table)) {
                 return false;
             }
         }
@@ -348,7 +348,7 @@ final class OperationalHealthController extends Controller
         foreach (self::CRITICAL_COLUMNS as $table => $columns) {
             foreach ($columns as $column) {
                 try {
-                    if (!Schema::hasColumn($table, $column)) {
+                    if (! Schema::hasColumn($table, $column)) {
                         return false;
                     }
                 } catch (Throwable $exception) {
@@ -380,7 +380,7 @@ final class OperationalHealthController extends Controller
     private function scanLaunchSchema(): bool
     {
         foreach (self::LAUNCH_TABLES as $table) {
-            if (!$this->tableExists($table)) {
+            if (! $this->tableExists($table)) {
                 return false;
             }
         }
@@ -388,7 +388,7 @@ final class OperationalHealthController extends Controller
         foreach (self::LAUNCH_COLUMNS as $table => $columns) {
             foreach ($columns as $column) {
                 try {
-                    if (!Schema::hasColumn($table, $column)) {
+                    if (! Schema::hasColumn($table, $column)) {
                         return false;
                     }
                 } catch (Throwable) {
@@ -405,8 +405,8 @@ final class OperationalHealthController extends Controller
      * contract carried by this release so a candidate can never inherit a
      * positive result written by an older release with fewer requirements.
      *
-     * @param list<string> $tables
-     * @param array<string, list<string>> $columns
+     * @param  list<string>  $tables
+     * @param  array<string, list<string>>  $columns
      */
     private function schemaCacheKey(string $scope, array $tables, array $columns): string
     {
@@ -416,5 +416,4 @@ final class OperationalHealthController extends Controller
             substr(hash('sha256', json_encode([$tables, $columns], JSON_THROW_ON_ERROR)), 0, 16)
         );
     }
-
 }

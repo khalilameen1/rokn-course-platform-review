@@ -16,21 +16,24 @@ final class AwardCourseCompletionReward implements ShouldQueue
     use InteractsWithQueue;
 
     public bool $afterCommit = true;
+
     public int $tries = 3;
+
     public int $timeout = 30;
+
     public bool $failOnTimeout = true;
+
     public array $backoff = [10, 60, 180];
 
     public function __construct(
         private readonly LearningRewardService $rewards
-    ) {
-    }
+    ) {}
 
     public function handle(CourseCompleted $event): void
     {
         $user = User::query()->find($event->resolvedUserId());
         $course = Course::withTrashed()->find($event->resolvedCourseId());
-        if (!$user || !$course) {
+        if (! $user || ! $course) {
             return;
         }
 

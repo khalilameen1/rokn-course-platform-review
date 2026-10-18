@@ -31,6 +31,7 @@ final class GenerateCourseCoverPreviews extends Command
         $paths = (clone $pending)->select('path')->distinct()->orderBy('path')->limit($limit)->pluck('path');
         if ($this->option('dry-run')) {
             $this->info('Pending original covers in this batch: '.$paths->count());
+
             return self::SUCCESS;
         }
         $completed = 0;
@@ -43,7 +44,9 @@ final class GenerateCourseCoverPreviews extends Command
                 // Attach one rendition to all still-pending owners of that file.
                 DB::transaction(function () use ($pending, $path, $preview, $revision): void {
                     $updated = (clone $pending)->where('path', $path)->update(['preview_path' => $preview]);
-                    if ($updated > 0) $revision->invalidateAfterCommit();
+                    if ($updated > 0) {
+                        $revision->invalidateAfterCommit();
+                    }
                 }, 3);
                 $completed++;
             } catch (\Throwable $exception) {
@@ -52,7 +55,9 @@ final class GenerateCourseCoverPreviews extends Command
             } finally {
                 // No-op for committed owners. A race/rollback leaves a normal
                 // orphan, retired by the existing reference-aware cleanup owner.
-                if ($preview) $cleanup->deleteOrQueue('public', $preview);
+                if ($preview) {
+                    $cleanup->deleteOrQueue('public', $preview);
+                }
             }
         }
         $this->info("Processed: {$completed}; failed: {$failed}. Originals retained.");

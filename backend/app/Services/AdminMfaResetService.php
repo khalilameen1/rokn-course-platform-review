@@ -25,7 +25,7 @@ final class AdminMfaResetService
         return DB::transaction(function () use ($target): bool {
             /** @var User $locked */
             $locked = User::query()->lockForUpdate()->findOrFail($target->getKey());
-            if (!in_array(strtolower(trim((string) $locked->role)), ['admin', 'moderator'], true)) {
+            if (! in_array(strtolower(trim((string) $locked->role)), ['admin', 'moderator'], true)) {
                 throw new \DomainException('Only dashboard staff accounts have dashboard MFA.');
             }
             $hadEnrolment = $locked->admin_totp_confirmed_at !== null

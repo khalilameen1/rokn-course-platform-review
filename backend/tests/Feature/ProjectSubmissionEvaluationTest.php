@@ -13,20 +13,21 @@ use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
+use App\Models\Order;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
-use App\Models\Order;
-use App\Models\WalletTransaction;
 use App\Models\User;
+use App\Models\WalletTransaction;
+use App\Services\AiConsentService;
 use App\Services\AiEntitlementBudgetService;
 use App\Services\AiUsageSettlementService;
 use App\Services\CourseAccessPlanService;
 use App\Services\PaidAiCallExecutionService;
+use App\Services\ProjectSubmissionEvaluationScheduler;
 use App\Services\ProjectSubmissionEvaluationService;
 use App\Services\ProjectSubmissionOrchestrator;
 use App\Services\ProjectSubmissionPresenter;
 use App\Services\ProjectSubmissionService;
-use App\Services\ProjectSubmissionEvaluationScheduler;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
@@ -110,6 +111,7 @@ final class ProjectSubmissionEvaluationTest extends TestCase
     public static function unusableResponses(): array
     {
         $decision = '{"decision":"relevant_effort","reason":"محاولة مناسبة"}';
+
         return ['malformed' => ['not a decision'],
             'prefixed prose' => ["النتيجة\n```json\n{$decision}\n```"],
             'suffixed prose' => ["```json\n{$decision}\n```\nتقدر تكمل"],
@@ -119,8 +121,8 @@ final class ProjectSubmissionEvaluationTest extends TestCase
             'truncated object' => ["```json\n{\"decision\":\"relevant_effort\"\n```"],
             'fenced unavailable' => ["```json\n{\"decision\":\"unavailable\",\"reason\":\"الصورة غير واضحة\"}\n```"],
             'unreadable by model' => [json_encode([
-            'decision' => 'unavailable', 'reason' => 'مش قادر أشوف الملف بوضوح',
-        ])]];
+                'decision' => 'unavailable', 'reason' => 'مش قادر أشوف الملف بوضوح',
+            ])]];
     }
 
     public static function completeDecisionBlocks(): array
@@ -213,7 +215,10 @@ final class ProjectSubmissionEvaluationTest extends TestCase
         self::assertSame(0, AiEntitlementUsage::query()->count());
     }
 
-    public static function storedOutcomes(): array { return ['landed' => [false], 'settled before presentation' => [true]]; }
+    public static function storedOutcomes(): array
+    {
+        return ['landed' => [false], 'settled before presentation' => [true]];
+    }
 
     #[DataProvider('storedOutcomes')]
     public function test_known_paid_result_is_restored_without_another_provider_call(bool $settled): void
@@ -228,7 +233,9 @@ final class ProjectSubmissionEvaluationTest extends TestCase
         $result = ['message' => json_encode(['decision' => 'relevant_effort', 'reason' => 'محاولة مناسبة']),
             'usage' => ['total_tokens' => 50, 'cost' => .01], 'provider_request_id' => 'landed-review'];
         $calls->landSuccessfulResultForActiveUser($event, $execution, $submission->user_id, $result);
-        if ($settled) app(AiUsageSettlementService::class)->settle($event, $result);
+        if ($settled) {
+            app(AiUsageSettlementService::class)->settle($event, $result);
+        }
         app()->call([new EvaluateProjectSubmission($submission->id), 'handle']);
         self::assertSame('passed', $submission->fresh()->review_status);
         self::assertSame('completed', $event->fresh()->status);
@@ -378,7 +385,10 @@ final class ProjectSubmissionEvaluationTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public static function completeTextFormats(): array { return ['text' => [false], 'Word' => [true]]; }
+    public static function completeTextFormats(): array
+    {
+        return ['text' => [false], 'Word' => [true]];
+    }
 
     #[DataProvider('completeTextFormats')]
     public function test_reviewer_receives_the_end_of_text_files_beyond_the_report_excerpt_limit(bool $word): void
@@ -408,10 +418,10 @@ final class ProjectSubmissionEvaluationTest extends TestCase
 
     private function submit(bool $image = false, ?string $text = null, bool $report = false, ?UploadedFile $file = null): array
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill(['name' => 'Review learner', 'email' => Str::uuid().'@test.rokn',
             'password' => bcrypt('test'), 'active' => true, 'role' => 'client'])->save();
-        app(\App\Services\AiConsentService::class)->record($user, true);
+        app(AiConsentService::class)->record($user, true);
         $course = Course::factory()->make();
         $course->forceFill(['tenant_id' => 1, 'is_coming_soon' => false])->save();
         $project = Project::factory()->create(['requirements_text_ar' => 'صمم شعار شجرة باستخدام الأشكال',
@@ -441,7 +451,7 @@ final class ProjectSubmissionEvaluationTest extends TestCase
                 'metadata' => ['order_id' => $order->id], 'occurred_at' => now()]);
             $order->forceFill(['wallet_transaction_id' => $transaction->id])->save();
         }
-        $enrollment = new CourseEnrollment();
+        $enrollment = new CourseEnrollment;
         $enrollment->forceFill(['tenant_id' => 1, 'user_id' => $user->id, 'course_id' => $course->id,
             'order_id' => $order?->id, 'access_plan_id' => $plan->id, 'access_plan_snapshot' => $terms,
             'is_active' => true, 'enrolled_at' => now()])->save();
@@ -450,18 +460,22 @@ final class ProjectSubmissionEvaluationTest extends TestCase
             $canvas = imagecreatetruecolor(180, 180);
             imagefilledrectangle($canvas, 0, 0, 89, 179, imagecolorallocate($canvas, 240, 100, 20));
             imagefilledrectangle($canvas, 90, 0, 179, 179, imagecolorallocate($canvas, 20, 100, 240));
-            ob_start(); imagepng($canvas); $bytes = ob_get_clean(); imagedestroy($canvas);
+            ob_start();
+            imagepng($canvas);
+            $bytes = ob_get_clean();
+            imagedestroy($canvas);
             $files[] = UploadedFile::fake()->createWithContent('attempt.png', $bytes);
         }
         $submission = app(ProjectSubmissionService::class)->submit($user, $project,
             ($image || $file) ? null : ($text ?? 'محاولة توضح خطوات تنفيذ الشعار باستخدام الأشكال'), $files, (string) Str::uuid());
+
         return [$submission, $user, $enrollment];
     }
 
     private function wordFile(string $text): UploadedFile
     {
         $path = tempnam(sys_get_temp_dir(), 'review-test-');
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
         $zip->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
         $zip->addFromString('_rels/.rels', '<Relationships><Relationship Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
@@ -469,7 +483,10 @@ final class ProjectSubmissionEvaluationTest extends TestCase
             .htmlspecialchars($text, ENT_XML1 | ENT_QUOTES, 'UTF-8').'</w:t></w:r></w:p></w:body></w:document>');
         $zip->setCompressionName('word/document.xml', \ZipArchive::CM_STORE);
         $zip->close();
-        try { return UploadedFile::fake()->createWithContent('work.docx', file_get_contents($path)); }
-        finally { unlink($path); }
+        try {
+            return UploadedFile::fake()->createWithContent('work.docx', file_get_contents($path));
+        } finally {
+            unlink($path);
+        }
     }
 }

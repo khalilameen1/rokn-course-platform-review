@@ -8,9 +8,7 @@ use Illuminate\Http\Request;
 
 class StudentProgressController extends Controller
 {
-    public function __construct(private readonly AdminStudentProgressReadService $progress)
-    {
-    }
+    public function __construct(private readonly AdminStudentProgressReadService $progress) {}
 
     public function index(Request $request)
     {

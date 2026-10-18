@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\Lesson;
 use App\Support\PublicDiskUrl;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -25,7 +26,7 @@ final class StoredFileReferenceService
             && DB::table('course_sections')
                 ->join('lessons', function ($join): void {
                     $join->on('lessons.id', '=', 'course_sections.sectionable_id')
-                        ->where('course_sections.sectionable_type', '=', \App\Models\Lesson::class);
+                        ->where('course_sections.sectionable_type', '=', Lesson::class);
                 })
                 ->whereNull('course_sections.deleted_at')
                 ->whereRaw('LOWER(lessons.bunny_video_id) = ?', [$videoGuid])
@@ -59,7 +60,7 @@ final class StoredFileReferenceService
             && DB::table('course_sections')
                 ->join('lessons', function ($join): void {
                     $join->on('lessons.id', '=', 'course_sections.sectionable_id')
-                        ->where('course_sections.sectionable_type', '=', \App\Models\Lesson::class);
+                        ->where('course_sections.sectionable_type', '=', Lesson::class);
                 })
                 ->whereNull('course_sections.deleted_at')
                 ->whereRaw('LOWER(lessons.bunny_video_id) = ?', [$videoGuid])
@@ -110,7 +111,7 @@ final class StoredFileReferenceService
         if ($this->exists('lessons', 'thumbnail_path', $path)) {
             return true;
         }
-        if (!Schema::hasTable('portfolio_media')) {
+        if (! Schema::hasTable('portfolio_media')) {
             return false;
         }
 
@@ -210,12 +211,12 @@ final class StoredFileReferenceService
         string $path,
         string $legacyDisk
     ): bool {
-        if (!Schema::hasTable($table) || !Schema::hasColumn($table, $pathColumn)) {
+        if (! Schema::hasTable($table) || ! Schema::hasColumn($table, $pathColumn)) {
             return false;
         }
 
         $query = DB::table($table)->where($pathColumn, $path);
-        if (!Schema::hasColumn($table, $diskColumn)) {
+        if (! Schema::hasColumn($table, $diskColumn)) {
             return $disk === $legacyDisk && $query->exists();
         }
 

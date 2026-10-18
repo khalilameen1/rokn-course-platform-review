@@ -16,14 +16,12 @@ use Throwable;
 /** One durable cleanup ledger; never uploads or deletes physical bytes. */
 final class StoredFileDeletionService
 {
-    public function __construct(private readonly StoredFileReferenceService $references)
-    {
-    }
+    public function __construct(private readonly StoredFileReferenceService $references) {}
 
     public function deleteOrQueue(string $disk, string $path): void
     {
         [$disk, $path] = $this->normalize($disk, $path);
-        if (!$this->valid($disk, $path) || $this->references->isReferenced($disk, $path)) {
+        if (! $this->valid($disk, $path) || $this->references->isReferenced($disk, $path)) {
             return;
         }
 
@@ -36,7 +34,7 @@ final class StoredFileDeletionService
      * An upfront reference check here would lose files still referenced until
      * anonymization commits. The worker rechecks immediately before deletion.
      *
-     * @param list<array{disk:string,path:string}> $files
+     * @param  list<array{disk:string,path:string}>  $files
      * @return list<int>
      */
     public function queueReleasedFiles(array $files, ?int $userId = null): array
@@ -49,10 +47,10 @@ final class StoredFileDeletionService
         $seen = [];
         foreach ($files as $file) {
             [$disk, $path] = $this->normalize($file['disk'], $file['path']);
-            if (!$this->valid($disk, $path)) {
+            if (! $this->valid($disk, $path)) {
                 continue;
             }
-            $key = $disk . ':' . hash('sha256', $path);
+            $key = $disk.':'.hash('sha256', $path);
             if (isset($seen[$key])) {
                 continue;
             }
@@ -72,7 +70,7 @@ final class StoredFileDeletionService
             throw new LogicException('Potential-orphan ledger must commit before storage bytes are written.');
         }
         [$disk, $path] = $this->normalize($disk, $path);
-        if (!$this->valid($disk, $path)) {
+        if (! $this->valid($disk, $path)) {
             throw new \InvalidArgumentException('Tracked storage path is invalid.');
         }
 
@@ -81,7 +79,7 @@ final class StoredFileDeletionService
 
         // Domain admission, not this ledger, decides whether the same target
         // can be resumed. Fresh byte writes need no remote metadata probe.
-        return !$row->wasRecentlyCreated;
+        return ! $row->wasRecentlyCreated;
     }
 
     /** @return array{string,string} */
@@ -92,7 +90,7 @@ final class StoredFileDeletionService
 
     private function valid(string $disk, string $path): bool
     {
-        return $disk !== '' && $path !== '' && !filter_var($path, FILTER_VALIDATE_URL);
+        return $disk !== '' && $path !== '' && ! filter_var($path, FILTER_VALIDATE_URL);
     }
 
     private function record(

@@ -105,7 +105,9 @@ final class OpenRouterCostReconciliationTest extends TestCase
             [401, []], [500, []],
         ];
         $sequence = Http::sequence();
-        foreach ($cases as [$status, $body]) $sequence->push($body, $status);
+        foreach ($cases as [$status, $body]) {
+            $sequence->push($body, $status);
+        }
         Http::fake(['openrouter.ai/*' => $sequence]);
         foreach ($cases as [$status, $body]) {
             $event = $this->event();
@@ -159,6 +161,7 @@ final class OpenRouterCostReconciliationTest extends TestCase
         $event = $this->event();
         Http::fake(function () use ($event) {
             $event->update(['cost_usd' => .008, 'metadata' => ['cost_usage_source' => 'provider']]);
+
             return Http::response(['data' => ['id' => 'gen-original', 'total_cost' => .002]]);
         });
         self::assertSame('skipped', app(OpenRouterCostReconciliationService::class)->reconcile($event->id));
@@ -170,7 +173,10 @@ final class OpenRouterCostReconciliationTest extends TestCase
         $event = $this->event();
         $attempt = 0;
         Http::fake(function () use (&$attempt) {
-            if (++$attempt === 1) throw new ConnectionException('Local simulated failure');
+            if (++$attempt === 1) {
+                throw new ConnectionException('Local simulated failure');
+            }
+
             return Http::response(['data' => ['id' => 'gen-original', 'total_cost' => .006]]);
         });
         $service = app(OpenRouterCostReconciliationService::class);

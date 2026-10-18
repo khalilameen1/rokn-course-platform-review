@@ -28,7 +28,7 @@ class ProfileRequest extends FormRequest
             'email' => 'required|string|email|max:255|unique:users,email,'.auth()->id(),
             'phone' => 'required|string|max:15|unique:users,phone,'.auth()->id(),
             'gender' => 'required|in:male,female,other',
-            'birthday' => 'required|date'
+            'birthday' => 'required|date',
         ];
     }
 }

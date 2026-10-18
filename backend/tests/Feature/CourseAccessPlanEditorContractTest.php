@@ -19,7 +19,7 @@ final class CourseAccessPlanEditorContractTest extends TestCase
 
     public function test_legacy_course_defaults_are_previewed_without_writing_commercial_rows(): void
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'كورس قديم',
@@ -35,14 +35,14 @@ final class CourseAccessPlanEditorContractTest extends TestCase
 
         self::assertSame(CourseAccessPlan::CODES, $plans->pluck('code')->all());
         self::assertSame(1750, (int) $plans->firstWhere('code', CourseAccessPlan::BASIC)?->price_coins);
-        self::assertTrue($plans->every(fn (CourseAccessPlan $plan): bool => !$plan->exists));
+        self::assertTrue($plans->every(fn (CourseAccessPlan $plan): bool => ! $plan->exists));
         self::assertSame(0, $course->accessPlans()->count());
         self::assertSame(9, (int) $course->fresh()->authoring_version);
     }
 
     public function test_existing_plan_rows_are_returned_without_replacing_their_values(): void
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'كورس بفئات',
@@ -70,7 +70,7 @@ final class CourseAccessPlanEditorContractTest extends TestCase
 
     public function test_course_save_clears_dormant_ai_budgets_without_editing_the_global_policy(): void
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'كورس بفئات قديمة',
@@ -127,7 +127,7 @@ final class CourseAccessPlanEditorContractTest extends TestCase
 
     public function test_opening_course_editor_does_not_persist_missing_plans_or_advance_revision(): void
     {
-        $moderator = new User();
+        $moderator = new User;
         $moderator->forceFill([
             'name_ar' => 'محرر المحتوى',
             'email' => 'moderator-editor@example.test',
@@ -138,7 +138,7 @@ final class CourseAccessPlanEditorContractTest extends TestCase
         ])->save();
         $this->actingAs($moderator);
 
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'كورس بلا فئات',

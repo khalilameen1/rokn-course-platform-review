@@ -83,7 +83,7 @@ final class AdminStudentIdentitySearchTest extends TestCase
 
     private function student(int $id, array $attributes = []): void
     {
-        (new User())->forceFill($attributes + [
+        (new User)->forceFill($attributes + [
             'id' => $id, 'name' => 'Learner', 'email' => strtr((string) $id, '0123456789', 'abcdefghij').'@example.test',
             'password' => 'not-a-login-password', 'role' => 'client', 'active' => true,
         ])->save();

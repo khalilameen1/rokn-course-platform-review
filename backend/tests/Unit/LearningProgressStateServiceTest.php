@@ -17,7 +17,7 @@ final class LearningProgressStateServiceTest extends TestCase
         $lesson = $this->section(10, Lesson::class, 100, 1);
         $project = $this->section(20, Project::class, 200, 2);
 
-        $state = (new LearningProgressStateService())->summarize(
+        $state = (new LearningProgressStateService)->summarize(
             collect([$lesson, $project]),
             collect([10])
         );
@@ -32,7 +32,7 @@ final class LearningProgressStateServiceTest extends TestCase
     {
         $lesson = $this->section(10, Lesson::class, 100, 1);
 
-        $state = (new LearningProgressStateService())->summarize(
+        $state = (new LearningProgressStateService)->summarize(
             collect([$lesson]),
             collect([10])
         );
@@ -47,7 +47,7 @@ final class LearningProgressStateServiceTest extends TestCase
         int $contentId,
         int $order
     ): CourseSection {
-        $section = new CourseSection();
+        $section = new CourseSection;
         $section->forceFill([
             'id' => $id,
             'sectionable_type' => $type,

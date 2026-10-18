@@ -98,6 +98,6 @@ final class PaymentIdentityMigrationTest extends TestCase
 
     private function migration(string $file): object
     {
-        return require database_path('migrations/' . $file);
+        return require database_path('migrations/'.$file);
     }
 }

@@ -12,8 +12,10 @@ use App\Models\Order;
 use App\Models\StorePurchase;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /** Durable consent; existing wallet/order actions remain the only debit authority. */
 final readonly class CourseCheckoutService
@@ -35,6 +37,7 @@ final readonly class CourseCheckoutService
                 'expires_at' => now()->addMinutes(15), 'status' => 'quoted',
             ]);
             $this->productEvents->recordCourseCheckoutTransition($user, $checkout, 'checkout_quoted');
+
             return $this->payload($checkout);
         }, 3);
     }
@@ -54,6 +57,7 @@ final readonly class CourseCheckoutService
             })
             ->orderByRaw("CASE WHEN status = 'pending_payment' THEN 0 ELSE 1 END")
             ->latest('id')->first();
+
         return $checkout ? $this->payload($checkout) : null;
     }
 
@@ -62,16 +66,25 @@ final readonly class CourseCheckoutService
         return DB::transaction(function () use ($user, $id): array {
             $user = User::query()->lockForUpdate()->findOrFail($user->id);
             $checkout = $this->locked($user, $id);
-            if ($checkout->status !== 'quoted') return $this->fulfillLocked($user, $checkout);
-            if ($checkout->expires_at->isPast()) return $this->stop($checkout, 'expired', 'checkout_expired');
-            if (!$this->stillValid($user, $checkout, true)) return $this->stop($checkout, 'reconfirm_required', 'checkout_terms_changed');
+            if ($checkout->status !== 'quoted') {
+                return $this->fulfillLocked($user, $checkout);
+            }
+            if ($checkout->expires_at->isPast()) {
+                return $this->stop($checkout, 'expired', 'checkout_expired');
+            }
+            if (! $this->stillValid($user, $checkout, true)) {
+                return $this->stop($checkout, 'reconfirm_required', 'checkout_terms_changed');
+            }
             if (CourseCheckout::query()->where('user_id', $user->id)->awaitingSettlement()
                 ->where('id', '!=', $checkout->id)->exists()) {
                 throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_ALREADY_PENDING);
             }
-            if ($checkout->terms['deficit'] > 0 && !$checkout->package_id) throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_PACKAGE_REQUIRED);
+            if ($checkout->terms['deficit'] > 0 && ! $checkout->package_id) {
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_PACKAGE_REQUIRED);
+            }
             $checkout->forceFill(['status' => 'pending_payment', 'authorized_at' => now()])->save();
             $this->productEvents->recordCourseCheckoutTransition($user, $checkout, 'purchase_started');
+
             return $this->fulfillLocked($user, $checkout);
         }, 3);
     }
@@ -80,6 +93,7 @@ final readonly class CourseCheckoutService
     {
         return DB::transaction(function () use ($user, $id): array {
             $user = User::query()->lockForUpdate()->findOrFail($user->id);
+
             return $this->fulfillLocked($user, $this->locked($user, $id));
         }, 3);
     }
@@ -89,7 +103,10 @@ final readonly class CourseCheckoutService
         return DB::transaction(function () use ($user, $id): array {
             User::query()->lockForUpdate()->findOrFail($user->id);
             $checkout = $this->locked($user, $id);
-            if (in_array($checkout->status, ['quoted', 'pending_payment'], true)) return $this->stop($checkout, 'cancelled', 'checkout_cancelled');
+            if (in_array($checkout->status, ['quoted', 'pending_payment'], true)) {
+                return $this->stop($checkout, 'cancelled', 'checkout_cancelled');
+            }
+
             return $this->payload($checkout);
         }, 3);
     }
@@ -101,19 +118,34 @@ final readonly class CourseCheckoutService
             $user = User::query()->lockForUpdate()->findOrFail($user->id);
             $checkout = $this->locked($user, $id);
             if ((int) $purchase->user_id !== (int) $user->id || $purchase->provider !== $checkout->channel
-                || (int) $purchase->package_id !== (int) $checkout->package_id) throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
+                || (int) $purchase->package_id !== (int) $checkout->package_id) {
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
+            }
             $profile = data_get($purchase->provider_payload, 'checkout_profile_id');
-            if (is_string($profile) && $profile !== '' && !hash_equals($id, $profile)) throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
-            if (in_array($checkout->status, ['completed', 'cancelled', 'expired', 'reconfirm_required'], true)) return $this->payload($checkout);
+            if (is_string($profile) && $profile !== '' && ! hash_equals($id, $profile)) {
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
+            }
+            if (in_array($checkout->status, ['completed', 'cancelled', 'expired', 'reconfirm_required'], true)) {
+                return $this->payload($checkout);
+            }
             $audit = $purchase->provider_payload ?? [];
             $occurred = null;
             try {
-                if ($purchase->provider === 'google' && !empty($audit['purchase_completed_at'])) $occurred = CarbonImmutable::parse($audit['purchase_completed_at']);
-                elseif ($purchase->provider === 'apple' && is_numeric($audit['purchase_date'] ?? null)) $occurred = CarbonImmutable::createFromTimestampMs((int) $audit['purchase_date']);
-            } catch (\Throwable) { /* Without trusted purchase time, credit only; never auto-spend. */ }
-            if (!$checkout->authorized_at || !$occurred || $occurred->lt($checkout->authorized_at)) return $this->stop($checkout, 'reconfirm_required', 'checkout_receipt_not_bound');
-            if ($checkout->quoteHasExpired()) return $this->stop($checkout, 'expired', 'checkout_expired');
+                if ($purchase->provider === 'google' && ! empty($audit['purchase_completed_at'])) {
+                    $occurred = CarbonImmutable::parse($audit['purchase_completed_at']);
+                } elseif ($purchase->provider === 'apple' && is_numeric($audit['purchase_date'] ?? null)) {
+                    $occurred = CarbonImmutable::createFromTimestampMs((int) $audit['purchase_date']);
+                }
+            } catch (\Throwable) { /* Without trusted purchase time, credit only; never auto-spend. */
+            }
+            if (! $checkout->authorized_at || ! $occurred || $occurred->lt($checkout->authorized_at)) {
+                return $this->stop($checkout, 'reconfirm_required', 'checkout_receipt_not_bound');
+            }
+            if ($checkout->quoteHasExpired()) {
+                return $this->stop($checkout, 'expired', 'checkout_expired');
+            }
             $this->attachFunding($checkout, $purchase->order()->firstOrFail());
+
             return $this->fulfillLocked($user, $checkout);
         }, 3);
     }
@@ -128,12 +160,16 @@ final readonly class CourseCheckoutService
                 // A lost direct-checkout response can be retried after approval,
                 // expiry or cancellation. Only this exact issued order may replay.
                 $this->attachFunding($checkout, $order);
+
                 return $this->fulfillLocked($user, $checkout);
             }
             if ($checkout->channel !== 'direct' || $checkout->status !== 'pending_payment'
-                || !$checkout->authorized_at || $order->created_at->lt($checkout->authorized_at)
-                || $checkout->expires_at->isPast()) throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
+                || ! $checkout->authorized_at || $order->created_at->lt($checkout->authorized_at)
+                || $checkout->expires_at->isPast()) {
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
+            }
             $this->attachFunding($checkout, $order);
+
             return $this->fulfillLocked($user, $checkout);
         }, 3);
     }
@@ -141,9 +177,13 @@ final readonly class CourseCheckoutService
     public function resumeFundingOrder(Order $order): void
     {
         $checkout = CourseCheckout::query()->where('funding_order_id', $order->id)->where('status', 'pending_payment')->first();
-        if (!$checkout) return;
+        if (! $checkout) {
+            return;
+        }
         $user = User::query()->find($checkout->user_id);
-        if ($user) $this->resume($user, $checkout->public_id);
+        if ($user) {
+            $this->resume($user, $checkout->public_id);
+        }
     }
 
     private function attachFunding(CourseCheckout $checkout, Order $order): void
@@ -160,48 +200,75 @@ final readonly class CourseCheckoutService
             || ($checkout->channel === 'direct' && (int) round((float) $order->final_amount * 100)
                 !== (int) round((float) ($package['direct_price'] ?? 0) * 100))
             || ($checkout->funding_order_id && (int) $checkout->funding_order_id !== (int) $order->id)
-            || CourseCheckout::query()->where('funding_order_id', $order->id)->where('id', '!=', $checkout->id)->exists()) throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
-        if (!$checkout->funding_order_id) $checkout->forceFill(['funding_order_id' => $order->id])->save();
+            || CourseCheckout::query()->where('funding_order_id', $order->id)->where('id', '!=', $checkout->id)->exists()) {
+            throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
+        }
+        if (! $checkout->funding_order_id) {
+            $checkout->forceFill(['funding_order_id' => $order->id])->save();
+        }
     }
 
     private function fulfillLocked(User $user, CourseCheckout $checkout): array
     {
-        if (!$user->active) return $this->stop($checkout, 'reconfirm_required', 'account_inactive');
+        if (! $user->active) {
+            return $this->stop($checkout, 'reconfirm_required', 'account_inactive');
+        }
         if ($checkout->status === 'completed') {
             $order = Order::query()->find($checkout->course_order_id);
-            if (!$order || !$order->isFinanciallyEffective()) return $this->stop($checkout, 'reconfirm_required', 'course_access_under_review');
+            if (! $order || ! $order->isFinanciallyEffective()) {
+                return $this->stop($checkout, 'reconfirm_required', 'course_access_under_review');
+            }
+
             return $this->payload($checkout);
         }
-        if (!in_array($checkout->status, ['quoted', 'pending_payment'], true)) return $this->payload($checkout);
-        if ($checkout->quoteHasExpired()) return $this->stop($checkout, 'expired', 'checkout_expired');
-        if ($checkout->status !== 'pending_payment') return $this->payload($checkout);
+        if (! in_array($checkout->status, ['quoted', 'pending_payment'], true)) {
+            return $this->payload($checkout);
+        }
+        if ($checkout->quoteHasExpired()) {
+            return $this->stop($checkout, 'expired', 'checkout_expired');
+        }
+        if ($checkout->status !== 'pending_payment') {
+            return $this->payload($checkout);
+        }
         if ($checkout->package_id) {
-            if (!$checkout->funding_order_id) return $this->payload($checkout);
+            if (! $checkout->funding_order_id) {
+                return $this->payload($checkout);
+            }
             $funding = Order::query()->findOrFail($checkout->funding_order_id);
-            if (!$funding->isFinanciallyEffective()) {
-                if ($funding->status === Order::STATUS_PENDING && $funding->financial_status === Order::FINANCIAL_PENDING) return $this->payload($checkout);
+            if (! $funding->isFinanciallyEffective()) {
+                if ($funding->status === Order::STATUS_PENDING && $funding->financial_status === Order::FINANCIAL_PENDING) {
+                    return $this->payload($checkout);
+                }
+
                 return $this->stop($checkout, 'reconfirm_required', 'checkout_funding_not_effective');
             }
         }
-        if (!$this->stillValid($user, $checkout, false)) return $this->stop($checkout, 'reconfirm_required', 'checkout_terms_changed');
+        if (! $this->stillValid($user, $checkout, false)) {
+            return $this->stop($checkout, 'reconfirm_required', 'checkout_terms_changed');
+        }
         $terms = $checkout->terms;
         $balances = $this->wallet->balances($user->fresh());
-        if ($balances['paid'] < $terms['allocation']['paid_coins'] || $balances['reward'] < $terms['allocation']['reward_coins']) return $this->stop($checkout, 'reconfirm_required', 'checkout_balance_changed');
+        if ($balances['paid'] < $terms['allocation']['paid_coins'] || $balances['reward'] < $terms['allocation']['reward_coins']) {
+            return $this->stop($checkout, 'reconfirm_required', 'checkout_balance_changed');
+        }
         try {
             $course = Course::query()->findOrFail($checkout->course_id);
             $key = 'course-checkout:'.$checkout->public_id;
             $result = $terms['mode'] === 'upgrade'
                 ? $this->upgrades->execute($user, $course, $terms['access_plan_code'], $key, $terms['final_price'], $terms['course_revision'])
                 : $this->purchases->execute($user, $course, $terms['access_plan_code'], $key, $terms['final_price'], $terms['course_revision'], $terms['coupon_code'], $terms['allocation']['reward_coins']);
-            if (!empty($result['access_changed']) || empty($result['order'])) return $this->stop($checkout, 'reconfirm_required', 'course_access_changed');
+            if (! empty($result['access_changed']) || empty($result['order'])) {
+                return $this->stop($checkout, 'reconfirm_required', 'course_access_changed');
+            }
             $checkout->forceFill(['course_order_id' => $result['order']->id, 'status' => 'completed', 'completed_at' => now(), 'error_code' => null])->save();
             $this->productEvents->recordCourseCheckoutTransition($user, $checkout, 'purchase_completed');
         } catch (\DomainException $exception) {
             // Persist a stable code; model/ledger guard prose is never stored.
             return $this->stop($checkout, 'reconfirm_required', CourseCheckoutRejected::codeFor($exception));
-        } catch (\Illuminate\Validation\ValidationException) {
+        } catch (ValidationException) {
             return $this->stop($checkout, 'reconfirm_required', 'course_terms_changed');
         }
+
         return $this->payload($checkout);
     }
 
@@ -209,11 +276,16 @@ final readonly class CourseCheckoutService
     {
         try {
             $fresh = $this->quotes->calculate($user, $checkout->terms, $checkBalances);
-            if (!hash_equals($checkout->terms_hash, $this->quotes->commercialHash($fresh))) return false;
+            if (! hash_equals($checkout->terms_hash, $this->quotes->commercialHash($fresh))) {
+                return false;
+            }
             $saved = $checkout->terms;
-            if ($fresh['promotion']['remaining'] - $fresh['discount_amount'] < $saved['allocation']['reward_coins']) return false;
-            return !$checkBalances || ($fresh['purchased_balance'] === $saved['purchased_balance'] && $fresh['reward_balance'] === $saved['reward_balance']);
-        } catch (\DomainException|\Illuminate\Validation\ValidationException|\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            if ($fresh['promotion']['remaining'] - $fresh['discount_amount'] < $saved['allocation']['reward_coins']) {
+                return false;
+            }
+
+            return ! $checkBalances || ($fresh['purchased_balance'] === $saved['purchased_balance'] && $fresh['reward_balance'] === $saved['reward_balance']);
+        } catch (\DomainException|ValidationException|ModelNotFoundException) {
             return false;
         }
     }
@@ -226,6 +298,7 @@ final readonly class CourseCheckoutService
     private function stop(CourseCheckout $checkout, string $status, string $code): array
     {
         $checkout->forceFill(['status' => $status, 'error_code' => $code])->save();
+
         return $this->payload($checkout);
     }
 
@@ -234,6 +307,7 @@ final readonly class CourseCheckoutService
         $terms = $checkout->terms;
         unset($terms['plan_contract'], $terms['enrollment_order_id']);
         $funding = $checkout->funding_order_id ? Order::query()->find($checkout->funding_order_id) : null;
+
         return array_merge($terms, ['id' => $checkout->public_id, 'status' => $checkout->status,
             'payment' => $funding ? [
                 'can_resume' => $checkout->canResumePaymentWith($funding),

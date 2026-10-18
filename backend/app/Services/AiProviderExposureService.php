@@ -10,14 +10,12 @@ use App\Support\DatabaseCapabilities;
 
 final readonly class AiProviderExposureService
 {
-    public function __construct(private InternalSignalService $internalSignals)
-    {
-    }
+    public function __construct(private InternalSignalService $internalSignals) {}
 
     /** Caller holds the aggregate lock inside the reservation transaction. */
     public function refresh(AiEntitlementUsage $usage): void
     {
-        if (!DatabaseCapabilities::hasColumn(
+        if (! DatabaseCapabilities::hasColumn(
             'ai_entitlement_usages',
             'provider_exposure_paused_until'
         )) {
@@ -71,7 +69,7 @@ final readonly class AiProviderExposureService
                 'provider_exposure_paused_until' => $pausedUntil,
             ],
             'count' => $count,
-            'opened' => !$wasPaused && $pausedUntil !== null,
+            'opened' => ! $wasPaused && $pausedUntil !== null,
         ];
     }
 
@@ -81,7 +79,7 @@ final readonly class AiProviderExposureService
         int $eventId
     ): void {
         $metric = 'unanswered_provider_requests';
-        $period = 'enrollment-' . $enrollmentId;
+        $period = 'enrollment-'.$enrollmentId;
         $threshold = max(
             1,
             (int) config('course_plans.ai_unanswered_provider_request_limit', 4)

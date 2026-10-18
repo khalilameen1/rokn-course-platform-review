@@ -169,6 +169,7 @@ final class AccountAiDataErasureTest extends TestCase
             'feature' => 'course_chat', 'model' => 'test/model', 'status' => 'reserved',
             'reserved_tokens' => 100, 'reserved_cost_usd' => '0.020000',
             'reservation_expires_at' => now()->addHour(), 'metadata' => $metadata]);
+
         return [$user, $usage, $event];
     }
 }

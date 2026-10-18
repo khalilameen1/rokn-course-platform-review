@@ -15,9 +15,7 @@ use Intervention\Image\Facades\Image;
 /** Screenshot identity, sanitization and staged attachment persistence. */
 final readonly class SupportCaseScreenshotService
 {
-    public function __construct(private StoredFileDeletionService $deletions)
-    {
-    }
+    public function __construct(private StoredFileDeletionService $deletions) {}
 
     /** @return array{path:string,mime_type:string,size_bytes:int,width:int,height:int,sha256:string} */
     public function stage(
@@ -30,7 +28,9 @@ final readonly class SupportCaseScreenshotService
         } catch (\Throwable) {
             abort(422, "تعذّرت قراءة الصورة\nاختر صورة أخرى");
         }
-        if (function_exists('exif_read_data')) $image->orientate();
+        if (function_exists('exif_read_data')) {
+            $image->orientate();
+        }
         $image->resize(2048, 2048, static function ($constraint): void {
             $constraint->aspectRatio();
             $constraint->upsize();
@@ -80,9 +80,12 @@ final readonly class SupportCaseScreenshotService
 
     public function fingerprint(?UploadedFile $file): ?array
     {
-        if (!$file) return null;
+        if (! $file) {
+            return null;
+        }
         $hash = hash_file('sha256', $file->getRealPath());
         abort_unless($hash && $file->getSize() > 0, 422, "تعذّرت قراءة الصورة\nاختر صورة أخرى");
+
         return ['sha256' => $hash, 'size' => (int) $file->getSize()];
     }
 }

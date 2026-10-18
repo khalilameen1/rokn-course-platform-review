@@ -7,19 +7,17 @@ use App\Models\CoinEarningMethod;
 use App\Models\RewardRule;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminEconomyReadService;
-use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Validation\Rule;
+use App\Services\AdminRewardAuthoringService;
 use App\Services\SocialAuthProviderRegistry;
 use App\Support\BusinessClock;
-use App\Services\AdminRewardAuthoringService;
 use App\Support\RewardConfigurationVersion;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CoinEarningMethodController extends Controller
 {
-    public function __construct(private readonly AdminRewardAuthoringService $authoring)
-    {
-    }
+    public function __construct(private readonly AdminRewardAuthoringService $authoring) {}
 
     public function index(AdminEconomyReadService $economy)
     {
@@ -36,6 +34,7 @@ class CoinEarningMethodController extends Controller
         $methodEditorVersions = $methods->getCollection()->mapWithKeys(
             fn (CoinEarningMethod $method): array => [$method->id => RewardConfigurationVersion::method($method)]
         );
+
         return view('admin.coin_earning_methods.index', compact(
             'methods', 'setting', 'rewardRules', 'rewardEvents', 'socialProviderLabels',
             'settingsEditorVersion', 'rewardRuleEditorVersions', 'methodEditorVersions'
@@ -91,6 +90,7 @@ class CoinEarningMethodController extends Controller
                 $method->id
             );
         });
+
         return redirect()->route('admin.coin-earning-methods.index')
             ->with('success', 'تم إضافة طريقة ربح العملات بنجاح');
     }
@@ -98,6 +98,7 @@ class CoinEarningMethodController extends Controller
     public function edit(CoinEarningMethod $coinEarningMethod)
     {
         $editorVersion = RewardConfigurationVersion::method($coinEarningMethod);
+
         return view('admin.coin_earning_methods.edit', compact('coinEarningMethod', 'editorVersion'));
     }
 
@@ -115,6 +116,7 @@ class CoinEarningMethodController extends Controller
     {
         $validated = $request->validate(['editor_version' => 'required|string|size:64']);
         $this->authoring->deleteMethod($coinEarningMethod, (string) $validated['editor_version']);
+
         return redirect()->route('admin.coin-earning-methods.index')
             ->with('success', 'تم حذف طريقة ربح العملات بنجاح');
     }
@@ -122,8 +124,7 @@ class CoinEarningMethodController extends Controller
     public function storeRewardRule(
         Request $request,
         AdminAuthoringCreateIntentService $createIntents
-    )
-    {
+    ) {
         $payload = $this->rewardRulePayload($request);
         $this->authoring->createRule($payload, function (RewardRule $rule) use ($request, $createIntents): void {
             $createIntents->completeRedirect(
@@ -134,6 +135,7 @@ class CoinEarningMethodController extends Controller
                 $rule->id
             );
         });
+
         return redirect()->route('admin.coin-earning-methods.index')
             ->with('success', 'تمت إضافة قاعدة المكافأة وربطها بالحدث.');
     }
@@ -143,6 +145,7 @@ class CoinEarningMethodController extends Controller
         $version = $request->validate(['editor_version' => 'required|string|size:64']);
         $payload = $this->rewardRulePayload($request, $rewardRule);
         $this->authoring->updateRule($rewardRule, $payload, (string) $version['editor_version']);
+
         return redirect()->route('admin.coin-earning-methods.index')
             ->with('success', 'تم تحديث قاعدة المكافأة.');
     }
@@ -151,6 +154,7 @@ class CoinEarningMethodController extends Controller
     {
         $validated = $request->validate(['editor_version' => 'required|string|size:64']);
         $this->authoring->deleteRule($rewardRule, (string) $validated['editor_version']);
+
         return redirect()->route('admin.coin-earning-methods.index')
             ->with('success', 'تم حذف القاعدة وإيقاف مكافأتها فورًا.');
     }
@@ -233,7 +237,7 @@ class CoinEarningMethodController extends Controller
 
         $event = (string) $validated['event_key'];
         $usesInterval = in_array($event, ['streak_milestone', 'study_session'], true);
-        if ($usesInterval && !filled($validated['interval_count'] ?? null)) {
+        if ($usesInterval && ! filled($validated['interval_count'] ?? null)) {
             throw ValidationException::withMessages([
                 'interval_count' => ['أدخل مدة الاستمرارية أو الدراسة لهذه القاعدة.'],
             ]);

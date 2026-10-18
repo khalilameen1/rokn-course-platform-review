@@ -124,7 +124,7 @@ final class AdminCourseUpdateJsonContractTest extends TestCase
             'name_ar' => 'تصنيف ثابت',
             'name_en' => 'Stable category',
         ]);
-        $teacher = new User();
+        $teacher = new User;
         $teacher->forceFill([
             'name_ar' => 'مدرب ثابت',
             'email' => 'stable-teacher@example.test',
@@ -251,7 +251,7 @@ final class AdminCourseUpdateJsonContractTest extends TestCase
 
     private function moderator(): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'name_ar' => 'محرر المحتوى',
             'email' => 'course-json-moderator@example.test',
@@ -264,7 +264,7 @@ final class AdminCourseUpdateJsonContractTest extends TestCase
 
     private function instructor(string $role, string $email): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'name_ar' => $email,
             'email' => $email,
@@ -277,7 +277,7 @@ final class AdminCourseUpdateJsonContractTest extends TestCase
 
     private function draftCourse(): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'مسودة الكورس',

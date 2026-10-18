@@ -36,7 +36,7 @@ final class CourseStagedPublishAfterCommitTest extends TestCase
         );
         $this->app->instance(CoursePublishingService::class, $publishing);
 
-        $canonical = new Course();
+        $canonical = new Course;
         $canonical->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'النسخة المنشورة',
@@ -77,7 +77,7 @@ final class CourseStagedPublishAfterCommitTest extends TestCase
             ->where('status', CourseAuthoringRevision::DRAFT)
             ->exists());
         $this->assertDatabaseMissing('notification_campaigns', [
-            'delivery_key' => 'course-published:' . $canonical->id . ':v' . $expectedPublishedRevision,
+            'delivery_key' => 'course-published:'.$canonical->id.':v'.$expectedPublishedRevision,
         ]);
         self::assertSame(10, (int) Cache::get('courses:catalog-revision'));
     }

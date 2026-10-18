@@ -29,7 +29,7 @@ final class OpenRouterOwnershipTest extends TestCase
             PaidAiCallExecutionService::class,
         ] as $service) {
             $this->app->bind($service, static function () use ($service): never {
-                throw new \LogicException('Request/response projection must not resolve ' . $service);
+                throw new \LogicException('Request/response projection must not resolve '.$service);
             });
         }
         Http::preventStrayRequests();
@@ -212,6 +212,7 @@ final class OpenRouterOwnershipTest extends TestCase
         $withContent = static fn (mixed $content): array => [
             ['choices' => [['message' => ['content' => $content]]]],
         ];
+
         return [
             'not json' => [null],
             'error envelope' => [['error' => ['message' => 'unavailable']]],

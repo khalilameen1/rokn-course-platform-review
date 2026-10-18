@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\OperationalIncident;
 use App\Models\User;
 use App\Services\OperationalRuntimeService;
 use Illuminate\Console\Command;
@@ -14,6 +15,7 @@ use Throwable;
 final class MonitorOperationalRuntime extends Command
 {
     protected $signature = 'ops:monitor-runtime';
+
     protected $description = 'Detect, deduplicate and escalate silent runtime failures';
 
     public function handle(OperationalRuntimeService $runtime): int
@@ -25,6 +27,7 @@ final class MonitorOperationalRuntime extends Command
                 'exception' => $exception::class,
                 'error_fingerprint' => hash('sha256', $exception->getMessage()),
             ]);
+
             return self::FAILURE;
         }
 
@@ -50,7 +53,7 @@ final class MonitorOperationalRuntime extends Command
         return self::SUCCESS;
     }
 
-    /** @param list<\App\Models\OperationalIncident> $alerts */
+    /** @param list<OperationalIncident> $alerts */
     private function mailAlerts(array $alerts): void
     {
         $recipients = User::query()
@@ -60,7 +63,9 @@ final class MonitorOperationalRuntime extends Command
             ->pluck('email')
             ->filter()
             ->unique();
-        if ($recipients->isEmpty()) return;
+        if ($recipients->isEmpty()) {
+            return;
+        }
 
         $body = "ركن رصد عطلًا تشغيليًا قبل وصوله للطلاب\n\n";
         foreach ($alerts as $incident) {

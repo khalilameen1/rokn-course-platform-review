@@ -133,12 +133,14 @@ final class BusinessClock
 
         if ($elapsed < 3600) {
             $minutes = max(1, intdiv($elapsed, 60));
+
             return $locale === RoknLocale::ARABIC
                 ? 'منذ '.self::arabicCount($minutes, 'دقيقة', 'دقيقتين', 'دقائق', 'دقيقة', 'دقيقة')
                 : ($minutes === 1 ? '1 minute ago' : $minutes.' minutes ago');
         }
 
         $hours = max(1, intdiv($elapsed, 3600));
+
         return $locale === RoknLocale::ARABIC
             ? 'منذ '.self::arabicCount($hours, 'ساعة', 'ساعتين', 'ساعات', 'ساعة', 'ساعة')
             : ($hours === 1 ? '1 hour ago' : $hours.' hours ago');
@@ -148,7 +150,7 @@ final class BusinessClock
     public static function display(DateTimeInterface|string|null $value, string $format = 'Y-m-d H:i'): string
     {
         $formatted = self::format($value, $format);
-        if ($formatted === '' || !RoknLocale::isArabic()) {
+        if ($formatted === '' || ! RoknLocale::isArabic()) {
             return $formatted;
         }
 

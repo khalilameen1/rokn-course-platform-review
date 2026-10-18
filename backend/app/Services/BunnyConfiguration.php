@@ -19,6 +19,7 @@ class BunnyConfiguration
         if ($this->settings === null) {
             $this->settings = Setting::first();
         }
+
         return $this->settings;
     }
 
@@ -28,6 +29,7 @@ class BunnyConfiguration
     public function isEnabled(): bool
     {
         $settings = $this->getSettings();
+
         return $settings && $settings->isBunnyConfigured();
     }
 

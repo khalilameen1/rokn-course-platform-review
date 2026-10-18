@@ -51,8 +51,6 @@ final class SavedSectionController extends Controller
 
     /**
      * Get all saved folders for the authenticated user.
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
     public function getFolders(): JsonResponse
     {
@@ -64,11 +62,12 @@ final class SavedSectionController extends Controller
                 'status' => 200,
                 'success' => true,
                 'message' => 'تم تحميل المجلدات',
-                'data' => SavedFolderResource::collection($folders)
+                'data' => SavedFolderResource::collection($folders),
             ]);
         } catch (\Exception $e) {
             $this->rethrowExpectedRequestException($e);
             report($e);
+
             return response()->json([
                 'status' => 500,
                 'success' => false,
@@ -80,9 +79,6 @@ final class SavedSectionController extends Controller
 
     /**
      * Create a new saved folder.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
      */
     public function createFolder(Request $request): JsonResponse
     {
@@ -145,6 +141,7 @@ final class SavedSectionController extends Controller
         } catch (\Exception $e) {
             $this->rethrowExpectedRequestException($e);
             report($e);
+
             return response()->json([
                 'status' => 500,
                 'success' => false,
@@ -157,8 +154,7 @@ final class SavedSectionController extends Controller
     /**
      * Get a single saved folder with its lessons.
      *
-     * @param int $id
-     * @return \Illuminate\Http\JsonResponse
+     * @param  int  $id
      */
     public function getFolder($id): JsonResponse
     {
@@ -182,19 +178,20 @@ final class SavedSectionController extends Controller
                 'success' => true,
                 'message' => 'تم تحميل المجلد',
                 'data' => [
-                    'id' => (int)$folder->id,
-                    'name' => (string)$folder->name,
+                    'id' => (int) $folder->id,
+                    'name' => (string) $folder->name,
                     'created_at' => $folder->created_at?->toIso8601String(),
                     'updated_at' => $folder->updated_at?->toIso8601String(),
                     'lessons' => SavedLessonResource::collection($lessons),
                     'lessons_count' => (int) $folder->lessons_count,
                     'lessons_has_more' => (int) $folder->lessons_count > $lessons->count(),
                     'lessons_endpoint' => "/api/v1/saved-folders/{$folder->id}/lessons",
-                ]
+                ],
             ]);
         } catch (\Exception $e) {
             $this->rethrowExpectedRequestException($e);
             report($e);
+
             return response()->json([
                 'status' => 500,
                 'success' => false,
@@ -303,8 +300,7 @@ final class SavedSectionController extends Controller
     /**
      * Delete a saved folder.
      *
-     * @param int $id
-     * @return \Illuminate\Http\JsonResponse
+     * @param  int  $id
      */
     public function deleteFolder($id): JsonResponse
     {
@@ -316,11 +312,12 @@ final class SavedSectionController extends Controller
                 'status' => 200,
                 'success' => true,
                 'message' => $deleted ? 'تم حذف المجلد' : 'المجلد محذوف بالفعل',
-                'data' => ['already_deleted' => !$deleted],
+                'data' => ['already_deleted' => ! $deleted],
             ]);
         } catch (\Exception $e) {
             $this->rethrowExpectedRequestException($e);
             report($e);
+
             return response()->json([
                 'status' => 500,
                 'success' => false,
@@ -333,9 +330,7 @@ final class SavedSectionController extends Controller
     /**
      * Save a lesson to a folder.
      *
-     * @param Request $request
-     * @param int $id
-     * @return \Illuminate\Http\JsonResponse
+     * @param  int  $id
      */
     public function saveLesson(Request $request, $id): JsonResponse
     {
@@ -399,12 +394,13 @@ final class SavedSectionController extends Controller
                     'folder_id' => (int) $folder->id,
                     'folder_name' => (string) $folder->name,
                     'is_saved' => true,
-                    'already_saved' => !$inserted,
+                    'already_saved' => ! $inserted,
                 ],
             ]);
         } catch (\Exception $e) {
             $this->rethrowExpectedRequestException($e);
             report($e);
+
             return response()->json([
                 'status' => 500,
                 'success' => false,
@@ -417,9 +413,8 @@ final class SavedSectionController extends Controller
     /**
      * Remove a lesson from a folder.
      *
-     * @param int $id
-     * @param int $lessonId
-     * @return \Illuminate\Http\JsonResponse
+     * @param  int  $id
+     * @param  int  $lessonId
      */
     public function removeLesson($id, $lessonId): JsonResponse
     {
@@ -448,6 +443,7 @@ final class SavedSectionController extends Controller
         } catch (\Exception $e) {
             $this->rethrowExpectedRequestException($e);
             report($e);
+
             return response()->json([
                 'status' => 500,
                 'success' => false,
@@ -473,6 +469,7 @@ final class SavedSectionController extends Controller
         } catch (\Throwable $e) {
             $this->rethrowExpectedRequestException($e);
             report($e);
+
             return response()->json([
                 'status' => 500,
                 'success' => false,
@@ -481,5 +478,4 @@ final class SavedSectionController extends Controller
             ], 500);
         }
     }
-
 }

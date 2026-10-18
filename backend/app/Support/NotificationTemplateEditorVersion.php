@@ -11,6 +11,7 @@ final class NotificationTemplateEditorVersion
     public static function for(AdminNotification $notification): string
     {
         $notification->loadMissing('photo');
+
         return hash('sha256', json_encode([
             (string) $notification->system_key,
             (string) $notification->surface,

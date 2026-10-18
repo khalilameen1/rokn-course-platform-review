@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 final class DispatchPendingAccountFileDeletion extends Command
 {
     protected $signature = 'privacy:cleanup-account-files {--limit=500}';
+
     protected $description = 'Dispatch durable account-file deletion outbox entries';
 
     public function handle(): int
@@ -50,6 +51,7 @@ final class DispatchPendingAccountFileDeletion extends Command
         }
 
         $this->info("Queued {$dispatched} account-file cleanup job(s).");
+
         return self::SUCCESS;
     }
 }

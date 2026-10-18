@@ -12,9 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 /** The path editor works with logical courses, never revision implementation rows. */
 final readonly class AdminPathReadService
 {
-    public function __construct(private AdminContentInventoryReadService $inventory)
-    {
-    }
+    public function __construct(private AdminContentInventoryReadService $inventory) {}
 
     /** @return Builder<Course> */
     public function courses(): Builder

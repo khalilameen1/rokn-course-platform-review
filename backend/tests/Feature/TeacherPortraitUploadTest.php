@@ -140,7 +140,7 @@ final class TeacherPortraitUploadTest extends TestCase
 
     private function dashboardUser(): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'name_ar' => 'محرر المحتوى',
             'email' => 'portrait-editor@example.test',
@@ -159,7 +159,7 @@ final class TeacherPortraitUploadTest extends TestCase
             true
         );
         $path = tempnam(sys_get_temp_dir(), 'rokn-teacher-');
-        if (!is_string($bytes) || !is_string($path) || file_put_contents($path, $bytes) === false) {
+        if (! is_string($bytes) || ! is_string($path) || file_put_contents($path, $bytes) === false) {
             throw new \RuntimeException('Could not create the teacher portrait fixture.');
         }
 

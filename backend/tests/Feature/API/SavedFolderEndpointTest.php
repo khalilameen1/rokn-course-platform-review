@@ -126,7 +126,7 @@ class SavedFolderEndpointTest extends ApiTestCase
     public function test_can_create_saved_folder(): void
     {
         $response = $this->actingAs($this->user, 'api')->postJson('/api/v1/saved-folders', [
-            'name' => 'My Bookmark Folder'
+            'name' => 'My Bookmark Folder',
         ]);
         $this->assertNotEquals(404, $response->status());
     }

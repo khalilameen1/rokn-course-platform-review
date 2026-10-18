@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Logging;
 
 use Illuminate\Log\Logger as IlluminateLogger;
-use Monolog\LogRecord;
 use Monolog\Logger as MonologLogger;
+use Monolog\LogRecord;
 use Throwable;
 
 final class RedactSensitiveContext

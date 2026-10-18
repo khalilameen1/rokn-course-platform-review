@@ -40,7 +40,7 @@ final class CourseDiscoveryArabicTest extends TestCase
         [$course] = $this->publishedCourse('تصميم الشعارات');
         $classificationId = (int) $course->classifications()->value('classifications.id');
 
-        $this->getJson('/api/v1/search/courses?' . http_build_query([
+        $this->getJson('/api/v1/search/courses?'.http_build_query([
             'q' => 'تصميم',
             'classification_id' => $classificationId,
         ]))
@@ -76,7 +76,7 @@ final class CourseDiscoveryArabicTest extends TestCase
 
         $this->assertDatabaseHas('photos', ['id' => $photo->id]);
 
-        $admin = new User();
+        $admin = new User;
         $admin->forceFill([
             'name' => 'Rokn Admin',
             'email' => 'admin-'.str()->uuid().'@example.test',
@@ -98,7 +98,7 @@ final class CourseDiscoveryArabicTest extends TestCase
     /** @return array{Course, Lesson} */
     private function publishedCourse(string $title): array
     {
-        $teacher = new User();
+        $teacher = new User;
         $teacher->forceFill([
             'name' => 'أحمد أمين',
             'email' => 'teacher-'.str()->uuid().'@example.test',
@@ -106,7 +106,7 @@ final class CourseDiscoveryArabicTest extends TestCase
             'active' => true,
         ])->save();
 
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => $title,

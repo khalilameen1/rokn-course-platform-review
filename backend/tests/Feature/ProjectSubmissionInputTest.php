@@ -50,7 +50,7 @@ final class ProjectSubmissionInputTest extends TestCase
         config()->set('projects.allowed_mime_types', ['text/plain']);
         $input = app(ProjectSubmissionInputService::class);
         $file = UploadedFile::fake()->createWithContent('work.txt', 'A readable project explanation');
-        $project = new Project();
+        $project = new Project;
 
         $input->assertAllowedFileTypes($project, [$file]);
         $project->submission_allowed_mime_types = ['TEXT/PLAIN'];
@@ -117,7 +117,7 @@ final class ProjectSubmissionInputTest extends TestCase
         $file = UploadedFile::fake()->createWithContent('work.txt', str_repeat('x', 1025));
 
         $this->expectException(ValidationException::class);
-        app(ProjectSubmissionInputService::class)->assertReviewCapacity(new Project(), null, [$file]);
+        app(ProjectSubmissionInputService::class)->assertReviewCapacity(new Project, null, [$file]);
     }
 
     public static function effortCases(): array

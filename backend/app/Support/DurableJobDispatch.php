@@ -32,6 +32,7 @@ final class DurableJobDispatch
                     report($exception);
                 }
             });
+
             return;
         }
 
@@ -47,7 +48,7 @@ final class DurableJobDispatch
             if ($job instanceof ShouldBeUnique) {
                 $lock = new UniqueLock(app(CacheRepository::class));
                 $acquired = $lock->acquire($job);
-                if (!$acquired) {
+                if (! $acquired) {
                     return;
                 }
                 Context::addHidden([

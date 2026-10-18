@@ -9,8 +9,8 @@ use App\Http\Resources\PathResource;
 use App\Models\Path;
 use App\Models\User;
 use App\Services\ApiResponseService;
-use App\Services\CourseDurationService;
 use App\Services\CourseCatalogueQueryService;
+use App\Services\CourseDurationService;
 use App\Services\UserPathProgressService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -22,8 +22,7 @@ final class PathController extends Controller
         private readonly CourseDurationService $duration,
         private readonly CourseCatalogueQueryService $catalogue,
         private readonly UserPathProgressService $progress
-    ) {
-    }
+    ) {}
 
     public function index(): JsonResource
     {

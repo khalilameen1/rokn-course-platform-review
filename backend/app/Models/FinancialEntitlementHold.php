@@ -9,9 +9,11 @@ use Illuminate\Database\Eloquent\Model;
 final class FinancialEntitlementHold extends Model
 {
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_RESOLVED = 'resolved';
 
     public const RESOLUTION_REPAID = 'repaid';
+
     public const RESOLUTION_WAIVED = 'waived';
 
     protected $fillable = [

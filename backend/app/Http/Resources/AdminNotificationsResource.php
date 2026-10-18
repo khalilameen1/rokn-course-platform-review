@@ -2,15 +2,15 @@
 
 namespace App\Http\Resources;
 
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-
 
 class AdminNotificationsResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  Request  $request
      * @return array
      */
     public function toArray($request)
@@ -19,9 +19,9 @@ class AdminNotificationsResource extends JsonResource
             'id' => (int) $this->id,
             'title_ar' => (string) $this->title_ar,
             'title_en' => (string) $this->title_en,
-            'description_ar' => (string)$this->description_ar,
-            'description_en' => (string)$this->description_en,
-            'link' => (string)$this->link,
+            'description_ar' => (string) $this->description_ar,
+            'description_en' => (string) $this->description_en,
+            'link' => (string) $this->link,
             'image' => $this->public_image_url,
             'image_url' => $this->public_image_url,
             'system_key' => $this->system_key,

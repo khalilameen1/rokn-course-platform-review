@@ -29,7 +29,7 @@ final class CourseSectionOrderingService
                 'module_id' => 'يجب أن يبقى كل مقطع أو مشروع داخل وحدة',
             ]);
         }
-        if (!$course->modules()->whereKey($moduleId)->exists()) {
+        if (! $course->modules()->whereKey($moduleId)->exists()) {
             throw ValidationException::withMessages([
                 'module_id' => 'الوحدة المختارة لم تعد متاحة في هذا الكورس',
             ]);
@@ -108,8 +108,7 @@ final class CourseSectionOrderingService
                 : $section->module_id,
         ]);
 
-        if ($layout->contains(fn (array $section): bool =>
-            $requestedModules->has($section['id']) && $section['module_id'] === null
+        if ($layout->contains(fn (array $section): bool => $requestedModules->has($section['id']) && $section['module_id'] === null
         )) {
             throw ValidationException::withMessages([
                 'sections' => 'يجب أن يبقى كل مقطع أو مشروع داخل وحدة',
@@ -150,7 +149,7 @@ final class CourseSectionOrderingService
 
     public function normalizeModule(Course $course, int|string|null $moduleId): void
     {
-        if (!$moduleId) {
+        if (! $moduleId) {
             return;
         }
 

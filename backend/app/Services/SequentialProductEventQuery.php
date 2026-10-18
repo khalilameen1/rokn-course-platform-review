@@ -23,7 +23,7 @@ final class SequentialProductEventQuery
         array $dimensions, int $windowDays, CarbonImmutable $observedAt): Builder
     {
         // Column identifiers are an internal contract, never request values.
-        if (!in_array($dimensions, [['course_id'], ['course_id', 'lesson_id']], true)
+        if (! in_array($dimensions, [['course_id'], ['course_id', 'lesson_id']], true)
             || count($steps) < 2 || $windowDays < 1 || $windowDays > 365) {
             throw new \LogicException('Unsupported product journey dimensions or window.');
         }
@@ -56,6 +56,7 @@ final class SequentialProductEventQuery
             $journeys = DB::query()->fromSub($journeys, 'journey')
                 ->select('journey.*')->selectSub($nextStep, 'step_'.$index.'_at');
         }
+
         return $journeys;
     }
 

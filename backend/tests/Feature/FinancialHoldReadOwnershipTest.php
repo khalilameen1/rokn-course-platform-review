@@ -29,7 +29,7 @@ final class FinancialHoldReadOwnershipTest extends TestCase
         $this->artisan('migrate:fresh')->assertExitCode(0);
         foreach ([FinancialProvenanceService::class, AiEntitlementBudgetService::class] as $service) {
             $this->app->bind($service, static function () use ($service): never {
-                throw new \LogicException('A hold reader must not resolve ' . $service);
+                throw new \LogicException('A hold reader must not resolve '.$service);
             });
         }
     }
@@ -60,8 +60,8 @@ final class FinancialHoldReadOwnershipTest extends TestCase
     public function test_hold_reads_preserve_scope_and_purchased_order_identity_without_writes(
         string $scope, string $heldOrder, array $requestedScopes, string $status, bool $expected
     ): void {
-        $user = new User();
-        $user->forceFill(['name' => 'Hold reader', 'email' => Str::uuid() . '@test.rokn',
+        $user = new User;
+        $user->forceFill(['name' => 'Hold reader', 'email' => Str::uuid().'@test.rokn',
             'password' => bcrypt('test'), 'active' => true, 'role' => 'client'])->save();
         $course = Course::factory()->make();
         $course->forceFill(['tenant_id' => 1, 'is_coming_soon' => false])->save();
@@ -73,7 +73,7 @@ final class FinancialHoldReadOwnershipTest extends TestCase
                 'amount' => 100, 'final_amount' => 100, 'status' => Order::STATUS_APPROVED,
             ]);
         }
-        $enrollment = new CourseEnrollment();
+        $enrollment = new CourseEnrollment;
         $enrollment->forceFill([
             'user_id' => $user->id, 'course_id' => $course->id,
             'order_id' => $orders['base']->id, 'access_plan_order_id' => $orders['upgrade']->id,

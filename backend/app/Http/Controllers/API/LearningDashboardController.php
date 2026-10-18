@@ -16,8 +16,7 @@ final class LearningDashboardController extends Controller
     public function __construct(
         private readonly ApiResponseService $responses,
         private readonly LearningDashboardService $dashboard
-    ) {
-    }
+    ) {}
 
     public function courses(Request $request): JsonResponse
     {

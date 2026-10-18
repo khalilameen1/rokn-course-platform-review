@@ -15,6 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class CourseStagedClassificationMergeTest extends TestCase
@@ -70,7 +71,7 @@ final class CourseStagedClassificationMergeTest extends TestCase
         );
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('rowRemovalModes')]
+    #[DataProvider('rowRemovalModes')]
     public function test_dashboard_row_removal_survives_publishing_an_unchanged_course_draft(bool $deleteRow): void
     {
         [$row] = $this->classifications();
@@ -79,7 +80,7 @@ final class CourseStagedClassificationMergeTest extends TestCase
         $service = $this->serviceWithPassingAudit();
         $draft = $service->draftFor($canonical);
 
-        $administrator = new User();
+        $administrator = new User;
         $administrator->forceFill([
             'name_ar' => 'مدير الرئيسية',
             'email' => 'classification-publish-race@example.test',
@@ -174,7 +175,7 @@ final class CourseStagedClassificationMergeTest extends TestCase
             self::assertSame(409, $exception->status);
         }
 
-        $moderator = new User();
+        $moderator = new User;
         $moderator->forceFill([
             'name_ar' => 'محرر المحتوى',
             'email' => 'legacy-draft@example.test',
@@ -216,7 +217,7 @@ final class CourseStagedClassificationMergeTest extends TestCase
 
     private function publishedCourse(string $name): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => $name,

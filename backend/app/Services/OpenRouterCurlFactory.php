@@ -14,6 +14,7 @@ use Psr\Http\Message\RequestInterface;
 final class OpenRouterCurlFactory implements CurlFactoryInterface
 {
     private bool $started = false;
+
     private CurlFactory $factory;
 
     public function __construct()

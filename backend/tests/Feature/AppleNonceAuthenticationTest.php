@@ -41,5 +41,4 @@ final class AppleNonceAuthenticationTest extends TestCase
             'nonce' => str_repeat('a', 64),
         ])->assertUnprocessable()->assertJsonValidationErrors(['authorization_code']);
     }
-
 }

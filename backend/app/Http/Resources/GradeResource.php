@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class GradeResource extends JsonResource
@@ -9,7 +10,7 @@ class GradeResource extends JsonResource
     /**
      * Transform the resource into an array.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  Request  $request
      * @return array
      */
     public function toArray($request)
@@ -31,7 +32,7 @@ class GradeResource extends JsonResource
             'image' => null, // Default image - should be configured per platform
             'courses_count' => $this->whenCounted('courses'),
             'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at
+            'updated_at' => $this->updated_at,
         ];
     }
 }

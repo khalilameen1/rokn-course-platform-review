@@ -61,7 +61,7 @@ final class AdminResponsiveShellContractTest extends TestCase
         self::assertStringContainsString("sidebarOverlay?.addEventListener('click'", $script);
         self::assertStringContainsString("event.key === 'Escape'", $script);
         self::assertStringContainsString("event.key !== 'Tab'", $script);
-        self::assertStringContainsString("focusTarget?.focus()", $script);
+        self::assertStringContainsString('focusTarget?.focus()', $script);
     }
 
     private function source(string $relativePath): string

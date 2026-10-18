@@ -32,8 +32,8 @@ final class OutboxService
             ]
         );
 
-        if (!$event->wasRecentlyCreated && (
-            !hash_equals((string) $event->topic, $topic)
+        if (! $event->wasRecentlyCreated && (
+            ! hash_equals((string) $event->topic, $topic)
             || ($event->aggregate_type === null ? null : (string) $event->aggregate_type) !== $aggregateType
             || ($event->aggregate_id === null ? null : (string) $event->aggregate_id) !== $normalizedAggregateId
             || $this->canonical($event->payload ?? []) !== $this->canonical($payload)
@@ -67,10 +67,10 @@ final class OutboxService
 
     private function canonical(mixed $value): mixed
     {
-        if (!is_array($value)) {
+        if (! is_array($value)) {
             return $value;
         }
-        if (!array_is_list($value)) {
+        if (! array_is_list($value)) {
             ksort($value);
         }
         foreach ($value as $key => $item) {

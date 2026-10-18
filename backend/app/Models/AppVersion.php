@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Services\AppReleaseChannelService;
 use App\Services\PublicAppSettingsService;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -30,6 +29,7 @@ class AppVersion extends Model
             try {
                 if (DB::transactionLevel() > 0) {
                     DB::afterCommit($flushReleaseProjection);
+
                     return;
                 }
 

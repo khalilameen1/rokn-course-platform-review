@@ -18,9 +18,10 @@ final readonly class CoursePlanAttachmentGrantService
         Course $course,
         bool $grantCourseChat,
         bool $grantProjectFollowup
-    ): int
-    {
-        if (!$grantCourseChat && !$grantProjectFollowup) return 0;
+    ): int {
+        if (! $grantCourseChat && ! $grantProjectFollowup) {
+            return 0;
+        }
         $planRows = $course->accessPlans()->get();
         $plans = $planRows->keyBy('id');
         $plansByCode = $planRows->keyBy('code');
@@ -46,19 +47,25 @@ final readonly class CoursePlanAttachmentGrantService
                             ->active()
                             ->lockForUpdate()
                             ->first();
-                        if (!$current || !$current->access_plan_id) return false;
+                        if (! $current || ! $current->access_plan_id) {
+                            return false;
+                        }
                         $snapshot = $current->access_plan_snapshot;
                         // Old plan identities can survive publication. Match
                         // the current offer by stable code without rewriting IDs.
                         $plan = $plans->get($current->access_plan_id)
                             ?: $plansByCode->get((string) ($snapshot['code'] ?? ''));
+
                         return $plan && $this->grantToEnrollment(
                             $current, $plan, $grantCourseChat, $grantProjectFollowup
                         );
                     }, 3);
-                    if ($changed) $updated++;
+                    if ($changed) {
+                        $updated++;
+                    }
                 }
             });
+
         return $updated;
     }
 
@@ -69,7 +76,9 @@ final readonly class CoursePlanAttachmentGrantService
         bool $grantProjectFollowup
     ): bool {
         $snapshot = $enrollment->access_plan_snapshot;
-        if (!is_array($snapshot) || (int) ($snapshot['version'] ?? 0) < 3) return false;
+        if (! is_array($snapshot) || (int) ($snapshot['version'] ?? 0) < 3) {
+            return false;
+        }
         $original = $snapshot;
         $existingChat = (int) $snapshot['version'] >= 4
             && (bool) ($snapshot['chat_attachments_enabled'] ?? false);
@@ -80,7 +89,9 @@ final readonly class CoursePlanAttachmentGrantService
         $addProject = $grantProjectFollowup
             && ($snapshot['project_feedback_level'] ?? '') === CourseAccessPlan::FEEDBACK_ENHANCED
             && (bool) $plan->project_followup_attachments_enabled;
-        if (!$addChat && !$addProject) return false;
+        if (! $addChat && ! $addProject) {
+            return false;
+        }
 
         $snapshot['version'] = CourseAccessPlanSnapshot::CURRENT_VERSION;
         $snapshot['projects_enabled'] = (bool) ($snapshot['projects_enabled'] ?? true);
@@ -94,9 +105,12 @@ final readonly class CoursePlanAttachmentGrantService
             $existingProject ? (int) $snapshot['project_followup_attachment_max_files'] : 0,
             $addProject ? min(5, max(1, (int) $plan->project_followup_attachment_max_files)) : 0
         );
-        if ($snapshot === $original) return false;
+        if ($snapshot === $original) {
+            return false;
+        }
         CourseAccessPlanSnapshot::assertValidForPlan((int) $enrollment->access_plan_id, $snapshot);
         $enrollment->forceFill(['access_plan_snapshot' => $snapshot])->save();
+
         return true;
     }
 }

@@ -11,16 +11,16 @@ use App\Models\Course;
 use App\Models\CourseCode;
 use App\Models\CourseGrantClaim;
 use App\Models\FinancialAnomaly;
+use App\Models\Lesson;
+use App\Models\OperationalIncident;
 use App\Models\Order;
 use App\Models\Package;
+use App\Models\PlaybackSession;
 use App\Models\PortfolioItem;
 use App\Models\ProjectSubmission;
 use App\Models\Setting;
-use App\Models\StudentNotification;
 use App\Models\StoreNotificationEvent;
-use App\Models\Lesson;
-use App\Models\PlaybackSession;
-use App\Models\OperationalIncident;
+use App\Models\StudentNotification;
 use App\Support\BusinessClock;
 use Illuminate\Support\Facades\Schema;
 
@@ -38,8 +38,7 @@ final class AdminProductOperationsReadService
         private readonly CourseFinancialLedgerReportService $financialLedger,
         private readonly ProviderOperationalEvidenceService $providerEvidenceService,
         private readonly OperationalRuntimeService $operationalRuntime,
-    ) {
-    }
+    ) {}
 
     /** @return array<string, mixed> */
     public function report(): array
@@ -75,7 +74,7 @@ final class AdminProductOperationsReadService
             );
         });
 
-        $settings = Setting::query()->first() ?? new Setting();
+        $settings = Setting::query()->first() ?? new Setting;
         $capabilityReport = $this->capabilities->report();
         $mobileRelease = $this->releasePolicy->launchReadiness();
         $missingReleaseChannels = collect($mobileRelease['required_channels'] ?? [])
@@ -273,7 +272,7 @@ final class AdminProductOperationsReadService
             $state = $lesson->mediaState;
             $playbackStatus = match (true) {
                 $this->mediaIsVerifiedForPlayback($lesson) => 'ready',
-                !$lesson->usesBunnyVideo() => 'misconfigured',
+                ! $lesson->usesBunnyVideo() => 'misconfigured',
                 $state?->integrity_status === 'quarantined', $state?->quarantined_at !== null => 'quarantined',
                 in_array((string) $state?->status, ['processing', 'failed'], true) => (string) $state->status,
                 default => 'not_ready',
@@ -316,10 +315,10 @@ final class AdminProductOperationsReadService
         $providerEvidence = $this->providerEvidenceService->report();
         $runtime = $this->operationalRuntime->snapshot();
         $runtimeHeartbeatFailures = collect(data_get($runtime, 'queues', []))
-            ->filter(fn (array $queue): bool => !(bool) ($queue['healthy'] ?? false))
+            ->filter(fn (array $queue): bool => ! (bool) ($queue['healthy'] ?? false))
             ->keys()
             ->values();
-        if (!(bool) data_get($runtime, 'scheduler.healthy')) {
+        if (! (bool) data_get($runtime, 'scheduler.healthy')) {
             $runtimeHeartbeatFailures->prepend('scheduler');
         }
         $launchReady = (bool) data_get($capabilityReport, 'ready')
@@ -365,7 +364,7 @@ final class AdminProductOperationsReadService
             && $state !== null
             && $state->quarantined_at === null
             && (int) $state->duration_seconds > 0
-            && !$state->hasBlockingIntegrityIssue();
+            && ! $state->hasBlockingIntegrityIssue();
     }
 
     /** @return array<int, string> */

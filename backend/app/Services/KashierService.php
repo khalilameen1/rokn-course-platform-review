@@ -49,7 +49,7 @@ final class KashierService
             strtoupper($currency)
         );
         if ($customerReference !== null && $customerReference !== '') {
-            $path .= '.' . $customerReference;
+            $path .= '.'.$customerReference;
         }
 
         return hash_hmac('sha256', $path, (string) $this->config['api_key']);
@@ -68,7 +68,7 @@ final class KashierService
         // string. Requiring plain field names and the redirect's own
         // merchantOrderId stops that hash from being replayed as a callback
         // signature. Crediting still waits for Kashier's order API.
-        if (!isset($queryParams['merchantOrderId'])) {
+        if (! isset($queryParams['merchantOrderId'])) {
             return false;
         }
 
@@ -79,11 +79,11 @@ final class KashierService
             }
             if (
                 preg_match('/\A[A-Za-z][A-Za-z0-9_]*\z/D', (string) $key) !== 1
-                || (!is_scalar($value) && $value !== null)
+                || (! is_scalar($value) && $value !== null)
             ) {
                 return false;
             }
-            $parts[] = (string) $key . '=' . (string) $value;
+            $parts[] = (string) $key.'='.(string) $value;
         }
 
         $expected = hash_hmac('sha256', implode('&', $parts), $secret);
@@ -115,7 +115,7 @@ final class KashierService
             'display' => 'en',
         ], '', '&', PHP_QUERY_RFC3986);
 
-        return rtrim($this->getBaseUrl(), '?&') . '?' . $query;
+        return rtrim($this->getBaseUrl(), '?&').'?'.$query;
     }
 
     /** @return array{base_url?: string, api_key?: string, secret_key?: string, mid?: string} */
@@ -141,7 +141,7 @@ final class KashierService
 
     private function assertConfigured(): void
     {
-        if (!in_array($this->mode, ['test', 'live'], true)) {
+        if (! in_array($this->mode, ['test', 'live'], true)) {
             throw new RuntimeException('Kashier mode must be explicitly set to test or live.');
         }
         foreach (['base_url', 'api_key', 'mid'] as $key) {

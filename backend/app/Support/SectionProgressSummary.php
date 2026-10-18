@@ -12,8 +12,8 @@ use Illuminate\Support\Collection;
 final class SectionProgressSummary
 {
     /**
-     * @param Collection<int, CourseSection> $sections
-     * @param Collection<int, StudentSectionProgress> $progress
+     * @param  Collection<int, CourseSection>  $sections
+     * @param  Collection<int, StudentSectionProgress>  $progress
      * @return array<string, mixed>
      */
     public static function for(Collection $sections, Collection $progress): array

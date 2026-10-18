@@ -12,6 +12,7 @@ use Illuminate\Console\Command;
 final class DispatchScheduledNotificationCampaigns extends Command
 {
     protected $signature = 'notifications:dispatch-scheduled {--limit=100}';
+
     protected $description = 'Atomically release due notification campaigns to the notification queue';
 
     public function handle(NotificationCampaignService $campaigns): int
@@ -37,7 +38,9 @@ final class DispatchScheduledNotificationCampaigns extends Command
                     'queued_at' => now(),
                     'updated_at' => now(),
                 ]);
-            if ($claimed !== 1) continue;
+            if ($claimed !== 1) {
+                continue;
+            }
 
             try {
                 DurableJobDispatch::now($campaigns->jobForCampaign($campaign));
@@ -46,7 +49,7 @@ final class DispatchScheduledNotificationCampaigns extends Command
                 NotificationCampaign::query()->whereKey($campaign->id)->update([
                     'status' => NotificationCampaign::STATUS_SCHEDULED,
                     'queued_at' => null,
-                    'failure_code' => 'schedule_queue_' . substr(hash('sha256', $exception::class), 0, 12),
+                    'failure_code' => 'schedule_queue_'.substr(hash('sha256', $exception::class), 0, 12),
                     'updated_at' => now(),
                 ]);
                 report($exception);
@@ -54,6 +57,7 @@ final class DispatchScheduledNotificationCampaigns extends Command
         }
 
         $this->info("Queued {$queued} scheduled notification campaign(s).");
+
         return self::SUCCESS;
     }
 }

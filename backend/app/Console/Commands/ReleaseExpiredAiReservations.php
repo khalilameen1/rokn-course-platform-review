@@ -21,8 +21,7 @@ final class ReleaseExpiredAiReservations extends Command
         AiUsageSettlementService $settlements,
         CourseChatTurnService $turns,
         PaidAiCallExecutionService $paidCalls
-    ): int
-    {
+    ): int {
         $limit = max(1, min(5000, (int) $this->option('limit')));
         $recovered = $paidCalls->recoverLandedSettlements($settlements, $limit);
         $released = $budget->releaseExpiredReservations($limit);

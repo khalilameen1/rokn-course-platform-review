@@ -4,24 +4,24 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Jobs\DeleteAccountFile;
-use App\Jobs\CleanupDeletedAccountPortfolioMedia;
 use App\Exceptions\SocialProviderUnavailableException;
+use App\Jobs\CleanupDeletedAccountPortfolioMedia;
+use App\Jobs\DeleteAccountFile;
 use App\Models\AccountFileDeletion;
-use App\Models\User;
 use App\Models\SocialAccount;
-use App\Services\AccountDeletionService;
+use App\Models\User;
 use App\Services\AccountAiDataErasureService;
+use App\Services\AccountDeletionService;
 use App\Services\AccountPortfolioErasureService;
 use App\Services\BunnyService;
 use App\Services\StoredFileReferenceService;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
 use Mockery;
 use Tests\TestCase;
 
@@ -382,6 +382,7 @@ final class AccountDeletionOutboxTest extends TestCase
         ]);
         $emptyItemId = DB::table('portfolio_items')->insertGetId(['user_id' => $user->id, 'title' => 'Empty work']);
         $otherItemId = DB::table('portfolio_items')->insertGetId(['user_id' => $user->id + 1, 'title' => 'Other learner']);
+
         return [$user, $itemId, $mediaId, $emptyItemId, $otherItemId];
     }
 

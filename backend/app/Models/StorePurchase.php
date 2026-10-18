@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 final class StorePurchase extends Model
 {
     public const PROVIDER_GOOGLE = 'google';
+
     public const PROVIDER_APPLE = 'apple';
 
     protected $fillable = [

@@ -43,7 +43,7 @@ final class AdminMfaResetTest extends TestCase
         $this->enrolled('client', 'learner@rokn.test');
 
         $this->artisan('admin:mfa-reset', ['email' => 'owner@rokn.test'])
-            ->expectsConfirmation("Reset MFA for owner@rokn.test (admin)? They must enrol a new authenticator at next login.", 'no')
+            ->expectsConfirmation('Reset MFA for owner@rokn.test (admin)? They must enrol a new authenticator at next login.', 'no')
             ->assertExitCode(1);
         self::assertNotNull($admin->fresh()->admin_totp_confirmed_at);
 

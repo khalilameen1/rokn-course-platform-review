@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 final class OperationalIncident extends Model
 {
     public const STATUS_OPEN = 'open';
+
     public const STATUS_RESOLVED = 'resolved';
 
     protected $fillable = [

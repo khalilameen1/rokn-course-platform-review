@@ -26,8 +26,7 @@ final readonly class LearningDashboardService
         private LatestWatchResumeService $latestResume,
         private CourseRevisionLearnerReadService $revisionReads,
         private BunnyDeliveryService $delivery
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{items: mixed}
@@ -36,11 +35,10 @@ final readonly class LearningDashboardService
         User $user,
         int $perPage = self::MAX_ACTIVE_COURSES,
         ?string $cursor = null
-    ): array
-    {
+    ): array {
         $perPage = max(1, min(self::MAX_ACTIVE_COURSES, $perPage));
         $decodedCursor = $cursor ? Cursor::fromEncoded($cursor) : null;
-        if ($cursor && !$decodedCursor) {
+        if ($cursor && ! $decodedCursor) {
             throw ValidationException::withMessages([
                 'cursor' => ['مؤشر الصفحة غير صالح'],
             ]);
@@ -128,12 +126,12 @@ final readonly class LearningDashboardService
                     'courseSection:id,course_id,sectionable_type,sectionable_id,order',
                 ]
             )->filter(function (WatchingLog $log): bool {
-                    return $log->lesson !== null
-                        && $log->courseSection !== null
-                        && (int) $log->lesson->list_id === (int) $log->course_id
-                        && (int) $log->courseSection->course_id === (int) $log->course_id
-                        && (int) $log->courseSection->sectionable_id === (int) $log->lesson_id;
-                })
+                return $log->lesson !== null
+                    && $log->courseSection !== null
+                    && (int) $log->lesson->list_id === (int) $log->course_id
+                    && (int) $log->courseSection->course_id === (int) $log->course_id
+                    && (int) $log->courseSection->sectionable_id === (int) $log->lesson_id;
+            })
                 ->keyBy(fn (WatchingLog $log): int => (int) $log->course_id);
         }
 

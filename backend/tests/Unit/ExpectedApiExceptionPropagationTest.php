@@ -23,7 +23,7 @@ final class ExpectedApiExceptionPropagationTest extends TestCase
             }
         };
 
-        foreach ([new ModelNotFoundException(), new NotFoundHttpException()] as $exception) {
+        foreach ([new ModelNotFoundException, new NotFoundHttpException] as $exception) {
             try {
                 $controller->bubble($exception);
                 self::fail('Expected request exception was swallowed.');

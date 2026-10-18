@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Exceptions\AiProviderUnavailableException;
-use App\Services\OpenRouterService;
-use App\Services\OpenRouterRequestPolicy;
-use App\Services\OpenRouterEventStream;
+use App\Services\AiFailurePolicy;
 use App\Services\OpenRouterCurlFactory;
+use App\Services\OpenRouterEventStream;
+use App\Services\OpenRouterRequestPolicy;
+use App\Services\OpenRouterService;
 use GuzzleHttp\Handler\CurlFactory;
 use GuzzleHttp\Handler\CurlHandler;
 use GuzzleHttp\Psr7\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -66,9 +68,12 @@ final class OpenRouterTransportTest extends TestCase
             $payload = $request->data();
             self::assertSame('google/gemini-3.8-flash', $payload['model']);
             self::assertArrayNotHasKey('models', $payload);
-            foreach (['temperature', 'top_p', 'top_k'] as $parameter) self::assertArrayNotHasKey($parameter, $payload);
+            foreach (['temperature', 'top_p', 'top_k'] as $parameter) {
+                self::assertArrayNotHasKey($parameter, $payload);
+            }
             self::assertSame(['effort' => $expectedEffort, 'exclude' => true], $payload['reasoning']);
             self::assertSame(800, $payload['max_tokens']);
+
             return true;
         });
         Http::assertSentCount(1);
@@ -87,8 +92,7 @@ final class OpenRouterTransportTest extends TestCase
             'choices' => [['message' => ['content' => 'رد الاختبار']]], 'usage' => ['total_tokens' => 30, 'cost' => .001],
         ])]);
         app(OpenRouterService::class)->chat('google/gemini-3.8-flash', [['role' => 'user', 'content' => 'السؤال']], .35, 800);
-        Http::assertSent(static fn ($request): bool =>
-            $request['models'] === ['google/gemini-3.8-flash', 'anthropic/claude-sonnet-5']
+        Http::assertSent(static fn ($request): bool => $request['models'] === ['google/gemini-3.8-flash', 'anthropic/claude-sonnet-5']
             && $request['reasoning'] === ['effort' => 'low', 'exclude' => true]
         );
         Http::assertSentCount(1);
@@ -135,6 +139,7 @@ final class OpenRouterTransportTest extends TestCase
             self::assertSame($models, $payload['models'] ?? [$payload['model']]);
             self::assertSame(600, $payload['max_tokens']);
             self::assertTrue($payload['provider']['require_parameters']);
+
             return true;
         });
         Http::assertSentCount(1);
@@ -161,7 +166,9 @@ final class OpenRouterTransportTest extends TestCase
         $result = app(OpenRouterService::class)->chat(
             'test/model', [['role' => 'user', 'content' => 'Local question']], .3, 100,
             null,
-            function (array $result) use (&$landings): void { $landings[] = $result; },
+            function (array $result) use (&$landings): void {
+                $landings[] = $result;
+            },
             function (string $text) use (&$partials, $started): void {
                 $partials[] = ['text' => $text, 'seconds' => (hrtime(true) - $started) / 1e9];
             }
@@ -196,7 +203,9 @@ final class OpenRouterTransportTest extends TestCase
             app(OpenRouterService::class)->chat(
                 'test/model', [['role' => 'user', 'content' => 'Local question']], .3, 100,
                 'report-request-123',
-                function () use (&$landings): void { ++$landings; },
+                function () use (&$landings): void {
+                    $landings++;
+                },
                 function (string $text) use (&$partials, &$firstPartialAt, $started): void {
                     $firstPartialAt ??= (hrtime(true) - $started) / 1e9;
                     $partials[] = $text;
@@ -251,8 +260,12 @@ final class OpenRouterTransportTest extends TestCase
             app(OpenRouterService::class)->chat(
                 'test/model', [['role' => 'user', 'content' => 'Local question']], .3, 100,
                 null,
-                function () use (&$landings): void { ++$landings; },
-                function (string $text) use (&$partials): void { $partials[] = $text; }
+                function () use (&$landings): void {
+                    $landings++;
+                },
+                function (string $text) use (&$partials): void {
+                    $partials[] = $text;
+                }
             );
             self::fail('An incomplete stream cannot become an accepted answer.');
         } catch (AiProviderUnavailableException $exception) {
@@ -283,13 +296,17 @@ final class OpenRouterTransportTest extends TestCase
             app(OpenRouterService::class)->chat(
                 'test/model', [['role' => 'user', 'content' => 'Local question']], .3, 100,
                 null,
-                function () use (&$landings): void { ++$landings; },
-                function (string $text) use (&$partials): void { $partials[] = $text; }
+                function () use (&$landings): void {
+                    $landings++;
+                },
+                function (string $text) use (&$partials): void {
+                    $partials[] = $text;
+                }
             );
             self::fail('A provider error must not land an answer.');
         } catch (AiProviderUnavailableException $exception) {
             self::assertSame($unknown, $exception->outcomeUnknown);
-            self::assertSame(!$unknown, $exception->retrySafe);
+            self::assertSame(! $unknown, $exception->retrySafe);
             self::assertSame($code, $exception->providerCode);
         }
         self::assertSame(0, $landings);
@@ -303,8 +320,12 @@ final class OpenRouterTransportTest extends TestCase
         $result = app(OpenRouterService::class)->chat(
             'test/model', [['role' => 'user', 'content' => 'Local question']], .3, 100,
             null,
-            function (array $result) use (&$landings): void { $landings[] = $result; },
-            static function (string $text): void { self::fail('JSON fallback has no incremental frames.'); }
+            function (array $result) use (&$landings): void {
+                $landings[] = $result;
+            },
+            static function (string $text): void {
+                self::fail('JSON fallback has no incremental frames.');
+            }
         );
         self::assertSame('Buffered JSON answer', $result['message']);
         self::assertSame(0.01, $result['usage']['cost']);
@@ -334,8 +355,12 @@ final class OpenRouterTransportTest extends TestCase
             app(OpenRouterService::class)->chat(
                 'test/model', [['role' => 'user', 'content' => 'Local question']], .3, 100,
                 null,
-                function () use (&$landings): void { ++$landings; },
-                function (string $text) use (&$partials): void { $partials[] = $text; }
+                function () use (&$landings): void {
+                    $landings++;
+                },
+                function (string $text) use (&$partials): void {
+                    $partials[] = $text;
+                }
             );
             self::fail('A complete rejection must stop the transport.');
         } catch (AiProviderUnavailableException $exception) {
@@ -372,7 +397,7 @@ final class OpenRouterTransportTest extends TestCase
 
     public function test_vendor_rewind_recovery_cannot_dispatch_a_second_generation(): void
     {
-        $factory = new OpenRouterCurlFactory();
+        $factory = new OpenRouterCurlFactory;
         $handler = new CurlHandler(['handle_factory' => $factory]);
         // Configure a handle but do not execute it or access the network.
         $handle = $factory->create(new Request('POST', 'http://127.0.0.1:1', [], '{}'), []);
@@ -418,7 +443,7 @@ final class OpenRouterTransportTest extends TestCase
             'openrouter.endpoint' => 'https://openrouter.test/chat/completions',
             'openrouter.allowed_models' => ['test/model'],
         ]);
-        \Illuminate\Support\Facades\Cache::forget(OpenRouterService::CIRCUIT_KEY);
+        Cache::forget(OpenRouterService::CIRCUIT_KEY);
         Http::fake(['openrouter.test/*' => Http::sequence()
             ->push(['error' => [
                 'code' => 403,
@@ -438,9 +463,9 @@ final class OpenRouterTransportTest extends TestCase
             self::assertSame('input_flagged', $exception->providerCode);
             self::assertFalse($exception->retrySafe);
             self::assertFalse($exception->outcomeUnknown);
-            self::assertSame('ai_request_rejected', app(\App\Services\AiFailurePolicy::class)->providerCode($exception));
+            self::assertSame('ai_request_rejected', app(AiFailurePolicy::class)->providerCode($exception));
         }
-        self::assertFalse(\Illuminate\Support\Facades\Cache::has(OpenRouterService::CIRCUIT_KEY));
+        self::assertFalse(Cache::has(OpenRouterService::CIRCUIT_KEY));
         self::assertSame(
             'رد طالب تاني',
             $provider->chat('test/model', [['role' => 'user', 'content' => 'سؤال عادي']], .3, 100)['message']
@@ -454,7 +479,7 @@ final class OpenRouterTransportTest extends TestCase
             'openrouter.endpoint' => 'https://openrouter.test/chat/completions',
             'openrouter.allowed_models' => ['test/model'],
         ]);
-        \Illuminate\Support\Facades\Cache::forget(OpenRouterService::CIRCUIT_KEY);
+        Cache::forget(OpenRouterService::CIRCUIT_KEY);
         Http::fake(['openrouter.test/*' => Http::response([
             'error' => ['code' => 403, 'message' => 'Key limit exceeded'],
         ], 403)]);
@@ -465,8 +490,8 @@ final class OpenRouterTransportTest extends TestCase
         } catch (AiProviderUnavailableException $exception) {
             self::assertSame(403, $exception->providerStatus);
         }
-        self::assertTrue(\Illuminate\Support\Facades\Cache::has(OpenRouterService::CIRCUIT_KEY));
-        \Illuminate\Support\Facades\Cache::forget(OpenRouterService::CIRCUIT_KEY);
+        self::assertTrue(Cache::has(OpenRouterService::CIRCUIT_KEY));
+        Cache::forget(OpenRouterService::CIRCUIT_KEY);
     }
 
     #[DataProvider('generationModes')]

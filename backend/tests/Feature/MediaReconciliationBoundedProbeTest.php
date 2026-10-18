@@ -6,8 +6,8 @@ namespace Tests\Feature;
 
 use App\Models\Course;
 use App\Models\Lesson;
-use App\Services\BunnyService;
 use App\Services\BunnyDeliveryService;
+use App\Services\BunnyService;
 use App\Services\MediaHealthService;
 use App\Services\MediaReconciliationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -101,7 +101,7 @@ final class MediaReconciliationBoundedProbeTest extends TestCase
         Http::preventStrayRequests();
         Http::allowStrayRequests([$origin.'/*']);
 
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'Local media readiness',

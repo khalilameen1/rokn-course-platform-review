@@ -9,11 +9,15 @@ use Illuminate\Database\Eloquent\Model;
 final class CourseAuthoringRevision extends Model
 {
     public const DRAFT = 'draft';
+
     public const ARCHIVED = 'archived';
 
     public const CLASSIFICATION_SNAPSHOT = 'authoring:classification';
+
     public const CLASSIFICATION_SNAPSHOT_MARKER = 'authoring:classification-snapshot';
+
     public const HERO_SELECTION_MARKER = 'authoring:hero-selection';
+
     public const PATH_SNAPSHOT = 'authoring:path-snapshot';
 
     /** Exactly one working copy can own this slot for a canonical course. */
@@ -35,6 +39,13 @@ final class CourseAuthoringRevision extends Model
         'retain_until' => 'immutable_datetime',
     ];
 
-    public function canonicalCourse() { return $this->belongsTo(Course::class, 'canonical_course_id'); }
-    public function revisionCourse() { return $this->belongsTo(Course::class, 'revision_course_id'); }
+    public function canonicalCourse()
+    {
+        return $this->belongsTo(Course::class, 'canonical_course_id');
+    }
+
+    public function revisionCourse()
+    {
+        return $this->belongsTo(Course::class, 'revision_course_id');
+    }
 }

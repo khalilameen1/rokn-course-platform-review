@@ -30,7 +30,7 @@ class GradeFactory extends Factory
             'secondary' => "Secondary {$level}",
             'primary' => "Primary {$level}",
             'university' => "University Year {$level}",
-            'general' => "General Level {$level}"
+            'general' => "General Level {$level}",
         ];
         $name = $names[$type];
 
@@ -48,12 +48,13 @@ class GradeFactory extends Factory
     /**
      * Indicate that the grade is preparatory.
      *
-     * @return \Illuminate\Database\Eloquent\Factories\Factory
+     * @return Factory
      */
     public function preparatory()
     {
         return $this->state(function (array $attributes) {
             $level = $attributes['level'] ?? $this->faker->numberBetween(1, 3);
+
             return [
                 'type' => 'preparatory',
                 'name_ar' => "Grade {$level}",
@@ -65,12 +66,13 @@ class GradeFactory extends Factory
     /**
      * Indicate that the grade is secondary.
      *
-     * @return \Illuminate\Database\Eloquent\Factories\Factory
+     * @return Factory
      */
     public function secondary()
     {
         return $this->state(function (array $attributes) {
             $level = $attributes['level'] ?? $this->faker->numberBetween(1, 3);
+
             return [
                 'type' => 'secondary',
                 'name_ar' => "Secondary {$level}",
@@ -82,12 +84,13 @@ class GradeFactory extends Factory
     /**
      * Indicate that the grade is primary.
      *
-     * @return \Illuminate\Database\Eloquent\Factories\Factory
+     * @return Factory
      */
     public function primary()
     {
         return $this->state(function (array $attributes) {
             $level = $attributes['level'] ?? $this->faker->numberBetween(1, 6);
+
             return [
                 'type' => 'primary',
                 'name_ar' => "Primary {$level}",
@@ -99,12 +102,13 @@ class GradeFactory extends Factory
     /**
      * Indicate that the grade is university.
      *
-     * @return \Illuminate\Database\Eloquent\Factories\Factory
+     * @return Factory
      */
     public function university()
     {
         return $this->state(function (array $attributes) {
             $level = $attributes['level'] ?? $this->faker->numberBetween(1, 4);
+
             return [
                 'type' => 'university',
                 'name_ar' => "University Year {$level}",
@@ -116,12 +120,13 @@ class GradeFactory extends Factory
     /**
      * Indicate that the grade is general.
      *
-     * @return \Illuminate\Database\Eloquent\Factories\Factory
+     * @return Factory
      */
     public function general()
     {
         return $this->state(function (array $attributes) {
             $level = $attributes['level'] ?? $this->faker->numberBetween(1, 3);
+
             return [
                 'type' => 'general',
                 'name_ar' => "General Level {$level}",

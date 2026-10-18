@@ -22,8 +22,7 @@ final class ProjectSubmissionController extends Controller
 {
     public function __construct(
         private readonly AdminProjectSubmissionReviewReadService $reviewReads
-    ) {
-    }
+    ) {}
 
     public function index(Request $request): View
     {
@@ -56,8 +55,7 @@ final class ProjectSubmissionController extends Controller
     public function download(
         ProjectSubmission $projectSubmission,
         ProjectAttachmentDownloadService $downloads
-    ): StreamedResponse
-    {
+    ): StreamedResponse {
         $file = $downloads->submissionForAdmin($projectSubmission);
         abort_if($file === null, 404);
 
@@ -84,6 +82,7 @@ final class ProjectSubmissionController extends Controller
             'attachment_id' => $attachment->id,
             'owner_type' => $attachment->owner_type,
         ]);
+
         return $file['disk']->download($file['path'], $file['name'], [
             'Content-Type' => $file['mime'],
             'Content-Disposition' => DownloadFilename::disposition($file['name']),

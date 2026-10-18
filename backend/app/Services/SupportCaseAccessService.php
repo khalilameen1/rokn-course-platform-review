@@ -16,6 +16,7 @@ final class SupportCaseAccessService
         abort_if($secret === '', 503, 'تعذّر فتح المتابعة الآن');
         $bytes = hash_hmac('sha256', 'support-case|'.$clientRequestId, $secret, true);
         $token = rtrim(strtr(base64_encode($bytes), '+/', '-_'), '=');
+
         return ['token' => $token, 'hash' => hash('sha256', $token)];
     }
 

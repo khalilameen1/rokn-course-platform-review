@@ -179,7 +179,7 @@ final class AdminTeacherAuthoringOwnershipTest extends TestCase
 
     private function course(User $teacher): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1, 'name_ar' => 'كورس منشور', 'price' => 500,
             'teacher_id' => $teacher->id, 'is_coming_soon' => false,

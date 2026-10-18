@@ -2,11 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\Course;
+use App\Models\CourseCode;
+use App\Models\Lesson;
 use Database\Seeders\Concerns\GuardsDevelopmentFixtures;
 use Illuminate\Database\Seeder;
-use App\Models\CourseCode;
-use App\Models\Course;
-use App\Models\Lesson;
 
 class CourseCodeSeeder extends Seeder
 {
@@ -34,7 +34,7 @@ class CourseCodeSeeder extends Seeder
                 'start_date' => now(),
                 'expiry_date' => now()->addMonths(3),
                 'max_uses' => 10,
-                'description' => 'كود تجريبي للوصول إلى الدورة'
+                'description' => 'كود تجريبي للوصول إلى الدورة',
             ]);
 
             // Create a lesson code
@@ -47,7 +47,7 @@ class CourseCodeSeeder extends Seeder
                     'start_date' => now(),
                     'expiry_date' => now()->addMonths(1),
                     'max_uses' => 5,
-                    'description' => 'كود تجريبي للوصول إلى درس محدد'
+                    'description' => 'كود تجريبي للوصول إلى درس محدد',
                 ]);
 
                 // Create a multiple lessons code
@@ -60,7 +60,7 @@ class CourseCodeSeeder extends Seeder
                     'start_date' => now(),
                     'expiry_date' => now()->addMonths(2),
                     'max_uses' => 3,
-                    'description' => 'كود تجريبي للوصول إلى عدة دروس'
+                    'description' => 'كود تجريبي للوصول إلى عدة دروس',
                 ]);
             }
 
@@ -73,7 +73,7 @@ class CourseCodeSeeder extends Seeder
                 'start_date' => now()->subMonths(2),
                 'expiry_date' => now()->subMonth(),
                 'max_uses' => 1,
-                'description' => 'كود منتهي الصلاحية للاختبار'
+                'description' => 'كود منتهي الصلاحية للاختبار',
             ]);
 
             // Create a future code
@@ -85,9 +85,8 @@ class CourseCodeSeeder extends Seeder
                 'start_date' => now()->addMonth(),
                 'expiry_date' => now()->addMonths(3),
                 'max_uses' => 1,
-                'description' => 'كود لم يبدأ بعد للاختبار'
+                'description' => 'كود لم يبدأ بعد للاختبار',
             ]);
         }
     }
 }
-

@@ -6,16 +6,16 @@ namespace App\Services;
 
 use App\Exceptions\AiPlanLimitReachedException;
 use App\Jobs\GenerateProjectFeedbackReply;
-use App\Models\AiInputAttachment;
 use App\Models\AiEntitlementUsage;
+use App\Models\AiInputAttachment;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\ProjectFeedbackMessage;
 use App\Models\ProjectFeedbackThread;
 use App\Models\ProjectSubmission;
 use App\Models\User;
-use App\Support\DurableJobDispatch;
 use App\Support\AiRequestTokenEstimate;
+use App\Support\DurableJobDispatch;
 use App\Support\ProjectSubmissionLifecycle;
 use App\Support\UnicodeText;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -33,8 +33,7 @@ final class ProjectFeedbackThreadService
         private CourseEntitlementService $courseAccess,
         private AiEntitlementBudgetService $budget,
         private AiPromptPolicy $promptPolicy
-    ) {
-    }
+    ) {}
 
     /** @param array<string,mixed> $terms */
     public function beginInitialReport(
@@ -49,14 +48,14 @@ final class ProjectFeedbackThreadService
             $courseId,
             $terms
         ): ProjectFeedbackMessage {
-            if (!User::query()->whereKey($submission->user_id)->where('active', true)
+            if (! User::query()->whereKey($submission->user_id)->where('active', true)
                 ->lockForUpdate()->exists()) {
                 throw new AuthorizationException('Project feedback owner is unavailable.');
             }
             $lockedSubmission = ProjectSubmission::query()
                 ->lockForUpdate()->findOrFail($submission->id);
             $contract = $this->accessPlans->publicPayloadFromTerms($terms);
-            if (!(bool) $contract['project_report_enabled']) {
+            if (! (bool) $contract['project_report_enabled']) {
                 throw new \LogicException('The entitlement does not include project feedback.');
             }
             $thread = ProjectFeedbackThread::query()->firstOrCreate(
@@ -79,7 +78,7 @@ final class ProjectFeedbackThreadService
             $report = ProjectFeedbackMessage::query()->firstOrCreate(
                 [
                     'thread_id' => $thread->id,
-                    'client_request_id' => 'report:' . $lockedSubmission->public_id,
+                    'client_request_id' => 'report:'.$lockedSubmission->public_id,
                 ],
                 [
                     'public_id' => (string) Str::uuid(),
@@ -114,14 +113,14 @@ final class ProjectFeedbackThreadService
         }
 
         return DB::transaction(function () use ($submission, $enrollment, $courseId, $terms, $body): ProjectFeedbackThread {
-            if (!User::query()->whereKey($submission->user_id)->where('active', true)
+            if (! User::query()->whereKey($submission->user_id)->where('active', true)
                 ->lockForUpdate()->exists()) {
                 throw new AuthorizationException('Project feedback owner is unavailable.');
             }
             $lockedSubmission = ProjectSubmission::query()->lockForUpdate()->findOrFail($submission->id);
             $contract = $this->accessPlans->publicPayloadFromTerms($terms);
             $level = (string) $contract['project_feedback_level'];
-            if (!(bool) $contract['project_report_enabled']) {
+            if (! (bool) $contract['project_report_enabled']) {
                 throw new \LogicException('The entitlement does not include project feedback.');
             }
             $canReply = (bool) $contract['project_thread_reply_enabled'];
@@ -148,10 +147,10 @@ final class ProjectFeedbackThreadService
             $reportMessage = ProjectFeedbackMessage::query()->firstOrNew(
                 [
                     'thread_id' => $thread->id,
-                    'client_request_id' => 'report:' . $lockedSubmission->public_id,
+                    'client_request_id' => 'report:'.$lockedSubmission->public_id,
                 ]
             );
-            if (!$reportMessage->exists) {
+            if (! $reportMessage->exists) {
                 $reportMessage->public_id = (string) Str::uuid();
                 $reportMessage->role = 'assistant';
             }
@@ -182,7 +181,9 @@ final class ProjectFeedbackThreadService
                 ->where('submission_id', $submissionId)
                 ->lockForUpdate()
                 ->first();
-            if (!$thread || $thread->status === 'ready') return;
+            if (! $thread || $thread->status === 'ready') {
+                return;
+            }
             $thread->forceFill(['status' => 'failed'])->save();
             ProjectFeedbackMessage::query()
                 ->where('thread_id', $thread->id)
@@ -211,11 +212,13 @@ final class ProjectFeedbackThreadService
         if ($body === '' && $attachmentIds === []) {
             throw ValidationException::withMessages(['message' => ['اكتب رسالتك أولًا']]);
         }
-        if ($body === '') $body = 'راجع المرفق';
+        if ($body === '') {
+            $body = 'راجع المرفق';
+        }
 
         sort($attachmentIds);
         $message = DB::transaction(function () use ($user, $thread, $body, $clientRequestId, $attachmentIds): ProjectFeedbackMessage {
-            if (!User::query()->whereKey($user->id)->where('active', true)->lockForUpdate()->exists()) {
+            if (! User::query()->whereKey($user->id)->where('active', true)->lockForUpdate()->exists()) {
                 throw new AuthorizationException('Project thread not found.');
             }
             $locked = ProjectFeedbackThread::query()->lockForUpdate()->findOrFail($thread->id);
@@ -226,12 +229,12 @@ final class ProjectFeedbackThreadService
             $contract = $enrollment
                 ? $this->replyContractFor($locked, $enrollment)
                 : null;
-            if (!$contract) {
+            if (! $contract) {
                 throw new AuthorizationException('Replies are not included in this course plan.');
             }
             $maxAttachments = min(5, max(0, (int) ($contract['project_attachment_max_files'] ?? 0)));
             if ($attachmentIds !== [] && (
-                !(bool) ($contract['project_attachments_enabled'] ?? false)
+                ! (bool) ($contract['project_attachments_enabled'] ?? false)
                 || count($attachmentIds) > $maxAttachments
             )) {
                 throw new AuthorizationException('Attachments are not included in this course plan.');
@@ -244,13 +247,14 @@ final class ProjectFeedbackThreadService
             if ($existing) {
                 $requestedFingerprint = hash('sha256', json_encode($attachmentIds, JSON_THROW_ON_ERROR));
                 if ($existing->role !== 'user'
-                    || !hash_equals(hash('sha256', (string) $existing->body), hash('sha256', $body))
-                    || !hash_equals(
+                    || ! hash_equals(hash('sha256', (string) $existing->body), hash('sha256', $body))
+                    || ! hash_equals(
                         (string) ($existing->attachment_request_fingerprint ?: hash('sha256', '[]')),
                         $requestedFingerprint
                     )) {
                     throw new \UnexpectedValueException('Project message request identity conflict.');
                 }
+
                 return $existing;
             }
 
@@ -304,6 +308,7 @@ final class ProjectFeedbackThreadService
                     'attachment_ids' => ['أحد المرفقات غير متاح لهذه الرسالة'],
                 ]);
             }
+
             return $message;
         }, 3);
 
@@ -343,7 +348,7 @@ final class ProjectFeedbackThreadService
             ->where('client_request_id', 'like', 'report:%')
             ->orderBy('id')
             ->first();
-        if ($initialReport && !$recentMessages->contains('id', $initialReport->id)) {
+        if ($initialReport && ! $recentMessages->contains('id', $initialReport->id)) {
             $recentMessages->prepend($initialReport);
         }
         $terms = $thread->enrollment
@@ -379,6 +384,7 @@ final class ProjectFeedbackThreadService
             ->where('status', AiInputAttachment::READY)
             ->get()->groupBy('owner_id');
         $failurePolicy = app(AiFailurePolicy::class);
+
         return [
             'id' => $thread->public_id,
             'thread_kind' => 'project_feedback',
@@ -391,7 +397,7 @@ final class ProjectFeedbackThreadService
             // Keep can_reply's entitlement meaning for older clients. Capacity
             // uses the same minimum request and budget owner as upgrade offers;
             // the worker still reserves the actual draft/context/attachments.
-            'reply_limit_reached' => $canReply && !$this->budget->hasProjectFollowupCapacity(
+            'reply_limit_reached' => $canReply && ! $this->budget->hasProjectFollowupCapacity(
                 $terms ?? [],
                 AiRequestTokenEstimate::minimumProjectFollowup(
                     $terms ?? [], $this->promptPolicy->projectFollowup('', '')
@@ -482,6 +488,7 @@ final class ProjectFeedbackThreadService
     {
         $thread->loadMissing('enrollment');
         $enrollment = $thread->enrollment;
+
         return $enrollment ? $this->replyContractFor($thread, $enrollment) : null;
     }
 
@@ -492,11 +499,11 @@ final class ProjectFeedbackThreadService
         UploadedFile $file,
         string $clientUploadId
     ): array {
-        if (!(bool) $user->active || (int) $thread->user_id !== (int) $user->id) {
+        if (! (bool) $user->active || (int) $thread->user_id !== (int) $user->id) {
             return ['state' => 'not_included'];
         }
         $contract = $this->activeReplyContract($thread);
-        if (!$contract || !(bool) ($contract['project_attachments_enabled'] ?? false)) {
+        if (! $contract || ! (bool) ($contract['project_attachments_enabled'] ?? false)) {
             return ['state' => 'not_included'];
         }
 
@@ -527,8 +534,10 @@ final class ProjectFeedbackThreadService
     ): ?array {
         if (
             $thread->status !== 'ready'
-            || !$enrollment->isActive()
-        ) return null;
+            || ! $enrollment->isActive()
+        ) {
+            return null;
+        }
 
         $terms = $this->accessPlans->termsForEnrollment($enrollment);
         $contract = $this->accessPlans->publicPayloadFromTerms($terms ?? []);

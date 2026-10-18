@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\API;
 
+use App\Models\Course;
 use App\Models\CourseSection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -173,7 +174,7 @@ class CourseEndpointTest extends ApiTestCase
             ]);
         };
         $enrol('first-student@rokn.test');
-        $expected = (int) \App\Models\Course::query()->findOrFail($this->courseId)
+        $expected = (int) Course::query()->findOrFail($this->courseId)
             ->activeEnrollments()->count();
         self::assertGreaterThanOrEqual(1, $expected);
 
@@ -309,16 +310,16 @@ class CourseEndpointTest extends ApiTestCase
             ->assertOk();
 
         DB::table('lesson_watch_evidence')->insert([
-                'user_id' => $this->user->id,
-                'lesson_id' => 10,
-                'course_section_id' => $this->sectionId,
-                'duration_seconds' => 900,
-                'verified_seconds' => 900,
-                'last_position_seconds' => 900,
-                'last_heartbeat_at' => now(),
-                'completed_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
+            'user_id' => $this->user->id,
+            'lesson_id' => 10,
+            'course_section_id' => $this->sectionId,
+            'duration_seconds' => 900,
+            'verified_seconds' => 900,
+            'last_position_seconds' => 900,
+            'last_heartbeat_at' => now(),
+            'completed_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $this->actingAs($this->user, 'api')

@@ -16,12 +16,13 @@ use Illuminate\Http\Request;
 final class RoknLocale
 {
     public const ARABIC = 'ar';
+
     public const ENGLISH = 'en';
 
     /** @return self::ARABIC|self::ENGLISH|null */
     public static function normalize(mixed $value): ?string
     {
-        if (!is_string($value) || trim($value) === '') {
+        if (! is_string($value) || trim($value) === '') {
             return null;
         }
 
@@ -30,7 +31,7 @@ final class RoknLocale
             $parts = array_map('trim', explode(';', $candidate));
             $tag = array_shift($parts) ?? '';
             $base = explode('-', str_replace('_', '-', $tag), 2)[0];
-            if (!in_array($base, [self::ARABIC, self::ENGLISH], true)) {
+            if (! in_array($base, [self::ARABIC, self::ENGLISH], true)) {
                 continue;
             }
             $quality = 1.0;
@@ -48,8 +49,7 @@ final class RoknLocale
             }
         }
 
-        usort($matches, static fn (array $left, array $right): int =>
-            ($right['quality'] <=> $left['quality']) ?: ($left['index'] <=> $right['index'])
+        usort($matches, static fn (array $left, array $right): int => ($right['quality'] <=> $left['quality']) ?: ($left['index'] <=> $right['index'])
         );
 
         return $matches[0]['locale'] ?? null;

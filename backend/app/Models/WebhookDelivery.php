@@ -10,8 +10,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 final class WebhookDelivery extends Model
 {
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_PROCESSING = 'processing';
+
     public const STATUS_DELIVERED = 'delivered';
+
     public const STATUS_FAILED = 'failed';
 
     protected $fillable = [
@@ -19,6 +22,7 @@ final class WebhookDelivery extends Model
         'attempts', 'response_code', 'available_at', 'delivered_at',
         'error_fingerprint',
     ];
+
     protected $casts = [
         'attempts' => 'integer',
         'response_code' => 'integer',

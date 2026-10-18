@@ -30,7 +30,7 @@ final class PaymentEvidencePath
             || str_contains($path, '#')
             || preg_match('#(^|/)\.\.?(/|$)#', $path) === 1
             || preg_match('#^[A-Za-z]:/#', $path) === 1
-            || !str_starts_with($path, 'payment-evidence/')
+            || ! str_starts_with($path, 'payment-evidence/')
             || preg_match('#^[A-Za-z0-9][A-Za-z0-9_./-]*$#', $path) !== 1
         ) {
             return null;

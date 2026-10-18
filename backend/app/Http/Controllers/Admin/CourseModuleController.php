@@ -20,8 +20,7 @@ final class CourseModuleController extends Controller
     public function __construct(
         private readonly AdminCourseModuleApplicationService $modules,
         private readonly AdminAuthoringCreateIntentService $createIntents
-    ) {
-    }
+    ) {}
 
     public function create(Course $course): Response
     {
@@ -127,6 +126,7 @@ final class CourseModuleController extends Controller
                 CourseModule::class,
                 $module->id
             );
+
             return;
         }
 

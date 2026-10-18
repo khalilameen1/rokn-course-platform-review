@@ -16,15 +16,14 @@ final readonly class FinancialEntitlementHoldReadService
     public function enrollmentHasActiveHold(
         CourseEnrollment $enrollment,
         array $scopes = ['course']
-    ): bool
-    {
-        if (!FinancialProvenanceSchema::available() || !$enrollment->order_id) {
+    ): bool {
+        if (! FinancialProvenanceSchema::available() || ! $enrollment->order_id) {
             return false;
         }
         $hasCourseScope = in_array('course', $scopes, true);
         $planScopes = array_values(array_intersect($scopes, ['chat', 'plan']));
         $planOrderId = (int) ($enrollment->access_plan_order_id ?: $enrollment->order_id);
-        if (!$hasCourseScope && ($planScopes === [] || $planOrderId <= 0)) {
+        if (! $hasCourseScope && ($planScopes === [] || $planOrderId <= 0)) {
             return false;
         }
 

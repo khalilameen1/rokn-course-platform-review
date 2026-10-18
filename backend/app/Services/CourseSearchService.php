@@ -14,15 +14,14 @@ final readonly class CourseSearchService
         private ArabicSearchNormalizer $normalizer,
         private CourseCatalogueQueryService $catalogue,
         private CourseDurationService $duration
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      */
     public function results(array $filters): LengthAwarePaginator
     {
-        $key = 'course-search:v5:' . hash('sha256', (string) json_encode([
+        $key = 'course-search:v5:'.hash('sha256', (string) json_encode([
             'revision' => $this->catalogue->revision(),
             'q' => $this->normalizer->normalize((string) ($filters['q'] ?? '')),
             'page' => (int) ($filters['page'] ?? 1),

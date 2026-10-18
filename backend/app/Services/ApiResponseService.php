@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\JsonResource;
 use App\Support\ApiErrorContract;
 use App\Support\BusinessClock;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\JsonResource;
 
 final readonly class ApiResponseService
 {

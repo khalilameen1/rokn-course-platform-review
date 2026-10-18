@@ -81,7 +81,7 @@ final class ModeratorProjectReviewPrivacyTest extends TestCase
         $moderator = $this->dashboardUser('moderator', 'reviewer@example.test', 'مراجع المحتوى');
         $student = $this->dashboardUser('client', 'private.student@example.test', 'اسم طالب خاص');
 
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'كورس الاختبار',
@@ -124,7 +124,7 @@ final class ModeratorProjectReviewPrivacyTest extends TestCase
 
     private function dashboardUser(string $role, string $email, string $name): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'name_ar' => $name,
             'email' => $email,

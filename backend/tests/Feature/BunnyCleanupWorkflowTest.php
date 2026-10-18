@@ -125,7 +125,7 @@ final class BunnyCleanupWorkflowTest extends TestCase
             'eligible_after' => now()->subMinute(),
             'reviewed_at' => $approved ? now() : null,
             'reviewed_by' => $approved ? 1 : null,
-            'requires_review' => !$approved,
+            'requires_review' => ! $approved,
         ]);
     }
 }

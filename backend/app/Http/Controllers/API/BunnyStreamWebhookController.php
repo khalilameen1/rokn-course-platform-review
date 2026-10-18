@@ -6,8 +6,8 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\ProbeLessonMedia;
-use App\Support\DurableJobDispatch;
 use App\Models\Lesson;
+use App\Support\DurableJobDispatch;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -27,13 +27,13 @@ final class BunnyStreamWebhookController extends Controller
             || $request->header('X-BunnyStream-Signature-Version') !== 'v1'
             || strtolower((string) $request->header('X-BunnyStream-Signature-Algorithm')) !== 'hmac-sha256'
             || preg_match('/^[a-f0-9]{64}$/', $signature) !== 1
-            || !hash_equals(hash_hmac('sha256', $request->getContent(), $secret), $signature)
+            || ! hash_equals(hash_hmac('sha256', $request->getContent(), $secret), $signature)
         ) {
             abort(404);
         }
 
         $payload = json_decode($request->getContent(), true);
-        if (!is_array($payload)) {
+        if (! is_array($payload)) {
             abort(404);
         }
         $libraryId = trim((string) ($payload['VideoLibraryId'] ?? ''));
@@ -42,7 +42,7 @@ final class BunnyStreamWebhookController extends Controller
         // (0..8). Never persist or classify it as a provider video status.
         $status = filter_var($payload['Status'] ?? null, FILTER_VALIDATE_INT);
         if (
-            !hash_equals(trim((string) config('bunny.library_id')), $libraryId)
+            ! hash_equals(trim((string) config('bunny.library_id')), $libraryId)
             || preg_match('/^[a-f0-9-]{36}$/', $videoGuid) !== 1
             || $status === false
             || $status < 0

@@ -161,18 +161,20 @@ final class AdminCoursePdfCreateReceiptTest extends TestCase
 
     private function actor(string $role = 'moderator'): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill(['name_ar' => 'Editor', 'email' => Str::uuid().'@example.test', 'role' => $role, 'active' => true])->save();
+
         return $user;
     }
 
     private function course(bool $draft = true): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill(['tenant_id' => 1, 'name_ar' => 'Course', 'price' => 800,
-            'is_coming_soon' => $draft, 'is_catalog_visible' => !$draft,
+            'is_coming_soon' => $draft, 'is_catalog_visible' => ! $draft,
             'authoring_version' => 4, 'last_published_authoring_version' => $draft ? null : 4,
             'published_at' => $draft ? null : now()])->save();
+
         return $course;
     }
 }

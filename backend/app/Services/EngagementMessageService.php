@@ -9,9 +9,7 @@ use App\Support\RoknAppLink;
 
 final class EngagementMessageService
 {
-    public function __construct(private readonly WelcomeRewardOfferService $welcomeOffer)
-    {
-    }
+    public function __construct(private readonly WelcomeRewardOfferService $welcomeOffer) {}
 
     /** @return array<string, mixed>|null */
     public function publicMessage(string $systemKey, array $variables = []): ?array
@@ -21,7 +19,7 @@ final class EngagementMessageService
             ->where('system_key', $systemKey)
             ->first();
 
-        if (!$message) {
+        if (! $message) {
             return null;
         }
 
@@ -33,14 +31,14 @@ final class EngagementMessageService
      * template suppresses that automated message; an unknown key keeps legacy
      * call sites working with their explicit fallback copy.
      *
-     * @param array<string,mixed> $variables
-     * @param array<string,mixed> $fallback
+     * @param  array<string,mixed>  $variables
+     * @param  array<string,mixed>  $fallback
      * @return array<string,mixed>|null
      */
     public function notificationPayload(string $systemKey, array $variables, array $fallback): ?array
     {
         $configured = AdminNotification::query()->where('system_key', $systemKey)->first();
-        if (!$configured) {
+        if (! $configured) {
             return $fallback;
         }
 
@@ -48,7 +46,7 @@ final class EngagementMessageService
             ->available()
             ->whereKey($configured->id)
             ->first();
-        if (!$available) {
+        if (! $available) {
             return null;
         }
 
@@ -108,7 +106,7 @@ final class EngagementMessageService
                     '5' => '٥', '6' => '٦', '7' => '٧', '8' => '٨', '9' => '٩',
                 ]);
             }
-            $replacements['{' . $key . '}'] = $text;
+            $replacements['{'.$key.'}'] = $text;
         }
 
         return trim(strtr($value, $replacements));
@@ -123,5 +121,4 @@ final class EngagementMessageService
 
         return RoknAppLink::normalize($link);
     }
-
 }

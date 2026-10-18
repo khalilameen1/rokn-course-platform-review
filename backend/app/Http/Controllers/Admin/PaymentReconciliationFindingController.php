@@ -16,9 +16,7 @@ use Illuminate\View\View;
 
 class PaymentReconciliationFindingController extends Controller
 {
-    public function __construct(private readonly PaymentReconciliationReviewService $reviews)
-    {
-    }
+    public function __construct(private readonly PaymentReconciliationReviewService $reviews) {}
 
     public function index(Request $request): View
     {
@@ -31,7 +29,7 @@ class PaymentReconciliationFindingController extends Controller
             'kind' => 'nullable|string|max:64',
             'order_ref' => 'nullable|string|max:191',
         ]);
-        if (!$request->query->has('state')) {
+        if (! $request->query->has('state')) {
             $filters['state'] = PaymentReconciliationFinding::STATE_OPEN;
         }
 
@@ -142,5 +140,4 @@ class PaymentReconciliationFindingController extends Controller
 
         return back()->with('success', $successMessage);
     }
-
 }

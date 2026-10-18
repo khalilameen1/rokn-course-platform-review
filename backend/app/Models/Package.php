@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\AfterCommitCacheInvalidation;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
-use App\Support\AfterCommitCacheInvalidation;
 use Throwable;
 
 class Package extends Model
@@ -98,8 +98,8 @@ class Package extends Model
     public function purchases()
     {
         return $this->belongsToMany(User::class, 'package_user')
-                    ->withPivot('order_id', 'price', 'coins', 'created_at')
-                    ->withTimestamps();
+            ->withPivot('order_id', 'price', 'coins', 'created_at')
+            ->withTimestamps();
     }
 
     public function storePurchases()

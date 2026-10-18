@@ -28,7 +28,7 @@ final class PortfolioReportController extends Controller
         $fingerprint = hash_hmac('sha256', implode('|', [
             $slug, trim($validated['message']), (string) $request->ip(),
         ]), (string) config('app.key'));
-        if (!FeedbackReport::query()->where('request_fingerprint', $fingerprint)
+        if (! FeedbackReport::query()->where('request_fingerprint', $fingerprint)
             ->where('created_at', '>=', now()->subMinutes(10))->exists()) {
             DB::transaction(function () use ($request, $validated, $owner, $slug, $fingerprint, $cases): void {
                 $report = FeedbackReport::query()->create([

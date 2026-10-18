@@ -16,7 +16,7 @@ function startLocalHttpFixture(string $readyFile)
     fwrite(STDOUT, $address.PHP_EOL);
     fflush(STDOUT);
     if (file_put_contents($readyFile.'.tmp', $address, LOCK_EX) === false
-        || !rename($readyFile.'.tmp', $readyFile)) {
+        || ! rename($readyFile.'.tmp', $readyFile)) {
         fwrite(STDERR, 'Cannot publish local HTTP fixture readiness.');
         fclose($server);
         exit(1);

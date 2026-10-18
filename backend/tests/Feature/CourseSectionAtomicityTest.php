@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Data\CourseSectionEdit;
 use App\Http\Controllers\Admin\CourseSectionController;
+use App\Http\Requests\Admin\CourseSectionInput;
 use App\Models\Course;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
@@ -12,8 +14,6 @@ use App\Models\Lesson;
 use App\Models\LessonMediaState;
 use App\Models\Project;
 use App\Services\CourseSectionContentService;
-use App\Http\Requests\Admin\CourseSectionInput;
-use App\Data\CourseSectionEdit;
 use App\Services\CourseSectionMediaStage;
 use App\Services\CourseSectionOrderingService;
 use Illuminate\Database\Schema\Blueprint;
@@ -448,5 +448,4 @@ final class CourseSectionAtomicityTest extends TestCase
             'order' => $order,
         ]);
     }
-
 }

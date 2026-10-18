@@ -13,7 +13,7 @@ for ($index = 0; $index < (int) $argv[1]; $index++) {
     }
     stream_set_timeout($client, 5);
     $request = '';
-    while (!str_contains($request, "\r\n\r\n")) {
+    while (! str_contains($request, "\r\n\r\n")) {
         $chunk = fread($client, 8192);
         if ($chunk === false || $chunk === '') {
             exit(3);
@@ -36,7 +36,7 @@ for ($index = 0; $index < (int) $argv[1]; $index++) {
     if ($stalled) {
         $prefix = "#EXTM3U\n";
     }
-    if ($large && !$image) {
+    if ($large && ! $image) {
         $prefix = str_contains($path, 'invalid')
             ? str_pad('<!doctype html>not a playlist', 8193, ' ')
             : substr($valid.str_repeat("# padding\n", 900), 0, 8193);
@@ -67,7 +67,7 @@ for ($index = 0; $index < (int) $argv[1]; $index++) {
         stream_set_blocking($client, false);
         $deadline = microtime(true) + ($stalled ? 12 : 2);
         $nextFragment = microtime(true) + 3;
-        while (microtime(true) < $deadline && !feof($client)) {
+        while (microtime(true) < $deadline && ! feof($client)) {
             fread($client, 1);
             if ($stalled && microtime(true) >= $nextFragment) {
                 // New bytes must not renew the probe's overall read budget.
@@ -77,12 +77,12 @@ for ($index = 0; $index < (int) $argv[1]; $index++) {
             }
             usleep(10_000);
         }
-        if (!feof($client)) {
+        if (! feof($client)) {
             stream_set_blocking($client, true);
             $tail = str_repeat('x', $tailLength);
             while ($tailBytes < $tailLength) {
                 $written = @fwrite($client, substr($tail, $tailBytes));
-                if (!$written) {
+                if (! $written) {
                     break;
                 }
                 $tailBytes += $written;

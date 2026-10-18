@@ -23,7 +23,7 @@ final class CertificateTextTemplateServiceTest extends TestCase
         ]);
 
         $service = app(CertificateTextTemplateService::class);
-        $course = new Course();
+        $course = new Course;
         $course->forceFill(['certificate_text_template_key' => 'projects']);
 
         self::assertSame(['projects'], $service->keys());

@@ -10,10 +10,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 final class OutboxEvent extends Model
 {
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_PROCESSING = 'processing';
+
     public const STATUS_BLOCKED = 'blocked';
+
     public const STATUS_DELIVERED = 'delivered';
+
     public const STATUS_FAILED = 'failed';
+
     public const STATUS_SKIPPED = 'skipped';
 
     protected $fillable = [
@@ -21,6 +26,7 @@ final class OutboxEvent extends Model
         'status', 'attempts', 'available_at', 'dispatched_at', 'locked_at', 'delivered_at',
         'last_error_fingerprint',
     ];
+
     protected $casts = [
         'payload' => 'array',
         'attempts' => 'integer',

@@ -4,36 +4,60 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Contracts\StorePurchaseProviderGateway;
+use App\Data\VerifiedStorePurchase;
+use App\Exceptions\CourseCheckoutRejected;
+use App\Http\Middleware\AppFrontNameSpace;
+use App\Http\Middleware\WebsiteVisitorCount;
+use App\Models\AdminNotification;
+use App\Models\AiEntitlementUsage;
+use App\Models\AiUsageEvent;
 use App\Models\Bill;
+use App\Models\CoinEarningMethod;
+use App\Models\Coupon;
 use App\Models\Course;
-use App\Models\CourseAccessPlan;
 use App\Models\CourseCheckout;
 use App\Models\CourseEnrollment;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
-use App\Models\Coupon;
 use App\Models\Lesson;
 use App\Models\Order;
+use App\Models\OutboxEvent;
 use App\Models\Package;
 use App\Models\ProductEvent;
 use App\Models\Setting;
 use App\Models\StorePurchase;
 use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Services\AdminCourseLifecycleService;
 use App\Services\CourseCheckoutService;
+use App\Services\CourseEnrollmentWriter;
+use App\Services\CoursePlanUpgradeAction;
+use App\Services\CoursePlanUpgradeEligibilityService;
+use App\Services\CoursePurchaseAction;
 use App\Services\FinancialProvenanceService;
+use App\Services\KashierCheckoutOrderService;
+use App\Services\OrderLifecycleService;
+use App\Services\PackageChannelPricingService;
 use App\Services\ProductEventService;
+use App\Services\StoreBillingAccountIdentity;
 use App\Services\WalletService;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class CourseCheckoutServiceTest extends TestCase
 {
     use RefreshDatabase;
+
     private int $sequence = 0;
 
     protected function setUp(): void
@@ -41,8 +65,12 @@ final class CourseCheckoutServiceTest extends TestCase
         parent::setUp();
         Queue::fake();
         CarbonImmutable::setTestNow('2026-09-15T12:00:00Z');
-        if (Schema::hasColumn('bills', 'tenant_id')) Bill::creating(static fn (Bill $row) => $row->setAttribute('tenant_id', 1));
-        if (Schema::hasColumn('course_enrollments', 'tenant_id')) CourseEnrollment::creating(static fn (CourseEnrollment $row) => $row->setAttribute('tenant_id', 1));
+        if (Schema::hasColumn('bills', 'tenant_id')) {
+            Bill::creating(static fn (Bill $row) => $row->setAttribute('tenant_id', 1));
+        }
+        if (Schema::hasColumn('course_enrollments', 'tenant_id')) {
+            CourseEnrollment::creating(static fn (CourseEnrollment $row) => $row->setAttribute('tenant_id', 1));
+        }
         Setting::query()->create(['site_name_ar' => 'Rokn', 'max_course_promotion_percent' => 20]);
     }
 
@@ -96,7 +124,7 @@ final class CourseCheckoutServiceTest extends TestCase
         Setting::query()->firstOrFail()->update(['reward_balance_cap' => 30]);
         $this->exitTask(50);
         $this->exitOffer($user, $course)->assertOk()->assertJsonPath('data', null);
-        $smaller = \App\Models\CoinEarningMethod::query()->create([
+        $smaller = CoinEarningMethod::query()->create([
             'title_ar' => 'تابعنا على إنستجرام', 'title_en' => 'Follow us on Instagram', 'coins_amount' => 10,
             'action_key' => 'instagram_exit_small', 'requires_external_visit' => true,
             'action_url' => 'https://instagram.com/rokn', 'is_active' => true, 'sort_order' => 2,
@@ -133,7 +161,7 @@ final class CourseCheckoutServiceTest extends TestCase
         CourseCheckout::query()->where('public_id', $checkout['id'])->firstOrFail()
             ->update(['status' => 'pending_payment']);
         $this->exitOffer($other, $course)->assertOk()->assertJsonPath('data', null);
-        \App\Models\AdminNotification::query()->where('system_key', 'coin_offer')->update(['is_active' => false]);
+        AdminNotification::query()->where('system_key', 'coin_offer')->update(['is_active' => false]);
         $this->exitOffer($this->user(), $course)->assertOk()->assertJsonPath('data', null);
     }
 
@@ -148,10 +176,11 @@ final class CourseCheckoutServiceTest extends TestCase
             ->assertUnprocessable();
     }
 
-    private function exitTask(int $amount): \App\Models\CoinEarningMethod
+    private function exitTask(int $amount): CoinEarningMethod
     {
-        \App\Models\CoinEarningMethod::query()->update(['is_active' => false]);
-        return \App\Models\CoinEarningMethod::query()->create([
+        CoinEarningMethod::query()->update(['is_active' => false]);
+
+        return CoinEarningMethod::query()->create([
             'title_ar' => 'تابعنا على إنستجرام', 'title_en' => 'Follow us on Instagram', 'coins_amount' => $amount,
             'action_key' => 'instagram_exit', 'requires_external_visit' => true,
             'action_url' => 'https://instagram.com/rokn', 'is_active' => true, 'sort_order' => 1,
@@ -169,13 +198,14 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame(0, CourseCheckout::query()->count());
     }
 
-    private function exitOffer(User $user, Course $course): \Illuminate\Testing\TestResponse
+    private function exitOffer(User $user, Course $course): TestResponse
     {
-        $this->withoutMiddleware([\App\Http\Middleware\AppFrontNameSpace::class, \App\Http\Middleware\WebsiteVisitorCount::class]);
+        $this->withoutMiddleware([AppFrontNameSpace::class, WebsiteVisitorCount::class]);
         // Feature requests share a container; the real bearer guard caches
         // its authenticated model/request. Start a fresh HTTP auth owner so
         // a prior learner or opt-out cannot mask this request's actual token.
         $this->app['auth']->forgetGuards();
+
         return $this->withToken($user->generateApiToken())->getJson('/api/v1/engagement/next?'.http_build_query([
             'course_id' => $course->id, 'access_plan_code' => 'basic',
         ]));
@@ -184,7 +214,7 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_default_upgrade_skips_an_unfundable_middle_plan_without_spending(): void
     {
         [$user, $course, $service] = $this->fixture(2000, 500);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $base = $service->create($user, $this->input($course));
         $service->authorize($user, $base['id']);
         // Basic captured 400 coins, paid contribution 320. Guided's remaining
@@ -201,33 +231,33 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_output_only_remaining_tokens_are_not_a_usable_chat_upgrade(): void
     {
         [$user, $course, $service] = $this->fixture(2000, 500);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $base = $service->create($user, $this->input($course));
         $service->authorize($user, $base['id']);
         $enrollment = CourseEnrollment::query()->where('user_id', $user->id)->firstOrFail();
         $course->accessPlans()->where('code', 'guided')->update(['is_active' => false]);
-        \App\Models\AiEntitlementUsage::query()->create([
+        AiEntitlementUsage::query()->create([
             'enrollment_id' => $enrollment->id, 'feature' => 'course_chat',
             'used_requests' => 1, 'reserved_requests' => 0,
             'used_tokens' => 41520, 'reserved_tokens' => 0, // Mentor output=480; mandatory input also needs room.
             'used_cost_usd' => 0, 'reserved_cost_usd' => 0,
         ]);
-        $events = \App\Models\AiUsageEvent::query()->count();
+        $events = AiUsageEvent::query()->count();
         $this->actingAs($user, 'api')->getJson('/api/v1/courses/'.$course->id.'/full-track-upgrade?required_feature=chat')
             ->assertOk()->assertJsonPath('data.upgrade_available', false)
             ->assertJsonPath('data.available_plan_codes', []);
-        self::assertSame($events, \App\Models\AiUsageEvent::query()->count());
+        self::assertSame($events, AiUsageEvent::query()->count());
         self::assertSame(0, (int) $enrollment->aiUsages()->firstOrFail()->reserved_requests);
     }
 
     public function test_exhausted_guided_chat_can_offer_mentor_but_never_renews_the_highest_plan(): void
     {
         [$user, $course, $service] = $this->fixture(2000, 500);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $guided = $service->create($user, array_replace($this->input($course), ['access_plan_code' => 'guided']));
         $service->authorize($user, $guided['id']);
         $enrollment = CourseEnrollment::query()->where('user_id', $user->id)->firstOrFail();
-        $usage = \App\Models\AiEntitlementUsage::query()->create([
+        $usage = AiEntitlementUsage::query()->create([
             'enrollment_id' => $enrollment->id, 'feature' => 'course_chat',
             'used_requests' => 25, 'reserved_requests' => 0,
             'used_tokens' => 1000, 'reserved_tokens' => 0, 'used_cost_usd' => '0.100000', 'reserved_cost_usd' => 0,
@@ -250,7 +280,7 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_project_discussion_offer_preserves_usage_from_an_older_larger_allowance(): void
     {
         [$user, $course, $service] = $this->fixture(2000, 500);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $course->accessPlans()->where('code', 'guided')->update([
             'project_feedback_level' => 'enhanced', 'project_followup_message_limit' => 30,
             'project_followup_token_budget' => 12000, 'project_followup_budget_usd' => .30,
@@ -259,7 +289,7 @@ final class CourseCheckoutServiceTest extends TestCase
         $guided = $service->create($user, array_replace($this->input($course), ['access_plan_code' => 'guided']));
         $service->authorize($user, $guided['id']);
         $enrollment = CourseEnrollment::query()->where('user_id', $user->id)->firstOrFail();
-        \App\Models\AiEntitlementUsage::query()->create([
+        AiEntitlementUsage::query()->create([
             'enrollment_id' => $enrollment->id, 'feature' => 'project_followup',
             'used_requests' => 20, 'reserved_requests' => 0,
             'used_tokens' => 1000, 'reserved_tokens' => 0, 'used_cost_usd' => .10, 'reserved_cost_usd' => 0,
@@ -272,7 +302,7 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_captured_chat_revision_changes_on_purchase_not_catalogue_edits(): void
     {
         [$user, $course, $service] = $this->fixture(2000, 500);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $guided = $service->create($user, array_replace($this->input($course), ['access_plan_code' => 'guided']));
         $service->authorize($user, $guided['id']);
         $this->actingAs($user, 'api');
@@ -295,7 +325,7 @@ final class CourseCheckoutServiceTest extends TestCase
             'is_active' => true, 'access_plan_id' => null, 'access_plan_snapshot' => null,
         ]);
         $grant->setRelation('order', null);
-        $offers = app(\App\Services\CoursePlanUpgradeEligibilityService::class);
+        $offers = app(CoursePlanUpgradeEligibilityService::class);
         self::assertSame('guided', $offers->targetPlan($course, $grant)?->code);
         // A paid legacy record with no valid receipt is not reconstructed from
         // whichever plan the catalogue happens to contain today.
@@ -307,7 +337,7 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_chat_intent_rejects_a_projects_only_upgrade_without_spending(): void
     {
         [$user, $course, $service] = $this->fixture(2000, 500);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $base = $service->create($user, $this->input($course));
         $service->authorize($user, $base['id']);
         $before = (int) $user->fresh()->wallet_coins;
@@ -413,7 +443,7 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_http_reviewer_wallet_quote_has_consistent_deficit_before_and_after_package_binding(): void
     {
         [$user, $course] = $this->fixture(20, 30);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $package = $this->storePackage(900);
         foreach (['basic' => 400, 'guided' => 650] as $code => $price) {
             $input = array_replace($this->input($course), ['access_plan_code' => $code]);
@@ -448,8 +478,11 @@ final class CourseCheckoutServiceTest extends TestCase
             $package = $this->storePackage(350);
             $quote = $service->create($user, $this->input($course) + ['package_id' => $package->id]);
             $service->authorize($user, $quote['id']);
-            if ($state === 'cancelled') $service->cancel($user, $quote['id']);
-            else $this->travel(16)->minutes();
+            if ($state === 'cancelled') {
+                $service->cancel($user, $quote['id']);
+            } else {
+                $this->travel(16)->minutes();
+            }
             $receipt = $this->fund($user, $package);
             self::assertSame($state, $service->bindStorePurchase($user, $quote['id'], $receipt)['status']);
             self::assertSame(350, (int) $user->fresh()->wallet_purchased_coins);
@@ -506,11 +539,11 @@ final class CourseCheckoutServiceTest extends TestCase
         return ['explicit publication' => [1], 'legacy null' => [null], 'legacy zero' => [0]];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('publicationRevisionCases')]
+    #[DataProvider('publicationRevisionCases')]
     public function test_archiving_a_course_preserves_owned_reads_and_an_authorized_upgrade(?int $publishedRevision): void
     {
         [$user, $course, $service] = $this->fixture(1000, 200);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $course->forceFill(['authoring_version' => 1, 'last_published_authoring_version' => $publishedRevision])->save();
         $base = $service->create($user, $this->input($course));
         self::assertSame('completed', $service->authorize($user, $base['id'])['status']);
@@ -519,7 +552,7 @@ final class CourseCheckoutServiceTest extends TestCase
             'mode' => 'upgrade', 'channel' => 'google',
         ]);
         $before = app(WalletService::class)->balances($user->fresh());
-        $archived = app(\App\Services\AdminCourseLifecycleService::class)->archive($course, 1);
+        $archived = app(AdminCourseLifecycleService::class)->archive($course, 1);
         self::assertTrue($archived['unlisted']);
         self::assertSame(1, (int) $course->fresh()->last_published_authoring_version);
         self::assertFalse($course->fresh()->isAvailableForNewPurchase());
@@ -541,7 +574,7 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_hidden_course_allows_a_fresh_owned_upgrade_but_no_new_subscription(): void
     {
         [$owner, $course, $service] = $this->fixture(1000, 200);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $base = $service->create($owner, $this->input($course));
         $service->authorize($owner, $base['id']);
         $course->forceFill(['is_catalog_visible' => false])->save();
@@ -567,14 +600,14 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_a_draft_is_not_made_upgradeable_by_an_existing_enrollment(): void
     {
         [$user, $course, $service] = $this->fixture(1000, 200);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $base = $service->create($user, $this->input($course));
         $service->authorize($user, $base['id']);
         $course->forceFill(['is_coming_soon' => true])->save();
         // forceCreate does not hydrate database defaults. Use the persisted
         // editor version, as a real archive form does, not a null cast to zero.
         $course->refresh();
-        app(\App\Services\AdminCourseLifecycleService::class)->archive($course, (int) $course->authoring_version);
+        app(AdminCourseLifecycleService::class)->archive($course, (int) $course->authoring_version);
         self::assertSame(0, (int) $course->fresh()->last_published_authoring_version);
         $before = app(WalletService::class)->balances($user->fresh());
         $this->actingAs($user, 'api')->postJson('/api/v1/course-checkouts', [
@@ -587,9 +620,16 @@ final class CourseCheckoutServiceTest extends TestCase
 
     private function fixture(int $paid, int $reward): array
     {
-        $user = $this->user(); $course = $this->course(true); $this->plans($course);
-        if ($paid > 0) $this->creditPaid($user, $paid);
-        if ($reward > 0) $this->creditReward($user, $reward);
+        $user = $this->user();
+        $course = $this->course(true);
+        $this->plans($course);
+        if ($paid > 0) {
+            $this->creditPaid($user, $paid);
+        }
+        if ($reward > 0) {
+            $this->creditReward($user, $reward);
+        }
+
         return [$user->fresh(), $course, app(CourseCheckoutService::class)];
     }
 
@@ -611,7 +651,7 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame(1, CourseCheckout::query()->where('user_id', $user->id)->count());
         self::assertSame(0, $quote['remaining_purchased_balance']);
         $service->authorize($user, $quote['id']);
-        $begun = app(\App\Services\KashierCheckoutOrderService::class)->beginCheckout(
+        $begun = app(KashierCheckoutOrderService::class)->beginCheckout(
             $user, $package, 'exact-course-funding-test-0001', 3.33, 300, $quote['id']
         );
         $order = $begun['order'];
@@ -619,7 +659,7 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame('3.33', $order->final_amount);
         $service->bindFundingOrder($user, $quote['id'], $order);
         $package->forceFill(['direct_enabled' => false, 'price' => '90.00'])->save();
-        app(\App\Services\OrderLifecycleService::class)->approve($order, null, null, true);
+        app(OrderLifecycleService::class)->approve($order, null, null, true);
         $complete = $service->resume($user, $quote['id']);
         self::assertSame('completed', $complete['status'], json_encode($complete));
         self::assertSame(0, (int) $user->fresh()->wallet_purchased_coins);
@@ -711,7 +751,7 @@ final class CourseCheckoutServiceTest extends TestCase
         }
         $service->resume($user, $quote['id']);
         self::assertSame($before->pluck('event_id')->all(), ProductEvent::query()->orderBy('id')->pluck('event_id')->all());
-        self::assertSame(3, \App\Models\OutboxEvent::query()->where('aggregate_type', 'product_event')->count());
+        self::assertSame(3, OutboxEvent::query()->where('aggregate_type', 'product_event')->count());
     }
 
     public function test_upgrade_transitions_do_not_emit_first_purchase_events(): void
@@ -738,8 +778,8 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_exact_http_payment_rejects_full_package_and_retains_pending_recovery(): void
     {
         [$user, $course, $service] = $this->fixture(0, 200);
-        $this->withoutMiddleware([\App\Http\Middleware\AppFrontNameSpace::class, \App\Http\Middleware\WebsiteVisitorCount::class]);
-        \Illuminate\Support\Facades\Http::preventStrayRequests();
+        $this->withoutMiddleware([AppFrontNameSpace::class, WebsiteVisitorCount::class]);
+        Http::preventStrayRequests();
         $package = $this->storePackage(900);
         $package->forceFill(['direct_enabled' => true, 'price' => '11.11'])->save();
         $quote = $service->create($user, array_replace($this->input($course), [
@@ -771,7 +811,7 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_http_gets_are_read_only_and_another_account_cannot_resume(): void
     {
         [$user, $course] = $this->fixture(500, 200);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $quote = $this->actingAs($user, 'api')->postJson('/api/v1/course-checkouts', $this->input($course))->assertOk()->json('data');
         $this->getJson('/api/v1/course-checkouts/'.$quote['id'])->assertOk()->assertJsonPath('data.status', 'quoted');
         self::assertSame(0, CourseEnrollment::query()->count());
@@ -785,7 +825,7 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_legacy_purchase_can_use_rewards_but_upgrade_quote_cannot(): void
     {
         [$user, $course] = $this->fixture(1000, 500);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $this->actingAs($user, 'api')->postJson('/api/v1/courses/authorize', [
             'course_id' => $course->id, 'access_plan_code' => 'basic', 'expected_price' => 400,
             'idempotency_key' => 'legacy-new-policy-0001',
@@ -799,13 +839,13 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_verified_store_endpoint_explicitly_fulfills_authorized_checkout_once(): void
     {
         [$user, $course, $service] = $this->fixture(0, 200);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $package = $this->storePackage(350);
         $quote = $service->create($user, $this->input($course) + ['package_id' => $package->id]);
         $service->authorize($user, $quote['id']);
-        $binding = app(\App\Services\StoreBillingAccountIdentity::class)->google($user);
-        $gateway = $this->mock(\App\Contracts\StorePurchaseProviderGateway::class);
-        $gateway->shouldReceive('verify')->once()->andReturn(new \App\Data\VerifiedStorePurchase(
+        $binding = app(StoreBillingAccountIdentity::class)->google($user);
+        $gateway = $this->mock(StorePurchaseProviderGateway::class);
+        $gateway->shouldReceive('verify')->once()->andReturn(new VerifiedStorePurchase(
             provider: 'google', productId: $package->google_product_id, externalTransactionId: 'GPA-checkout-test',
             environment: 'test', auditPayload: ['purchase_completed_at' => now()->addSecond()->toIso8601String()], accountBinding: $binding));
         $gateway->shouldReceive('consumeGoogle')->andReturnNull();
@@ -823,7 +863,9 @@ final class CourseCheckoutServiceTest extends TestCase
         [$user, $course, $service] = $this->fixture(0, 200);
         $package = $this->storePackage(350);
         $package->forceFill(['direct_enabled' => true])->save();
-        $input = $this->input($course); $input['channel'] = 'direct'; $input['package_id'] = $package->id;
+        $input = $this->input($course);
+        $input['channel'] = 'direct';
+        $input['package_id'] = $package->id;
         $quote = $service->create($user, $input);
         $service->authorize($user, $quote['id']);
         $order = Order::query()->create(['user_id' => $user->id, 'package_id' => $package->id, 'package_coins' => 350,
@@ -832,7 +874,7 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame('pending_payment', $service->bindFundingOrder($user, $quote['id'], $order)['status']);
         self::assertSame(0, CourseEnrollment::query()->count());
         self::assertSame(0, ProductEvent::query()->where('event_name', 'purchase_completed')->count());
-        app(\App\Services\OrderLifecycleService::class)->approve($order, null, null, true);
+        app(OrderLifecycleService::class)->approve($order, null, null, true);
         // This is the webhook/recovery path with no mobile hook or open sheet.
         $service->resumeFundingOrder($order->fresh());
         self::assertSame(1, ProductEvent::query()->where('event_name', 'purchase_completed')->where('source', 'server')->count());
@@ -847,13 +889,13 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_google_signed_profile_is_recovered_without_device_checkout_id(): void
     {
         [$user, $course, $service] = $this->fixture(0, 200);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $package = $this->storePackage(350);
         $quote = $service->create($user, $this->input($course) + ['package_id' => $package->id]);
         $service->authorize($user, $quote['id']);
-        $binding = app(\App\Services\StoreBillingAccountIdentity::class)->google($user);
-        $gateway = $this->mock(\App\Contracts\StorePurchaseProviderGateway::class);
-        $gateway->shouldReceive('verify')->once()->andReturn(new \App\Data\VerifiedStorePurchase(
+        $binding = app(StoreBillingAccountIdentity::class)->google($user);
+        $gateway = $this->mock(StorePurchaseProviderGateway::class);
+        $gateway->shouldReceive('verify')->once()->andReturn(new VerifiedStorePurchase(
             provider: 'google', productId: $package->google_product_id, externalTransactionId: 'GPA-profile-recovery',
             environment: 'test', auditPayload: ['purchase_completed_at' => now()->addSecond()->toIso8601String(),
                 'checkout_profile_id' => $quote['id']], accountBinding: $binding));
@@ -872,18 +914,20 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_direct_http_binding_replays_completed_order_and_wrong_owner_rolls_back_new_order(): void
     {
         [$user, $course, $service] = $this->fixture(0, 200);
-        $this->withoutMiddleware([\App\Http\Middleware\AppFrontNameSpace::class, \App\Http\Middleware\WebsiteVisitorCount::class]);
-        \Illuminate\Support\Facades\Http::preventStrayRequests();
+        $this->withoutMiddleware([AppFrontNameSpace::class, WebsiteVisitorCount::class]);
+        Http::preventStrayRequests();
         $package = $this->storePackage(350);
         $package->forceFill(['direct_enabled' => true])->save();
-        $input = $this->input($course); $input['channel'] = 'direct'; $input['package_id'] = $package->id;
+        $input = $this->input($course);
+        $input['channel'] = 'direct';
+        $input['package_id'] = $package->id;
         $quote = $service->create($user, $input);
         $service->authorize($user, $quote['id']);
         $payload = ['package_id' => $package->id, 'expected_coins' => 350, 'expected_amount' => 90,
             'course_checkout_id' => $quote['id'], 'idempotency_key' => 'direct-checkout-contract-test-0001'];
         $first = $this->actingAs($user, 'api')->postJson('/api/v1/payment/initiate', $payload)->assertOk();
         $order = Order::query()->where('order_ref', $first->json('data.order_ref'))->firstOrFail();
-        app(\App\Services\OrderLifecycleService::class)->approve($order, null, null, true);
+        app(OrderLifecycleService::class)->approve($order, null, null, true);
         $service->resumeFundingOrder($order->fresh());
         $this->postJson('/api/v1/payment/initiate', $payload)->assertOk();
         self::assertSame(1, CourseEnrollment::query()->count());
@@ -898,8 +942,8 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_browser_checkout_issues_a_scoped_domain_page_without_browser_login(): void
     {
         [$user, $course, $service] = $this->fixture(0, 200);
-        $this->withoutMiddleware([\App\Http\Middleware\AppFrontNameSpace::class, \App\Http\Middleware\WebsiteVisitorCount::class]);
-        \Illuminate\Support\Facades\Http::preventStrayRequests();
+        $this->withoutMiddleware([AppFrontNameSpace::class, WebsiteVisitorCount::class]);
+        Http::preventStrayRequests();
         $package = $this->storePackage(350);
         $package->forceFill(['direct_enabled' => true])->save();
         $input = $this->input($course);
@@ -932,7 +976,7 @@ final class CourseCheckoutServiceTest extends TestCase
         $this->get(route('course-payment.show', ['checkoutId' => $quote['id'], 'order' => $order->id]))->assertForbidden();
         $this->actingAs($user, 'api')->postJson('/api/v1/payment/initiate', $payload)->assertOk();
         self::assertSame(1, Order::query()->where('package_id', $package->id)->count());
-        app(\App\Services\OrderLifecycleService::class)->approve($order, null, null, true);
+        app(OrderLifecycleService::class)->approve($order, null, null, true);
         $service->resumeFundingOrder($order->fresh());
         $this->get($url)->assertStatus(410);
         self::assertSame('completed', $service->show($user, $quote['id'])['status']);
@@ -944,7 +988,7 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_browser_checkout_requires_a_course_and_rejects_wrong_owner(): void
     {
         [$user, $course, $service] = $this->fixture(0, 200);
-        $this->withoutMiddleware([\App\Http\Middleware\AppFrontNameSpace::class, \App\Http\Middleware\WebsiteVisitorCount::class]);
+        $this->withoutMiddleware([AppFrontNameSpace::class, WebsiteVisitorCount::class]);
         $package = $this->storePackage(350);
         $package->forceFill(['direct_enabled' => true])->save();
         $payload = ['package_id' => $package->id, 'checkout_surface' => 'browser',
@@ -964,8 +1008,8 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_issued_direct_payment_outlives_the_quote_and_late_settlement_fulfills_once(): void
     {
         [$user, $course, $service] = $this->fixture(0, 200);
-        $this->withoutMiddleware([\App\Http\Middleware\AppFrontNameSpace::class, \App\Http\Middleware\WebsiteVisitorCount::class]);
-        \Illuminate\Support\Facades\Http::preventStrayRequests();
+        $this->withoutMiddleware([AppFrontNameSpace::class, WebsiteVisitorCount::class]);
+        Http::preventStrayRequests();
         $package = $this->storePackage(350);
         $package->forceFill(['direct_enabled' => true])->save();
         $input = $this->input($course);
@@ -999,7 +1043,7 @@ final class CourseCheckoutServiceTest extends TestCase
         $this->travel(31)->minutes();
         self::assertFalse($service->show($user, $quote['id'])['payment']['can_resume']);
         // Expiry disables reopening, not a verified payment already in flight.
-        app(\App\Services\OrderLifecycleService::class)->approve($order, null, null, true);
+        app(OrderLifecycleService::class)->approve($order, null, null, true);
         $service->resumeFundingOrder($order->fresh());
         $completed = $service->resume($user, $quote['id']);
         self::assertSame('completed', $completed['status']);
@@ -1026,7 +1070,7 @@ final class CourseCheckoutServiceTest extends TestCase
             'financial_status' => Order::FINANCIAL_PENDING]);
         $service->bindFundingOrder($user, $quote['id'], $order);
         $service->cancel($user, $quote['id']);
-        app(\App\Services\OrderLifecycleService::class)->approve($order, null, null, true);
+        app(OrderLifecycleService::class)->approve($order, null, null, true);
         $service->resumeFundingOrder($order->fresh());
         self::assertSame('cancelled', $service->resume($user, $quote['id'])['status']);
         self::assertSame(350, (int) $user->fresh()->wallet_purchased_coins);
@@ -1057,7 +1101,7 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_reward_heavy_old_receipt_cannot_upgrade_below_target_paid_floor(): void
     {
         [$user, $course, $service] = $this->fixture(2000, 500);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $course->accessPlans()->where('code', 'basic')->update(['price_coins' => 900]);
         $course->accessPlans()->where('code', 'mentor')->update(['price_coins' => 1000, 'minimum_paid_coins' => 950]);
         $quote = $service->create($user, $this->input($course));
@@ -1067,11 +1111,11 @@ final class CourseCheckoutServiceTest extends TestCase
         $this->actingAs($user, 'api')->getJson('/api/v1/courses/'.$course->id.'/full-track-upgrade?target_plan_code=mentor')
             ->assertStatus(409)->assertJsonPath('code', 'full_track_upgrade_paid_floor_unfunded');
         try {
-            app(\App\Services\CoursePlanUpgradeAction::class)
+            app(CoursePlanUpgradeAction::class)
                 ->execute($user->fresh(), $course, 'mentor', 'unfunded-upgrade-test-0001', 100, null);
             self::fail('An unfunded paid floor must refuse the upgrade.');
-        } catch (\App\Exceptions\CourseCheckoutRejected $exception) {
-            self::assertSame(\App\Exceptions\CourseCheckoutRejected::FULL_TRACK_UPGRADE_PAID_FLOOR_UNFUNDED, $exception->reason);
+        } catch (CourseCheckoutRejected $exception) {
+            self::assertSame(CourseCheckoutRejected::FULL_TRACK_UPGRADE_PAID_FLOOR_UNFUNDED, $exception->reason);
         }
         $this->postJson('/api/v1/course-checkouts', ['course_id' => $course->id, 'access_plan_code' => 'mentor', 'mode' => 'upgrade', 'channel' => 'google'])
             ->assertStatus(409)->assertJsonPath('code', 'full_track_upgrade_paid_floor_unfunded');
@@ -1083,7 +1127,7 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_projects_only_higher_plan_is_upgradeable_but_basic_is_never_an_upgrade(): void
     {
         [$user, $course, $service] = $this->fixture(2000, 500);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $course->accessPlans()->where('code', 'basic')->update(['projects_enabled' => false, 'certificate_enabled' => false]);
         $course->accessPlans()->where('code', 'guided')->update(['chat_enabled' => false, 'chat_message_limit' => 0,
             'chat_token_budget' => 0, 'ai_budget_usd' => 0, 'request_reserve_usd' => 0,
@@ -1120,14 +1164,15 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_pending_lookup_and_cross_course_conflict_keep_recovery_visible_to_its_owner(): void
     {
         [$user, $course, $service] = $this->fixture(0, 200);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $package = $this->storePackage(350);
         $first = $service->create($user, $this->input($course) + ['package_id' => $package->id]);
         $service->authorize($user, $first['id']);
         $newer = $service->create($user, $this->input($course) + ['package_id' => $package->id]);
         CourseCheckout::query()->where('public_id', $newer['id'])->firstOrFail()->forceFill(['status' => 'reconfirm_required'])->save();
         self::assertSame($first['id'], $service->latest($user, $course->id)['id']);
-        $otherCourse = $this->course(true); $this->plans($otherCourse);
+        $otherCourse = $this->course(true);
+        $this->plans($otherCourse);
         $other = $service->create($user, $this->input($otherCourse) + ['package_id' => $package->id]);
         $this->actingAs($user, 'api')->postJson('/api/v1/course-checkouts/'.$other['id'].'/authorize')
             ->assertStatus(409)->assertJsonPath('data.active_checkout.id', $first['id'])
@@ -1174,7 +1219,7 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertStringNotContainsStringIgnoringCase('upper(', $couponSql);
         self::assertTrue(Schema::hasIndex('coupons', 'coupons_code_unique'));
 
-        $this->expectException(\Illuminate\Database\UniqueConstraintViolationException::class);
+        $this->expectException(UniqueConstraintViolationException::class);
         Coupon::query()->forceCreate(['name_ar' => 'Copy', 'name_en' => 'Copy',
             'code' => 'HalfPrice5', 'balance' => 10, 'active' => true]);
     }
@@ -1187,7 +1232,7 @@ final class CourseCheckoutServiceTest extends TestCase
         $baseOrder = Order::query()->where('checkout_request_key', 'course-checkout:'.$base['id'])->firstOrFail();
         self::assertNull($baseOrder->purpose);
 
-        $action = app(\App\Services\CoursePlanUpgradeAction::class);
+        $action = app(CoursePlanUpgradeAction::class);
         $first = $action->execute($user->fresh(), $course, 'guided', 'upgrade-purpose-test-0001', 250, null);
         self::assertSame(Order::PURPOSE_COURSE_PLAN_UPGRADE, $first['order']->fresh()->purpose);
 
@@ -1202,8 +1247,8 @@ final class CourseCheckoutServiceTest extends TestCase
         try {
             $action->execute($user->fresh(), $course, 'mentor', 'course-checkout:'.$base['id'], 250, null);
             self::fail('A purchase order key must not replay as an upgrade.');
-        } catch (\App\Exceptions\CourseCheckoutRejected $exception) {
-            self::assertSame(\App\Exceptions\CourseCheckoutRejected::CHECKOUT_IDEMPOTENCY_CONFLICT, $exception->reason);
+        } catch (CourseCheckoutRejected $exception) {
+            self::assertSame(CourseCheckoutRejected::CHECKOUT_IDEMPOTENCY_CONFLICT, $exception->reason);
         }
 
         $this->expectException(\LogicException::class);
@@ -1227,20 +1272,20 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame(1500, $quote['remaining_purchased_balance']);
 
         $service->authorize($user, $quote['id']);
-        $order = app(\App\Services\KashierCheckoutOrderService::class)->beginCheckout(
+        $order = app(KashierCheckoutOrderService::class)->beginCheckout(
             $user, $package, 'minimum-course-funding-0001', 20.0, 1800, $quote['id']
         )['order'];
         self::assertSame(1800, $order->packageCoinAmount());
         self::assertSame('20.00', $order->final_amount);
         $service->bindFundingOrder($user, $quote['id'], $order);
-        app(\App\Services\OrderLifecycleService::class)->approve($order, null, null, true);
+        app(OrderLifecycleService::class)->approve($order, null, null, true);
 
         self::assertSame('completed', $service->resume($user, $quote['id'])['status']);
         // The course debited only its shortfall; the rest is ordinary paid credit.
         self::assertSame(1500, (int) $user->fresh()->wallet_purchased_coins);
         self::assertSame(120, (int) $user->fresh()->wallet_reward_coins);
 
-        $pricing = app(\App\Services\PackageChannelPricingService::class);
+        $pricing = app(PackageChannelPricingService::class);
         self::assertSame(5000, $pricing->courseFundingPayload($package->fresh()->forceFill(['direct_enabled' => true]), 5000)['coins']);
     }
 
@@ -1258,7 +1303,7 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_enrollment_writer_preserves_each_access_source_rule(): void
     {
         [$user, $course, $service] = $this->fixture(3000, 0);
-        $writer = app(\App\Services\CourseEnrollmentWriter::class);
+        $writer = app(CourseEnrollmentWriter::class);
 
         // Wallet purchase: the paid plan and both order lineages.
         $base = $service->create($user, $this->input($course));
@@ -1269,7 +1314,7 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame('basic', $enrollment->access_plan_snapshot['code']);
 
         // Upgrade: plan lineage only; AI usage is not reset.
-        $usage = \App\Models\AiEntitlementUsage::query()->create(['enrollment_id' => $enrollment->id,
+        $usage = AiEntitlementUsage::query()->create(['enrollment_id' => $enrollment->id,
             'feature' => 'course_chat', 'used_requests' => 3, 'reserved_requests' => 0, 'used_tokens' => 0,
             'reserved_tokens' => 0, 'used_cost_usd' => 0, 'reserved_cost_usd' => 0]);
         $upgrade = $service->create($user, ['course_id' => $course->id, 'access_plan_code' => 'guided', 'mode' => 'upgrade', 'channel' => 'google']);
@@ -1278,7 +1323,7 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame($baseOrderId, (int) $enrollment->order_id);
         self::assertNotSame($baseOrderId, (int) $enrollment->access_plan_order_id);
         self::assertSame('guided', $enrollment->access_plan_snapshot['code']);
-        self::assertTrue($usage->exists && \App\Models\AiEntitlementUsage::query()->whereKey($usage->id)->exists());
+        self::assertTrue($usage->exists && AiEntitlementUsage::query()->whereKey($usage->id)->exists());
         $planOrderId = (int) $enrollment->access_plan_order_id;
         $grantedAt = $enrollment->access_granted_at->toIso8601String();
 
@@ -1287,7 +1332,7 @@ final class CourseCheckoutServiceTest extends TestCase
         $manual = Order::query()->create(['user_id' => $user->id, 'course_id' => $course->id,
             'payment_method' => Order::PAYMENT_METHOD_ONLINE, 'amount' => 0, 'discount_amount' => 0,
             'final_amount' => 0, 'status' => Order::STATUS_PENDING, 'financial_status' => Order::FINANCIAL_PENDING]);
-        app(\App\Services\OrderLifecycleService::class)->approve($manual);
+        app(OrderLifecycleService::class)->approve($manual);
         $enrollment->refresh();
         self::assertSame((int) $manual->id, (int) $enrollment->order_id);
         self::assertSame($planOrderId, (int) $enrollment->access_plan_order_id);
@@ -1306,11 +1351,11 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame((int) $codeOrder->id, (int) $enrollment->access_plan_order_id);
         self::assertSame('basic', $enrollment->access_plan_snapshot['code']);
         self::assertNotNull($enrollment->access_plan_id);
-        self::assertTrue(\App\Models\AiEntitlementUsage::query()->whereKey($usage->id)->exists());
+        self::assertTrue(AiEntitlementUsage::query()->whereKey($usage->id)->exists());
 
         // Wallet repurchase over an inactive row starts a fresh AI cycle.
         $enrollment->forceFill(['is_active' => false])->save();
-        $repurchase = app(\App\Services\CoursePurchaseAction::class)->execute(
+        $repurchase = app(CoursePurchaseAction::class)->execute(
             $user->fresh(), $course, 'basic', 'writer-repurchase-test-0001', 400, null
         );
         $enrollment->refresh();
@@ -1318,7 +1363,7 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame((int) $repurchase['order']->id, (int) $enrollment->order_id);
         self::assertSame((int) $repurchase['order']->id, (int) $enrollment->access_plan_order_id);
         self::assertSame('basic', $enrollment->access_plan_snapshot['code']);
-        self::assertFalse(\App\Models\AiEntitlementUsage::query()->where('enrollment_id', $enrollment->id)->exists());
+        self::assertFalse(AiEntitlementUsage::query()->where('enrollment_id', $enrollment->id)->exists());
         self::assertSame(1, CourseEnrollment::query()->where('user_id', $user->id)->count());
 
         // A first course-code grant creates the row on the basic plan.
@@ -1336,7 +1381,7 @@ final class CourseCheckoutServiceTest extends TestCase
     public function test_legacy_purchase_quote_uses_checkout_terms_and_matches_the_debit(): void
     {
         [$user, $course] = $this->fixture(1000, 0);
-        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
         $course->accessPlans()->where('code', 'basic')->update(['minimum_paid_coins' => 400]);
         Coupon::query()->forceCreate(['name_ar' => 'Discount', 'name_en' => 'Discount', 'code' => 'HALFPRICE', 'balance' => 50, 'active' => true]);
         // Earlier paid coins on this course lower the remaining paid floor;
@@ -1391,7 +1436,8 @@ final class CourseCheckoutServiceTest extends TestCase
             'status' => Order::STATUS_APPROVED, 'financial_status' => Order::FINANCIAL_SETTLED, 'approved_at' => now()]);
         $credit = app(WalletService::class)->credit($user->id, $package->coins, 'package_purchase', $this->key('fund'), $order, [], WalletTransaction::BUCKET_PAID);
         app(FinancialProvenanceService::class)->recordPaidPackageCredit($order, $credit);
-        return StorePurchase::query()->create(['public_id' => (string) \Illuminate\Support\Str::uuid(), 'user_id' => $user->id,
+
+        return StorePurchase::query()->create(['public_id' => (string) Str::uuid(), 'user_id' => $user->id,
             'package_id' => $package->id, 'order_id' => $order->id, 'provider' => 'google', 'product_id' => $package->google_product_id,
             'external_transaction_id' => $this->key('transaction'), 'purchase_token_hash' => hash('sha256', $this->key('token')), 'purchase_token' => $this->key('encrypted'),
             'environment' => 'test', 'status' => 'credited', 'verified_at' => now(),
@@ -1402,8 +1448,8 @@ final class CourseCheckoutServiceTest extends TestCase
     {
         return User::query()->forceCreate([
             'name' => 'Reward cap learner',
-            'email' => 'reward-cap-' . (++$this->sequence) . '@example.test',
-            'phone' => '0100000' . str_pad((string) $this->sequence, 4, '0', STR_PAD_LEFT),
+            'email' => 'reward-cap-'.(++$this->sequence).'@example.test',
+            'phone' => '0100000'.str_pad((string) $this->sequence, 4, '0', STR_PAD_LEFT),
             'role' => 'client',
             'gender' => 'other',
             'active' => true,

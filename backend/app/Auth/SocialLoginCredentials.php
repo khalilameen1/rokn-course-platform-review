@@ -41,7 +41,7 @@ final readonly class SocialLoginCredentials
         SocialOAuthAttempt $attempt,
         #[\SensitiveParameter] string $credential
     ): self {
-        if (!$attempt->exists || !$attempt->created_at || !$attempt->completion_claim_id) {
+        if (! $attempt->exists || ! $attempt->created_at || ! $attempt->completion_claim_id) {
             throw new \LogicException('Browser login requires a persisted completion claim.');
         }
 

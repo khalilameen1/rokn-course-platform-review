@@ -8,6 +8,8 @@ use App\Exceptions\KashierCheckoutConflict;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,16 +26,14 @@ final readonly class KashierCheckoutFlowService
         private KashierCheckoutOrderService $checkoutOrders,
         private PaymentApiResponseService $responses,
         private KashierConfigurationService $configuration
-    ) {
-    }
+    ) {}
 
     public function initiate(
         Request $request,
         bool $allowPendingRecovery = true,
         ?User $user = null,
         ?string $callbackUrl = null
-    ): JsonResponse
-    {
+    ): JsonResponse {
         $bodyHasKey = array_key_exists('idempotency_key', $request->all());
         $headerHasKey = $request->hasHeader('Idempotency-Key');
         $bodyKey = $bodyHasKey ? $request->input('idempotency_key') : null;
@@ -43,9 +43,9 @@ final readonly class KashierCheckoutFlowService
             $bodyHasKey
             && $headerHasKey
             && (
-                !is_string($bodyKey)
-                || !is_string($headerKey)
-                || !hash_equals($bodyKey, $headerKey)
+                ! is_string($bodyKey)
+                || ! is_string($headerKey)
+                || ! hash_equals($bodyKey, $headerKey)
             )
         ) {
             return $this->responses->make(
@@ -62,7 +62,7 @@ final readonly class KashierCheckoutFlowService
             );
         }
 
-        if (!$bodyHasKey && $headerHasKey) {
+        if (! $bodyHasKey && $headerHasKey) {
             $request->merge(['idempotency_key' => $headerKey]);
         }
 
@@ -136,7 +136,7 @@ final readonly class KashierCheckoutFlowService
                     isset($validated['expected_coins']) ? (int) $validated['expected_coins'] : null,
                     $validated['course_checkout_id'] ?? null
                 );
-                if (!empty($validated['course_checkout_id'])) {
+                if (! empty($validated['course_checkout_id'])) {
                     // Bind before returning any payment URL. A rejected binding
                     // rolls back the local order and cannot leave a phantom payment.
                     app(CourseCheckoutService::class)->bindFundingOrder(
@@ -192,7 +192,7 @@ final readonly class KashierCheckoutFlowService
         } catch (ValidationException $exception) {
             return $this->responses->make(false, 'راجع تفاصيل الاشتراك قبل الدفع', [], 409,
                 'course_checkout_changed', $exception->errors());
-        } catch (\Illuminate\Auth\Access\AuthorizationException|\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+        } catch (AuthorizationException|ModelNotFoundException $exception) {
             return $this->responses->make(false, 'طلب الاشتراك غير متاح لحسابك', [], 403,
                 'course_checkout_unavailable');
         } catch (\DomainException $exception) {
@@ -249,6 +249,7 @@ final readonly class KashierCheckoutFlowService
                     return $this->pendingCheckoutResponse($pendingOrder, $callbackUrl, $browserCheckoutId);
                 }
             }
+
             return $this->responses->make(
                 false,
                 $pendingCheckout
@@ -334,8 +335,7 @@ final readonly class KashierCheckoutFlowService
         string $orderRef,
         bool $reconcile = false,
         ?User $user = null
-    ): JsonResponse
-    {
+    ): JsonResponse {
         /** @var User $user */
         $user ??= auth('api')->user();
         $order = Order::byOrderRef($orderRef)
@@ -343,7 +343,7 @@ final readonly class KashierCheckoutFlowService
             ->with('package')
             ->first();
 
-        if (!$order) {
+        if (! $order) {
             Log::info('Kashier status poll: order not found', [
                 'order_ref' => $orderRef,
                 'user_id' => $user->id,
@@ -398,7 +398,7 @@ final readonly class KashierCheckoutFlowService
             ->with('package')
             ->first();
 
-        if (!$order) {
+        if (! $order) {
             return $this->responses->make(
                 false,
                 'عملية الدفع غير متاحة',
@@ -444,7 +444,7 @@ final readonly class KashierCheckoutFlowService
                     $provider
                 );
                 $order = $order->fresh(['package']);
-            } elseif (!$this->evidence->mayCaptureWithoutLearner($providerStatus)) {
+            } elseif (! $this->evidence->mayCaptureWithoutLearner($providerStatus)) {
                 $order = $this->settlements->cancelPendingOrder($order, [
                     'verified_via' => 'kashier_api_checkout_abandon',
                     'provider_status' => $providerStatus,
@@ -476,8 +476,7 @@ final readonly class KashierCheckoutFlowService
     private function reconcileProviderOrder(
         Order $order,
         ?int $replacementPackageId = null
-    ): Order
-    {
+    ): Order {
         $apiResponse = $this->providerOrders->fetch((string) $order->order_ref);
         if ($this->evidence->isCaptured($apiResponse)) {
             try {
@@ -537,7 +536,7 @@ final readonly class KashierCheckoutFlowService
         }
         if (
             $providerStatus === 'NOT_FOUND'
-            && !$order->isCheckoutExpired()
+            && ! $order->isCheckoutExpired()
         ) {
             // Kashier may not create its order until the hosted page is
             // opened. Absence during an active local checkout is therefore
@@ -551,7 +550,7 @@ final readonly class KashierCheckoutFlowService
 
         if (
             $order->isCheckoutExpired()
-            && !$this->evidence->mayCaptureWithoutLearner($providerStatus)
+            && ! $this->evidence->mayCaptureWithoutLearner($providerStatus)
         ) {
             // Local expiry only releases an old intent after Kashier proves it
             // is not authorized/processing. This keeps a stale PENDING link
@@ -575,11 +574,11 @@ final readonly class KashierCheckoutFlowService
                 $paymentUrl = $browserCheckoutId !== null
                     ? app(CourseBrowserPaymentService::class)->urlFor($order, $browserCheckoutId)
                     : $this->kashier->getHppUrl(
-                    (string) $order->order_ref,
-                    number_format((float) $order->final_amount, 2, '.', ''),
-                    'EGP',
-                    $callbackUrl
-                );
+                        (string) $order->order_ref,
+                        number_format((float) $order->final_amount, 2, '.', ''),
+                        'EGP',
+                        $callbackUrl
+                    );
             } catch (\Throwable $exception) {
                 report($exception);
             }
@@ -627,7 +626,9 @@ final readonly class KashierCheckoutFlowService
 
     private function checkoutState(Order $order): string
     {
-        if ($order->isFinanciallyEffective()) return 'paid';
+        if ($order->isFinanciallyEffective()) {
+            return 'paid';
+        }
         if (in_array($order->status, [Order::STATUS_CANCELLED, Order::STATUS_REJECTED], true)) {
             return 'cancelled';
         }
@@ -637,7 +638,9 @@ final readonly class KashierCheckoutFlowService
         ) {
             return (string) $order->getAttribute('checkout_runtime_state');
         }
-        if ($order->isCheckoutExpired()) return 'expired';
+        if ($order->isCheckoutExpired()) {
+            return 'expired';
+        }
 
         return $order->status === Order::STATUS_PENDING
             ? 'checkout_opened'

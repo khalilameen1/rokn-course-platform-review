@@ -7,6 +7,7 @@ namespace App\Support;
 final class FacebookGraphVersion
 {
     private const MIN_SUPPORTED_MAJOR = 21;
+
     private const CURRENT_MAJOR = 26;
 
     public static function normalize(mixed $value): ?string

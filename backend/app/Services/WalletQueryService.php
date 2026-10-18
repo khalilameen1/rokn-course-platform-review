@@ -21,11 +21,10 @@ final readonly class WalletQueryService
     public function summary(User $user): array
     {
         try {
-            $setting = Cache::remember('wallet:public-settings:v2', 30, fn () =>
-                Setting::query()->first()
-            ) ?? new Setting();
+            $setting = Cache::remember('wallet:public-settings:v2', 30, fn () => Setting::query()->first()
+            ) ?? new Setting;
         } catch (Throwable) {
-            $setting = Setting::query()->first() ?? new Setting();
+            $setting = Setting::query()->first() ?? new Setting;
         }
 
         // A read must never queue behind, or block, wallet writers, which
@@ -51,6 +50,7 @@ final readonly class WalletQueryService
                 ->latest('id')->limit(10)->get()
                 ->map(function (WalletTransaction $transaction): array {
                     $item = $this->payload($transaction);
+
                     return [
                         'id' => $item['id'],
                         'direction' => $item['direction'],

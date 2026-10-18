@@ -21,14 +21,14 @@ final class AdminCourseSectionCreateReceiptTest extends TestCase
 
     public function test_completed_receipt_returns_current_section_without_reposting_and_rejects_a_moved_resource(): void
     {
-        $moderator = new User();
+        $moderator = new User;
         $moderator->forceFill([
             'name_ar' => 'محرر المحتوى',
             'email' => 'section-receipt@example.test',
             'role' => 'moderator',
             'active' => true,
         ])->save();
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'مسودة الكورس',
@@ -115,7 +115,7 @@ final class AdminCourseSectionCreateReceiptTest extends TestCase
     {
         $owner = $this->moderator('section-owner@example.test');
         $other = $this->moderator('section-other@example.test');
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'مسودة أخرى',
@@ -148,7 +148,7 @@ final class AdminCourseSectionCreateReceiptTest extends TestCase
 
     private function moderator(string $email): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'name_ar' => 'محرر المحتوى',
             'email' => $email,

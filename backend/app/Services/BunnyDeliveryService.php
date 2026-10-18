@@ -11,24 +11,21 @@ use RuntimeException;
 /** Protected delivery URLs only; no provider requests or media lifecycle writes. */
 class BunnyDeliveryService
 {
-    public function __construct(private readonly BunnyConfiguration $configuration)
-    {
-    }
+    public function __construct(private readonly BunnyConfiguration $configuration) {}
 
     /**
      * Build the protected HLS URL using the configured or requested lifetime
      *
-     * @param string $videoGuid The video GUID
-     * @return array|null
+     * @param  string  $videoGuid  The video GUID
      */
     public function videoPlayback(string $videoGuid, ?int $expiresInSeconds = null): ?array
     {
-        if (!$this->playbackIsSecurelyConfigured()) {
+        if (! $this->playbackIsSecurelyConfigured()) {
             return null;
         }
 
         $cdnHostname = $this->configuration->getCdnHostname();
-        if (!$cdnHostname) {
+        if (! $cdnHostname) {
             return null;
         }
 
@@ -57,11 +54,11 @@ class BunnyDeliveryService
      */
     public function videoCaption(string $videoGuid, string $language, ?int $expiresInSeconds = null): ?array
     {
-        if (!$this->playbackIsSecurelyConfigured() || preg_match('/^[a-z]{2}$/', $language) !== 1) {
+        if (! $this->playbackIsSecurelyConfigured() || preg_match('/^[a-z]{2}$/', $language) !== 1) {
             return null;
         }
         $cdnHostname = $this->configuration->getCdnHostname();
-        if (!$cdnHostname) {
+        if (! $cdnHostname) {
             return null;
         }
 
@@ -82,7 +79,7 @@ class BunnyDeliveryService
     /** Issue a thumbnail URL in the same protected Stream directory. */
     public function videoThumbnail(string $videoGuid, string $fileName, int $bucketSeconds = 0): ?array
     {
-        if (!$this->playbackIsSecurelyConfigured()) {
+        if (! $this->playbackIsSecurelyConfigured()) {
             return null;
         }
         $fileName = basename(trim($fileName));
@@ -92,7 +89,7 @@ class BunnyDeliveryService
 
         $expiresAt = self::expiry($this->playbackLifetime(), $bucketSeconds);
         $directoryPath = "/{$videoGuid}/";
-        $filePath = $directoryPath . $fileName;
+        $filePath = $directoryPath.$fileName;
 
         return [
             'url' => $this->generateSignedDirectoryUrl(
@@ -108,13 +105,13 @@ class BunnyDeliveryService
     /**
      * Generate a signed URL for video playback (iframe embed)
      *
-     * @param string $videoGuid The video GUID
-     * @param int $expiresInSeconds URL expiration time in seconds (default 2 hours)
+     * @param  string  $videoGuid  The video GUID
+     * @param  int  $expiresInSeconds  URL expiration time in seconds (default 2 hours)
      * @return array|null Returns array with url and expires_at, or null on failure
      */
     public function videoEmbed(string $videoGuid, int $expiresInSeconds = 7200, int $bucketSeconds = 0): ?array
     {
-        if (!$this->playbackIsSecurelyConfigured()) {
+        if (! $this->playbackIsSecurelyConfigured()) {
             return null;
         }
 
@@ -124,11 +121,11 @@ class BunnyDeliveryService
         // Embed-view authentication is intentionally different from Bunny
         // CDN authentication: SHA256_HEX(token key + video id + expiry).
         $securityKey = $this->configuration->getSecurityKey();
-        $token = hash('sha256', $securityKey . $videoGuid . $expiresAt);
+        $token = hash('sha256', $securityKey.$videoGuid.$expiresAt);
 
         // Build the embed URL
         $embedUrl = "https://iframe.mediadelivery.net/embed/{$libraryId}/{$videoGuid}";
-        $signedUrl = $embedUrl . "?token={$token}&expires={$expiresAt}";
+        $signedUrl = $embedUrl."?token={$token}&expires={$expiresAt}";
 
         return [
             'url' => $signedUrl,
@@ -158,12 +155,12 @@ class BunnyDeliveryService
         // wire token; omitting it produces a valid-looking but rejected URL.
         $digest = hash_hmac(
             'sha256',
-            $signaturePath . $expiresAt . $signingData,
+            $signaturePath.$expiresAt.$signingData,
             $securityKey,
             true
         );
 
-        return 'HS256-' . rtrim(strtr(base64_encode($digest), '+/', '-_'), '=');
+        return 'HS256-'.rtrim(strtr(base64_encode($digest), '+/', '-_'), '=');
     }
 
     private function generateSignedDirectoryUrl(
@@ -172,9 +169,9 @@ class BunnyDeliveryService
         string $directoryPath,
         int $expiresAt
     ): string {
-        $signingData = 'token_path=' . $directoryPath;
+        $signingData = 'token_path='.$directoryPath;
         $securityKey = $this->configuration->getSecurityKey();
-        if (!$securityKey) {
+        if (! $securityKey) {
             throw new RuntimeException('Bunny playback signing is not configured.');
         }
         $token = self::advancedToken($securityKey, $directoryPath, $expiresAt, $signingData);
@@ -194,7 +191,7 @@ class BunnyDeliveryService
         $ready = $this->configuration->isEnabled()
             && (bool) $this->configuration->getCdnHostname()
             && (bool) $this->configuration->getSecurityKey();
-        if (!$ready) {
+        if (! $ready) {
             Log::critical('Bunny playback refused because signed delivery is incomplete.');
         }
 
@@ -229,8 +226,9 @@ class BunnyDeliveryService
         $expires = self::expiry(max(60, (int) $ttl), $bucketSeconds);
         $securityKey = $this->configuration->getStorageSecurityKey();
         $hostname = $this->configuration->getStorageCdnHostname();
-        if (!$hostname || !$securityKey) {
+        if (! $hostname || ! $securityKey) {
             Log::critical('Bunny private asset signing refused because delivery configuration is incomplete.');
+
             return null;
         }
 
@@ -238,11 +236,11 @@ class BunnyDeliveryService
         if ($objectPath === null) {
             return null;
         }
-        $path = '/' . $objectPath;
+        $path = '/'.$objectPath;
         $token = self::advancedToken($securityKey, $path, $expires);
 
-        return rtrim("https://{$hostname}", '/') . $path
-            . '?token=' . rawurlencode($token)
-            . '&expires=' . $expires;
+        return rtrim("https://{$hostname}", '/').$path
+            .'?token='.rawurlencode($token)
+            .'&expires='.$expires;
     }
 }

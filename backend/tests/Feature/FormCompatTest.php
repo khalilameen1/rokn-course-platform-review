@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use Collective\Html\FormFacade as Form;
 use Collective\Html\FormBuilder;
+use Collective\Html\FormFacade as Form;
 use Tests\TestCase;
 
 final class FormCompatTest extends TestCase

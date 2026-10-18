@@ -118,7 +118,7 @@ final class PaymentChannelReportTest extends TestCase
             'package_id' => $package->id,
             'package_coins' => $package->coins,
             'payment_method' => Order::PAYMENT_METHOD_KASHIER,
-            'order_ref' => 'REPORT-' . uniqid(),
+            'order_ref' => 'REPORT-'.uniqid(),
             'amount' => 100,
             'discount_amount' => 0,
             'final_amount' => 100,

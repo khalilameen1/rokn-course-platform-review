@@ -12,8 +12,11 @@ namespace App\Exceptions;
 final class KashierCheckoutConflict extends \UnexpectedValueException
 {
     public const PENDING_CHECKOUT_EXISTS = 'pending_checkout_exists';
+
     public const PACKAGE_NOT_AVAILABLE = 'package_not_available';
+
     public const PACKAGE_TERMS_CHANGED = 'package_terms_changed';
+
     public const IDEMPOTENCY_CONFLICT = 'checkout_idempotency_conflict';
 
     public function __construct(public readonly string $reason, string $message)

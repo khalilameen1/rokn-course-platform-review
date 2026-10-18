@@ -11,11 +11,12 @@ use Illuminate\Support\Facades\Schema;
 final class PruneRateLimitEvents extends Command
 {
     protected $signature = 'operations:prune-rate-limits {--days=30}';
+
     protected $description = 'Prune aggregated rate-limit evidence after its operational retention window';
 
     public function handle(): int
     {
-        if (!Schema::hasTable('rate_limit_events')) {
+        if (! Schema::hasTable('rate_limit_events')) {
             return self::SUCCESS;
         }
 
@@ -34,6 +35,7 @@ final class PruneRateLimitEvents extends Command
         } while ($batch === 1000);
 
         $this->info("Pruned {$deleted} rate-limit aggregate row(s).");
+
         return self::SUCCESS;
     }
 }

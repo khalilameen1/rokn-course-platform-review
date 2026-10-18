@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\VerifyCsrfToken;
 use App\Models\User;
+use App\Services\AdminHeaderNotificationService;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Contracts\Auth\PasswordBroker;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -195,7 +198,7 @@ final class AdminLoginSecurityTest extends TestCase
     public function test_password_reset_provider_failure_never_becomes_a_public_server_error(): void
     {
         $admin = $this->createAdmin('mail-outage-admin@rokn.test', 'correct-password');
-        $broker = \Mockery::mock(\Illuminate\Contracts\Auth\PasswordBroker::class);
+        $broker = \Mockery::mock(PasswordBroker::class);
         $broker->shouldReceive('sendResetLink')
             ->once()
             ->andThrow(new \RuntimeException('mail provider unavailable'));
@@ -211,8 +214,7 @@ final class AdminLoginSecurityTest extends TestCase
             ->once()
             ->with(
                 'Dashboard password reset notification could not be sent.',
-                \Mockery::on(fn (array $context): bool =>
-                    $context['email_hash'] === hash('sha256', $admin->email)
+                \Mockery::on(fn (array $context): bool => $context['email_hash'] === hash('sha256', $admin->email)
                     && $context['exception'] === \RuntimeException::class
                 )
             );
@@ -270,7 +272,8 @@ final class AdminLoginSecurityTest extends TestCase
 
     public function test_both_dashboard_roles_have_one_visible_native_logout_form_outside_account_menu(): void
     {
-        $this->app->instance(\App\Services\AdminHeaderNotificationService::class, new class {
+        $this->app->instance(AdminHeaderNotificationService::class, new class
+        {
             public function for($user): array
             {
                 return ['items' => collect(), 'unread_count' => 0];
@@ -280,7 +283,7 @@ final class AdminLoginSecurityTest extends TestCase
             $this->actingAs($this->createUser($role.'-header@rokn.test', 'password', $role));
             $this->withSession(['_token' => 'logout-csrf-fixture']);
             $html = view('admin.includes.header')->render();
-            $document = new \DOMDocument();
+            $document = new \DOMDocument;
             @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
             $xpath = new \DOMXPath($document);
             self::assertSame(1, $xpath->query('//form[@id="logoutForm"]')->length);
@@ -323,8 +326,9 @@ final class AdminLoginSecurityTest extends TestCase
     {
         // Laravel normally bypasses CSRF in tests; exercise the real middleware
         // check for this account-changing form instead of relying on that bypass.
-        $this->app->instance(\App\Http\Middleware\VerifyCsrfToken::class,
-            new class($this->app, $this->app['encrypter']) extends \App\Http\Middleware\VerifyCsrfToken {
+        $this->app->instance(VerifyCsrfToken::class,
+            new class($this->app, $this->app['encrypter']) extends VerifyCsrfToken
+            {
                 protected function runningUnitTests()
                 {
                     return false;
@@ -357,6 +361,6 @@ final class AdminLoginSecurityTest extends TestCase
 
     private function limiterKey(string $email, string $ip): string
     {
-        return 'admin-login:' . hash('sha256', strtolower(trim($email)) . '|' . $ip);
+        return 'admin-login:'.hash('sha256', strtolower(trim($email)).'|'.$ip);
     }
 }

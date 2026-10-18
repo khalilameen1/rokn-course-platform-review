@@ -57,8 +57,7 @@ final class CoursePlanSchemaIntegrityTest extends TestCase
         if (DB::connection()->getDriverName() === 'sqlite') {
             $foreignKeys = DB::select("PRAGMA foreign_key_list('course_enrollments')");
             $orderForeignKey = collect($foreignKeys)->first(
-                static fn (object $key): bool =>
-                    (string) ($key->from ?? '') === 'order_id'
+                static fn (object $key): bool => (string) ($key->from ?? '') === 'order_id'
                     && (string) ($key->table ?? '') === 'orders'
                     && strtolower((string) ($key->on_delete ?? '')) === 'restrict'
             );
@@ -80,8 +79,7 @@ final class CoursePlanSchemaIntegrityTest extends TestCase
             $indexes = DB::select("PRAGMA index_list('{$tableName}')");
             self::assertNotNull(
                 collect($indexes)->first(
-                    static fn (object $index): bool =>
-                        (string) ($index->name ?? '') === $indexName
+                    static fn (object $index): bool => (string) ($index->name ?? '') === $indexName
                 ),
                 "Missing index {$indexName} on {$tableName}."
             );
@@ -94,11 +92,11 @@ final class CoursePlanSchemaIntegrityTest extends TestCase
             return;
         }
 
-        $physicalTable = DB::connection()->getTablePrefix() . $tableName;
+        $physicalTable = DB::connection()->getTablePrefix().$tableName;
         $columns = collect(DB::select(
             'SELECT column_name FROM information_schema.statistics '
-            . 'WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ? '
-            . 'ORDER BY seq_in_index',
+            .'WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ? '
+            .'ORDER BY seq_in_index',
             [$physicalTable, $indexName]
         ))->pluck('column_name')->all();
 

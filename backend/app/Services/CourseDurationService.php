@@ -50,7 +50,7 @@ final readonly class CourseDurationService
     /**
      * Attach verified durations to a catalogue page without issuing queries per course.
      *
-     * @param Collection<int, Course> $courses
+     * @param  Collection<int, Course>  $courses
      * @return Collection<int, Course>
      */
     public function attachMany(Collection $courses): Collection
@@ -112,5 +112,4 @@ final readonly class CourseDurationService
     {
         return Lesson::query()->with('mediaState:id,lesson_id,duration_seconds');
     }
-
 }

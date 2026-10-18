@@ -19,13 +19,13 @@ final class CourseCodeEligibilityService
             return CourseCodeRejection::LEGACY_RETIRED;
         }
         $course ??= Course::query()->find($code->course_id);
-        if (!$this->courseAvailable($code, $course)) {
+        if (! $this->courseAvailable($code, $course)) {
             return CourseCodeRejection::COURSE_UNAVAILABLE;
         }
         if ($this->hasReachedGrantLimit($code, $user)) {
             return CourseCodeRejection::GRANT_ALREADY_CLAIMED;
         }
-        if (!$this->emailEligible($code, $user)) {
+        if (! $this->emailEligible($code, $user)) {
             return CourseCodeRejection::EMAIL_NOT_ELIGIBLE;
         }
         if ($code->is_expired) {
@@ -34,12 +34,13 @@ final class CourseCodeEligibilityService
         if ($code->is_not_yet_active) {
             return CourseCodeRejection::NOT_STARTED;
         }
-        if (!$code->is_active) {
+        if (! $code->is_active) {
             return CourseCodeRejection::DISABLED;
         }
         if ($code->used_count >= $code->max_uses) {
             return CourseCodeRejection::EXHAUSTED;
         }
+
         return $code->usages()->where('user_id', $user->id)->exists()
             ? CourseCodeRejection::ALREADY_USED
             : null;
@@ -55,7 +56,7 @@ final class CourseCodeEligibilityService
 
     public function hasReachedGrantLimit(CourseCode $code, User $user): bool
     {
-        if (!$code->isInstitutionalGrant()) {
+        if (! $code->isInstitutionalGrant()) {
             return false;
         }
         $normalizedEmail = mb_strtolower(trim((string) $user->email));
@@ -77,7 +78,7 @@ final class CourseCodeEligibilityService
         if ($domains->isEmpty()) {
             return true;
         }
-        if (!$user->email_verified_at) {
+        if (! $user->email_verified_at) {
             return false;
         }
         $email = mb_strtolower((string) $user->email);

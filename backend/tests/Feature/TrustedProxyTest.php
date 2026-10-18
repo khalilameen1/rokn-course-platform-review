@@ -36,6 +36,7 @@ final class TrustedProxyTest extends TestCase
         app(TrustProxies::class)->handle($request, function (Request $trusted) {
             self::assertSame('198.51.100.44', $trusted->ip());
             self::assertTrue($trusted->isSecure());
+
             return response('ok');
         });
 
@@ -47,6 +48,7 @@ final class TrustedProxyTest extends TestCase
         app(TrustProxies::class)->handle($untrusted, function (Request $request) {
             self::assertSame('203.0.113.9', $request->ip());
             self::assertFalse($request->isSecure());
+
             return response('ok');
         });
     }
@@ -62,6 +64,7 @@ final class TrustedProxyTest extends TestCase
         app(TrustProxies::class)->handle($request, function (Request $request) {
             self::assertSame('203.0.113.9', $request->ip());
             self::assertFalse($request->isSecure());
+
             return response('ok');
         });
     }

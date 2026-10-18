@@ -19,7 +19,7 @@ final class SentryRequestCorrelationTest extends TestCase
     public function test_scrubber_keeps_only_the_current_internal_user_id(): void
     {
         $previousRequest = $this->app->make('request');
-        $user = new User();
+        $user = new User;
         $user->forceFill(['id' => 73]);
         $request = Request::create('/api/v1/courses/3', 'GET');
         $this->app->instance('request', $request);
@@ -78,7 +78,7 @@ final class SentryRequestCorrelationTest extends TestCase
         );
 
         try {
-            $user = new User();
+            $user = new User;
             $user->forceFill(['id' => 42]);
             $authenticated = $this->actingAs($user, 'api')->withHeaders([
                 'X-Request-ID' => '3b99c882-5989-4e31-b84b-a208b7e04c11',

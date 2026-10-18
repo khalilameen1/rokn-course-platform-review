@@ -71,7 +71,7 @@ final class TrustedHostTest extends TestCase
     private function statusForHost(string $host, string $path): int
     {
         $kernel = app(HttpKernel::class);
-        $request = Request::create('https://' . $host . $path, 'GET');
+        $request = Request::create('https://'.$host.$path, 'GET');
         $response = $kernel->handle($request);
         $kernel->terminate($request, $response);
 

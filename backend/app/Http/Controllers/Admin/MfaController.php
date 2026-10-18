@@ -13,6 +13,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class MfaController extends Controller
 {
@@ -40,7 +41,7 @@ class MfaController extends Controller
         $belongsToUser = (int) $request->session()->get('admin_mfa_setup_user_id', 0)
             === (int) $user->getAuthIdentifier();
 
-        if (!$belongsToUser || $secret === '' || $startedAt <= 0 || (time() - $startedAt) > $setupTtl) {
+        if (! $belongsToUser || $secret === '' || $startedAt <= 0 || (time() - $startedAt) > $setupTtl) {
             $secret = $this->totp->generateSecret();
             $request->session()->put([
                 'admin_mfa_setup_secret_ciphertext' => Crypt::encryptString($secret),
@@ -61,7 +62,7 @@ class MfaController extends Controller
             $validated = $request->validate([
                 'code' => ['required', 'string', 'regex:/^[0-9]{6}$/D'],
             ]);
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             $request->request->remove('code');
             throw $exception;
         }
@@ -122,7 +123,7 @@ class MfaController extends Controller
         $user = $request->user();
         abort_unless($user, 403);
 
-        if (!$user->admin_totp_confirmed_at || $this->confirmedSecret($user) === '') {
+        if (! $user->admin_totp_confirmed_at || $this->confirmedSecret($user) === '') {
             return redirect()->route('admin.mfa.setup');
         }
 
@@ -135,7 +136,7 @@ class MfaController extends Controller
             $validated = $request->validate([
                 'code' => ['required', 'string', 'min:6', 'max:32'],
             ]);
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             $request->request->remove('code');
             throw $exception;
         }
@@ -148,7 +149,7 @@ class MfaController extends Controller
             ? $this->consumeTotp($user, $code)
             : $this->consumeRecoveryCode($user, $code);
 
-        if (!$verified) {
+        if (! $verified) {
             return $this->invalidCodeResponse();
         }
 
@@ -174,7 +175,7 @@ class MfaController extends Controller
         } catch (\Throwable) {
             $codes = null;
         }
-        if (!is_array($codes) || $codes === [] || array_filter($codes, 'is_string') !== $codes) {
+        if (! is_array($codes) || $codes === [] || array_filter($codes, 'is_string') !== $codes) {
             return redirect()->route('admin.dashboard');
         }
 
@@ -188,6 +189,7 @@ class MfaController extends Controller
             $step = $secret === '' ? null : $this->totp->matchingStep($secret, $code);
         } catch (\Throwable $exception) {
             report($exception);
+
             return false;
         }
 
@@ -199,7 +201,7 @@ class MfaController extends Controller
             return DB::transaction(function () use ($user, $secret, $step): bool {
                 /** @var User|null $lockedUser */
                 $lockedUser = User::query()->lockForUpdate()->find($user->getAuthIdentifier());
-                if (!$lockedUser || !hash_equals($secret, (string) $lockedUser->admin_totp_secret)) {
+                if (! $lockedUser || ! hash_equals($secret, (string) $lockedUser->admin_totp_secret)) {
                     return false;
                 }
 
@@ -230,7 +232,7 @@ class MfaController extends Controller
         return DB::transaction(function () use ($user, $candidate): bool {
             /** @var User|null $lockedUser */
             $lockedUser = User::query()->lockForUpdate()->find($user->getAuthIdentifier());
-            if (!$lockedUser) {
+            if (! $lockedUser) {
                 return false;
             }
 

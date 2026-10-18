@@ -45,7 +45,7 @@ final class CourseAuthoringConcurrencyService
                 ->latest('id')
                 ->first()
             : null;
-        if (!$identity) {
+        if (! $identity) {
             $locked = Course::query()->whereKey($course->id)->lockForUpdate()->firstOrFail();
             $this->assertMutableDraft($locked, null);
 
@@ -70,19 +70,21 @@ final class CourseAuthoringConcurrencyService
         Course $course,
         ?CourseAuthoringRevision $revision
     ): void {
-        $neverPublishedDraft = !$revision
+        $neverPublishedDraft = ! $revision
             && (int) ($course->last_published_authoring_version ?? 0) < 1
             && $course->published_at === null
-            && !(bool) $course->is_catalog_visible
+            && ! (bool) $course->is_catalog_visible
             && (bool) $course->is_coming_soon;
         $ownsActiveDraftSlot = $revision
             && (int) $revision->revision_course_id === (int) $course->id
             && $revision->status === CourseAuthoringRevision::DRAFT
             && hash_equals(
-                'course-draft:' . (int) $revision->canonical_course_id,
+                'course-draft:'.(int) $revision->canonical_course_id,
                 (string) $revision->active_slot
             );
-        if ($neverPublishedDraft || $ownsActiveDraftSlot) return;
+        if ($neverPublishedDraft || $ownsActiveDraftSlot) {
+            return;
+        }
 
         throw ValidationException::withMessages([
             'authoring_version' => [

@@ -23,13 +23,13 @@ final class RoknAppLink
 
         if (preg_match('#^https?://#i', $raw)) {
             $parts = parse_url($raw);
-            if (!is_array($parts)) {
+            if (! is_array($parts)) {
                 return null;
             }
             $host = strtolower((string) ($parts['host'] ?? ''));
             if (
                 strtolower((string) ($parts['scheme'] ?? '')) !== 'https'
-                || !in_array($host, self::TRUSTED_WEB_HOSTS, true)
+                || ! in_array($host, self::TRUSTED_WEB_HOSTS, true)
                 || isset($parts['user'])
                 || isset($parts['pass'])
                 || isset($parts['port'])
@@ -38,7 +38,7 @@ final class RoknAppLink
             }
             $path = ltrim((string) ($parts['path'] ?? ''), '/');
         } elseif (preg_match('#^[a-z][a-z0-9+.-]*:#i', $raw)) {
-            if (!str_starts_with(strtolower($raw), 'rokn://')) {
+            if (! str_starts_with(strtolower($raw), 'rokn://')) {
                 return null;
             }
             $path = preg_split('/[?#]/', substr($raw, strlen('rokn://')), 2)[0] ?? '';
@@ -53,17 +53,17 @@ final class RoknAppLink
 
         $path = rtrim($path, '/');
         if (preg_match('#\A(home|wallet|profile|contact)\z#i', $path, $match)) {
-            return 'rokn://' . strtolower($match[1]);
+            return 'rokn://'.strtolower($match[1]);
         }
         if (preg_match('#\Aprofile/(portfolio|certificates|saved)\z#i', $path, $match)) {
-            return 'rokn://profile/' . strtolower($match[1]);
+            return 'rokn://profile/'.strtolower($match[1]);
         }
 
         if (preg_match('#\Asupport/([0-9A-HJKMNP-TV-Z]{26})\z#i', $path, $match)) {
-            return 'rokn://support/' . strtoupper($match[1]);
+            return 'rokn://support/'.strtoupper($match[1]);
         }
 
-        if (!preg_match(
+        if (! preg_match(
             '#\Acourses?/([1-9][0-9]{0,17})(?:(/watch)(?:/([1-9][0-9]{0,17}))?|/lesson/([1-9][0-9]{0,17})|/project/([1-9][0-9]{0,17}))?\z#i',
             $path,
             $match
@@ -80,7 +80,7 @@ final class RoknAppLink
         }
         if (($match[2] ?? '') !== '') {
             return "rokn://course/{$courseId}/watch"
-                . (($match[3] ?? '') !== '' ? "/{$match[3]}" : '');
+                .(($match[3] ?? '') !== '' ? "/{$match[3]}" : '');
         }
 
         return "rokn://course/{$courseId}";
@@ -92,7 +92,7 @@ final class RoknAppLink
             return null;
         }
 
-        return "rokn://course/{$courseId}" . ($watch ? '/watch' : '');
+        return "rokn://course/{$courseId}".($watch ? '/watch' : '');
     }
 
     public static function project(int $courseId, int $projectId): ?string

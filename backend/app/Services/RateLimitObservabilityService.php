@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Support\DatabaseCapabilities;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Support\DatabaseCapabilities;
 
 final class RateLimitObservabilityService
 {
     public function record(Request $request, string $bucketKey, int $retryAfter): void
     {
-        if (!DatabaseCapabilities::hasTable('rate_limit_events')) {
+        if (! DatabaseCapabilities::hasTable('rate_limit_events')) {
             return;
         }
 
@@ -62,6 +62,7 @@ final class RateLimitObservabilityService
     private function installationId(Request $request): string
     {
         $value = strtolower(trim((string) $request->header('X-Rokn-Installation')));
+
         return preg_match(
             '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/',
             $value

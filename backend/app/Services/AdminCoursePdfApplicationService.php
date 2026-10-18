@@ -6,8 +6,8 @@ namespace App\Services;
 
 use App\Models\Course;
 use App\Models\CoursePdf;
-use App\Support\DownloadFilename;
 use App\Support\CourseAttachmentExternalUrl;
+use App\Support\DownloadFilename;
 use Closure;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -22,12 +22,11 @@ final class AdminCoursePdfApplicationService
         private readonly StoredFileDeletionService $fileDeletion,
         private readonly StoredFileUploadService $uploads,
         private readonly AdminCoursePdfPresenter $presenter
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, mixed> $data
-     * @param Closure(Course, CoursePdf, array<string, mixed>): void $completeIntent
+     * @param  array<string, mixed>  $data
+     * @param  Closure(Course, CoursePdf, array<string, mixed>): void  $completeIntent
      * @return array<string, mixed>
      */
     public function store(
@@ -42,7 +41,7 @@ final class AdminCoursePdfApplicationService
         if (($data['source_type'] ?? 'upload') === 'external') {
             return $this->storeExternal($course, $data, $expectedVersion, $completeIntent);
         }
-        if (!$file) {
+        if (! $file) {
             throw ValidationException::withMessages(['pdf_file' => 'اختر ملفًا صالحًا']);
         }
         $metadata = $this->filePolicy->attachment($file);
@@ -64,7 +63,7 @@ final class AdminCoursePdfApplicationService
                     ->where('platform', $platform)
                     ->lockForUpdate()
                     ->first();
-                if (!$lockedPdf) {
+                if (! $lockedPdf) {
                     return null;
                 }
 
@@ -149,7 +148,7 @@ final class AdminCoursePdfApplicationService
                 return ['payload' => $payload, 'owns_stored_file' => true];
             }, 3);
 
-            if (!$result['owns_stored_file']) {
+            if (! $result['owns_stored_file']) {
                 $this->fileDeletion->deleteOrQueue($stored['disk'], $stored['path']);
             }
 
@@ -204,7 +203,7 @@ final class AdminCoursePdfApplicationService
                 'mime_type' => null,
                 'file_extension' => null,
             ];
-        } elseif ($pdf->isExternal() && !$replacement) {
+        } elseif ($pdf->isExternal() && ! $replacement) {
             throw ValidationException::withMessages(['pdf_file' => 'اختر ملفًا بدل الرابط الخارجي']);
         }
 
@@ -308,7 +307,7 @@ final class AdminCoursePdfApplicationService
                 ->firstOrFail();
             $deletedPdf = $this->presenter->one($lockedCourse, $lockedPdf) + ['deleted' => true];
             $lockedPdf->delete();
-            if (!$lockedPdf->isExternal()) {
+            if (! $lockedPdf->isExternal()) {
                 $this->fileDeletion->deleteOrQueue(
                     (string) $lockedPdf->storage_disk,
                     (string) $lockedPdf->file_path
@@ -384,7 +383,7 @@ final class AdminCoursePdfApplicationService
                 ->where('course_id', $course->id)
                 ->lockForUpdate()
                 ->firstOrFail();
-            $lockedPdf->update(['is_active' => !$lockedPdf->is_active]);
+            $lockedPdf->update(['is_active' => ! $lockedPdf->is_active]);
             $version = $this->authoring->advance($lockedCourse);
 
             return $this->payload(
@@ -410,7 +409,7 @@ final class AdminCoursePdfApplicationService
                 ->first(fn (CoursePdf $existing): bool => $existing->external_url === $url);
             $version = (int) $lockedCourse->authoring_version;
             $duplicate = $pdf !== null;
-            if (!$pdf) {
+            if (! $pdf) {
                 $pdf = $lockedCourse->pdfs()->create([
                     'title' => $data['title'],
                     'title_en' => $data['title_en'] ?? null,
@@ -493,7 +492,7 @@ final class AdminCoursePdfApplicationService
 
     private function assertDraft(Course $course): void
     {
-        if (!$course->is_coming_soon) {
+        if (! $course->is_coming_soon) {
             throw ValidationException::withMessages([
                 'course' => 'حوّل الكورس إلى مسودة قبل تغيير مرفقاته',
             ]);

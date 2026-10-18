@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\CourseRevisionLearnerReadService;
 use App\Traits\ResolvesLocalizedAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,7 +27,7 @@ class Project extends Model
      */
     public function getRequirementsTextAttribute()
     {
-        if (!array_key_exists('requirements_text_ar', $this->attributes) && !array_key_exists('requirements_text_en', $this->attributes)) {
+        if (! array_key_exists('requirements_text_ar', $this->attributes) && ! array_key_exists('requirements_text_en', $this->attributes)) {
             return $this->attributes['requirements_text'] ?? null;
         }
 
@@ -68,7 +69,7 @@ class Project extends Model
 
     public function latestSubmissionForUser(int $userId): ?ProjectSubmission
     {
-        return app(\App\Services\CourseRevisionLearnerReadService::class)
+        return app(CourseRevisionLearnerReadService::class)
             ->projectSubmissions($userId, [(int) $this->id])
             ->get((int) $this->id);
     }
@@ -78,7 +79,7 @@ class Project extends Model
      */
     public function userPassed(int $userId): bool
     {
-        return app(\App\Services\CourseRevisionLearnerReadService::class)
+        return app(CourseRevisionLearnerReadService::class)
             ->passedProjectIds($userId, [(int) $this->id])
             ->contains((int) $this->id);
     }

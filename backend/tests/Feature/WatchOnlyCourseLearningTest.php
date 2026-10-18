@@ -15,21 +15,22 @@ use App\Models\Order;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
-use App\Services\CourseAccessPlanService;
 use App\Services\AdminCoursePreviewService;
 use App\Services\CertificateTextTemplateService;
-use App\Services\CourseEntitlementService;
+use App\Services\CourseAccessPlanService;
 use App\Services\CourseCompletionService;
-use App\Services\CourseSectionAccessService;
+use App\Services\CourseEntitlementService;
 use App\Services\CoursePresentationService;
+use App\Services\CourseSectionAccessService;
 use App\Services\CurriculumCompletionService;
-use App\Services\LearningDashboardService;
 use App\Services\LearningAchievementSignalService;
+use App\Services\LearningDashboardService;
 use App\Services\StudentProgressSummaryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
@@ -38,21 +39,26 @@ final class WatchOnlyCourseLearningTest extends TestCase
     use RefreshDatabase;
 
     private User $learner;
+
     private Course $course;
+
     private CourseEnrollment $enrollment;
+
     private CourseAccessPlan $plan;
+
     private CourseSection $projectSection;
+
     private CourseSection $lastLesson;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->learner = new User();
+        $this->learner = new User;
         $this->learner->forceFill([
             'name' => 'Watch-only learner', 'email' => 'watch-only@rokn.test',
             'password' => bcrypt('test-only'), 'role' => 'client', 'active' => true,
         ])->save();
-        $this->course = new Course();
+        $this->course = new Course;
         $this->course->forceFill([
             'tenant_id' => 1, 'name_ar' => 'كورس المشاهدة', 'name_en' => 'Watching course',
             'price' => 400, 'is_coming_soon' => false, 'is_catalog_visible' => true,
@@ -89,7 +95,7 @@ final class WatchOnlyCourseLearningTest extends TestCase
             'is_active' => true,
         ]);
         $order = $this->contractOrder($this->plan);
-        $this->enrollment = new CourseEnrollment();
+        $this->enrollment = new CourseEnrollment;
         $this->enrollment->forceFill([
             'tenant_id' => 1, 'user_id' => $this->learner->id, 'course_id' => $this->course->id,
             'order_id' => $order->id, 'access_plan_order_id' => $order->id,
@@ -155,7 +161,7 @@ final class WatchOnlyCourseLearningTest extends TestCase
         ]);
         self::assertNull($completion->markCompleted($this->learner->id, $this->course->id));
         ProjectSubmission::query()->create([
-            'public_id' => (string) \Illuminate\Support\Str::uuid(),
+            'public_id' => (string) Str::uuid(),
             'idempotency_key' => 'watch-only-upgraded-project',
             'user_id' => $this->learner->id, 'project_id' => $this->projectSection->sectionable_id,
             'submission_text' => 'My completed project', 'effort_status' => 'valid',
@@ -245,7 +251,7 @@ final class WatchOnlyCourseLearningTest extends TestCase
         $this->course->forceFill([
             'certificate_text_template_key' => app(CertificateTextTemplateService::class)->keys()[0],
         ])->save();
-        (new CourseCode())->forceFill([
+        (new CourseCode)->forceFill([
             'tenant_id' => 1, 'type' => 'course',
             'course_id' => $this->course->id, 'code' => 'preview-grant-only',
             'is_grant' => true, 'is_active' => true, 'max_uses' => 10, 'used_count' => 0,
@@ -286,7 +292,7 @@ final class WatchOnlyCourseLearningTest extends TestCase
             $map = $sections->sectionLockStatus($this->course->sections()->get(), collect(), (int) $this->learner->id);
             self::assertCount(2, $map);
             self::assertFalse($map->contains('section_id', $this->projectSection->id));
-            self::assertTrue($map->every(fn (array $state): bool => $state['can_access'] && !$state['is_completed']));
+            self::assertTrue($map->every(fn (array $state): bool => $state['can_access'] && ! $state['is_completed']));
             self::assertSame([], array_values(array_filter(
                 DB::getQueryLog(),
                 static fn (array $query): bool => (bool) preg_match('/^\s*(insert|update|delete|replace)\b/i', $query['query'])
@@ -323,7 +329,7 @@ final class WatchOnlyCourseLearningTest extends TestCase
 
     public function test_section_reader_fails_closed_for_a_section_outside_the_current_learning_map(): void
     {
-        $missing = new CourseSection();
+        $missing = new CourseSection;
         $missing->forceFill([
             'id' => 999999, 'course_id' => $this->course->id,
             'section_type' => 'lesson', 'sectionable_type' => Lesson::class,

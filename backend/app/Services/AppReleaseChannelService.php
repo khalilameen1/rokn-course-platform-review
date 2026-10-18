@@ -6,24 +6,22 @@ namespace App\Services;
 
 use App\Models\AppVersion;
 use App\Models\Setting;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Collection;
 use Throwable;
 
 final class AppReleaseChannelService
 {
     private const CACHE_GENERATION_KEY = 'app-release-channels:generation';
 
-    public function __construct(private readonly AppReleasePolicyService $policy)
-    {
-    }
+    public function __construct(private readonly AppReleasePolicyService $policy) {}
 
     /** @return array{play: ?string, appstore: ?string, direct: ?string} */
     public function urls(?Setting $settings = null): array
     {
         $load = function (): Collection {
-            if (!Schema::hasTable('app_versions')) {
+            if (! Schema::hasTable('app_versions')) {
                 return collect();
             }
 

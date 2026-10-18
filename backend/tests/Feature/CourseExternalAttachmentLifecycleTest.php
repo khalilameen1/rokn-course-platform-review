@@ -8,11 +8,14 @@ use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Course;
 use App\Models\CoursePdf;
 use App\Models\User;
+use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminCoursePdfApplicationService;
 use App\Services\CoursePublishingService;
-use App\Services\CourseStagedAuthoringService;
 use App\Services\CourseRevisionResolver;
+use App\Services\CourseStagedAuthoringService;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -37,7 +40,7 @@ final class CourseExternalAttachmentLifecycleTest extends TestCase
     public function test_external_create_receipt_replays_without_allocating_a_second_attachment(bool $hiddenDraft, string $role): void
     {
         Http::preventStrayRequests();
-        $admin = new User();
+        $admin = new User;
         $admin->forceFill([
             'name_ar' => 'مدير', 'email' => 'attachment-admin@example.test',
             'role' => $role, 'active' => true,
@@ -58,7 +61,7 @@ final class CourseExternalAttachmentLifecycleTest extends TestCase
         self::assertSame(1, CoursePdf::count());
         $savedPdf = CoursePdf::findOrFail($first->json('pdf.id'));
         self::assertSame(5, (int) $savedPdf->course->authoring_version);
-        if (!$hiddenDraft) {
+        if (! $hiddenDraft) {
             self::assertNotSame($course->id, $savedPdf->course_id);
             self::assertSame(0, $course->pdfs()->count());
         }
@@ -77,7 +80,7 @@ final class CourseExternalAttachmentLifecycleTest extends TestCase
         Queue::fake();
         Storage::fake('course-pdfs-shared');
         config(['course_pdfs.disk' => 'course-pdfs-shared', 'course_pdfs.shared_storage' => true]);
-        $admin = new User();
+        $admin = new User;
         $admin->forceFill([
             'name_ar' => 'مدير', 'email' => 'attachment-upload-replay@example.test',
             'role' => 'admin', 'active' => true,
@@ -116,7 +119,7 @@ final class CourseExternalAttachmentLifecycleTest extends TestCase
         Queue::fake();
         Storage::fake('course-pdfs-shared');
         config(['course_pdfs.disk' => 'course-pdfs-shared', 'course_pdfs.shared_storage' => true]);
-        $moderator = new User();
+        $moderator = new User;
         $moderator->forceFill([
             'name_ar' => 'مشرف', 'email' => 'attachment-moderator@example.test',
             'role' => 'moderator', 'active' => true,
@@ -298,22 +301,22 @@ final class CourseExternalAttachmentLifecycleTest extends TestCase
 
     public function test_claimed_receipt_cannot_be_completed_under_another_actor_route_or_request_id(): void
     {
-        $actor = new User();
+        $actor = new User;
         $actor->forceFill(['name_ar' => 'مدير', 'email' => 'receipt-owner@example.test', 'role' => 'admin', 'active' => true])->save();
         $requestId = (string) Str::uuid();
-        $request = \Illuminate\Http\Request::create('/test/attachments', 'POST', ['authoring_request_id' => $requestId]);
+        $request = Request::create('/test/attachments', 'POST', ['authoring_request_id' => $requestId]);
         $request->setUserResolver(fn () => $actor);
-        $route = new \Illuminate\Routing\Route(['POST'], 'test/attachments', static fn () => null);
+        $route = new Route(['POST'], 'test/attachments', static fn () => null);
         $route->name('admin.courses.pdfs.store');
         $route->bind($request);
         $route->setParameter('course', $this->course(false));
         $request->setRouteResolver(fn () => $route);
-        $service = app(\App\Services\AdminAuthoringCreateIntentService::class);
+        $service = app(AdminAuthoringCreateIntentService::class);
         $claim = $service->claim($request);
         self::assertIsArray($claim);
-        $request->attributes->set(\App\Services\AdminAuthoringCreateIntentService::CLAIM_ATTRIBUTE, $claim);
+        $request->attributes->set(AdminAuthoringCreateIntentService::CLAIM_ATTRIBUTE, $claim);
 
-        $otherActor = (new User())->forceFill(['id' => $actor->id + 1]);
+        $otherActor = (new User)->forceFill(['id' => $actor->id + 1]);
         $request->setUserResolver(fn () => $otherActor);
         $service->completeJson($request, ['wrong' => 'actor']);
         $request->setUserResolver(fn () => $actor);
@@ -334,10 +337,10 @@ final class CourseExternalAttachmentLifecycleTest extends TestCase
 
     private function course(bool $draft): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1, 'name_ar' => 'كورس المرفقات', 'description_ar' => 'وصف الكورس',
-            'price' => 800, 'is_coming_soon' => $draft, 'is_catalog_visible' => !$draft,
+            'price' => 800, 'is_coming_soon' => $draft, 'is_catalog_visible' => ! $draft,
             'authoring_version' => 4, 'last_published_authoring_version' => $draft ? null : 4,
             'published_at' => $draft ? null : now(),
         ])->save();

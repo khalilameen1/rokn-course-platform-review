@@ -59,6 +59,7 @@ final class ActivateWatchOnlyBasic extends Command
         $expected = filter_var($this->option('expected-version'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         if ($courseId === false || $expected === false) {
             $this->error('A positive course ID and --expected-version are required.');
+
             return self::FAILURE;
         }
 
@@ -67,7 +68,7 @@ final class ActivateWatchOnlyBasic extends Command
                 // Serializes draft creation/publication and every course debit.
                 $course = Course::query()->whereKey($courseId)->lockForUpdate()->firstOrFail();
                 if (CourseAuthoringRevision::query()->where('revision_course_id', $courseId)->exists()
-                    || !$course->isPublishedForLearning()
+                    || ! $course->isPublishedForLearning()
                     || (int) $course->last_published_authoring_version < 1) {
                     throw new \DomainException('Only a canonical published course can be activated.');
                 }
@@ -89,7 +90,9 @@ final class ActivateWatchOnlyBasic extends Command
                 $basic = $offers->firstWhere('code', CourseAccessPlan::BASIC);
                 $candidate = clone $basic;
                 $candidate->forceFill(self::WATCH_ONLY);
-                if (!$candidate->isDirty()) return ['status' => 'unchanged', 'version' => $expected];
+                if (! $candidate->isDirty()) {
+                    return ['status' => 'unchanged', 'version' => $expected];
+                }
 
                 CourseAccessPlanSnapshot::assertValidForPlan((int) $candidate->id, $plans->snapshot($candidate));
                 // Preview readiness using an unsaved copy; a dry run never
@@ -97,14 +100,18 @@ final class ActivateWatchOnlyBasic extends Command
                 $preview = clone $course;
                 $preview->setRelation('accessPlans', $offers->map(fn ($plan) => $plan->id === $basic->id ? $candidate : $plan));
                 $audit = $publishing->audit($preview);
-                if (!$audit['ready']) throw ValidationException::withMessages(['course' => $audit['issues']]);
+                if (! $audit['ready']) {
+                    throw ValidationException::withMessages(['course' => $audit['issues']]);
+                }
                 $summary = [
                     'status' => 'preview', 'version' => $expected,
                     'price_coins' => (int) $basic->price_coins,
                     'minimum_paid_coins' => (int) $basic->minimum_paid_coins,
                     'warnings' => $audit['warnings'] ?? [],
                 ];
-                if (!$this->option('apply')) return $summary;
+                if (! $this->option('apply')) {
+                    return $summary;
+                }
 
                 $expectedOffers = $offers->mapWithKeys(fn ($plan): array => [
                     $plan->code => $this->offerFacts($plan->id === $basic->id ? $candidate : $plan),
@@ -125,27 +132,38 @@ final class ActivateWatchOnlyBasic extends Command
                 if ($expectedOffers !== $actualOffers || $courseFacts !== $this->courseFacts($after)) {
                     throw new \LogicException('Publication changed protected course or plan facts; the activation was rolled back.');
                 }
+
                 return [...$summary, 'status' => 'published', 'version' => $published['published_revision']];
             }, 3);
         } catch (ValidationException $exception) {
-            foreach ($exception->errors() as $messages) foreach ($messages as $message) $this->error($message);
+            foreach ($exception->errors() as $messages) {
+                foreach ($messages as $message) {
+                    $this->error($message);
+                }
+            }
+
             return self::FAILURE;
         } catch (\Throwable $exception) {
             report($exception);
             $this->error($exception->getMessage());
+
             return self::FAILURE;
         }
 
         if ($result['status'] === 'unchanged') {
             $this->info("Course {$courseId}: already watch-only; no changes or notification.");
+
             return self::SUCCESS;
         }
         $this->info("Course {$courseId}: {$result['status']}; authoring version {$result['version']}.");
         $this->line("Basic price {$result['price_coins']} coins and paid floor {$result['minimum_paid_coins']} preserved; Plus/Pro and purchased receipts unchanged.");
-        foreach ($result['warnings'] as $warning) $this->warn($warning);
+        foreach ($result['warnings'] as $warning) {
+            $this->warn($warning);
+        }
         $this->line($result['status'] === 'published'
             ? 'Normal staged publication and course-update notification processing completed.'
             : 'Dry run only. Use --apply with the same expected version to publish; normal course-update notifications apply.');
+
         return self::SUCCESS;
     }
 

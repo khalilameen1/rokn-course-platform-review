@@ -24,10 +24,6 @@ final class WhatsAppService
 
     /**
      * Send a message via WhatsApp using Whatspie API
-     *
-     * @param string $phone
-     * @param string $message
-     * @return bool
      */
     public function sendTextMessage(string $phone, string $message): bool
     {
@@ -58,6 +54,7 @@ final class WhatsAppService
 
         if ($this->apiUrl === '' || $this->apiKey === '' || $this->device === '') {
             Log::warning('WhatsApp delivery skipped because the provider is not configured');
+
             return false;
         }
 
@@ -67,6 +64,7 @@ final class WhatsAppService
             $curl = curl_init();
             if ($curl === false) {
                 Log::error('WhatsApp API client initialization failed');
+
                 return false;
             }
 
@@ -81,7 +79,7 @@ final class WhatsAppService
                 ),
                 CURLOPT_TIMEOUT => max(1, (int) config('whatsapp.whatspie.timeout_seconds', 15)),
                 CURLOPT_HTTPHEADER => [
-                    'Authorization: Bearer ' . $this->apiKey,
+                    'Authorization: Bearer '.$this->apiKey,
                     'Content-Type: application/json',
                     'Accept: application/json',
                 ],
@@ -92,11 +90,13 @@ final class WhatsAppService
 
             if ($response === false || curl_errno($curl) !== 0) {
                 Log::error('WhatsApp API request failed');
+
                 return false;
             }
 
             if ($status < 200 || $status >= 300) {
                 Log::warning('WhatsApp API rejected a message', ['status' => $status]);
+
                 return false;
             }
 
@@ -105,6 +105,7 @@ final class WhatsAppService
             return true;
         } catch (Throwable $exception) {
             Log::error('WhatsApp API exception', ['exception' => $exception::class]);
+
             return false;
         } finally {
             if ($curl !== null && $curl !== false) {
@@ -112,5 +113,4 @@ final class WhatsAppService
             }
         }
     }
-
 }

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Lesson;
 use App\Models\Course;
+use App\Models\Lesson;
 use App\Services\MediaReconciliationService;
 use Illuminate\Http\RedirectResponse;
 
@@ -15,8 +15,7 @@ class MediaHealthController extends Controller
     public function probe(
         Lesson $lesson,
         MediaReconciliationService $reconciliation
-    ): RedirectResponse
-    {
+    ): RedirectResponse {
         $result = $reconciliation->reconcileLesson($lesson, true, true);
         $playable = ($result['playback_status'] ?? null) === 'ready';
         $healthy = ($result['integrity_status'] ?? null) === 'healthy';

@@ -80,7 +80,7 @@ final class OpenRouterResponseDecoder
             )),
             'file_annotations' => array_values(array_filter(
                 $annotations,
-                static fn (mixed $annotation): bool => !is_array($annotation)
+                static fn (mixed $annotation): bool => ! is_array($annotation)
                     || strtolower((string) ($annotation['type'] ?? '')) !== 'url_citation'
             )),
             'provider_transport' => [
@@ -105,7 +105,7 @@ final class OpenRouterResponseDecoder
         if (is_string($content)) {
             return trim($content);
         }
-        if (!is_array($content)) {
+        if (! is_array($content)) {
             return '';
         }
 
@@ -113,14 +113,15 @@ final class OpenRouterResponseDecoder
         foreach ($content as $part) {
             if (is_string($part) && trim($part) !== '') {
                 $lines[] = trim($part);
+
                 continue;
             }
-            if (!is_array($part)) {
+            if (! is_array($part)) {
                 continue;
             }
 
             $type = strtolower(trim((string) ($part['type'] ?? '')));
-            if ($type !== '' && !in_array($type, ['text', 'output_text'], true)) {
+            if ($type !== '' && ! in_array($type, ['text', 'output_text'], true)) {
                 continue;
             }
             if (is_string($part['text'] ?? null) && trim($part['text']) !== '') {

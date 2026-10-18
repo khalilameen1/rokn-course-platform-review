@@ -8,15 +8,16 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\StudentProfileResource;
 use App\Models\ProfileUpdateReceipt;
 use App\Models\User;
-use App\Services\StoredFileDeletionService;
 use App\Services\PortfolioShareIdentityService;
-use App\Support\UnicodeText;
+use App\Services\StoredFileDeletionService;
 use App\Support\LearningReminderSchedule;
+use App\Support\UnicodeText;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Intervention\Image\Facades\Image;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -34,7 +35,7 @@ final class ProfileController extends Controller
         // Account/settings screens only consume identity and preferences. Keep
         // the default full snapshot for learning clients, but do not build the
         // enrolled-course graph and aggregate history when it was not asked for.
-        if (!$request->boolean('include_learning', false)) {
+        if (! $request->boolean('include_learning', false)) {
             $request->boolean('include_badges')
                 ? $profile->onlyEarnedBadges()
                 : $profile->withoutLearningSnapshot();
@@ -58,7 +59,7 @@ final class ProfileController extends Controller
                 $request->merge([$field => UnicodeText::clean($request->input($field), false)]);
             }
         }
-        if (!$request->filled('client_request_id')) {
+        if (! $request->filled('client_request_id')) {
             $candidate = trim((string) $request->header('Idempotency-Key'));
             $request->merge([
                 'client_request_id' => Str::isUuid($candidate)
@@ -82,7 +83,7 @@ final class ProfileController extends Controller
             'notifications_status' => 'nullable|boolean',
             'watch_history_enabled' => 'nullable|boolean',
             'marketing_notifications_enabled' => 'nullable|boolean',
-            'learning_reminder_hour' => ['required_with:learning_reminder_timezone', 'integer', \Illuminate\Validation\Rule::in(LearningReminderSchedule::HOURS)],
+            'learning_reminder_hour' => ['required_with:learning_reminder_timezone', 'integer', Rule::in(LearningReminderSchedule::HOURS)],
             'learning_reminder_timezone' => 'required_with:learning_reminder_hour|string|max:64|timezone',
             'preferred_locale' => 'nullable|string|in:ar,en',
             'leaderboard_opt_in' => 'nullable|boolean',
@@ -109,7 +110,7 @@ final class ProfileController extends Controller
         $profileImageHash = $profileImage
             ? hash_file('sha256', $profileImage->getRealPath())
             : null;
-        if ($profileImage && (!$profileImageHash || (int) $profileImage->getSize() <= 0)) {
+        if ($profileImage && (! $profileImageHash || (int) $profileImage->getSize() <= 0)) {
             throw ValidationException::withMessages([
                 'profile_image' => ['تعذّر قراءة الصورة كاملة'],
             ]);
@@ -140,6 +141,7 @@ final class ProfileController extends Controller
             ->first();
         if ($existingReceipt) {
             abort_unless(hash_equals((string) $existingReceipt->request_fingerprint, $requestFingerprint), 409);
+
             return $this->profileUpdateResponse($user->fresh(), true);
         }
 
@@ -226,6 +228,7 @@ final class ProfileController extends Controller
                 if ($receipt) {
                     abort_unless(hash_equals((string) $receipt->request_fingerprint, $requestFingerprint), 409);
                     $replayed = true;
+
                     return;
                 }
                 if (array_key_exists('expected_profile_revision', $validated)
@@ -253,10 +256,10 @@ final class ProfileController extends Controller
             throw $exception;
         }
 
-        if ($newImagePath && !$applied) {
+        if ($newImagePath && ! $applied) {
             app(StoredFileDeletionService::class)->deleteOrQueue('public', $newImagePath);
         }
-        if ($applied && $newImagePath && $oldImagePath && !filter_var($oldImagePath, FILTER_VALIDATE_URL)) {
+        if ($applied && $newImagePath && $oldImagePath && ! filter_var($oldImagePath, FILTER_VALIDATE_URL)) {
             app(StoredFileDeletionService::class)->deleteOrQueue('public', $oldImagePath);
         }
 
@@ -322,11 +325,11 @@ final class ProfileController extends Controller
         $canvas = Image::canvas($image->width(), $image->height(), '#ffffff')
             ->insert($image)
             ->encode('jpg', 86);
-        $path = 'profiles/' . Str::uuid() . '.jpg';
+        $path = 'profiles/'.Str::uuid().'.jpg';
         app(StoredFileDeletionService::class)
             ->trackPotentialOrphan('public', $path, 60);
 
-        if (!Storage::disk('public')->put($path, (string) $canvas)) {
+        if (! Storage::disk('public')->put($path, (string) $canvas)) {
             throw new \RuntimeException('Could not store profile image.');
         }
 

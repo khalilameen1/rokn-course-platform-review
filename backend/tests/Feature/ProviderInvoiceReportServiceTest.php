@@ -19,12 +19,17 @@ final class ProviderInvoiceReportServiceTest extends TestCase
         parent::setUp();
         config(['app.business_timezone' => 'Africa/Cairo']);
         Schema::create('operating_cost_pools', function (Blueprint $table): void {
-            $table->id(); $table->unsignedBigInteger('course_id')->nullable();
-            $table->string('service_key'); $table->boolean('is_final');
-            $table->date('period_start'); $table->date('period_end');
-            $table->decimal('amount', 12, 4); $table->string('currency');
+            $table->id();
+            $table->unsignedBigInteger('course_id')->nullable();
+            $table->string('service_key');
+            $table->boolean('is_final');
+            $table->date('period_start');
+            $table->date('period_end');
+            $table->decimal('amount', 12, 4);
+            $table->string('currency');
             $table->decimal('fx_rate_to_egp', 12, 4)->nullable();
-            $table->timestamps(); $table->softDeletes();
+            $table->timestamps();
+            $table->softDeletes();
         });
     }
 

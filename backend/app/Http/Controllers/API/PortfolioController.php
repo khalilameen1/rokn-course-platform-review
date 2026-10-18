@@ -12,8 +12,8 @@ use App\Models\PortfolioItem;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
-use App\Services\CourseEntitlementService;
 use App\Services\CourseAccessPlanService;
+use App\Services\CourseEntitlementService;
 use App\Services\CourseRevisionLearnerReadService;
 use App\Services\CourseRevisionResolver;
 use App\Services\PortfolioMediaMutationService;
@@ -42,8 +42,7 @@ final class PortfolioController extends Controller
         private CourseRevisionResolver $revisionResolver,
         private PortfolioUploadAccessService $uploadAccess,
         private PortfolioReviewReadService $reviews
-    ) {
-    }
+    ) {}
 
     /** @return list<int> */
     private function liveItemIds(User $owner): array
@@ -168,8 +167,7 @@ final class PortfolioController extends Controller
             ->whereIn('id', $candidateProjectIds)
             ->whereHas('section.course', fn ($courses) => $courses
                 ->where('is_coming_soon', false))
-            ->when($usedCurrentProjectIds->isNotEmpty(), fn ($query) =>
-                $query->whereNotIn('id', $usedCurrentProjectIds)
+            ->when($usedCurrentProjectIds->isNotEmpty(), fn ($query) => $query->whereNotIn('id', $usedCurrentProjectIds)
             )
             ->with([
                 'section.course:id,name_ar,name_en,image',
@@ -177,12 +175,12 @@ final class PortfolioController extends Controller
             ])->get()->keyBy('id');
         $eligible = $this->revisionReads
             ->projectSubmissions((int) $user->id, $projects->keys())
-            ->filter(fn (ProjectSubmission $row): bool =>
-                $row->reviewOutcome()['passed'] && $this->submissionAllowsPortfolio($row)
+            ->filter(fn (ProjectSubmission $row): bool => $row->reviewOutcome()['passed'] && $this->submissionAllowsPortfolio($row)
             )
             ->map(function (ProjectSubmission $row, int $currentId) use ($projects) {
                 $row->setRelation('project', $projects->get($currentId));
                 $row->project_id = $currentId;
+
                 return $row;
             })->sortByDesc('updated_at')->values();
         $perPage = (int) ($validated['per_page'] ?? 20);
@@ -245,7 +243,7 @@ final class PortfolioController extends Controller
     public function store(Request $request): JsonResponse
     {
         $this->normalizePortfolioInput($request);
-        if (!$request->filled('client_request_id')) {
+        if (! $request->filled('client_request_id')) {
             $candidate = trim((string) $request->header('Idempotency-Key'));
             $request->merge([
                 'client_request_id' => $candidate !== '' ? $candidate : (string) Str::uuid(),
@@ -307,7 +305,7 @@ final class PortfolioController extends Controller
         $clientRequestId = $request->string('client_request_id')->toString();
         try {
             return Cache::lock(
-                'portfolio-item-create:' . $user->id . ':' . strtolower($clientRequestId),
+                'portfolio-item-create:'.$user->id.':'.strtolower($clientRequestId),
                 30
             )->block(10, function () use (
                 $user,
@@ -328,6 +326,7 @@ final class PortfolioController extends Controller
                         hash_equals((string) $existingRequest->request_fingerprint, $requestFingerprint),
                         409
                     );
+
                     return $this->createdItemResponse($existingRequest, true);
                 }
 
@@ -348,10 +347,10 @@ final class PortfolioController extends Controller
                         [$currentSourceProjectId]
                     )->get($currentSourceProjectId);
                     if (
-                        !$sourceSubmission
-                        || !$sourceSubmission->reviewOutcome()['passed']
-                        || !$this->submissionAllowsPortfolio($sourceSubmission)
-                        || !$sourceProject->section
+                        ! $sourceSubmission
+                        || ! $sourceSubmission->reviewOutcome()['passed']
+                        || ! $this->submissionAllowsPortfolio($sourceSubmission)
+                        || ! $sourceProject->section
                     ) {
                         throw ValidationException::withMessages([
                             'source_project_id' => ['Only a passed project can be added to the portfolio.'],
@@ -365,7 +364,7 @@ final class PortfolioController extends Controller
                         ]);
                     }
                     $courseId = $projectCourseId;
-                } elseif ($courseId && !$this->courseAccess->hasLearningAccess(
+                } elseif ($courseId && ! $this->courseAccess->hasLearningAccess(
                     (int) $user->id,
                     $courseId
                 )) {
@@ -395,7 +394,7 @@ final class PortfolioController extends Controller
                         ->whereKey($user->id)
                         ->lockForUpdate()
                         ->first();
-                    abort_if(!$lockedUser, 404);
+                    abort_if(! $lockedUser, 404);
 
                     $existing = $lockedUser->portfolioItems()
                         ->with(['mediaFiles', 'course'])
@@ -406,6 +405,7 @@ final class PortfolioController extends Controller
                             hash_equals((string) $existing->request_fingerprint, $requestFingerprint),
                             409
                         );
+
                         return $existing;
                     }
 
@@ -440,10 +440,10 @@ final class PortfolioController extends Controller
                             [$lockedCurrentSourceProjectId]
                         )->get($lockedCurrentSourceProjectId);
                         if (
-                            !$sourceSubmission
-                            || !$sourceSubmission->reviewOutcome()['passed']
-                            || !$this->submissionAllowsPortfolio($sourceSubmission)
-                            || !$lockedSourceProject->section
+                            ! $sourceSubmission
+                            || ! $sourceSubmission->reviewOutcome()['passed']
+                            || ! $this->submissionAllowsPortfolio($sourceSubmission)
+                            || ! $lockedSourceProject->section
                         ) {
                             throw ValidationException::withMessages([
                                 'source_project_id' => ['Only a passed project can be added to the portfolio.'],
@@ -509,7 +509,7 @@ final class PortfolioController extends Controller
             ->with(['mediaFiles', 'course'])
             ->find($id);
 
-        if (!$item) {
+        if (! $item) {
             return $this->error('المشروع غير متاح', 404);
         }
 
@@ -549,9 +549,9 @@ final class PortfolioController extends Controller
                 ->whereKey($user->id)
                 ->lockForUpdate()
                 ->first();
-            abort_if(!$lockedUser, 404);
+            abort_if(! $lockedUser, 404);
             $item = $lockedUser->portfolioItems()->lockForUpdate()->find($id);
-            abort_if(!$item, 404);
+            abort_if(! $item, 404);
             abort_if($item->deletion_started_at !== null, 409);
 
             $presentation = [];
@@ -560,7 +560,7 @@ final class PortfolioController extends Controller
             }
             if ($request->exists('cover_media_id')) {
                 $coverId = $request->filled('cover_media_id') ? $request->integer('cover_media_id') : null;
-                if ($coverId !== null && !$item->mediaFiles()->available()
+                if ($coverId !== null && ! $item->mediaFiles()->available()
                     ->where('file_type', 'image')->whereKey($coverId)->exists()) {
                     throw ValidationException::withMessages([
                         'cover_media_id' => ['اختر صورة الغلاف من صور هذا المشروع'],
@@ -601,7 +601,7 @@ final class PortfolioController extends Controller
             'status' => 200,
             'success' => true,
             'message' => 'تم حذف المشروع',
-            'data' => ['already_deleted' => !$deleted],
+            'data' => ['already_deleted' => ! $deleted],
         ]);
     }
 
@@ -627,7 +627,7 @@ final class PortfolioController extends Controller
     {
         // The app labels a project's tools as "skills"; both names write the
         // same project field. An explicit tools list wins.
-        if (!$request->exists('tools') && $request->exists('skills')) {
+        if (! $request->exists('tools') && $request->exists('skills')) {
             $request->merge(['tools' => $request->input('skills')]);
         }
         foreach (['title', 'role'] as $field) {
@@ -654,12 +654,12 @@ final class PortfolioController extends Controller
 
     private function assertIdempotencyHeaderMatches(Request $request, string $field): void
     {
-        if (!$request->hasHeader('Idempotency-Key') || !$request->has($field)) {
+        if (! $request->hasHeader('Idempotency-Key') || ! $request->has($field)) {
             return;
         }
         $header = strtolower(trim((string) $request->header('Idempotency-Key')));
         $body = strtolower(trim((string) $request->input($field)));
-        if ($header === '' || $body === '' || !hash_equals($header, $body)) {
+        if ($header === '' || $body === '' || ! hash_equals($header, $body)) {
             throw ValidationException::withMessages([
                 $field => ['تغيّر معرّف الطلب أثناء التنفيذ'],
             ]);
@@ -669,10 +669,14 @@ final class PortfolioController extends Controller
     private function portfolioItemSlug(mixed $title, string $fallback = ''): string
     {
         $slug = Str::slug(UnicodeText::clean($title, false));
-        if ($slug !== '') return $slug;
-        if ($fallback !== '') return $fallback;
+        if ($slug !== '') {
+            return $slug;
+        }
+        if ($fallback !== '') {
+            return $fallback;
+        }
 
-        return 'item-' . Str::lower((string) Str::uuid());
+        return 'item-'.Str::lower((string) Str::uuid());
     }
 
     /** @return list<int> */
@@ -707,17 +711,21 @@ final class PortfolioController extends Controller
                     ->where('is_coming_soon', false))
                 ->with('section')
                 ->first();
-            if ($project) return $project;
+            if ($project) {
+                return $project;
+            }
         }
 
-        throw (new ModelNotFoundException())->setModel(Project::class, [$projectId]);
+        throw (new ModelNotFoundException)->setModel(Project::class, [$projectId]);
     }
 
     private function submissionAllowsPortfolio(ProjectSubmission $submission): bool
     {
         $snapshot = ProjectSubmissionEvaluationSnapshot::fromSubmission($submission);
         $terms = $snapshot ? data_get($snapshot, 'access.terms') : null;
-        if (!is_array($terms)) return false;
+        if (! is_array($terms)) {
+            return false;
+        }
 
         return (bool) ($this->accessPlans->publicPayloadFromTerms($terms)['project_output_enabled'] ?? false);
     }

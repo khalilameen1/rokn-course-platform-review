@@ -17,7 +17,9 @@ class CourseCodeRequest extends FormRequest
         if ($this->input('description') !== null) {
             $normalized['description'] = UnicodeText::clean($this->input('description'));
         }
-        if ($normalized !== []) $this->merge($normalized);
+        if ($normalized !== []) {
+            $this->merge($normalized);
+        }
     }
 
     /**
@@ -38,7 +40,7 @@ class CourseCodeRequest extends FormRequest
     public function rules()
     {
         $isUpdating = $this->isMethod('put') || $this->isMethod('patch');
-        
+
         $rules = [
             'name' => 'nullable|string|max:255',
             // Partial lesson codes previously created a whole-course
@@ -54,7 +56,7 @@ class CourseCodeRequest extends FormRequest
         ];
 
         // number_of_codes is only required when creating new codes
-        if (!$isUpdating) {
+        if (! $isUpdating) {
             $rules['number_of_codes'] = 'required|integer|min:1|max:100';
             $rules['authoring_request_id'] = 'required|uuid';
         } else {
@@ -78,7 +80,7 @@ class CourseCodeRequest extends FormRequest
 
     public function withValidator($validator): void
     {
-        if (!$this->isMethod('post')) {
+        if (! $this->isMethod('post')) {
             return;
         }
         $validator->after(function ($validator): void {
@@ -123,4 +125,3 @@ class CourseCodeRequest extends FormRequest
         ];
     }
 }
-

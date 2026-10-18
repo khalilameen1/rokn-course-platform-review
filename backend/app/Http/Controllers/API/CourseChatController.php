@@ -4,31 +4,31 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
 use App\Exceptions\AiPlanLimitReachedException;
 use App\Exceptions\AiProviderExposureLimitReachedException;
 use App\Exceptions\AiProviderUnavailableException;
+use App\Http\Controllers\Controller;
 use App\Jobs\GenerateCourseChatReply;
-use App\Support\DurableJobDispatch;
 use App\Models\AiInputAttachment;
 use App\Models\Course;
 use App\Models\CourseChatTurn;
 use App\Services\AiEntitlementBudgetService;
+use App\Services\AiFailurePolicy;
 use App\Services\AiInputAttachmentService;
 use App\Services\CourseAccessPlanService;
-use App\Services\CourseEntitlementService;
-use App\Services\AiFailurePolicy;
-use App\Services\CourseChatPromptContextService;
-use App\Services\CourseChatTurnService;
-use App\Services\CourseChatRequestService;
 use App\Services\CourseChatAdmissionService;
+use App\Services\CourseChatPromptContextService;
+use App\Services\CourseChatRequestService;
+use App\Services\CourseChatTurnService;
+use App\Services\CourseEntitlementService;
+use App\Support\AiRequestTokenEstimate;
+use App\Support\DurableJobDispatch;
+use App\Support\RoknLocale;
+use App\Support\UnicodeText;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
-use App\Support\RoknLocale;
-use App\Support\UnicodeText;
-use App\Support\AiRequestTokenEstimate;
 
 final class CourseChatController extends Controller
 {
@@ -41,15 +41,13 @@ final class CourseChatController extends Controller
         private readonly CourseChatAdmissionService $admission,
         private readonly CourseChatPromptContextService $promptContext,
         private readonly AiFailurePolicy $failurePolicy
-    ) {
-    }
+    ) {}
 
     public function sendForCourse(
         Request $request,
         Course $course,
         CourseEntitlementService $access
-    ): JsonResponse
-    {
+    ): JsonResponse {
         return $this->send($request, $course, $access);
     }
 
@@ -59,11 +57,11 @@ final class CourseChatController extends Controller
             'client_upload_id' => 'required|uuid',
             'attachment' => [
                 'required', 'file',
-                'max:' . min(
+                'max:'.min(
                     (int) config('projects.maximum_file_kilobytes', 25600),
                     (int) floor((int) config('openrouter.attachment_provider_max_bytes', 8388608) / 1024)
                 ),
-                'mimetypes:' . implode(',', [
+                'mimetypes:'.implode(',', [
                     ...$this->attachments->allowedMimeTypes(),
                     'application/zip',
                     'application/x-zip-compressed',
@@ -78,7 +76,9 @@ final class CourseChatController extends Controller
             $validated['attachment'],
             (string) $validated['client_upload_id']
         );
-        if ($result['state'] === 'not_found') abort(404);
+        if ($result['state'] === 'not_found') {
+            abort(404);
+        }
         if ($result['state'] === 'not_included') {
             return response()->json([
                 'status' => 403,
@@ -128,7 +128,7 @@ final class CourseChatController extends Controller
         ]);
         $user = auth('api')->user();
         $course = Course::query()->findOrFail((int) $validated['course_id']);
-        if (!$course->isPublishedForLearning() || !$access->hasLearningAccess($user->id, $course->id)) {
+        if (! $course->isPublishedForLearning() || ! $access->hasLearningAccess($user->id, $course->id)) {
             return response()->json([
                 'status' => 404,
                 'success' => false,
@@ -140,7 +140,7 @@ final class CourseChatController extends Controller
         $lessonId = null;
         if (isset($validated['lesson_id'])) {
             $lesson = $this->promptContext->currentLesson((int) $validated['lesson_id'], $course);
-            if (!$lesson) {
+            if (! $lesson) {
                 return response()->json([
                     'status' => 422,
                     'success' => false,
@@ -183,22 +183,23 @@ final class CourseChatController extends Controller
                 $turnAttachments = $attachmentsByTurn->get($turn->id, collect())
                     ->map(function (AiInputAttachment $attachment): array {
                         $expiresAt = now()->addMinutes(30);
+
                         return [
-                        'id' => (string) $attachment->public_id,
-                        'name' => (string) $attachment->original_file_name,
-                        'mime_type' => (string) $attachment->mime_type,
-                        'size_bytes' => (int) $attachment->size_bytes,
-                        'download_url' => URL::temporarySignedRoute(
-                            'api.project-input-attachments.download',
-                            $expiresAt,
-                            ['attachment' => $attachment->public_id, 'user' => $attachment->user_id]
-                        ),
-                        'download_url_expires_at' => $expiresAt->toIso8601String(),
-                    ];
+                            'id' => (string) $attachment->public_id,
+                            'name' => (string) $attachment->original_file_name,
+                            'mime_type' => (string) $attachment->mime_type,
+                            'size_bytes' => (int) $attachment->size_bytes,
+                            'download_url' => URL::temporarySignedRoute(
+                                'api.project-input-attachments.download',
+                                $expiresAt,
+                                ['attachment' => $attachment->public_id, 'user' => $attachment->user_id]
+                            ),
+                            'download_url_expires_at' => $expiresAt->toIso8601String(),
+                        ];
                     })->values()->all();
 
                 return [[
-                    'id' => 'user-' . $turn->public_id,
+                    'id' => 'user-'.$turn->public_id,
                     'role' => 'user',
                     'text' => (string) $turn->question,
                     'client_request_id' => (string) $turn->client_request_id,
@@ -210,7 +211,7 @@ final class CourseChatController extends Controller
                     'context_eligible' => $turn->status === CourseChatTurn::COMPLETED,
                     'attachments' => $turnAttachments,
                 ], [
-                    'id' => 'assistant-' . $turn->public_id,
+                    'id' => 'assistant-'.$turn->public_id,
                     'role' => 'assistant',
                     'text' => $assistantText,
                     'client_request_id' => (string) $turn->client_request_id,
@@ -242,7 +243,7 @@ final class CourseChatController extends Controller
     /** Lightweight polling path for a turn already admitted to the AI queue. */
     public function status(string $clientRequestId): JsonResponse
     {
-        if (!Str::isUuid($clientRequestId)) {
+        if (! Str::isUuid($clientRequestId)) {
             abort(404);
         }
 
@@ -250,7 +251,7 @@ final class CourseChatController extends Controller
             ->where('user_id', auth('api')->id())
             ->where('client_request_id', $clientRequestId)
             ->first();
-        if (!$turn) {
+        if (! $turn) {
             abort(404);
         }
 
@@ -276,6 +277,7 @@ final class CourseChatController extends Controller
             $partial = $turn->status === CourseChatTurn::STREAMING
                 ? trim((string) $turn->answer)
                 : '';
+
             return response()->json([
                 'status' => 200,
                 'success' => true,
@@ -330,15 +332,19 @@ final class CourseChatController extends Controller
         $partial = trim((string) $turn->answer);
 
         return $partial !== ''
-            ? $partial . "\n\nتوقف الرد قبل أن يكتمل"
+            ? $partial."\n\nتوقف الرد قبل أن يكتمل"
             : null;
     }
 
     public function cancel(string $clientRequestId): JsonResponse
     {
-        if (!Str::isUuid($clientRequestId)) abort(404);
+        if (! Str::isUuid($clientRequestId)) {
+            abort(404);
+        }
         $state = $this->turns->cancelForUser((int) auth('api')->id(), $clientRequestId);
-        if ($state === 'not_found') abort(404);
+        if ($state === 'not_found') {
+            abort(404);
+        }
         $cancelled = $state === 'cancelled';
         $code = $cancelled
             ? 'chat_turn_cancelled'
@@ -366,8 +372,7 @@ final class CourseChatController extends Controller
         Request $request,
         Course $course,
         CourseEntitlementService $access
-    ): JsonResponse
-    {
+    ): JsonResponse {
         $validated = $request->validate([
             'message' => 'nullable|string|max:16000|required_without:attachment_ids',
             'attachment_ids' => 'nullable|array|max:5|required_without:message',
@@ -377,7 +382,7 @@ final class CourseChatController extends Controller
         ]);
 
         $user = auth('api')->user();
-        if (!$course->isPublishedForLearning()) {
+        if (! $course->isPublishedForLearning()) {
             return response()->json([
                 'status' => 404,
                 'success' => false,
@@ -386,7 +391,7 @@ final class CourseChatController extends Controller
                 'data' => null,
             ], 404);
         }
-        if (!$access->hasLearningAccess($user->id, $course->id)) {
+        if (! $access->hasLearningAccess($user->id, $course->id)) {
             return response()->json([
                 'status' => 403,
                 'success' => false,
@@ -399,7 +404,7 @@ final class CourseChatController extends Controller
             (int) $user->id,
             (int) $course->id
         );
-        if (!$chatEnrollment) {
+        if (! $chatEnrollment) {
             return response()->json([
                 'status' => 403,
                 'success' => false,
@@ -439,15 +444,15 @@ final class CourseChatController extends Controller
             ?? RoknLocale::normalize(app()->getLocale())
             ?? RoknLocale::ARABIC;
         $promptVersion = $this->promptContext->version($course);
-        $questionHash = hash('sha256', $question . '|' . implode('|', $attachmentIds));
+        $questionHash = hash('sha256', $question.'|'.implode('|', $attachmentIds));
 
         // Never let a client-authored display label become privileged model
         // context. The lesson relation below is the only trusted source.
         $currentStepTitle = '';
         $currentStepDescription = '';
-        if (!empty($validated['lesson_id'])) {
+        if (! empty($validated['lesson_id'])) {
             $lesson = $this->promptContext->currentLesson((int) $validated['lesson_id'], $course);
-            if (!$lesson) {
+            if (! $lesson) {
                 return response()->json([
                     'status' => 422,
                     'success' => false,
@@ -475,7 +480,7 @@ final class CourseChatController extends Controller
         $planTerms = $enrollment
             ? $this->accessPlans->termsForEnrollment($enrollment)
             : null;
-        if (!$enrollment || !$planTerms) {
+        if (! $enrollment || ! $planTerms) {
             return response()->json([
                 'status' => 403,
                 'success' => false,
@@ -486,7 +491,7 @@ final class CourseChatController extends Controller
         }
         $attachmentContract = $this->requests->attachmentContract($planTerms);
         if ($attachmentIds !== [] && (
-            !$attachmentContract['enabled']
+            ! $attachmentContract['enabled']
             || count($attachmentIds) > $attachmentContract['max_files']
         )) {
             return response()->json([
@@ -523,6 +528,7 @@ final class CourseChatController extends Controller
             if (in_array($turn?->status, [CourseChatTurn::FAILED, CourseChatTurn::CANCELLED], true)) {
                 return $this->terminalFailureResponse($turn, $clientRequestId);
             }
+
             return $this->gracefulUnavailable(
                 $turn,
                 "نجهز إجابتك الآن\nستظهر خلال لحظات", 3,
@@ -566,7 +572,7 @@ final class CourseChatController extends Controller
             report($exception);
             $code = $this->failurePolicy->providerCode($exception);
             $closed = $this->turns->failBeforeDispatch($turn, $code);
-            if (!$closed) {
+            if (! $closed) {
                 return $this->gracefulUnavailable(
                     $turn,
                     "نجهز إجابتك الآن\nستظهر خلال لحظات",
@@ -590,7 +596,7 @@ final class CourseChatController extends Controller
                 $turn,
                 'chat_preparation_failed'
             );
-            if (!$closed) {
+            if (! $closed) {
                 return $this->gracefulUnavailable(
                     $turn,
                     "نجهز إجابتك الآن\nستظهر خلال لحظات",
@@ -631,7 +637,7 @@ final class CourseChatController extends Controller
                 $model,
                 $clientRequestId
             );
-            if (!$event) {
+            if (! $event) {
                 throw new AiPlanLimitReachedException('Chat is not included in this plan.');
             }
 
@@ -649,6 +655,7 @@ final class CourseChatController extends Controller
                 $turn,
                 'chat_plan_limit_reached'
             );
+
             return $this->gracefulUnavailable(
                 $turn,
                 "استخدمت كل رسائلك\nقم بترقية اشتراكك للحصول على رسائل أكثر وادفع فرق السعر فقط",
@@ -661,6 +668,7 @@ final class CourseChatController extends Controller
                 $turn,
                 'ai_temporarily_unavailable'
             );
+
             return $this->gracefulUnavailable(
                 $turn,
                 "تعذر إرسال السؤال الآن\nحاول بعد قليل",
@@ -692,6 +700,7 @@ final class CourseChatController extends Controller
                 $turn,
                 'chat_dispatch_failed'
             );
+
             return $this->gracefulUnavailable(
                 $turn,
                 "تعذر إرسال السؤال الآن\nحاول مرة أخرى",
@@ -737,8 +746,7 @@ final class CourseChatController extends Controller
         string $code,
         ?string $clientRequestId = null,
         string $turnStatus = 'failed'
-    ): JsonResponse
-    {
+    ): JsonResponse {
         $inProgress = in_array($turnStatus, [
             CourseChatTurn::QUEUED,
             CourseChatTurn::STREAMING,
@@ -746,6 +754,7 @@ final class CourseChatController extends Controller
         $failure = $inProgress
             ? ['category' => 'in_progress', 'can_retry' => true, 'retry_after_seconds' => max(1, $retryAfter)]
             : $this->failurePolicy->describe($code);
+
         return response()->json([
             'status' => 200,
             'success' => true,
@@ -753,7 +762,7 @@ final class CourseChatController extends Controller
             'message' => $inProgress ? 'نجهز إجابتك الآن' : 'تعذّر الرد الآن',
             'data' => [
                 'message' => $message,
-                'unavailable' => !$inProgress,
+                'unavailable' => ! $inProgress,
                 'failure_category' => $failure['category'],
                 'can_retry' => $failure['can_retry'],
                 'retry_after_seconds' => $inProgress
@@ -817,5 +826,4 @@ final class CourseChatController extends Controller
 
         return min(110, max($queuedWindow, $providerWindow));
     }
-
 }

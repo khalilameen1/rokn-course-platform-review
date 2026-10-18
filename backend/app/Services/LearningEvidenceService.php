@@ -24,7 +24,7 @@ final readonly class LearningEvidenceService
         ?int $reportCourseId = null
     ): array {
         $sectionId = $lesson->courseSection?->id;
-        if (!$sectionId) {
+        if (! $sectionId) {
             return $this->emptyResult();
         }
 
@@ -43,7 +43,7 @@ final readonly class LearningEvidenceService
                 ->lockForUpdate()
                 ->first();
             $isNew = false;
-            if (!$evidence) {
+            if (! $evidence) {
                 $inserted = DB::table('lesson_watch_evidence')->insertOrIgnore([
                     'user_id' => $user->id,
                     'lesson_id' => $lesson->id,
@@ -119,7 +119,7 @@ final readonly class LearningEvidenceService
             }
 
             $required = $this->requiredSeconds($lesson, $observedDuration);
-            if ($required !== null && (int) $evidence->verified_seconds >= $required && !$evidence->completed_at) {
+            if ($required !== null && (int) $evidence->verified_seconds >= $required && ! $evidence->completed_at) {
                 $evidence->completed_at = $now;
             }
             $evidence->save();
@@ -129,11 +129,11 @@ final readonly class LearningEvidenceService
             // A reported end position is not itself a completion signal: the
             // existing server-qualified credit/threshold rules remain the owner.
             // Eligibility copied across a revision is not a new watch.
-            if (!$wasCompleted && !$hadCredit && $credited > 0) {
+            if (! $wasCompleted && ! $hadCredit && $credited > 0) {
                 $this->productEvents->recordLessonWatchTransition($user, $lesson,
                     $evidence, 'lesson_started', $now, $reportCourseId ?? (int) $lesson->list_id);
             }
-            if (!$wasCompleted && $evidence->completed_at !== null) {
+            if (! $wasCompleted && $evidence->completed_at !== null) {
                 $this->productEvents->recordLessonWatchTransition($user, $lesson,
                     $evidence, 'lesson_completed', $evidence->completed_at,
                     $reportCourseId ?? (int) $lesson->list_id);
@@ -177,10 +177,14 @@ final readonly class LearningEvidenceService
         Lesson $currentLesson,
         array $sourceEvidence
     ): ?array {
-        if (!(bool) ($sourceEvidence['eligible_for_completion'] ?? false)) return null;
+        if (! (bool) ($sourceEvidence['eligible_for_completion'] ?? false)) {
+            return null;
+        }
         $currentSectionId = (int) ($currentLesson->courseSection?->id ?? 0);
         $required = $this->requiredSeconds($currentLesson);
-        if ($currentSectionId < 1 || $required === null) return null;
+        if ($currentSectionId < 1 || $required === null) {
+            return null;
+        }
 
         return DB::transaction(function () use (
             $user,

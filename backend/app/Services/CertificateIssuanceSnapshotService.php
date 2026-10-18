@@ -22,8 +22,7 @@ final readonly class CertificateIssuanceSnapshotService
         private CurriculumCompletionService $completion,
         private CourseRevisionResolver $revisions,
         private CertificateQrDestinationService $qrDestinations
-    ) {
-    }
+    ) {}
 
     /** Authoring shows a hypothetical completion, never a student's earned fact. */
     public function forPreview(Course $course): array
@@ -80,19 +79,19 @@ final readonly class CertificateIssuanceSnapshotService
         // A bare completion integer is insufficient to place review facts in
         // time. The earned graph and its completion boundary must both exist.
         $completedAt = $enrollment->curriculum_completed_at;
-        if (!$completedAt) {
+        if (! $completedAt) {
             return [];
         }
         $graph = $this->earnedGraph($course, $earnedRevision);
-        if (!$graph) {
+        if (! $graph) {
             return [];
         }
 
         $projects = Project::query()
             ->whereHas('section', fn ($sections) => $sections->where('course_id', $graph->id))
             ->get(['id', 'is_graduation_project']);
-        if ($projects->isEmpty() || !$projects->contains(
-            fn (Project $project): bool => !$project->is_graduation_project
+        if ($projects->isEmpty() || ! $projects->contains(
+            fn (Project $project): bool => ! $project->is_graduation_project
         )) {
             return [];
         }
@@ -119,9 +118,9 @@ final readonly class CertificateIssuanceSnapshotService
                 ->latest('id')
                 ->first();
             if (
-                !$latest
-                || !$latest->reviewOutcome()['passed']
-                || !$latest->reviewed_at
+                ! $latest
+                || ! $latest->reviewOutcome()['passed']
+                || ! $latest->reviewed_at
                 || $latest->reviewed_at->greaterThan($completedAt)
             ) {
                 return [];

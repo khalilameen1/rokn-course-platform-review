@@ -14,8 +14,7 @@ class ClassificationController extends Controller
     public function __construct(
         private readonly AdminClassificationReadService $read,
         private readonly AdminClassificationAuthoringService $authoring
-    ) {
-    }
+    ) {}
 
     public function index()
     {
@@ -82,7 +81,7 @@ class ClassificationController extends Controller
 
     public function destroy(Classification $classification)
     {
-        if (!$this->authoring->delete($classification)) {
+        if (! $this->authoring->delete($classification)) {
             return redirect()->route('admin.classifications.index')
                 ->with('error', 'انقل الكورسات إلى تصنيف آخر قبل حذف هذا التصنيف');
         }

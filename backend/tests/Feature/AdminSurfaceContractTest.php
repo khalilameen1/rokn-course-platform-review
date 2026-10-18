@@ -14,12 +14,12 @@ final class AdminSurfaceContractTest extends TestCase
     {
         foreach (Route::getRoutes()->getRoutes() as $route) {
             $name = $route->getName();
-            if (!is_string($name) || !str_starts_with($name, 'admin.')) {
+            if (! is_string($name) || ! str_starts_with($name, 'admin.')) {
                 continue;
             }
 
             $action = $route->getActionName();
-            if ($action === 'Closure' || !str_contains($action, '@')) {
+            if ($action === 'Closure' || ! str_contains($action, '@')) {
                 continue;
             }
             [$controller, $method] = explode('@', $action, 2);

@@ -9,17 +9,18 @@ use App\Http\Controllers\Controller;
 use App\Models\StorePurchase;
 use App\Models\User;
 use App\Services\ApiResponseService;
+use App\Services\CourseCheckoutService;
 use App\Services\StoreBillingAccountIdentity;
 use App\Services\StorePurchaseService;
+use App\Services\WalletQueryService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 final class StorePurchaseController extends Controller
 {
-    public function __construct(private readonly ApiResponseService $responses)
-    {
-    }
+    public function __construct(private readonly ApiResponseService $responses) {}
 
     public function context(
         Request $request,
@@ -66,17 +67,17 @@ final class StorePurchaseController extends Controller
             );
         }
 
-        if (!empty($validated['checkout_id'])) {
+        if (! empty($validated['checkout_id'])) {
             // Opt-in only: legacy receipts retain their existing behavior.
             // Verified coins belong to the learner even if consent expired.
             // The separately returned checkout status never hides that credit.
             try {
                 $purchase = StorePurchase::query()->where('public_id', $result['purchase_id'])
                     ->where('user_id', $user->id)->firstOrFail();
-                $result['checkout'] = app(\App\Services\CourseCheckoutService::class)
+                $result['checkout'] = app(CourseCheckoutService::class)
                     ->bindStorePurchase($user, $validated['checkout_id'], $purchase);
-                $result['wallet'] = app(\App\Services\WalletQueryService::class)->summary($user->fresh());
-            } catch (\DomainException|\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+                $result['wallet'] = app(WalletQueryService::class)->summary($user->fresh());
+            } catch (\DomainException|ModelNotFoundException $exception) {
                 $result['checkout_error'] = 'checkout_funding_mismatch';
             } catch (\Throwable $exception) {
                 report($exception);

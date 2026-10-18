@@ -11,10 +11,12 @@ use OpenApi\Annotations as OA;
  *     title="Rokn API",
  *     description="Rokn mobile learning API"
  * )
+ *
  * @OA\Server(
  *     url="/api",
  *     description="Rokn API"
  * )
+ *
  * @OA\SecurityScheme(
  *     securityScheme="APIToken",
  *     type="apiKey",

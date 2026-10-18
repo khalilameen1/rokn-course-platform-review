@@ -5,16 +5,17 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Jobs\RecordQueueHeartbeat;
+use App\Services\ProductionCapabilityService;
 use App\Services\RecoveryCheckpointService;
 use App\Services\RecoveryEvidenceService;
-use App\Services\ProductionCapabilityService;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Console\Scheduling\Event;
+use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
+use Tests\Support\AppleClientSigningFixture;
 use Tests\TestCase;
 
 final class ProductionCapabilityTest extends TestCase
@@ -34,7 +35,7 @@ final class ProductionCapabilityTest extends TestCase
         $firebaseCredentials = base64_encode(json_encode([
             'project_id' => 'rokn-production',
             'client_email' => 'firebase-admin@rokn-production.iam.gserviceaccount.com',
-            'private_key' => "-----BEGIN"." PRIVATE KEY-----\nfixture\n-----END"." PRIVATE KEY-----\n",
+            'private_key' => '-----BEGIN'." PRIVATE KEY-----\nfixture\n-----END"." PRIVATE KEY-----\n",
         ], JSON_THROW_ON_ERROR));
 
         Schema::create('settings', function (Blueprint $table): void {
@@ -208,10 +209,10 @@ final class ProductionCapabilityTest extends TestCase
 
         $googleStoreCredentials = base64_encode(json_encode([
             'client_email' => 'play-verifier@rokn-production.iam.gserviceaccount.com',
-            'private_key' => "-----BEGIN"." PRIVATE KEY-----\nfixture\n-----END"." PRIVATE KEY-----\n",
+            'private_key' => '-----BEGIN'." PRIVATE KEY-----\nfixture\n-----END"." PRIVATE KEY-----\n",
         ], JSON_THROW_ON_ERROR));
         $appleStoreKey = base64_encode(
-            "-----BEGIN"." PRIVATE KEY-----\nfixture\n-----END"." PRIVATE KEY-----\n"
+            '-----BEGIN'." PRIVATE KEY-----\nfixture\n-----END"." PRIVATE KEY-----\n"
         );
 
         config([
@@ -267,7 +268,7 @@ final class ProductionCapabilityTest extends TestCase
             'services.apple.team_id' => 'APPLE-TEST-TEAM',
             'services.apple.key_id' => 'APPLE-TEST-KEY',
             'services.apple.key_file' => null,
-            'services.apple.private_key_base64' => \Tests\Support\AppleClientSigningFixture::base64(),
+            'services.apple.private_key_base64' => AppleClientSigningFixture::base64(),
             'social_auth.providers' => ['google', 'facebook', 'tiktok', 'apple'],
             'social_auth.public_api_url' => 'https://api.rokn.test/api/v1',
             'social_auth.return_urls' => ['rokn://auth'],

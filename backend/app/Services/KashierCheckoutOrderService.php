@@ -15,9 +15,7 @@ use Illuminate\Support\Str;
 
 final readonly class KashierCheckoutOrderService
 {
-    public function __construct(private PackageChannelPricingService $pricing)
-    {
-    }
+    public function __construct(private PackageChannelPricingService $pricing) {}
 
     /**
      * @return array{order: Order, reused: bool, closed: ?string}
@@ -29,8 +27,7 @@ final readonly class KashierCheckoutOrderService
         ?float $expectedAmount = null,
         ?int $expectedCoins = null,
         ?string $courseCheckoutId = null
-    ): array
-    {
+    ): array {
         return DB::transaction(function () use (
             $user,
             $package,
@@ -50,7 +47,7 @@ final readonly class KashierCheckoutOrderService
                 ->where('user_id', $user->id)->where('public_id', $courseCheckoutId)
                 ->lockForUpdate()->firstOrFail();
             if ($courseCheckout && ($courseCheckout->channel !== 'direct'
-                || !$courseCheckout->authorized_at
+                || ! $courseCheckout->authorized_at
                 || (int) $courseCheckout->package_id !== (int) $package->id)) {
                 throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
             }
@@ -130,8 +127,8 @@ final readonly class KashierCheckoutOrderService
             }
 
             if (
-                !$package->is_active
-                || !$package->direct_enabled
+                ! $package->is_active
+                || ! $package->direct_enabled
                 || (float) $package->price <= 0
                 || (int) $package->coins <= 0
             ) {
@@ -181,10 +178,10 @@ final readonly class KashierCheckoutOrderService
                 'package_id' => $package->id,
                 'package_coins' => $coins,
                 'payment_method' => Order::PAYMENT_METHOD_KASHIER,
-                'order_ref' => 'PKG-' . strtoupper(str_replace('-', '', (string) Str::uuid())),
+                'order_ref' => 'PKG-'.strtoupper(str_replace('-', '', (string) Str::uuid())),
                 'checkout_request_key' => $clientRequestKey !== ''
                     ? $clientRequestKey
-                    : 'server-' . (string) Str::uuid(),
+                    : 'server-'.(string) Str::uuid(),
                 'checkout_expires_at' => now()->addMinutes(Order::KASHIER_CHECKOUT_TTL_MINUTES),
                 'amount' => $baseAmount,
                 'discount_amount' => round($baseAmount - $finalAmount, 2),

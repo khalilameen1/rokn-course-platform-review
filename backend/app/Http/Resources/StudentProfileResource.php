@@ -2,13 +2,22 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Course;
+use App\Models\CourseSection;
+use App\Services\CourseDurationService;
 use App\Services\CourseEntitlementService;
+use App\Services\CourseRevisionLearnerReadService;
+use App\Services\WalletService;
+use App\Support\LearningReminderSchedule;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
 
 class StudentProfileResource extends JsonResource
 {
     private bool $includeLearningSnapshot = true;
+
     private bool $includeEarnedBadges = true;
 
     /**
@@ -37,7 +46,7 @@ class StudentProfileResource extends JsonResource
     /**
      * Transform the resource into an array.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  Request  $request
      * @return array
      */
     public function toArray($request)
@@ -50,14 +59,14 @@ class StudentProfileResource extends JsonResource
         $attributes = $this->resource->getAttributes();
         $completedLessons = (int) ($attributes['profile_completed_sections_count'] ?? 0);
         $accessedLessons = (int) ($attributes['profile_accessed_sections_count'] ?? 0);
-        $wallet = app(\App\Services\WalletService::class)->balances($this->resource);
+        $wallet = app(WalletService::class)->balances($this->resource);
 
         $sessionToken = $request->attributes->get('rokn_api_token');
         $sessionSocialProvider = strtolower(trim((string) ($sessionToken?->auth_provider ?? '')));
 
         return [
-            'id' => (integer)$this->id,
-            'name' => (string)$this->name,
+            'id' => (int) $this->id,
+            'name' => (string) $this->name,
             'phone' => $this->phone !== null ? (string) $this->phone : null,
             'wallet_coins' => (float) $wallet['total'],
             'wallet_purchased_coins' => $wallet['paid'],
@@ -69,13 +78,13 @@ class StudentProfileResource extends JsonResource
             'portfolio_headline' => $this->portfolio_headline,
             'portfolio_url' => $this->profile_deeplink,
             'email' => $this->publicEmail(),
-            'gender' => (string)$this->gender,
-            'birthday' => (string)$this->birthday,
-            'role' => (string)$this->role,
+            'gender' => (string) $this->gender,
+            'birthday' => (string) $this->birthday,
+            'role' => (string) $this->role,
             'device_os' => $this->device_os,
             'notifications_status' => $this->notifications_status,
-            'learning_reminder_hour' => \App\Support\LearningReminderSchedule::hour($this->learning_reminder_hour),
-            'learning_reminder_timezone' => \App\Support\LearningReminderSchedule::timezone($this->learning_reminder_timezone),
+            'learning_reminder_hour' => LearningReminderSchedule::hour($this->learning_reminder_hour),
+            'learning_reminder_timezone' => LearningReminderSchedule::timezone($this->learning_reminder_timezone),
             'preferred_locale' => $this->preferred_locale ?: 'ar',
             'leaderboard_opt_in' => (bool) $this->leaderboard_opt_in,
             'watch_history_enabled' => (bool) $this->watch_history_enabled,
@@ -92,7 +101,7 @@ class StudentProfileResource extends JsonResource
             'social_provider' => $sessionSocialProvider !== ''
                 ? $sessionSocialProvider
                 : (string) $this->social_provider,
-            'phone_verified' => !is_null($this->phone_verified_at),
+            'phone_verified' => ! is_null($this->phone_verified_at),
             'phone_verified_at' => $this->phone_verified_at,
             'courses' => $this->when(
                 $this->includeLearningSnapshot,
@@ -126,33 +135,33 @@ class StudentProfileResource extends JsonResource
         }
 
         $user->loadMissing([
-                'interests:id,name_ar,name_en',
-                'earnedLevels:id,name_ar,name_en,badge_image,order',
-                'enrollments.course',
-            ]);
-            $courses = $user->enrollments
-                ->pluck('course')
-                ->filter()
-                ->unique('id')
-                ->values();
-            $courses->loadMissing([
-                'photo',
-                'classifications',
-                'teachers',
-                'coursePath',
-                'accessPlans' => fn ($plans) => $plans->where('is_active', true),
-            ]);
-            $courses->loadCount(['sections', 'ratings', 'activeEnrollments']);
-            $courses->loadAvg('ratings', 'rating');
+            'interests:id,name_ar,name_en',
+            'earnedLevels:id,name_ar,name_en,badge_image,order',
+            'enrollments.course',
+        ]);
+        $courses = $user->enrollments
+            ->pluck('course')
+            ->filter()
+            ->unique('id')
+            ->values();
+        $courses->loadMissing([
+            'photo',
+            'classifications',
+            'teachers',
+            'coursePath',
+            'accessPlans' => fn ($plans) => $plans->where('is_active', true),
+        ]);
+        $courses->loadCount(['sections', 'ratings', 'activeEnrollments']);
+        $courses->loadAvg('ratings', 'rating');
 
-            $currentSectionIds = \App\Models\CourseSection::query()
-                ->whereIn('course_id', $courses->pluck('id'))
-                ->pluck('id');
-            $progress = app(\App\Services\CourseRevisionLearnerReadService::class)
-                ->sectionProgressRows((int) $user->id, $currentSectionIds);
+        $currentSectionIds = CourseSection::query()
+            ->whereIn('course_id', $courses->pluck('id'))
+            ->pluck('id');
+        $progress = app(CourseRevisionLearnerReadService::class)
+            ->sectionProgressRows((int) $user->id, $currentSectionIds);
 
-            $user->setAttribute('profile_orders_count', $user->orders()->count());
-            $user->setAttribute('profile_accessed_sections_count', $progress->count());
+        $user->setAttribute('profile_orders_count', $user->orders()->count());
+        $user->setAttribute('profile_accessed_sections_count', $progress->count());
         $user->setAttribute('profile_completed_sections_count', $progress->where('is_completed', true)->count());
 
         $user->setAttribute('profile_snapshot_prepared', true);
@@ -175,7 +184,7 @@ class StudentProfileResource extends JsonResource
     /** Get user interests from the prepared profile graph. */
     protected function getInterestsSafely()
     {
-        return $this->interests ? $this->interests->map(function($interest) {
+        return $this->interests ? $this->interests->map(function ($interest) {
             return [
                 'id' => $interest->id,
                 'name_ar' => $interest->name_ar,
@@ -188,22 +197,23 @@ class StudentProfileResource extends JsonResource
     protected function getEarnedBadgesSafely()
     {
         $levels = $this->earnedLevels ?: collect();
-        $courses = \App\Models\Course::query()
-                ->whereIn('id', $levels->pluck('pivot.course_id')->filter()->unique())
-                ->get(['id', 'name_ar', 'name_en', 'badge_track'])
-                ->keyBy('id');
+        $courses = Course::query()
+            ->whereIn('id', $levels->pluck('pivot.course_id')->filter()->unique())
+            ->get(['id', 'name_ar', 'name_en', 'badge_track'])
+            ->keyBy('id');
 
         return $levels
-                ->filter(function($level) use ($courses) {
-                    $course = $courses->get($level->pivot->course_id);
-
-                    return $course
-                        && in_array($course->badge_track, ['professional', 'freelance'], true);
-                })
-                ->map(function($level) use ($courses) {
+            ->filter(function ($level) use ($courses) {
                 $course = $courses->get($level->pivot->course_id);
+
+                return $course
+                    && in_array($course->badge_track, ['professional', 'freelance'], true);
+            })
+            ->map(function ($level) use ($courses) {
+                $course = $courses->get($level->pivot->course_id);
+
                 return [
-                    'id' => $level->pivot->id ?: $level->id . '-' . $level->pivot->course_id,
+                    'id' => $level->pivot->id ?: $level->id.'-'.$level->pivot->course_id,
                     'level_id' => $level->id,
                     'name_ar' => $level->name_ar,
                     'name_en' => $level->name_en,
@@ -221,7 +231,7 @@ class StudentProfileResource extends JsonResource
     /**
      * Get authorized courses for the user
      *
-     * @return \Illuminate\Http\Resources\Json\AnonymousResourceCollection
+     * @return AnonymousResourceCollection
      */
     protected function getAuthorizedCourses()
     {
@@ -247,9 +257,8 @@ class StudentProfileResource extends JsonResource
             ))
             ->values();
 
-        app(\App\Services\CourseDurationService::class)->attachMany($courses);
+        app(CourseDurationService::class)->attachMany($courses);
 
-        return \App\Http\Resources\BaseCourseResource::collection($courses);
+        return BaseCourseResource::collection($courses);
     }
-
 }

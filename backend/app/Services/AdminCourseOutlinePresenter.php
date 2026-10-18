@@ -12,9 +12,7 @@ use App\Models\Project;
 
 final readonly class AdminCourseOutlinePresenter
 {
-    public function __construct(private BunnyDeliveryService $delivery)
-    {
-    }
+    public function __construct(private BunnyDeliveryService $delivery) {}
 
     /** @return array<string, mixed> */
     public function graph(Course $course): array
@@ -120,7 +118,7 @@ final readonly class AdminCourseOutlinePresenter
     /** @return list<string> */
     private function projectSubmissionTypes(?Project $project): array
     {
-        if (!$project) {
+        if (! $project) {
             return [];
         }
 

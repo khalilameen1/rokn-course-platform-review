@@ -19,8 +19,7 @@ final class CourseCommercialReportService
         private readonly CourseCashAttributionService $cash,
         private readonly CommercialLearnerSummaryService $summaries,
         private readonly CoursePlanHistoryReportService $plans
-    ) {
-    }
+    ) {}
 
     /** @return array<string, mixed> */
     public function forCourse(Course $course, ?ReportPeriod $period = null, bool $withComparisons = true): array
@@ -43,17 +42,18 @@ final class CourseCommercialReportService
         $report['comparisons'] = $this->comparisons($report, $previous);
         $previousPlans = $previous['plan_breakdown'] ?? collect();
         foreach ($previousPlans as $code => $priorPlan) {
-            if (!$report['plan_breakdown']->has($code)) {
+            if (! $report['plan_breakdown']->has($code)) {
                 $emptyMetrics = $this->plans->emptyMetrics();
                 foreach ($emptyMetrics as $metric => $_value) {
-                    if ($report['plan_breakdown']->contains(fn (array $plan): bool =>
-                        array_key_exists($metric, $plan['period_metrics']) && $plan['period_metrics'][$metric] === null
-                    )) $emptyMetrics[$metric] = null;
+                    if ($report['plan_breakdown']->contains(fn (array $plan): bool => array_key_exists($metric, $plan['period_metrics']) && $plan['period_metrics'][$metric] === null
+                    )) {
+                        $emptyMetrics[$metric] = null;
+                    }
                 }
                 $report['plan_breakdown']->put($code, $this->summaries->forRows(collect()) + [
                     'plan_code' => $code, 'plan_name' => $priorPlan['plan_name'],
                     'period_metrics' => $emptyMetrics,
-                    'historical_attribution_complete' => !in_array(null, $emptyMetrics, true),
+                    'historical_attribution_complete' => ! in_array(null, $emptyMetrics, true),
                 ]);
             }
         }
@@ -62,9 +62,10 @@ final class CourseCommercialReportService
             if ($prior === null && $previousPeriod !== null) {
                 $metrics = $this->plans->emptyMetrics();
                 foreach ($metrics as $metric => $_value) {
-                    if ($previousPlans->contains(fn (array $previousPlan): bool =>
-                        array_key_exists($metric, $previousPlan['period_metrics']) && $previousPlan['period_metrics'][$metric] === null
-                    )) $metrics[$metric] = null;
+                    if ($previousPlans->contains(fn (array $previousPlan): bool => array_key_exists($metric, $previousPlan['period_metrics']) && $previousPlan['period_metrics'][$metric] === null
+                    )) {
+                        $metrics[$metric] = null;
+                    }
                 }
                 $prior = ['period_metrics' => $metrics];
             }
@@ -165,7 +166,7 @@ final class CourseCommercialReportService
                 'user' => $enrollment->user,
                 'is_active' => $enrollment->isActive()
                     && $enrollment->user !== null
-                    && !$enrollment->user->trashed()
+                    && ! $enrollment->user->trashed()
                     && strtolower((string) $enrollment->user->role) === 'client',
                 'source' => $source,
                 'source_label' => $sourceLabel,
@@ -301,8 +302,7 @@ final class CourseCommercialReportService
             'rows' => $rows,
             'active_students' => $rows->where('is_active', true)->count(),
             'historical_students' => $rows->count(),
-            'new_students' => $enrollments->filter(fn (CourseEnrollment $enrollment): bool =>
-                $period->contains($enrollment->enrolled_at ?: $enrollment->created_at)
+            'new_students' => $enrollments->filter(fn (CourseEnrollment $enrollment): bool => $period->contains($enrollment->enrolled_at ?: $enrollment->created_at)
             )->count(),
             'grant_students' => $rows->filter(fn (array $row): bool => str_starts_with($row['source'], 'grant'))->count(),
             'code_students' => $rows->filter(fn (array $row): bool => str_contains($row['source'], 'code'))->count(),
@@ -364,16 +364,28 @@ final class CourseCommercialReportService
             $value = $current[$metric] ?? null;
             $prior = $previous[$metric] ?? null;
             if ($metric === 'ai_cost_usd') {
-                if (!($current['ai_cost_complete'] ?? false)) $value = null;
-                if (!($previous['ai_cost_complete'] ?? false)) $prior = null;
+                if (! ($current['ai_cost_complete'] ?? false)) {
+                    $value = null;
+                }
+                if (! ($previous['ai_cost_complete'] ?? false)) {
+                    $prior = null;
+                }
             }
             if ($metric === 'cash_gross_egp') {
-                if (!$current['cash_gross_complete'] || !$current['coin_allocation_complete']) $value = null;
-                if (!($previous['cash_gross_complete'] ?? false) || !($previous['coin_allocation_complete'] ?? false)) $prior = null;
+                if (! $current['cash_gross_complete'] || ! $current['coin_allocation_complete']) {
+                    $value = null;
+                }
+                if (! ($previous['cash_gross_complete'] ?? false) || ! ($previous['coin_allocation_complete'] ?? false)) {
+                    $prior = null;
+                }
             }
             if (in_array($metric, ['paid_coins', 'reward_coins', 'cash_net_egp'], true)) {
-                if (!$current['coin_allocation_complete']) $value = null;
-                if (!($previous['coin_allocation_complete'] ?? false)) $prior = null;
+                if (! $current['coin_allocation_complete']) {
+                    $value = null;
+                }
+                if (! ($previous['coin_allocation_complete'] ?? false)) {
+                    $prior = null;
+                }
             }
             $result[$metric] = ReportPeriod::compare($value, $prior);
         }
@@ -391,6 +403,4 @@ final class CourseCommercialReportService
 
         return $comparisons;
     }
-
-
 }

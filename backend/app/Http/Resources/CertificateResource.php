@@ -11,7 +11,7 @@ class CertificateResource extends JsonResource
     public function toArray($request)
     {
         $revoked = $this->isRevokedCredential();
-        $artifactReady = !$revoked
+        $artifactReady = ! $revoked
             && $this->hasCompleteCredentialSnapshot()
             && $this->hasStoredArtifact();
         $status = $revoked
@@ -23,7 +23,7 @@ class CertificateResource extends JsonResource
         $certificateText = trim((string) $this->certificate_text);
         $publicId = trim((string) $this->public_id);
         $verificationUrl = $publicId !== '' ? RoknPublicUrl::certificate($publicId) : '';
-        $qrDestination = !$revoked
+        $qrDestination = ! $revoked
             ? app(CertificateQrDestinationService::class)->for($this->resource)
             : null;
 

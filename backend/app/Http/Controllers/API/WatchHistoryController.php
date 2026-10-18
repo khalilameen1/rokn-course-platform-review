@@ -8,10 +8,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Models\WatchingLog;
-use App\Services\CourseEntitlementService;
-use App\Services\CourseCompletionService;
-use App\Services\CourseRevisionResolver;
 use App\Services\BunnyDeliveryService;
+use App\Services\CourseCompletionService;
+use App\Services\CourseEntitlementService;
+use App\Services\CourseRevisionResolver;
 use App\Services\LearningEvidenceService;
 use App\Services\LearningRewardService;
 use App\Services\PlaybackCapabilityService;
@@ -31,8 +31,7 @@ final class WatchHistoryController extends Controller
         private readonly CourseRevisionResolver $revisionResolver,
         private readonly BunnyDeliveryService $delivery,
         private readonly WatchHistoryCanonicalizationService $canonicalHistory
-    ) {
-    }
+    ) {}
 
     /**
      * Return a bounded, resume-oriented history. Video URLs are deliberately
@@ -132,8 +131,7 @@ final class WatchHistoryController extends Controller
         LearningRewardService $rewards,
         PlaybackSessionService $sessions,
         CourseCompletionService $completion
-    ): JsonResponse
-    {
+    ): JsonResponse {
         $validated = $request->validate([
             // Existence is answered by the lesson load below; a separate
             // exists:lessons probe was a second read of the same row.
@@ -145,7 +143,7 @@ final class WatchHistoryController extends Controller
             'sequence' => 'required|integer|min:1|max:2147483647',
             'event_type' => 'nullable|string|in:play,start,heartbeat,pause,background,stop,complete,error',
             'end_reason' => 'nullable|string|in:user_exit,navigation,lesson_changed,'
-                . 'app_closed,playback_error,source_expired,replaced,unknown',
+                .'app_closed,playback_error,source_expired,replaced,unknown',
             'is_terminal' => 'nullable|boolean',
             'effective_quality' => 'nullable|string|in:auto,1080p,720p,480p,360p',
             'effective_bitrate_kbps' => 'nullable|integer|min:0|max:100000',
@@ -169,12 +167,12 @@ final class WatchHistoryController extends Controller
             'courseSection',
             'mediaState:id,lesson_id,duration_seconds',
         ])->find($validated['lesson_id']);
-        if (!$lesson) {
+        if (! $lesson) {
             // The same 422 payload the exists rule produced, now evaluated
             // only on this failure path. Should the row appear meanwhile,
             // answer exactly as findOrFail did.
             Validator::make($validated, ['lesson_id' => 'exists:lessons,id'])->validate();
-            throw (new ModelNotFoundException())->setModel(Lesson::class, [$validated['lesson_id']]);
+            throw (new ModelNotFoundException)->setModel(Lesson::class, [$validated['lesson_id']]);
         }
         $courseId = (int) $lesson->list_id;
         $course = $lesson->course;
@@ -189,8 +187,9 @@ final class WatchHistoryController extends Controller
                 $validated['playback_session_id'] ?? null
             )
             : null;
-        if ($archiveRevision && !$archiveContinuation) {
+        if ($archiveRevision && ! $archiveContinuation) {
             $canonical = $archiveRevision->canonicalCourse()->firstOrFail();
+
             return response()->json([
                 'status' => 409,
                 'success' => false,
@@ -210,9 +209,9 @@ final class WatchHistoryController extends Controller
         }
 
         if (
-            !$course
-            || !$section
-            || (!$course->isPublishedForLearning() && !$archiveContinuation)
+            ! $course
+            || ! $section
+            || (! $course->isPublishedForLearning() && ! $archiveContinuation)
             || (int) $section->course_id !== (int) $lesson->list_id
             || $section->getSectionType() !== 'lesson'
             || (int) $section->sectionable_id !== (int) $lesson->id
@@ -234,8 +233,8 @@ final class WatchHistoryController extends Controller
         // revoked purchase. Re-check the canonical entitlement on every
         // heartbeat so an archived session cannot outlive access removal.
         if (
-            !$isPublicPreview
-            && !$hasLearningAccess
+            ! $isPublicPreview
+            && ! $hasLearningAccess
         ) {
             return response()->json([
                 'status' => 403,
@@ -313,7 +312,7 @@ final class WatchHistoryController extends Controller
         }, 3);
         $sessionResult = $playbackState['sessionResult'];
         $duplicate = false;
-        if (!$sessionResult['accepted']) {
+        if (! $sessionResult['accepted']) {
             $invalid = $sessionResult['reason'] === 'invalid_session';
             if ($invalid) {
                 return response()->json([
@@ -334,7 +333,7 @@ final class WatchHistoryController extends Controller
         // Preview playback has its own operational session, but it is not an
         // enrollment fact. It must not create watch history, academic
         // evidence, study rewards, or a "continue course" card.
-        if (!$hasLearningAccess) {
+        if (! $hasLearningAccess) {
             return response()->json([
                 'status' => 200,
                 'success' => true,
@@ -387,7 +386,7 @@ final class WatchHistoryController extends Controller
             }
         }
 
-        if (!$user->watch_history_enabled) {
+        if (! $user->watch_history_enabled) {
             return response()->json([
                 'status' => 200,
                 'success' => true,
@@ -453,7 +452,7 @@ final class WatchHistoryController extends Controller
                 ->where('lesson_id', $resumeLesson->id)
                 ->lockForUpdate()
                 ->first();
-            if (!$log) {
+            if (! $log) {
                 $created = DB::table('watching_logs')->insertOrIgnore([
                     'user_id' => $user->id,
                     'lesson_id' => $resumeLesson->id,
@@ -476,7 +475,7 @@ final class WatchHistoryController extends Controller
             }
 
             $storedObservedAt = $log->watched_at ?? $log->updated_at;
-            if (!$created && $incomingSessionId && $incomingObservedAt && $storedObservedAt) {
+            if (! $created && $incomingSessionId && $incomingObservedAt && $storedObservedAt) {
                 $incomingTime = $incomingObservedAt->format('Y-m-d H:i:s.u');
                 $storedTime = $storedObservedAt->format('Y-m-d H:i:s.u');
                 $sameSession = (string) $log->playback_session_id === (string) $incomingSessionId;
@@ -492,7 +491,7 @@ final class WatchHistoryController extends Controller
                     $resumeRecorded = false;
                 } elseif (
                     $timeOrder === 0
-                    && !$sameSession
+                    && ! $sameSession
                     && strcmp((string) $incomingSessionId, (string) $log->playback_session_id) < 0
                 ) {
                     // SQL timestamps may be second-precision. UUID order is
@@ -519,7 +518,7 @@ final class WatchHistoryController extends Controller
                         'last_playback_sequence' => $incomingSequence,
                     ];
                 }
-                $ownedBySameSession = !$created
+                $ownedBySameSession = ! $created
                     && $incomingSessionId
                     && $log->watched_at !== null
                     && (string) $log->playback_session_id === (string) $incomingSessionId;
@@ -548,6 +547,7 @@ final class WatchHistoryController extends Controller
             }
 
             $log->save();
+
             return [$log, $resumeRecorded];
         }, 3);
 
@@ -562,7 +562,7 @@ final class WatchHistoryController extends Controller
                 'recorded' => $resumeRecorded,
                 'duplicate' => $duplicate,
                 'reason' => $duplicate ? $sessionResult['reason'] : null,
-                'resume_ignored_as_stale_session' => !$resumeRecorded,
+                'resume_ignored_as_stale_session' => ! $resumeRecorded,
                 'tracking_enabled' => true,
                 'history_id' => $log->id,
                 'course_id' => $courseId,
@@ -581,5 +581,4 @@ final class WatchHistoryController extends Controller
             ],
         ]);
     }
-
 }

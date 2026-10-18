@@ -11,8 +11,8 @@ use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
 use App\Models\Package;
 use App\Models\User;
-use App\Services\CourseEntitlementService;
 use App\Services\CourseAccessPlanService;
+use App\Services\CourseEntitlementService;
 use App\Services\CoursePlanUpgradeEligibilityService;
 use App\Services\PackageChannelPricingService;
 use App\Services\WalletService;
@@ -28,9 +28,7 @@ use Illuminate\Support\Facades\DB;
 final class CourseChatUpgradeController extends Controller
 {
     public function __construct(private readonly PackageChannelPricingService $packagePricing,
-        private readonly CoursePlanUpgradeEligibilityService $upgrades)
-    {
-    }
+        private readonly CoursePlanUpgradeEligibilityService $upgrades) {}
 
     public function quote(
         Request $request,
@@ -38,8 +36,7 @@ final class CourseChatUpgradeController extends Controller
         CourseEntitlementService $access,
         CourseAccessPlanService $plans,
         WalletService $wallet
-    ): JsonResponse
-    {
+    ): JsonResponse {
         $user = auth('api')->user();
         $validated = $request->validate([
             'target_plan_code' => 'nullable|string|in:guided,mentor',
@@ -51,11 +48,11 @@ final class CourseChatUpgradeController extends Controller
             : null;
         $entitlement = $access->entitlementFor((int) $user->id, (int) $course->id);
 
-        if (!$entitlement['has_learning_access']) {
+        if (! $entitlement['has_learning_access']) {
             return $this->error('course_access_required', 'افتح الكورس أولًا قبل الترقية', 403);
         }
         $enrollment = $access->activeEnrollmentFor((int) $user->id, (int) $course->id);
-        if (!$enrollment) {
+        if (! $enrollment) {
             return $this->error(
                 'full_track_upgrade_not_available',
                 'الترقية غير متاحة لهذه الفئة',
@@ -79,11 +76,12 @@ final class CourseChatUpgradeController extends Controller
                 $enrollment->setRelation('course', $paidCourse);
                 $offers = $this->upgrades->availablePlans($paidCourse, $enrollment, $requiredFeature);
                 $offerCodes = $offers->pluck('code')->values()->all();
-                if (!$requestedCode && $offers->isEmpty()) {
+                if (! $requestedCode && $offers->isEmpty()) {
                     if ($requiredFeature === null && $entitlement['chat_available']) {
                         return ['already_upgraded' => true, 'course' => $paidCourse,
                             'terms' => $plans->termsForEnrollment($enrollment), 'available_plan_codes' => []];
                     }
+
                     return ['already_upgraded' => false, 'payload' => [
                         ...$this->quotePayload($user->fresh(), $paidCourse, 0, $wallet),
                         'upgrade_available' => false, 'available_plan_codes' => [],
@@ -97,7 +95,7 @@ final class CourseChatUpgradeController extends Controller
                     $requiredFeature
                 );
 
-                if ($entitlement['chat_available'] && !$targetPlan) {
+                if ($entitlement['chat_available'] && ! $targetPlan) {
                     $terms = $plans->termsForEnrollment($enrollment);
 
                     return [
@@ -175,11 +173,11 @@ final class CourseChatUpgradeController extends Controller
         CourseAccessPlanService $plans,
         ?string $requestedCode = null,
         ?string $requiredFeature = null
-    ): ?CourseAccessPlan
-    {
-        if (!$requestedCode) {
+    ): ?CourseAccessPlan {
+        if (! $requestedCode) {
             return $this->upgrades->availablePlans($course, $enrollment, $requiredFeature)->first();
         }
+
         return $this->upgrades->targetPlan($course, $enrollment, $requestedCode, $requiredFeature);
     }
 
@@ -188,9 +186,8 @@ final class CourseChatUpgradeController extends Controller
         CourseEnrollment $enrollment,
         ?CourseAccessPlan $targetPlan,
         CourseAccessPlanService $plans
-    ): ?int
-    {
-        if (!$course->isPublishedForLearning() || !$targetPlan) {
+    ): ?int {
+        if (! $course->isPublishedForLearning() || ! $targetPlan) {
             return null;
         }
 
@@ -204,8 +201,7 @@ final class CourseChatUpgradeController extends Controller
         int $price,
         WalletService $wallet,
         ?CourseAccessPlan $targetPlan = null
-    ): array
-    {
+    ): array {
         $balances = $wallet->balances($user);
         $total = $balances['total'];
         $paid = $balances['paid'];

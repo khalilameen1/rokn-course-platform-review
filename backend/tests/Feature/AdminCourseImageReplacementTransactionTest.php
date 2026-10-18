@@ -97,7 +97,7 @@ final class AdminCourseImageReplacementTransactionTest extends TestCase
     /** @return array{User,Course,string} */
     private function courseWithCover(): array
     {
-        $moderator = new User();
+        $moderator = new User;
         $moderator->forceFill([
             'name_ar' => 'محرر المحتوى',
             'email' => 'cover-editor@example.test',
@@ -105,7 +105,7 @@ final class AdminCourseImageReplacementTransactionTest extends TestCase
             'active' => true,
         ])->save();
 
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'مسودة بصورة',

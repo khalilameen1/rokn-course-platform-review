@@ -59,8 +59,7 @@ final class AdminProductOperationsReadServiceTest extends TestCase
         DB::enableQueryLog();
         DB::flushQueryLog();
         $report = app(AdminProductOperationsReadService::class)->report();
-        $writes = array_filter(DB::getQueryLog(), static fn (array $query): bool =>
-            preg_match('/^\s*(insert|update|delete|replace|create|alter|drop)\b/i', $query['query']) === 1);
+        $writes = array_filter(DB::getQueryLog(), static fn (array $query): bool => preg_match('/^\s*(insert|update|delete|replace|create|alter|drop)\b/i', $query['query']) === 1);
         DB::disableQueryLog();
         self::assertSame([], $writes);
         self::assertSame($incidentBefore, $incident->fresh()->getAttributes());
@@ -175,6 +174,7 @@ final class AdminProductOperationsReadServiceTest extends TestCase
             'available_qualities' => ['auto', '720p'], 'integrity_status' => 'healthy',
             'last_probe_at' => now(), 'last_reconciled_at' => now(),
         ], $state));
+
         return $lesson;
     }
 }

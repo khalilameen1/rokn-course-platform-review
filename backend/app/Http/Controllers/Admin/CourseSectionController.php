@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\CourseSectionInput;
 use App\Models\Course;
 use App\Models\CourseSection;
 use App\Models\Lesson;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminCourseOutlinePresenter;
 use App\Services\AdminCourseSectionApplicationService;
-use App\Http\Requests\Admin\CourseSectionInput;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -22,8 +22,7 @@ class CourseSectionController extends Controller
         private readonly AdminAuthoringCreateIntentService $createIntents,
         private readonly CourseSectionInput $input,
         private readonly AdminCourseOutlinePresenter $outline
-    ) {
-    }
+    ) {}
 
     /**
      * Show the form for creating a new section
@@ -68,7 +67,7 @@ class CourseSectionController extends Controller
             && (int) ($original['module_id'] ?? 0) === (int) $section->module_id
             && (string) ($original['type'] ?? '') === $section->getSectionType();
 
-        if (!$sameCommittedResource) {
+        if (! $sameCommittedResource) {
             return response()->json([
                 'state' => 'superseded',
                 'authoring_version' => (int) $course->authoring_version,
@@ -104,11 +103,15 @@ class CourseSectionController extends Controller
                     }
                 }
             );
-            if ($request->expectsJson()) return response()->json($payload);
+            if ($request->expectsJson()) {
+                return response()->json($payload);
+            }
 
             return $this->authoringRedirect($course)->with('success', 'تم إضافة القسم بنجاح');
         } catch (Throwable $e) {
-            if ($e instanceof ValidationException) throw $e;
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
             report($e);
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'تعذر إضافة القسم الآن'], 500);
@@ -138,14 +141,18 @@ class CourseSectionController extends Controller
         $content = $section->sectionable;
         $hasVideo = $section->getSectionType() === 'lesson' && $content instanceof Lesson
             && trim((string) $content->bunny_video_id) !== '';
-        $edit = $this->input->validate($request, $course, $section, !$hasVideo);
+        $edit = $this->input->validate($request, $course, $section, ! $hasVideo);
         try {
             $payload = $this->sections->update($course, $section, $edit, $request->user());
-            if ($request->expectsJson()) return response()->json($payload);
+            if ($request->expectsJson()) {
+                return response()->json($payload);
+            }
 
             return $this->authoringRedirect($course)->with('success', 'تم تحديث القسم بنجاح');
         } catch (Throwable $e) {
-            if ($e instanceof ValidationException) throw $e;
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
             report($e);
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'تعذر تحديث القسم الآن'], 500);
@@ -165,7 +172,9 @@ class CourseSectionController extends Controller
         $validated = $request->validate(['authoring_version' => 'required|integer|min:1']);
         $result = $this->sections->delete($course, $section, (int) $validated['authoring_version']);
 
-        if ($request->expectsJson()) return response()->json($result);
+        if ($request->expectsJson()) {
+            return response()->json($result);
+        }
 
         return redirect()->route('admin.courses.show', $course)
             ->with('success', 'تم حذف القسم بنجاح');
@@ -210,5 +219,4 @@ class CourseSectionController extends Controller
     {
         return redirect()->route('admin.courses.show', $course);
     }
-
 }

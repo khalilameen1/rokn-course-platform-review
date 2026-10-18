@@ -11,11 +11,12 @@ use App\Http\Requests\Admin\CoursePdfVersionRequest;
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
 use App\Models\CoursePdf;
-use App\Support\CourseAttachmentExternalUrl;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminCoursePdfApplicationService;
 use App\Services\AdminCoursePdfPresenter;
 use App\Services\CourseRevisionResolver;
+use App\Support\CourseAttachmentExternalUrl;
+use App\Support\DownloadFilename;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -29,8 +30,7 @@ final class CoursePdfController extends Controller
     public function __construct(
         private readonly AdminCoursePdfApplicationService $pdfs,
         private readonly AdminAuthoringCreateIntentService $createIntents
-    ) {
-    }
+    ) {}
 
     public function index(Course $course): Response
     {
@@ -71,11 +71,11 @@ final class CoursePdfController extends Controller
         $original = data_get($receipt, 'payload.pdf');
         $receiptVersion = (int) data_get($receipt, 'payload.authoring_version', 0);
         $pdf = $editable->pdfs()->find($receipt['resource_id']);
-        if (!$editable->is_coming_soon
+        if (! $editable->is_coming_soon
             || CourseAuthoringRevision::query()->where('revision_course_id', $editable->id)
                 ->where('status', CourseAuthoringRevision::ARCHIVED)->exists()
-            || !$pdf
-            || !is_array($original)
+            || ! $pdf
+            || ! is_array($original)
             || (int) ($original['id'] ?? 0) !== (int) $pdf->id
             || $receiptVersion < 1
             || $receiptVersion > $version) {
@@ -98,7 +98,7 @@ final class CoursePdfController extends Controller
     {
         $data = $request->validated();
         $file = $request->file('pdf_file');
-        if (($data['source_type'] ?? 'upload') === 'upload' && !$file instanceof UploadedFile) {
+        if (($data['source_type'] ?? 'upload') === 'upload' && ! $file instanceof UploadedFile) {
             throw ValidationException::withMessages(['pdf_file' => 'اختر ملفًا صالحًا']);
         }
 
@@ -208,16 +208,16 @@ final class CoursePdfController extends Controller
                 'Referrer-Policy' => 'no-referrer',
             ]);
         }
-        if (!$pdf->fileExists()) {
+        if (! $pdf->fileExists()) {
             abort(404, 'الملف غير موجود');
         }
 
         return Storage::disk($pdf->storage_disk)->response($pdf->file_path,
-            \App\Support\DownloadFilename::safe((string) $pdf->original_filename, 'document', (string) $pdf->file_extension), [
-            'Content-Type' => (string) $pdf->mime_type,
-            'X-Content-Type-Options' => 'nosniff',
-            'Cache-Control' => 'private, no-store',
-        ], in_array($pdf->mime_type, ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'], true) ? 'inline' : 'attachment');
+            DownloadFilename::safe((string) $pdf->original_filename, 'document', (string) $pdf->file_extension), [
+                'Content-Type' => (string) $pdf->mime_type,
+                'X-Content-Type-Options' => 'nosniff',
+                'Cache-Control' => 'private, no-store',
+            ], in_array($pdf->mime_type, ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'], true) ? 'inline' : 'attachment');
     }
 
     /** @param Closure(): array<string, mixed> $operation */
@@ -261,6 +261,7 @@ final class CoursePdfController extends Controller
     ): void {
         if ($request->expectsJson()) {
             $this->createIntents->completeJson($request, $payload, 200, CoursePdf::class, $pdf->id);
+
             return;
         }
 

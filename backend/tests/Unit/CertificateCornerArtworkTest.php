@@ -13,18 +13,24 @@ final class CertificateCornerArtworkTest extends TestCase
     {
         $image = imagecreatetruecolor(2800, 1900);
         self::assertInstanceOf(\GdImage::class, $image);
-        $paper = 0xfcfcfa;
+        $paper = 0xFCFCFA;
         imagefill($image, 0, 0, $paper);
         try {
-            (new CertificateCornerArtwork())->draw($image);
+            (new CertificateCornerArtwork)->draw($image);
             $upper = $lower = 0;
             $escaped = 0;
             for ($y = 0; $y < 1900; $y++) {
                 for ($x = 0; $x < 2800; $x++) {
-                    if ((imagecolorat($image, $x, $y) & 0xffffff) === $paper) continue;
-                    if ($x >= 2258 && $y < 800) $upper++;
-                    elseif ($x < 400 && $y > 1250) $lower++;
-                    else $escaped++;
+                    if ((imagecolorat($image, $x, $y) & 0xFFFFFF) === $paper) {
+                        continue;
+                    }
+                    if ($x >= 2258 && $y < 800) {
+                        $upper++;
+                    } elseif ($x < 400 && $y > 1250) {
+                        $lower++;
+                    } else {
+                        $escaped++;
+                    }
                 }
             }
             self::assertGreaterThan(1000, $upper);

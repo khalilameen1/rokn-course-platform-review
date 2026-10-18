@@ -19,7 +19,9 @@ final class FinalizeStorePurchases extends Command
             ->limit(max(1, min(100, (int) $this->option('limit'))))->pluck('id');
         $completed = 0;
         foreach ($ids as $id) {
-            if ($finalization->attempt((int) $id)) $completed++;
+            if ($finalization->attempt((int) $id)) {
+                $completed++;
+            }
         }
         $this->info("Google Play finalization: {$completed}/{$ids->count()} completed; remaining receipts retain durable retries.");
 

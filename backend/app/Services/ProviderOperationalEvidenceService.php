@@ -23,8 +23,8 @@ final class ProviderOperationalEvidenceService
             $this->item('firebase', 'Firebase Push', 'student_notifications', 'push_sent_at'),
             ...collect(['google', 'facebook', 'tiktok', 'apple'])
                 ->map(fn (string $provider): array => $this->item(
-                    'social_' . $provider,
-                    'تسجيل ' . match ($provider) {
+                    'social_'.$provider,
+                    'تسجيل '.match ($provider) {
                         'google' => 'Google',
                         'facebook' => 'Facebook',
                         'tiktok' => 'TikTok',
@@ -46,7 +46,7 @@ final class ProviderOperationalEvidenceService
         string $timestamp,
         ?callable $scope = null
     ): array {
-        if (!Schema::hasTable($table) || !Schema::hasColumn($table, $timestamp)) {
+        if (! Schema::hasTable($table) || ! Schema::hasColumn($table, $timestamp)) {
             return ['key' => $key, 'label' => $label, 'last_success_at' => null];
         }
 

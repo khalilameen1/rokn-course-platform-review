@@ -12,6 +12,7 @@ use App\Support\BusinessClock;
 final class LearningRewardConfigurationService
 {
     private const DEFAULT_REWARD_BALANCE_CAP = 1200;
+
     private const DEFAULT_REWARD_CONTRIBUTION_PER_COURSE = 1200;
 
     public function configuration(): array
@@ -78,7 +79,7 @@ final class LearningRewardConfigurationService
         // could race on a fresh installation because the table has no natural
         // singleton key. The dashboard remains the sole explicit creator; the
         // service uses the same migration defaults until that first save.
-        return (new Setting())->forceFill([
+        return (new Setting)->forceFill([
             'reward_balance_cap' => self::DEFAULT_REWARD_BALANCE_CAP,
             'max_reward_contribution_per_course' => self::DEFAULT_REWARD_CONTRIBUTION_PER_COURSE,
         ]);

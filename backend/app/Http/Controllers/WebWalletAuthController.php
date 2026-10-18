@@ -7,8 +7,8 @@ namespace App\Http\Controllers;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\SocialAuthProviderRegistry;
-use App\Services\SocialOAuthAttemptService;
 use App\Services\SocialIdentityGuardService;
+use App\Services\SocialOAuthAttemptService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -43,10 +43,10 @@ final class WebWalletAuthController extends Controller
         ]);
         $verifier = (string) $request->session()->get('wallet.oauth_verifier', '');
         $attempt = isset($input['code']) ? $this->attempts->inspectCompletion($input['code']) : null;
-        if (!$attempt || $verifier === ''
+        if (! $attempt || $verifier === ''
             || $attempt->return_to !== $this->providers->webWalletReturnUrl()
-            || !$this->providers->browserAvailable()->contains($attempt->provider)
-            || !hash_equals((string) $attempt->code_challenge, $this->challenge($verifier))) {
+            || ! $this->providers->browserAvailable()->contains($attempt->provider)
+            || ! hash_equals((string) $attempt->code_challenge, $this->challenge($verifier))) {
             return $this->failed('لم يكتمل تسجيل الدخول حاول مرة أخرى');
         }
         if ($attempt->completion_consumed_at) {
@@ -56,15 +56,17 @@ final class WebWalletAuthController extends Controller
                 $receipt = json_decode(Crypt::decryptString((string) $attempt->encrypted_session_response), true, 8, JSON_THROW_ON_ERROR);
                 $user = User::query()->whereKey($receipt['web_wallet_user_id'] ?? 0)
                     ->where('active', true)->students()->first();
+
                 return $user ? $this->login($request, $user) : $this->failed('انتهت محاولة الدخول حاول مرة أخرى');
             } catch (\Throwable $exception) {
                 report($exception);
+
                 return $this->failed('انتهت محاولة الدخول حاول مرة أخرى');
             }
         }
 
         $claimed = $this->attempts->claimCompletion($input['code']);
-        if (!$claimed) {
+        if (! $claimed) {
             return $this->failed('تسجيل الدخول قيد الإكمال حاول مرة أخرى');
         }
 
@@ -92,23 +94,26 @@ final class WebWalletAuthController extends Controller
                     $receipt = $user ? Crypt::encryptString(json_encode([
                         'web_wallet_user_id' => (int) $user->id,
                     ], JSON_THROW_ON_ERROR)) : null;
-                    if (!$this->attempts->finalizeCompletion($claimed, $receipt)) {
+                    if (! $this->attempts->finalizeCompletion($claimed, $receipt)) {
                         return null;
                     }
+
                     return $user;
                 }
             );
-            if (!$user) {
+            if (! $user) {
                 return $this->failed('استخدم نفس حساب الدخول المرتبط بتطبيق ركن');
             }
 
             return $this->login($request, $user);
         } catch (\DomainException $exception) {
             $this->attempts->finalizeCompletion($claimed);
+
             return $this->failed('انتهت محاولة الدخول حاول مرة أخرى');
         } catch (\Throwable $exception) {
             report($exception);
             $this->attempts->releaseCompletion($claimed);
+
             return $this->failed('تعذّر تسجيل الدخول حاول مرة أخرى');
         }
     }
@@ -118,6 +123,7 @@ final class WebWalletAuthController extends Controller
         Auth::guard('student')->logout();
         $request->session()->forget('wallet');
         $request->session()->regenerate(true);
+
         return redirect()->route('web-wallet.index');
     }
 
@@ -126,6 +132,7 @@ final class WebWalletAuthController extends Controller
         Auth::guard('student')->login($user);
         $request->session()->forget('wallet.intent');
         $request->session()->regenerateToken();
+
         return redirect()->route('web-wallet.index');
     }
 

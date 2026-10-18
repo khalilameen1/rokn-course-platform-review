@@ -25,8 +25,7 @@ final class CourseCodeRedemptionService
         private readonly CourseEntitlementService $access,
         private readonly StudentNotificationService $notifications,
         private readonly CourseEnrollmentWriter $enrollments
-    ) {
-    }
+    ) {}
 
     public function redeem(
         User $user,
@@ -43,7 +42,7 @@ final class CourseCodeRedemptionService
                 // All preview decisions are repeated against these current rows.
                 $learner = User::query()->lockForUpdate()->findOrFail($user->id);
                 $code = CourseCode::query()->where('code', $identifier)->lockForUpdate()->first();
-                if (!$code) {
+                if (! $code) {
                     throw new CourseCodeUnavailable(CourseCodeRejection::NOT_FOUND);
                 }
                 $courseId = $code->targetCourseId();
@@ -54,7 +53,7 @@ final class CourseCodeRedemptionService
                     throw new CourseCodeUnavailable(CourseCodeRejection::LEGACY_RETIRED, $code);
                 }
                 $course = Course::query()->lockForUpdate()->find($courseId);
-                if (!$this->eligibility->courseAvailable($code, $course)) {
+                if (! $this->eligibility->courseAvailable($code, $course)) {
                     throw new CourseCodeUnavailable(CourseCodeRejection::COURSE_UNAVAILABLE, $code);
                 }
                 $code->setRelation('course', $course);
@@ -112,12 +111,12 @@ final class CourseCodeRedemptionService
                 : StudentNotificationService::TYPE_COURSE_ENROLLED,
             titleAr: $grant ? 'تم تفعيل منحتك' : 'الكورس أصبح لك',
             titleEn: $grant ? 'Your grant is active' : 'Course access active',
-            messageAr: $grant ? "مشاهدة الكورس مجانًا\nابدأ عندما يناسبك" : $course->name_ar . "\nابدأ أو أكمل من مكانك",
+            messageAr: $grant ? "مشاهدة الكورس مجانًا\nابدأ عندما يناسبك" : $course->name_ar."\nابدأ أو أكمل من مكانك",
             messageEn: $grant ? 'Watch the complete course for free whenever you are ready.'
-                : 'You can start ' . $course->name_en . ' and resume at any time.',
-            link: '/course/' . $course->id,
+                : 'You can start '.$course->name_en.' and resume at any time.',
+            link: '/course/'.$course->id,
             notifiableType: Course::class, notifiableId: (int) $course->id,
-            deliveryKey: 'course-enrolled:order:' . $orderId,
+            deliveryKey: 'course-enrolled:order:'.$orderId,
             templateVariables: ['course' => (string) ($course->name_ar ?: $course->name_en)]
         ));
     }

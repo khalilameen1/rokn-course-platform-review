@@ -25,7 +25,7 @@ final readonly class CourseCatalogueQueryService
     ) {}
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      */
     public function mobileCatalogue(array $filters): LengthAwarePaginator
     {
@@ -33,7 +33,7 @@ final readonly class CourseCatalogueQueryService
         $page = (int) ($filters['page'] ?? 1);
         $perPage = (int) ($filters['per_page'] ?? 15);
         $revision = $this->revision();
-        $key = 'courses:mobile:' . md5((string) json_encode([
+        $key = 'courses:mobile:'.md5((string) json_encode([
             'catalog_contract' => 9,
             'catalog_revision' => $revision,
             'page' => $page,
@@ -121,8 +121,7 @@ final readonly class CourseCatalogueQueryService
         string $key,
         Closure $build,
         int $ttlSeconds = self::CACHE_TTL_SECONDS
-    ): LengthAwarePaginator
-    {
+    ): LengthAwarePaginator {
         try {
             $cached = Cache::get($key);
             if ($cached instanceof LengthAwarePaginator) {
@@ -170,7 +169,8 @@ final readonly class CourseCatalogueQueryService
      * catalogue controller.
      *
      * @template T
-     * @param Closure():T $read
+     *
+     * @param  Closure():T  $read
      * @return array{changed:bool,revision:int,data:T|null}
      */
     public function readStablePage(
@@ -268,14 +268,11 @@ final readonly class CourseCatalogueQueryService
     {
         return $query
             ->withMin([
-                'accessPlans as catalog_min_price_coins' => fn (Builder $plans) =>
-                    $plans->where('is_active', true),
+                'accessPlans as catalog_min_price_coins' => fn (Builder $plans) => $plans->where('is_active', true),
             ], 'price_coins')
             ->withExists([
-                'accessPlans as catalog_has_active_plans' => fn (Builder $plans) =>
-                    $plans->where('is_active', true),
-                'accessPlans as catalog_chat_available' => fn (Builder $plans) =>
-                    $plans->where('is_active', true)->where('chat_enabled', true),
+                'accessPlans as catalog_has_active_plans' => fn (Builder $plans) => $plans->where('is_active', true),
+                'accessPlans as catalog_chat_available' => fn (Builder $plans) => $plans->where('is_active', true)->where('chat_enabled', true),
             ]);
     }
 
@@ -350,7 +347,7 @@ final readonly class CourseCatalogueQueryService
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      */
     private function applyFilters(Builder $query, array $filters): Builder
     {
@@ -387,6 +384,7 @@ final readonly class CourseCatalogueQueryService
                 $names->where('name_ar', 'like', "%{$literal}%")
                     ->orWhere('name_en', 'like', "%{$literal}%");
             });
+
             return $courses;
         }
 
@@ -437,7 +435,7 @@ final readonly class CourseCatalogueQueryService
         // dedicated discovery endpoint before the shared stable tie-breakers.
         return $courses->orderByRaw(
             'CASE WHEN search_title_normalized = ? THEN 0 WHEN search_title_normalized LIKE ? THEN 1 ELSE 2 END',
-            [$normalized, $normalized . '%']
+            [$normalized, $normalized.'%']
         );
     }
 

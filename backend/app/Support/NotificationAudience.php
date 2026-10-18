@@ -8,8 +8,11 @@ namespace App\Support;
 final readonly class NotificationAudience
 {
     public const ALL = 'all';
+
     public const ENROLLED = 'enrolled';
+
     public const NOT_ENROLLED = 'not_enrolled';
+
     public const MAX_EXPLICIT_USER_IDS = 500;
 
     /** @var list<int> */
@@ -28,7 +31,7 @@ final readonly class NotificationAudience
         $this->userIds = self::normalizeIds($userIds);
         $this->excludeUserIds = self::normalizeIds($excludeUserIds);
 
-        if (!in_array($selector, [self::ALL, self::ENROLLED, self::NOT_ENROLLED], true)) {
+        if (! in_array($selector, [self::ALL, self::ENROLLED, self::NOT_ENROLLED], true)) {
             throw new \InvalidArgumentException('Unsupported notification audience selector.');
         }
         if ($courseId !== null && $courseId <= 0) {

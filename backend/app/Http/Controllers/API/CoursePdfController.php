@@ -11,8 +11,8 @@ use App\Models\User;
 use App\Services\CourseAttachmentService;
 use App\Services\CourseModuleAccessService;
 use App\Services\CourseRevisionResolver;
-use App\Support\ResumableDownloadResponse;
 use App\Support\CourseAttachmentExternalUrl;
+use App\Support\ResumableDownloadResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,16 +29,16 @@ final class CoursePdfController extends Controller
     public function index(int|string $courseId): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user) {
+        if (! $user) {
             return $this->error('سجّل الدخول أولًا', 401);
         }
 
         $course = Course::find($courseId);
-        if (!$course) {
+        if (! $course) {
             return $this->error('الكورس غير متاح', 404);
         }
         $course = $this->revisions->canonicalFor($course);
-        if (!$this->access->hasCourseAccess($user, $course)) {
+        if (! $this->access->hasCourseAccess($user, $course)) {
             return $this->error('هذا الكورس غير مضاف إلى حسابك', 403);
         }
 
@@ -58,15 +58,15 @@ final class CoursePdfController extends Controller
     public function show(int|string $courseId, int|string $pdfId): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user) {
+        if (! $user) {
             return $this->error('سجّل الدخول أولًا', 401);
         }
         $course = Course::query()->find($courseId);
-        if (!$course) {
+        if (! $course) {
             return $this->error('الكورس غير متاح', 404);
         }
         $course = $this->revisions->canonicalFor($course);
-        if (!$this->access->hasCourseAccess($user, $course)) {
+        if (! $this->access->hasCourseAccess($user, $course)) {
             return $this->error('هذا الكورس غير مضاف إلى حسابك', 403);
         }
 
@@ -77,7 +77,7 @@ final class CoursePdfController extends Controller
             ->where('course_id', $course->id)
             ->where('is_active', true)
             ->first();
-        if (!$pdf) {
+        if (! $pdf) {
             return $this->error('المرفق غير متاح', 404);
         }
 
@@ -94,8 +94,7 @@ final class CoursePdfController extends Controller
         Request $request,
         int|string $course,
         int|string $pdf
-    ): Response
-    {
+    ): Response {
         $user = $this->access->userFromOwnerClaim($request->query('owner'));
         abort_unless($user, 403);
 

@@ -11,7 +11,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PaymentReconciliationFinding extends Model
 {
     public const STATE_OPEN = 'open';
+
     public const STATE_RESOLVED = 'resolved';
+
     public const STATE_IGNORED = 'ignored';
 
     protected $fillable = [

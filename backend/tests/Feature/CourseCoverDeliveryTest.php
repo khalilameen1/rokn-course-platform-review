@@ -110,7 +110,9 @@ final class CourseCoverDeliveryTest extends TestCase
         foreach (AccountFileDeletion::query()->get() as $row) {
             (new DeleteAccountFile((int) $row->id))->handle($references);
         }
-        foreach ($cover as $path) Storage::disk('public')->assertMissing($path);
+        foreach ($cover as $path) {
+            Storage::disk('public')->assertMissing($path);
+        }
     }
 
     public function test_existing_shared_original_is_backfilled_once_and_legacy_api_falls_back_until_then(): void

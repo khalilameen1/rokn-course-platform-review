@@ -24,7 +24,9 @@ final class DeliverOutboxEvent implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 5;
+
     public int $timeout = 90;
+
     public bool $failOnTimeout = true;
 
     public function __construct(public readonly int $outboxEventId)
@@ -46,11 +48,12 @@ final class DeliverOutboxEvent implements ShouldQueue
         }
         if (is_int($claim)) {
             $this->release($claim);
+
             return;
         }
 
         $event = OutboxEvent::query()->find($this->outboxEventId);
-        if (!$event) {
+        if (! $event) {
             return;
         }
 
@@ -122,7 +125,7 @@ final class DeliverOutboxEvent implements ShouldQueue
         return DB::transaction(function (): OutboxEvent|string|int|null {
             $event = OutboxEvent::query()->lockForUpdate()->find($this->outboxEventId);
             if (
-                !$event
+                ! $event
                 || in_array($event->status, [
                     OutboxEvent::STATUS_DELIVERED,
                     OutboxEvent::STATUS_FAILED,
@@ -151,7 +154,7 @@ final class DeliverOutboxEvent implements ShouldQueue
                         'available_at' => null,
                         'last_error_fingerprint' => hash(
                             'sha256',
-                            'blocked-by-predecessor:' . $predecessor->id
+                            'blocked-by-predecessor:'.$predecessor->id
                         ),
                     ])->save();
 
@@ -212,6 +215,7 @@ final class DeliverOutboxEvent implements ShouldQueue
             }
         } catch (\InvalidArgumentException $exception) {
             $this->failDelivery($delivery, null, $exception);
+
             return;
         }
 
@@ -275,6 +279,7 @@ final class DeliverOutboxEvent implements ShouldQueue
                 'delivered_at' => now(),
                 'error_fingerprint' => null,
             ])->save();
+
             return;
         }
 

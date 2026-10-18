@@ -17,7 +17,7 @@ final class DashboardAccountSettingsTest extends TestCase
 
     public function test_moderator_can_update_own_login_without_losing_the_current_session(): void
     {
-        $moderator = new User();
+        $moderator = new User;
         $moderator->forceFill([
             'name_ar' => 'محرر المحتوى',
             'email' => 'moderator@example.test',
@@ -47,7 +47,7 @@ final class DashboardAccountSettingsTest extends TestCase
 
     public function test_credentials_do_not_change_without_the_correct_current_password(): void
     {
-        $moderator = new User();
+        $moderator = new User;
         $moderator->forceFill([
             'name_ar' => 'محرر المحتوى',
             'email' => 'moderator@example.test',

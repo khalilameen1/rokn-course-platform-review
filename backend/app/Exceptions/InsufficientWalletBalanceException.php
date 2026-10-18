@@ -9,6 +9,7 @@ use RuntimeException;
 class InsufficientWalletBalanceException extends RuntimeException
 {
     public int $required;
+
     public int $balance;
 
     public function __construct(int $required, int $balance)

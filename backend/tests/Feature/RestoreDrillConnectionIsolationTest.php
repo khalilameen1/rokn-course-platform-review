@@ -111,7 +111,7 @@ final class RestoreDrillConnectionIsolationTest extends TestCase
         $connection->expects(self::once())->method('selectOne')
             ->with('SELECT DATABASE() AS database_name')
             ->willReturn((object) ['database_name' => $actual]);
-        if (!$accepted) {
+        if (! $accepted) {
             $this->expectException(RuntimeException::class);
             $this->expectExceptionMessage('Restore connection is not bound to the disposable database.');
         }

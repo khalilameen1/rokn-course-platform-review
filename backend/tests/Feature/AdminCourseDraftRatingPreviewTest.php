@@ -50,7 +50,7 @@ final class AdminCourseDraftRatingPreviewTest extends TestCase
 
     private function user(string $role, string $email): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'name_ar' => $role === 'moderator' ? 'محرر المحتوى' : 'طالب ركن',
             'email' => $email,
@@ -63,7 +63,7 @@ final class AdminCourseDraftRatingPreviewTest extends TestCase
 
     private function course(string $name, bool $draft, bool $visible): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => $name,
@@ -80,7 +80,7 @@ final class AdminCourseDraftRatingPreviewTest extends TestCase
 
     private function rating(Course $course, User $student, int $value): void
     {
-        $rating = new CourseRating();
+        $rating = new CourseRating;
         $rating->forceFill([
             'course_id' => $course->id,
             'user_id' => $student->id,

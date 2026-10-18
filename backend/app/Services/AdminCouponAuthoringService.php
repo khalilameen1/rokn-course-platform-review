@@ -20,17 +20,18 @@ final readonly class AdminCouponAuthoringService
         private AdminContentInventoryReadService $inventory,
         private StoredFileUploadService $uploads,
         private StoredFileDeletionService $cleanup
-    ) {
-    }
+    ) {}
 
     /** @param array<string,mixed> $validated
-     *  @param Closure(Coupon):void $complete Receipt completion inside the domain transaction.
+     * @param  Closure(Coupon):void  $complete  Receipt completion inside the domain transaction.
      */
     public function create(array $validated, string $requestId, ?UploadedFile $image, Closure $complete): Coupon
     {
         $payload = $this->payload($validated);
         $existing = Coupon::withTrashed()->where('authoring_request_id', $requestId)->first();
-        if ($existing) $this->assertCreateReplay($existing, $payload, $image, $requestId);
+        if ($existing) {
+            $this->assertCreateReplay($existing, $payload, $image, $requestId);
+        }
         // Old releases checkpointed the coupon/photo before the receipt. Keep
         // that owned image on resume; unowned orphan bytes are never reused.
         $ownedPath = $existing?->photo?->path;
@@ -52,7 +53,7 @@ final readonly class AdminCouponAuthoringService
                 }
                 // An owned image observed before the transaction may have been
                 // removed by another editor. Never accept a receipt without it.
-                if ($image !== null && !$coupon->photo()->exists()) {
+                if ($image !== null && ! $coupon->photo()->exists()) {
                     throw ValidationException::withMessages([
                         'authoring_request_id' => 'تغيّرت صورة الكود أعد فتح النموذج ثم أرسل',
                     ]);
@@ -63,7 +64,9 @@ final readonly class AdminCouponAuthoringService
                 return $coupon;
             }, 3);
         } catch (\Throwable $exception) {
-            if ($staged !== null) $this->cleanup->deleteOrQueue('public', $staged);
+            if ($staged !== null) {
+                $this->cleanup->deleteOrQueue('public', $staged);
+            }
             throw $exception;
         }
     }
@@ -77,7 +80,7 @@ final readonly class AdminCouponAuthoringService
             DB::transaction(function () use ($coupon, $payload, $editorVersion, $path): void {
                 // Same lock order as checkout: course, then coupon. Allow an
                 // invalid legacy target to be disabled, never newly activated.
-                $retainingDisabled = !(bool) ($payload['active'] ?? false)
+                $retainingDisabled = ! (bool) ($payload['active'] ?? false)
                     && $payload['course_id'] === ($coupon->course_id === null ? null : (int) $coupon->course_id);
                 $this->lockCourse($payload['course_id'], $retainingDisabled);
                 $locked = Coupon::query()->whereKey($coupon->id)->lockForUpdate()->firstOrFail();
@@ -90,7 +93,9 @@ final readonly class AdminCouponAuthoringService
                 }
             }, 3);
         } catch (\Throwable $exception) {
-            if ($path !== null) $this->cleanup->deleteOrQueue('public', $path);
+            if ($path !== null) {
+                $this->cleanup->deleteOrQueue('public', $path);
+            }
             throw $exception;
         }
     }
@@ -106,9 +111,11 @@ final readonly class AdminCouponAuthoringService
 
     private function lockCourse(?int $id, bool $allowRetainedInactiveTarget = false): void
     {
-        if ($id === null) return;
+        if ($id === null) {
+            return;
+        }
         $course = $this->inventory->courses()->whereKey($id)->lockForUpdate()->first();
-        if (!$course && !$allowRetainedInactiveTarget) {
+        if (! $course && ! $allowRetainedInactiveTarget) {
             throw ValidationException::withMessages([
                 'course_id' => 'اختر الكورس الأصلي وليس نسخة تعديل أو أرشيف',
             ]);
@@ -117,7 +124,9 @@ final readonly class AdminCouponAuthoringService
 
     private function stageImage(?UploadedFile $image, string $identityPrefix): ?string
     {
-        if ($image === null) return null;
+        if ($image === null) {
+            return null;
+        }
 
         return $this->uploads->storeTrackedUpload(
             $image, 'coupons', 'public', 60,
@@ -140,7 +149,7 @@ final readonly class AdminCouponAuthoringService
 
     private function assertCurrentVersion(Coupon $coupon, string $version, string $operation): void
     {
-        if (!hash_equals(CouponEditorVersion::for($coupon), $version)) {
+        if (! hash_equals(CouponEditorVersion::for($coupon), $version)) {
             throw ValidationException::withMessages([
                 'editor_version' => "تغيّر كود الخصم منذ فتح الصفحة\nأعد تحميله قبل {$operation}",
             ]);
@@ -150,7 +159,7 @@ final readonly class AdminCouponAuthoringService
     private function assertCreateReplay(Coupon $coupon, array $payload, ?UploadedFile $image, string $requestId): void
     {
         $candidate = new Coupon($payload);
-        $same = !$coupon->trashed();
+        $same = ! $coupon->trashed();
         foreach (['name_ar', 'name_en', 'code', 'course_id', 'balance', 'max_redemptions', 'active'] as $field) {
             $same = $same && (string) ($coupon->{$field} ?? '') === (string) ($candidate->{$field} ?? '');
         }
@@ -166,7 +175,7 @@ final readonly class AdminCouponAuthoringService
                     'admin-coupon|'.strtolower($requestId).'|'.hash_file('sha256', $image->getRealPath())
                 ));
         }
-        if (!$same) {
+        if (! $same) {
             throw ValidationException::withMessages([
                 'authoring_request_id' => "تغيّرت بيانات الكود\nأعد فتح النموذج ثم أرسل",
             ]);

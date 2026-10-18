@@ -6,8 +6,8 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Services\PortfolioShareIdentityService;
 use App\Services\PortfolioModerationService;
+use App\Services\PortfolioShareIdentityService;
 use App\Services\SafeExternalUrl;
 use App\Support\RoknPublicUrl;
 use App\Support\UnicodeText;
@@ -20,9 +20,7 @@ final class PortfolioProfileController extends Controller
     public function __construct(
         private PortfolioShareIdentityService $portfolioShares,
         private PortfolioModerationService $moderation
-    )
-    {
-    }
+    ) {}
 
     public function show(): JsonResponse
     {
@@ -59,7 +57,7 @@ final class PortfolioProfileController extends Controller
         if (is_array($request->input('portfolio_links'))) {
             $request->merge([
                 'portfolio_links' => array_map(static function ($link): array {
-                    if (!is_array($link)) {
+                    if (! is_array($link)) {
                         return [];
                     }
                     if (isset($link['label']) && is_string($link['label'])) {
@@ -114,7 +112,7 @@ final class PortfolioProfileController extends Controller
             'links' => collect($user->portfolio_links ?? [])
                 ->map(function ($link): ?array {
                     $safeUrl = SafeExternalUrl::sanitize($link['url'] ?? null);
-                    if (!$safeUrl) {
+                    if (! $safeUrl) {
                         return null;
                     }
 

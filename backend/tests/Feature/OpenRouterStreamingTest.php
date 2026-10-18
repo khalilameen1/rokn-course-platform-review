@@ -155,7 +155,9 @@ final class OpenRouterStreamingTest extends TestCase
             app(OpenRouterService::class)->chat(
                 'test/model', [['role' => 'user', 'content' => 'السؤال']], .3, 200,
                 null, null,
-                function (string $text) use (&$partials): void { $partials[] = $text; }
+                function (string $text) use (&$partials): void {
+                    $partials[] = $text;
+                }
             );
             self::fail('Malformed frames cannot complete a generation.');
         } catch (AiProviderUnavailableException $exception) {

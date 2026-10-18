@@ -11,6 +11,7 @@ use Illuminate\Console\Command;
 final class ReconcileOpenRouterCosts extends Command
 {
     protected $signature = 'ai:reconcile-provider-costs {--limit=10}';
+
     protected $description = 'Read missing OpenRouter generation billing receipts without generating answers';
 
     public function handle(OpenRouterCostReconciliationService $service): int
@@ -33,8 +34,11 @@ final class ReconcileOpenRouterCosts extends Command
             ->limit(max(1, min(25, (int) $this->option('limit'))))
             ->pluck('id');
         $counts = ['confirmed' => 0, 'pending' => 0, 'skipped' => 0];
-        foreach ($events as $id) $counts[$service->reconcile((int) $id)]++;
+        foreach ($events as $id) {
+            $counts[$service->reconcile((int) $id)]++;
+        }
         $this->line(json_encode($counts, JSON_THROW_ON_ERROR));
+
         return self::SUCCESS;
     }
 }

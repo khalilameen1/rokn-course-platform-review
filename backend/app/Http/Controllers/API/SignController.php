@@ -2,24 +2,28 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Auth\SocialLoginCredentials;
 use App\Exceptions\SocialProviderUnavailableException;
 use App\Http\Controllers\Controller;
-use App\Auth\SocialLoginCredentials;
 use App\Http\Requests\API\ClientDeviceInput;
-use App\Http\Responses\SocialLoginResponse;
-use App\Services\SocialLoginAction;
-use App\Services\PushDeviceRegistrationService;
 use App\Http\Resources\StudentProfileResource;
-use App\Models\SocialAccount;
-use App\Models\Setting;
+use App\Http\Responses\SocialLoginResponse;
 use App\Models\ApiToken;
+use App\Models\Setting;
+use App\Models\SocialAccount;
 use App\Models\User;
+use App\Models\UserDeviceToken;
+use App\Services\AccountDeletionService;
+use App\Services\PushDeviceRegistrationService;
 use App\Services\SocialAuthProviderRegistry;
+use App\Services\SocialLoginAction;
 use App\Services\WelcomeRewardOfferService;
 use App\Support\RoknLocale;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class SignController extends Controller
@@ -34,8 +38,7 @@ class SignController extends Controller
     /**
      * Social Login with provider-side token verification.
      *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function socialLogin(Request $request)
     {
@@ -166,11 +169,17 @@ class SignController extends Controller
 
     private function recommendationBadge(?string $provider, int $coins, string $authored, string $fallback): ?string
     {
-        if (!$provider) return null;
-        if ($authored === '') return $fallback;
+        if (! $provider) {
+            return null;
+        }
+        if ($authored === '') {
+            return $fallback;
+        }
         // A preference badge is independent of a reward. Only explicit reward
         // templates require an offer the canonical ledger can actually credit.
-        if ($coins <= 0 && str_contains($authored, '{coins}')) return null;
+        if ($coins <= 0 && str_contains($authored, '{coins}')) {
+            return null;
+        }
 
         return str_replace('{coins}', (string) $coins, $authored);
     }
@@ -178,8 +187,7 @@ class SignController extends Controller
     /**
      * Logout user
      *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function logout(Request $request)
     {
@@ -190,7 +198,7 @@ class SignController extends Controller
         /** @var ApiToken|null $currentToken */
         $currentToken = $request->attributes->get('rokn_api_token');
         DB::transaction(function () use ($user, $validated, $currentToken): void {
-            $pushTokens = \App\Models\UserDeviceToken::query()
+            $pushTokens = UserDeviceToken::query()
                 ->where('user_id', $user->id);
             $currentDeviceId = trim((string) $currentToken?->device_id);
             $hasReplacementOnCurrentDevice = $currentToken !== null
@@ -200,9 +208,9 @@ class SignController extends Controller
                     ->where('token', '<>', $currentToken->getKey())
                     ->where('device_id', $currentDeviceId)
                     ->exists();
-            if ($currentDeviceId !== '' && !$hasReplacementOnCurrentDevice) {
+            if ($currentDeviceId !== '' && ! $hasReplacementOnCurrentDevice) {
                 $pushTokens->where('device_id', $currentDeviceId)->delete();
-            } elseif ($currentDeviceId === '' && !empty($validated['device_token'])) {
+            } elseif ($currentDeviceId === '' && ! empty($validated['device_token'])) {
                 $pushTokens->where('device_token', $validated['device_token'])->delete();
             }
 
@@ -220,8 +228,7 @@ class SignController extends Controller
     /**
      * Delete user account
      *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function deleteAccount(Request $request)
     {
@@ -238,10 +245,10 @@ class SignController extends Controller
         }
 
         try {
-            $cleanup = app(\App\Services\AccountDeletionService::class)->delete($user);
+            $cleanup = app(AccountDeletionService::class)->delete($user);
 
             if ($cleanup['local_cleanup_pending'] || $cleanup['remote_portfolio_cleanup_pending']) {
-                \Illuminate\Support\Facades\Log::notice('Deleted account has deferred file cleanup.', [
+                Log::notice('Deleted account has deferred file cleanup.', [
                     'deleted_user_id' => $user->id,
                     'local_cleanup_pending' => $cleanup['local_cleanup_pending'],
                     'remote_portfolio_cleanup_pending' => $cleanup['remote_portfolio_cleanup_pending'],
@@ -249,6 +256,7 @@ class SignController extends Controller
             }
 
             $cleanupPending = $cleanup['local_cleanup_pending'] || $cleanup['remote_portfolio_cleanup_pending'];
+
             return response()->json([
                 'status' => $cleanupPending ? 202 : 200,
                 'success' => true,
@@ -318,8 +326,7 @@ class SignController extends Controller
     /**
      * Standalone endpoint to save or refresh device token
      *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function updateDeviceToken(Request $request)
     {
@@ -345,7 +352,7 @@ class SignController extends Controller
             'data' => [
                 'device_token' => $request->input('device_token'),
                 'user' => (new StudentProfileResource($user))->withoutLearningSnapshot(),
-            ]
+            ],
         ]);
     }
 
@@ -362,7 +369,7 @@ class SignController extends Controller
 
         $user = $request->user();
 
-        \App\Models\UserDeviceToken::query()
+        UserDeviceToken::query()
             ->where('user_id', $user->id)
             ->where('device_token', $validated['device_token'])
             ->delete();

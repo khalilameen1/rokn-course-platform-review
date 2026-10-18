@@ -6,6 +6,7 @@ namespace Tests\Feature\API;
 
 use App\Models\CourseAuthoringRevision;
 use App\Models\Lesson;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 final class SavedLessonRevisionAcknowledgementTest extends ApiTestCase
@@ -43,7 +44,7 @@ final class SavedLessonRevisionAcknowledgementTest extends ApiTestCase
 
     public function test_historical_reel_save_acknowledges_requested_identity_after_committing_current_membership(): void
     {
-        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-09-09T00:00:00+00:00'));
+        $this->travelTo(Carbon::parse('2026-09-09T00:00:00+00:00'));
         $this->publishReplacement();
 
         $response = $this->actingAs($this->user, 'api')

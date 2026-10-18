@@ -12,14 +12,16 @@ use Throwable;
 final class LocalHttpServer
 {
     private string $directory;
+
     private string $address;
+
     public readonly Process $process;
 
     /** @param list<string> $arguments */
     public function __construct(string $script, array $arguments = [])
     {
         $this->directory = sys_get_temp_dir().DIRECTORY_SEPARATOR.'rokn-http-'.bin2hex(random_bytes(12));
-        if (!mkdir($this->directory, 0700)) {
+        if (! mkdir($this->directory, 0700)) {
             throw new RuntimeException('Cannot create the local HTTP fixture directory.');
         }
         $readyFile = $this->directory.DIRECTORY_SEPARATOR.'ready';
@@ -37,6 +39,7 @@ final class LocalHttpServer
                         throw new RuntimeException('Invalid local HTTP fixture address.');
                     }
                     $this->address = $address;
+
                     return;
                 }
                 // Do not use stdout as a readiness protocol. Symfony uses file

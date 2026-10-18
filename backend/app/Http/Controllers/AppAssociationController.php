@@ -9,9 +9,7 @@ use Illuminate\Http\JsonResponse;
 
 final class AppAssociationController extends Controller
 {
-    public function __construct(private readonly AppReleasePolicyService $releasePolicy)
-    {
-    }
+    public function __construct(private readonly AppReleasePolicyService $releasePolicy) {}
 
     public function android(): JsonResponse
     {
@@ -22,9 +20,9 @@ final class AppAssociationController extends Controller
         ))));
 
         abort_if(
-            !$this->validAndroidPackage($package)
+            ! $this->validAndroidPackage($package)
                 || $fingerprints === []
-                || array_filter($fingerprints, fn (string $value): bool => !$this->validAndroidFingerprint($value)) !== [],
+                || array_filter($fingerprints, fn (string $value): bool => ! $this->validAndroidFingerprint($value)) !== [],
             404
         );
 
@@ -47,7 +45,7 @@ final class AppAssociationController extends Controller
 
         abort_if(
             $appIds === []
-                || array_filter($appIds, fn (string $value): bool => !$this->validAppleAppId($value)) !== [],
+                || array_filter($appIds, fn (string $value): bool => ! $this->validAppleAppId($value)) !== [],
             404
         );
 

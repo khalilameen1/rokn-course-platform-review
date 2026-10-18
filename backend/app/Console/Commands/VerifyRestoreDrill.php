@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Services\BunnyService;
 use App\Services\BunnyDeliveryService;
+use App\Services\BunnyService;
 use App\Services\RecoveryEvidenceService;
 use Illuminate\Console\Command;
 use Illuminate\Database\ConnectionInterface;
@@ -39,10 +39,10 @@ final class VerifyRestoreDrill extends Command
         $database = (string) $this->option('database');
         $confirmation = (string) $this->option('confirm');
         $sampleLimit = max(1, min(100, (int) $this->option('media-samples')));
-        if ($dump === '' || !is_file($dump) || !is_readable($dump)) {
+        if ($dump === '' || ! is_file($dump) || ! is_readable($dump)) {
             return $this->failVerification('Provide a readable absolute --dump path.');
         }
-        if (!preg_match('/\Arokn_restore_verify_[a-z0-9_]+\z/', $database)) {
+        if (! preg_match('/\Arokn_restore_verify_[a-z0-9_]+\z/', $database)) {
             return $this->failVerification('--database must be a disposable name beginning rokn_restore_verify_.');
         }
         if ($confirmation !== 'RESTORE_'.$database) {
@@ -56,15 +56,15 @@ final class VerifyRestoreDrill extends Command
         if ($database === (string) ($connection['database'] ?? '')) {
             return $this->failVerification('Refusing to restore over the configured primary database.');
         }
-        if (!preg_match('/\.(?:sql|sql\.gz)\z/i', $dump)) {
+        if (! preg_match('/\.(?:sql|sql\.gz)\z/i', $dump)) {
             return $this->failVerification('Backup must end in .sql or .sql.gz.');
         }
 
         $backupEvidence = $evidence->readSigned((string) config('operations.backup_evidence_path'));
-        if (!is_array($backupEvidence)) {
+        if (! is_array($backupEvidence)) {
             return $this->failVerification('A valid signed backup artifact record is required before a restore drill.');
         }
-        if (!hash_equals((string) ($backupEvidence['artifact_sha256'] ?? ''), (string) hash_file('sha256', $dump))) {
+        if (! hash_equals((string) ($backupEvidence['artifact_sha256'] ?? ''), (string) hash_file('sha256', $dump))) {
             return $this->failVerification('The restore artifact does not match the signed backup record.');
         }
 
@@ -108,8 +108,12 @@ final class VerifyRestoreDrill extends Command
             $tables = collect($restored->select('SHOW TABLES'))
                 ->map(fn (object $row): string => (string) array_values((array) $row)[0])
                 ->sort()->values();
-            if ($tables->isEmpty()) throw new RuntimeException('Restore completed without any tables.');
-            if (!$schema->hasTable('migrations')) throw new RuntimeException('Restore has no migration history.');
+            if ($tables->isEmpty()) {
+                throw new RuntimeException('Restore completed without any tables.');
+            }
+            if (! $schema->hasTable('migrations')) {
+                throw new RuntimeException('Restore has no migration history.');
+            }
 
             $marker = $this->verifyRestoredMarker($restored, $schema, $backupEvidence);
 
@@ -181,6 +185,7 @@ final class VerifyRestoreDrill extends Command
             }
 
             $this->info('Restore drill verified. Signed evidence: '.$evidencePath);
+
             return self::SUCCESS;
         } catch (Throwable $exception) {
             return $this->failVerification('Restore drill failed: '.$exception->getMessage());
@@ -188,7 +193,7 @@ final class VerifyRestoreDrill extends Command
             config(['database.default' => $originalDefault]);
             DB::purge('restore_verify');
             DB::purge($originalDefault);
-            if (!(bool) $this->option('keep')) {
+            if (! (bool) $this->option('keep')) {
                 try {
                     $this->mysql($binary, $connection, ['-e', 'DROP DATABASE IF EXISTS `'.$database.'`']);
                 } catch (Throwable) {
@@ -210,8 +215,8 @@ final class VerifyRestoreDrill extends Command
         }
         $host = $connection['host'] ?? null;
         $socket = $connection['unix_socket'] ?? '';
-        if (!is_string($host) || trim($host) === '' || strtolower(trim($host)) === 'localhost'
-            || !is_string($socket) || trim($socket) !== '') {
+        if (! is_string($host) || trim($host) === '' || strtolower(trim($host)) === 'localhost'
+            || ! is_string($socket) || trim($socket) !== '') {
             throw new RuntimeException('Restore verification requires one explicit TCP host without a Unix socket.');
         }
 
@@ -221,7 +226,7 @@ final class VerifyRestoreDrill extends Command
     private function assertRestoredDatabase(ConnectionInterface $connection, string $database): void
     {
         $identity = $connection->selectOne('SELECT DATABASE() AS database_name');
-        if (!is_object($identity) || ($identity->database_name ?? null) !== $database) {
+        if (! is_object($identity) || ($identity->database_name ?? null) !== $database) {
             throw new RuntimeException('Restore connection is not bound to the disposable database.');
         }
     }
@@ -231,24 +236,25 @@ final class VerifyRestoreDrill extends Command
         ConnectionInterface $connection,
         Builder $schema,
         array $backupEvidence
-    ): array
-    {
-        if (!$schema->hasTable('recovery_markers')) {
+    ): array {
+        if (! $schema->hasTable('recovery_markers')) {
             throw new RuntimeException('Backup predates the recovery marker contract.');
         }
         $marker = $connection->table('recovery_markers')->where('scope', 'production')->first();
-        if (!$marker) throw new RuntimeException('Backup has no production recovery marker.');
+        if (! $marker) {
+            throw new RuntimeException('Backup has no production recovery marker.');
+        }
 
         $generation = (string) $marker->generation;
         $keyId = (string) $marker->encryption_key_id;
-        if ($generation === '' || !hash_equals($generation, (string) ($backupEvidence['marker_generation'] ?? ''))) {
+        if ($generation === '' || ! hash_equals($generation, (string) ($backupEvidence['marker_generation'] ?? ''))) {
             throw new RuntimeException('Backup marker generation does not match its signed artifact record.');
         }
-        if ($keyId === '' || !hash_equals($keyId, trim((string) config('operations.recovery_encryption_key_id')))) {
+        if ($keyId === '' || ! hash_equals($keyId, trim((string) config('operations.recovery_encryption_key_id')))) {
             throw new RuntimeException('The restored data requires a different encryption-key identity.');
         }
         $probe = Crypt::decryptString((string) $marker->encrypted_probe);
-        if (!hash_equals((string) $marker->probe_hash, hash('sha256', $probe))) {
+        if (! hash_equals((string) $marker->probe_hash, hash('sha256', $probe))) {
             throw new RuntimeException('APP_KEY cannot decrypt the restored recovery marker.');
         }
 
@@ -264,7 +270,7 @@ final class VerifyRestoreDrill extends Command
         $ran = array_fill_keys($connection->table('migrations')->pluck('migration')->all(), true);
         $files = glob(database_path('migrations/*.php')) ?: [];
 
-        return count(array_filter($files, static fn (string $file): bool => !isset($ran[pathinfo($file, PATHINFO_FILENAME)])));
+        return count(array_filter($files, static fn (string $file): bool => ! isset($ran[pathinfo($file, PATHINFO_FILENAME)])));
     }
 
     private function financialIssueCount(ConnectionInterface $connection, Builder $schema): int
@@ -360,7 +366,9 @@ final class VerifyRestoreDrill extends Command
         ];
         $count = 0;
         foreach ($relations as [$child, $column, $parent]) {
-            if (!$schema->hasTable($child) || !$schema->hasTable($parent) || !$schema->hasColumn($child, $column)) continue;
+            if (! $schema->hasTable($child) || ! $schema->hasTable($parent) || ! $schema->hasColumn($child, $column)) {
+                continue;
+            }
             $count += $connection->table("{$child} as child")
                 ->leftJoin("{$parent} as parent", 'parent.id', '=', "child.{$column}")
                 ->whereNotNull("child.{$column}")
@@ -378,8 +386,7 @@ final class VerifyRestoreDrill extends Command
         BunnyService $bunny,
         BunnyDeliveryService $delivery,
         int $limit
-    ): array
-    {
+    ): array {
         $sampled = 0;
         $missing = 0;
         $families = [
@@ -390,18 +397,28 @@ final class VerifyRestoreDrill extends Command
             ['photos', 'preview_path', null, null, 'public'],
         ];
         foreach ($families as [$table, $pathColumn, $diskColumn, $statusColumn, $defaultDisk]) {
-            if (!$schema->hasTable($table) || !$schema->hasColumn($table, $pathColumn)) continue;
+            if (! $schema->hasTable($table) || ! $schema->hasColumn($table, $pathColumn)) {
+                continue;
+            }
             $query = $connection->table($table)->whereNotNull($pathColumn)->where($pathColumn, '<>', '');
-            if ($statusColumn && $schema->hasColumn($table, $statusColumn)) $query->where($statusColumn, 'active');
-            if ($schema->hasColumn($table, 'deleted_at')) $query->whereNull('deleted_at');
+            if ($statusColumn && $schema->hasColumn($table, $statusColumn)) {
+                $query->where($statusColumn, 'active');
+            }
+            if ($schema->hasColumn($table, 'deleted_at')) {
+                $query->whereNull('deleted_at');
+            }
             foreach ($query->orderBy('id')->limit($limit)->get() as $row) {
                 $path = trim((string) $row->{$pathColumn});
-                if ($path === 'pending') continue;
+                if ($path === 'pending') {
+                    continue;
+                }
                 $disk = $diskColumn ? trim((string) ($row->{$diskColumn} ?? '')) : '';
                 $disk = $disk !== '' ? $disk : $defaultDisk;
                 $sampled++;
                 try {
-                    if (!is_array(config("filesystems.disks.{$disk}")) || !Storage::disk($disk)->exists($path)) $missing++;
+                    if (! is_array(config("filesystems.disks.{$disk}")) || ! Storage::disk($disk)->exists($path)) {
+                        $missing++;
+                    }
                 } catch (Throwable) {
                     $missing++;
                 }
@@ -418,7 +435,9 @@ final class VerifyRestoreDrill extends Command
                 $disk = trim((string) data_get($metadata, 'storage_disk', 'local')) ?: 'local';
                 $sampled++;
                 try {
-                    if (!is_array(config("filesystems.disks.{$disk}")) || !Storage::disk($disk)->exists((string) $row->submission_file)) $missing++;
+                    if (! is_array(config("filesystems.disks.{$disk}")) || ! Storage::disk($disk)->exists((string) $row->submission_file)) {
+                        $missing++;
+                    }
                 } catch (Throwable) {
                     $missing++;
                 }
@@ -430,11 +449,15 @@ final class VerifyRestoreDrill extends Command
             ['portfolio_media', 'file_path'],
             ['portfolio_media', 'thumbnail_path'],
         ] as [$table, $column]) {
-            if (!$schema->hasTable($table) || !$schema->hasColumn($table, $column)) continue;
+            if (! $schema->hasTable($table) || ! $schema->hasColumn($table, $column)) {
+                continue;
+            }
             foreach ($connection->table($table)->whereNotNull($column)->where($column, '<>', '')
                 ->orderBy('id')->limit($limit)->pluck($column) as $path) {
                 $sampled++;
-                if (!$this->bunnyObjectExists($delivery, (string) $path)) $missing++;
+                if (! $this->bunnyObjectExists($delivery, (string) $path)) {
+                    $missing++;
+                }
             }
         }
 
@@ -442,7 +465,9 @@ final class VerifyRestoreDrill extends Command
             foreach ($connection->table('lessons')->whereNotNull('bunny_video_id')
                 ->where('bunny_video_id', '<>', '')->orderBy('id')->limit($limit)->pluck('bunny_video_id') as $guid) {
                 $sampled++;
-                if ($bunny->getRemoteVideoDetails((string) $guid) === null) $missing++;
+                if ($bunny->getRemoteVideoDetails((string) $guid) === null) {
+                    $missing++;
+                }
             }
         }
 
@@ -452,7 +477,9 @@ final class VerifyRestoreDrill extends Command
     private function bunnyObjectExists(BunnyDeliveryService $delivery, string $path): bool
     {
         $url = $delivery->storageUrl($path, 300);
-        if (!is_string($url) || $url === '') return false;
+        if (! is_string($url) || $url === '') {
+            return false;
+        }
 
         try {
             return Http::connectTimeout(5)
@@ -483,17 +510,22 @@ final class VerifyRestoreDrill extends Command
     private function shell(string $command, array $environment): void
     {
         $process = proc_open(['sh', '-lc', $command], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, base_path(), $environment + $_ENV);
-        if (!is_resource($process)) throw new RuntimeException('Could not execute MySQL client.');
+        if (! is_resource($process)) {
+            throw new RuntimeException('Could not execute MySQL client.');
+        }
         $stdout = stream_get_contents($pipes[1]);
         $stderr = stream_get_contents($pipes[2]);
         fclose($pipes[1]);
         fclose($pipes[2]);
-        if (proc_close($process) !== 0) throw new RuntimeException(trim($stderr ?: $stdout ?: 'MySQL client failed.'));
+        if (proc_close($process) !== 0) {
+            throw new RuntimeException(trim($stderr ?: $stdout ?: 'MySQL client failed.'));
+        }
     }
 
     private function failVerification(string $message): int
     {
         $this->error($message);
+
         return self::FAILURE;
     }
 }

@@ -145,7 +145,7 @@ final class AdminAccountConcurrencyTest extends TestCase
         ]);
 
         $page = $this->get(route('admin.moderators.edit', $moderator))->assertOk();
-        $document = new \DOMDocument();
+        $document = new \DOMDocument;
         @$document->loadHTML('<?xml encoding="utf-8" ?>'.$page->getContent());
         $xpath = new \DOMXPath($document);
         self::assertSame(1, $xpath->query('//input[@name="email" and @disabled]')->length);

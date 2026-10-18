@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 final readonly class LessonCompletionReportService
 {
     private const WINDOW_DAYS = 14;
+
     private const ROW_LIMIT = 100;
 
     public function __construct(private SequentialProductEventQuery $journeys) {}
@@ -52,6 +53,7 @@ final readonly class LessonCompletionReportService
             $completions = (int) $row->completers;
             $notCompleted = (int) $row->not_completed;
             $pending = (int) $row->pending;
+
             return [
                 'course_id' => (int) $row->course_id,
                 'course_title' => $course?->name_ar ?: ($course?->name_en ?: null),
@@ -67,6 +69,7 @@ final readonly class LessonCompletionReportService
                 'window_elapsed_without_completion' => $notCompleted - $pending,
             ];
         });
+
         return ['rows' => $items, 'window_days' => self::WINDOW_DAYS,
             'observed_at' => $observedAt, 'total_lessons' => $totalLessons,
             'row_limit' => self::ROW_LIMIT];

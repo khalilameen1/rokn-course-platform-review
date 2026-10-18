@@ -3,18 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Level;
 use App\Models\DesignSetting;
+use App\Models\Level;
+use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminLevelAuthoringService;
 use App\Support\LevelEditorVersion;
-use App\Services\AdminAuthoringCreateIntentService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class LevelController extends Controller
 {
-    public function __construct(private readonly AdminLevelAuthoringService $authoring)
-    {
-    }
+    public function __construct(private readonly AdminLevelAuthoringService $authoring) {}
 
     /**
      * Get design settings for the views
@@ -27,31 +26,32 @@ class LevelController extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function index()
     {
         $levels = Level::ordered()->get();
         $designSettings = $this->getDesignSettings();
+
         return view('admin.levels.index', compact('levels', 'designSettings'));
     }
 
     /**
      * Show the form for creating a new resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function create()
     {
         $designSettings = $this->getDesignSettings();
+
         return view('admin.levels.create', compact('designSettings'));
     }
 
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function store(Request $request, AdminAuthoringCreateIntentService $createIntents)
     {
@@ -83,22 +83,20 @@ class LevelController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\Level  $level
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function edit(Level $level)
     {
         $designSettings = $this->getDesignSettings();
         $editorVersion = LevelEditorVersion::for($level);
+
         return view('admin.levels.edit', compact('level', 'designSettings', 'editorVersion'));
     }
 
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Level  $level
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function update(Request $request, Level $level)
     {
@@ -123,12 +121,11 @@ class LevelController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Level  $level
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function destroy(Level $level)
     {
-        if (!$this->authoring->deleteIfUnused((int) $level->id)) {
+        if (! $this->authoring->deleteIfUnused((int) $level->id)) {
             return redirect()->route('admin.levels.index')
                 ->with('error', 'لا يمكن حذف مستوى مرتبط بكورسات أو طلاب');
         }
@@ -136,5 +133,4 @@ class LevelController extends Controller
         return redirect()->route('admin.levels.index')
             ->with('success', 'تم حذف المستوى بنجاح');
     }
-
 }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Models\PortfolioMedia;
 use App\Services\BunnyDeliveryService;
 use App\Services\PortfolioMediaReadinessService;
 use App\Services\PublicPortfolioService;
@@ -31,7 +30,7 @@ final class PublicPortfolioMediaController extends Controller
             is_string($request->query('revision')) ? $request->query('revision') : '',
             is_string($request->query('snapshot')) ? $request->query('snapshot') : ''
         );
-        abort_if(!$media || !$media->file_path, 404);
+        abort_if(! $media || ! $media->file_path, 404);
         $variant = $request->query('variant');
         abort_unless($variant === null || $variant === 'poster', 404);
 
@@ -60,7 +59,7 @@ final class PublicPortfolioMediaController extends Controller
         return redirect()
             ->away($url, 302)
             ->header('X-Robots-Tag', 'noindex, nofollow, noarchive')
-            ->header('Cache-Control', 'public, max-age=' . max(0, min(self::CACHE_BUCKET_SECONDS, $maxAge)))
+            ->header('Cache-Control', 'public, max-age='.max(0, min(self::CACHE_BUCKET_SECONDS, $maxAge)))
             ->header('Referrer-Policy', 'no-referrer');
     }
 }

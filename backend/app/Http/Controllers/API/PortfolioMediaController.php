@@ -23,8 +23,7 @@ final class PortfolioMediaController extends Controller
     public function __construct(
         private PortfolioMediaAuthoringService $mediaAuthoring,
         private PortfolioMediaMutationService $mediaMutations
-    ) {
-    }
+    ) {}
 
     public function append(Request $request, $id): JsonResponse
     {
@@ -37,7 +36,7 @@ final class PortfolioMediaController extends Controller
                 'caption' => UnicodeText::clean($request->input('caption'), false),
             ]);
         }
-        if (!$request->filled('client_request_id')) {
+        if (! $request->filled('client_request_id')) {
             $candidate = trim((string) $request->header('Idempotency-Key'));
             $request->merge([
                 'client_request_id' => $candidate !== '' ? $candidate : (string) Str::uuid(),
@@ -82,7 +81,7 @@ final class PortfolioMediaController extends Controller
 
         $validated = $request->validate([
             'idempotency_key' => ['required', 'uuid'],
-            'size' => ['required', 'integer', 'min:1', 'max:' . PortfolioMediaAuthoringService::VIDEO_MAX_BYTES],
+            'size' => ['required', 'integer', 'min:1', 'max:'.PortfolioMediaAuthoringService::VIDEO_MAX_BYTES],
             'mime' => ['required', Rule::in(PortfolioMediaAuthoringService::VIDEO_MIMES)],
             'original_name' => ['required', 'string', 'max:255'],
             'sha256' => ['required', 'regex:/^[a-f0-9]{64}$/'],
@@ -162,7 +161,7 @@ final class PortfolioMediaController extends Controller
             'status' => 200,
             'success' => true,
             'message' => 'تم حذف الملف',
-            'data' => ['already_deleted' => !$deleted],
+            'data' => ['already_deleted' => ! $deleted],
         ]);
     }
 
@@ -190,12 +189,12 @@ final class PortfolioMediaController extends Controller
 
     private function assertIdempotencyHeaderMatches(Request $request, string $field): void
     {
-        if (!$request->hasHeader('Idempotency-Key') || !$request->has($field)) {
+        if (! $request->hasHeader('Idempotency-Key') || ! $request->has($field)) {
             return;
         }
         $header = strtolower(trim((string) $request->header('Idempotency-Key')));
         $body = strtolower(trim((string) $request->input($field)));
-        if ($header === '' || $body === '' || !hash_equals($header, $body)) {
+        if ($header === '' || $body === '' || ! hash_equals($header, $body)) {
             throw ValidationException::withMessages([
                 $field => ['تغيّر معرّف الرفع أثناء التنفيذ'],
             ]);

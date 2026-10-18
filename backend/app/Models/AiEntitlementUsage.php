@@ -9,8 +9,11 @@ use Illuminate\Database\Eloquent\Model;
 final class AiEntitlementUsage extends Model
 {
     public const FEATURE_COURSE_CHAT = 'course_chat';
+
     public const FEATURE_PROJECT_FEEDBACK = 'project_feedback';
+
     public const FEATURE_PROJECT_FOLLOWUP = 'project_followup';
+
     public const FEATURES = [
         self::FEATURE_COURSE_CHAT,
         self::FEATURE_PROJECT_FEEDBACK,
@@ -40,6 +43,14 @@ final class AiEntitlementUsage extends Model
         'used_tokens' => 'integer', 'reserved_tokens' => 'integer',
         'used_cost_usd' => 'decimal:6', 'reserved_cost_usd' => 'decimal:6',
     ];
-    public function enrollment() { return $this->belongsTo(CourseEnrollment::class); }
-    public function plan() { return $this->belongsTo(CourseAccessPlan::class, 'access_plan_id'); }
+
+    public function enrollment()
+    {
+        return $this->belongsTo(CourseEnrollment::class);
+    }
+
+    public function plan()
+    {
+        return $this->belongsTo(CourseAccessPlan::class, 'access_plan_id');
+    }
 }

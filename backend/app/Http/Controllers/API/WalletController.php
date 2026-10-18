@@ -16,8 +16,7 @@ final class WalletController extends Controller
     public function __construct(
         private readonly ApiResponseService $responses,
         private readonly WalletQueryService $wallet
-    ) {
-    }
+    ) {}
 
     public function show(Request $request): JsonResponse
     {

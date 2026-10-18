@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Exceptions\AiPlanLimitReachedException;
+use App\Http\Controllers\API\ProjectController;
+use App\Jobs\EvaluateProjectSubmission;
 use App\Jobs\GenerateProjectFeedback;
 use App\Jobs\GenerateProjectFeedbackReply;
-use App\Jobs\EvaluateProjectSubmission;
-use App\Http\Controllers\API\ProjectController;
+use App\Models\AiConversationContext;
 use App\Models\AiEntitlementUsage;
+use App\Models\AiUsageEvent;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
@@ -22,17 +25,20 @@ use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Services\AiConsentService;
-use App\Services\CourseAccessPlanService;
 use App\Services\AiConversationContextService;
+use App\Services\AiEntitlementBudgetService;
+use App\Services\CourseAccessPlanService;
+use App\Services\CoursePlanUpgradeEligibilityService;
 use App\Services\ProjectFeedbackThreadService;
-use App\Services\ProjectSubmissionPresenter;
 use App\Services\ProjectSubmissionFileRetentionService;
 use App\Services\ProjectSubmissionOrchestrator;
+use App\Services\ProjectSubmissionPresenter;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class ProjectSubmissionPresenterUpgradeTest extends TestCase
@@ -70,7 +76,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
             $payload = $threads->payload($thread->fresh());
             self::assertTrue($payload['can_reply']); // v60 semantics stay intact.
             self::assertTrue($payload['reply_limit_reached']);
-            if (!isset($exhaustion['used_requests']) && !isset($exhaustion['reserved_requests'])) {
+            if (! isset($exhaustion['used_requests']) && ! isset($exhaustion['reserved_requests'])) {
                 self::assertSame(9, $payload['remaining_messages']);
             }
         }
@@ -144,8 +150,8 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
                 'client_request_id' => (string) Str::uuid(),
             ]);
         }
-        $budget = app(\App\Services\AiEntitlementBudgetService::class);
-        $offers = app(\App\Services\CoursePlanUpgradeEligibilityService::class);
+        $budget = app(AiEntitlementBudgetService::class);
+        $offers = app(CoursePlanUpgradeEligibilityService::class);
         $course = Course::query()->findOrFail($enrollment->course_id);
         // 7 used + max(2 reserved, 1 SENT) + 1 QUEUED = 10, not 11.
         self::assertSame(10, $budget->projectFollowupCommittedRequests($enrollment, $usage));
@@ -194,7 +200,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
         try {
             $threads->queueReply($fixture['user'], $openThread, 'كيف أحسن التنفيذ', $requestId);
             self::fail('Ten effective commitments must prevent an eleventh message.');
-        } catch (\App\Exceptions\AiPlanLimitReachedException $exception) {
+        } catch (AiPlanLimitReachedException $exception) {
             self::assertSame('Project discussion request allowance is exhausted.', $exception->getMessage());
         }
         self::assertSame($before, ProjectFeedbackMessage::query()->count());
@@ -202,7 +208,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
         $accepted = $threads->queueReply($fixture['user'], $openThread, 'كيف أحسن التنفيذ', $requestId);
         self::assertSame(ProjectFeedbackMessage::QUEUED, $accepted->status);
         self::assertSame($before + 1, ProjectFeedbackMessage::query()->count());
-        self::assertSame(10, app(\App\Services\AiEntitlementBudgetService::class)
+        self::assertSame(10, app(AiEntitlementBudgetService::class)
             ->projectFollowupCommittedRequests($enrollment, $usage->fresh()));
         Http::assertNothingSent();
     }
@@ -368,11 +374,10 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
         return ['learner code' => [false], 'authored requirements code' => [true]];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('projectMarkupBudgetInputs')]
+    #[DataProvider('projectMarkupBudgetInputs')]
     public function test_project_submission_preserves_html_even_when_it_exceeds_remaining_report_tokens(
         bool $markupInRequirements
-    ): void
-    {
+    ): void {
         Bus::fake();
         Http::preventStrayRequests();
         $code = '<input data-example="'.str_repeat('code', 350).'">Learner notes about the form';
@@ -458,7 +463,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
 
         // A paid answer is durable, but none of its ready presentation may
         // commit until both the initial message and its submission are saved.
-        $event = \App\Models\AiUsageEvent::query()->where('feature', 'project_feedback')->sole();
+        $event = AiUsageEvent::query()->where('feature', 'project_feedback')->sole();
         self::assertSame('completed', $event->status);
         self::assertSame('The input is required.', data_get($event->metadata, 'accepted_response'));
         self::assertSame('queued', data_get($submission->fresh()->submission_metadata, 'ai_feedback.status'));
@@ -498,8 +503,10 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
         ])->save();
         $replacement = new GenerateProjectFeedback($submission->id);
         $takenOver = false;
-        \App\Models\AiUsageEvent::saved(function ($event) use ($submission, $replacement, &$takenOver): void {
-            if ($takenOver || $event->feature !== 'project_feedback' || $event->status !== 'completed') return;
+        AiUsageEvent::saved(function ($event) use ($submission, $replacement, &$takenOver): void {
+            if ($takenOver || $event->feature !== 'project_feedback' || $event->status !== 'completed') {
+                return;
+            }
             $takenOver = true;
             $fresh = $submission->fresh();
             $metadata = $fresh->submission_metadata;
@@ -510,7 +517,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
 
         app()->call([new GenerateProjectFeedback($submission->id), 'handle']);
 
-        $event = \App\Models\AiUsageEvent::query()->where('feature', 'project_feedback')->sole();
+        $event = AiUsageEvent::query()->where('feature', 'project_feedback')->sole();
         self::assertTrue($takenOver);
         self::assertSame('processing', data_get($submission->fresh()->submission_metadata, 'ai_feedback.status'));
         self::assertSame(ProjectFeedbackMessage::STREAMING, $report->fresh()->status);
@@ -691,7 +698,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
         $memory = app(AiConversationContextService::class);
         $reportId = 'report:'.$fixture['submission']->public_id;
         self::assertSame('', $memory->projectThread($thread, $old->id + 1, $reportId, 0, 'المشروع'));
-        self::assertSame(0, \App\Models\AiConversationContext::query()->count());
+        self::assertSame(0, AiConversationContext::query()->count());
         self::assertSame('', $memory->projectThread($thread, $old->id + 1, $reportId, 50, 'المشروع'));
         Http::assertNothingSent();
     }
@@ -757,7 +764,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.messages.0.status', 'failed')
             ->assertJsonPath('data.messages.0.text', $partial);
-        $event = \App\Models\AiUsageEvent::query()->where('feature', 'project_feedback')->firstOrFail();
+        $event = AiUsageEvent::query()->where('feature', 'project_feedback')->firstOrFail();
         self::assertSame('', (string) data_get($event->metadata, 'accepted_response', ''));
         self::assertSame('provider_outcome_unknown', data_get($event->metadata, 'provider_outcome_reason'));
         self::assertFalse(data_get($event->metadata, 'entitlement_delivered'));
@@ -792,7 +799,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
         self::assertSame($fixture['text'], $submission->submission_text);
         self::assertEquals($review, $submission->only(array_keys($review)));
         self::assertSame(0, app(ProjectSubmissionFileRetentionService::class)->purgeExpiredTerminalFailures(10));
-        $event = \App\Models\AiUsageEvent::query()->where('feature', 'project_feedback')->firstOrFail();
+        $event = AiUsageEvent::query()->where('feature', 'project_feedback')->firstOrFail();
         self::assertSame('failed', $event->status);
         self::assertSame('provider_unavailable', data_get($event->metadata, 'reason'));
         $usage = AiEntitlementUsage::query()->where('feature', 'project_feedback')->firstOrFail();
@@ -824,7 +831,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.messages.2.status', 'failed')
             ->assertJsonPath('data.messages.2.text', $partial);
-        $event = \App\Models\AiUsageEvent::query()->where('feature', 'project_followup')->firstOrFail();
+        $event = AiUsageEvent::query()->where('feature', 'project_followup')->firstOrFail();
         self::assertSame('', (string) data_get($event->metadata, 'accepted_response', ''));
         self::assertSame('provider_outcome_unknown', data_get($event->metadata, 'provider_outcome_reason'));
         self::assertFalse(data_get($event->metadata, 'entitlement_delivered'));
@@ -847,15 +854,15 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
                 'choices' => [['delta' => ['content' => $interruptedPartial]]],
             ], JSON_THROW_ON_ERROR)."\n\n", 200, ['Content-Type' => 'text/event-stream'])
             : Http::response([
-            'id' => 'generation-project-html',
-            'choices' => [['message' => ['content' => 'The input is required.']]],
-            'usage' => [
-                'prompt_tokens' => 120,
-                'completion_tokens' => 20,
-                'total_tokens' => 140,
-                'cost' => 0.01,
-            ],
-        ])]);
+                'id' => 'generation-project-html',
+                'choices' => [['message' => ['content' => 'The input is required.']]],
+                'usage' => [
+                    'prompt_tokens' => 120,
+                    'completion_tokens' => 20,
+                    'total_tokens' => 140,
+                    'cost' => 0.01,
+                ],
+            ])]);
     }
 
     public function test_initial_project_report_preserves_technical_explanations_and_html_code(): void
@@ -888,7 +895,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
         $fixture = $this->submissionFixture(upgradedToEnhanced: true);
         $thread = $fixture['submission']->feedbackThread;
         $question = "Why do tool calls produce a provider error and SQLSTATE in the stack trace?\n"
-            ."Is <html><body>Example</body></html> valid HTML?";
+            .'Is <html><body>Example</body></html> valid HTML?';
         $requestId = (string) Str::uuid();
         $threads = app(ProjectFeedbackThreadService::class);
 
@@ -1038,7 +1045,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
     /** @return array{submission:ProjectSubmission,user:User,project:Project,enrollment:CourseEnrollment,text:string,idempotency_key:string} */
     private function submissionFixture(bool $upgradedToEnhanced, ?string $requirements = null): array
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'name' => 'Project learner',
             'email' => 'project-'.Str::uuid().'@rokn.test',
@@ -1075,7 +1082,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
         $enhancedTerms = $plans->snapshot($enhancedPlan);
 
         $courseOrder = $this->paidOrder($user, $course, $reportPlan, $reportTerms);
-        $enrollment = new CourseEnrollment();
+        $enrollment = new CourseEnrollment;
         $enrollment->forceFill([
             'tenant_id' => 1,
             'user_id' => $user->id,

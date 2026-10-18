@@ -20,8 +20,7 @@ final class LearningRewardCreditService
     public function __construct(
         private readonly WalletService $wallet,
         private readonly LearningRewardConfigurationService $configuration
-    ) {
-    }
+    ) {}
 
     public function credit(
         User $user,

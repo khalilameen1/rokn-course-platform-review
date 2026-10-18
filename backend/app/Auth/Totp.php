@@ -14,7 +14,9 @@ use InvalidArgumentException;
 final class Totp
 {
     private const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
     private const PERIOD_SECONDS = 30;
+
     private const DIGITS = 6;
 
     public function generateSecret(int $bytes = 20): string
@@ -101,12 +103,12 @@ final class Totp
         $key = $this->base32Decode($secret);
         $counter = pack('N2', intdiv($step, 4294967296), $step % 4294967296);
         $digest = hash_hmac('sha1', $counter, $key, true);
-        $offset = ord($digest[strlen($digest) - 1]) & 0x0f;
+        $offset = ord($digest[strlen($digest) - 1]) & 0x0F;
         $binary = (
-            ((ord($digest[$offset]) & 0x7f) << 24)
-            | ((ord($digest[$offset + 1]) & 0xff) << 16)
-            | ((ord($digest[$offset + 2]) & 0xff) << 8)
-            | (ord($digest[$offset + 3]) & 0xff)
+            ((ord($digest[$offset]) & 0x7F) << 24)
+            | ((ord($digest[$offset + 1]) & 0xFF) << 16)
+            | ((ord($digest[$offset + 2]) & 0xFF) << 8)
+            | (ord($digest[$offset + 3]) & 0xFF)
         );
 
         return str_pad((string) ($binary % (10 ** self::DIGITS)), self::DIGITS, '0', STR_PAD_LEFT);

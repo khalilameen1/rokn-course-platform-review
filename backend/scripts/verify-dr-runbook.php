@@ -4,21 +4,23 @@ declare(strict_types=1);
 
 $root = dirname(__DIR__);
 $paths = [
-    'command' => $root . '/app/Console/Commands/VerifyRestoreDrill.php',
-    'runbook' => $root . '/docs/DISASTER_RECOVERY_RUNBOOK.md',
-    'manifest' => $root . '/database/migration-baseline-manifest.json',
+    'command' => $root.'/app/Console/Commands/VerifyRestoreDrill.php',
+    'runbook' => $root.'/docs/DISASTER_RECOVERY_RUNBOOK.md',
+    'manifest' => $root.'/database/migration-baseline-manifest.json',
 ];
 $contents = [];
 $missing = [];
 
 foreach ($paths as $label => $path) {
-    if (!is_file($path) || !is_readable($path)) {
+    if (! is_file($path) || ! is_readable($path)) {
         $missing[] = "file: {$label} ({$path})";
+
         continue;
     }
     $value = file_get_contents($path);
-    if (!is_string($value)) {
+    if (! is_string($value)) {
         $missing[] = "read: {$label} ({$path})";
+
         continue;
     }
     $contents[$label] = $value;
@@ -45,13 +47,13 @@ if ($missing === []) {
         'second operator',
     ];
     foreach ($requiredCommandTokens as $token) {
-        if (!str_contains($contents['command'], $token)) {
-            $missing[] = 'command: ' . $token;
+        if (! str_contains($contents['command'], $token)) {
+            $missing[] = 'command: '.$token;
         }
     }
     foreach ($requiredRunbookTokens as $token) {
-        if (!str_contains($contents['runbook'], $token)) {
-            $missing[] = 'runbook: ' . $token;
+        if (! str_contains($contents['runbook'], $token)) {
+            $missing[] = 'runbook: '.$token;
         }
     }
 
@@ -66,7 +68,7 @@ if ($missing === []) {
         $manifest = null;
         $missing[] = 'manifest: valid JSON';
     }
-    if (!is_array($manifest)) {
+    if (! is_array($manifest)) {
         $missing[] = 'manifest: JSON object';
     } elseif (($manifest['firstCutoverRequiresRestoreDrillEvidence'] ?? null) !== true) {
         $missing[] = 'manifest: firstCutoverRequiresRestoreDrillEvidence=true';
@@ -76,7 +78,7 @@ if ($missing === []) {
 if ($missing !== []) {
     fwrite(
         STDERR,
-        "DR verification contract is incomplete:\n- " . implode("\n- ", $missing) . "\n"
+        "DR verification contract is incomplete:\n- ".implode("\n- ", $missing)."\n"
     );
     exit(1);
 }

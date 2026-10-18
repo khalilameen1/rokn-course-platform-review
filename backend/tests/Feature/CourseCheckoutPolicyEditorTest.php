@@ -10,10 +10,13 @@ use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
 use App\Models\Setting;
 use App\Services\CourseAccessPlanService;
+use App\Services\CoursePlanAuthoringService;
 use App\Services\CoursePlanEconomicsService;
 use App\Support\CourseAccessPlanSnapshot;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -25,7 +28,7 @@ final class CourseCheckoutPolicyEditorTest extends TestCase
     {
         $course = $this->course();
         $plans = app(CourseAccessPlanService::class);
-        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($course);
+        app(CoursePlanAuthoringService::class)->createDefaults($course);
         $basic = $course->accessPlans()->where('code', 'basic')->firstOrFail();
         $snapshot = $plans->snapshot($basic);
 
@@ -42,16 +45,16 @@ final class CourseCheckoutPolicyEditorTest extends TestCase
     {
         $course = $this->course();
         $plans = app(CourseAccessPlanService::class);
-        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($course);
+        app(CoursePlanAuthoringService::class)->createDefaults($course);
         $basic = $course->accessPlans()->where('code', 'basic')->firstOrFail();
         $basic->update(['projects_enabled' => true, 'certificate_enabled' => true]);
         $legacy = $plans->snapshot($basic);
         $legacy['version'] = 5;
         unset($legacy['projects_enabled']);
-        $enrollment = new CourseEnrollment();
+        $enrollment = new CourseEnrollment;
         $enrollment->forceFill(['access_plan_id' => $basic->id, 'access_plan_snapshot' => $legacy]);
 
-        app(\App\Services\CoursePlanAuthoringService::class)->syncAdminPlans($course, $this->input($course));
+        app(CoursePlanAuthoringService::class)->syncAdminPlans($course, $this->input($course));
 
         self::assertFalse($basic->fresh()->projects_enabled);
         self::assertFalse($basic->fresh()->certificate_enabled);
@@ -126,7 +129,7 @@ final class CourseCheckoutPolicyEditorTest extends TestCase
     {
         $course = $this->course();
         $service = app(CourseAccessPlanService::class);
-        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($course);
+        app(CoursePlanAuthoringService::class)->createDefaults($course);
         config(['course_plans.enforce_commercial_floor' => true]);
         try {
             $service->selectedPlan($course, 'basic');
@@ -163,7 +166,7 @@ final class CourseCheckoutPolicyEditorTest extends TestCase
     public function test_editor_renders_explicit_legacy_offer_notice_and_unknown_cost_state(): void
     {
         $course = $this->course();
-        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($course);
+        app(CoursePlanAuthoringService::class)->createDefaults($course);
         $course->accessPlans()->where('code', 'basic')->update([
             'projects_enabled' => true, 'certificate_enabled' => true,
         ]);
@@ -196,14 +199,14 @@ final class CourseCheckoutPolicyEditorTest extends TestCase
     public function test_policy_migration_can_resume_partial_ddl_without_resetting_existing_values(): void
     {
         $course = $this->course();
-        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($course);
+        app(CoursePlanAuthoringService::class)->createDefaults($course);
         $basic = $course->accessPlans()->where('code', 'basic')->firstOrFail();
         $setting = Setting::firstOrCreate([]);
         $setting->update(['max_course_promotion_percent' => 15]);
 
         // Simulate the first two MySQL DDL statements having committed before
         // an interruption. Only the final nullable cost column is missing.
-        \Illuminate\Support\Facades\Schema::table('course_access_plans', function (\Illuminate\Database\Schema\Blueprint $table): void {
+        Schema::table('course_access_plans', function (Blueprint $table): void {
             $table->dropColumn('delivery_cost_usd');
         });
         $migration = require database_path('migrations/2026_09_15_000001_add_course_checkout_policy_fields.php');
@@ -217,11 +220,12 @@ final class CourseCheckoutPolicyEditorTest extends TestCase
 
     private function course(): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1, 'name_ar' => 'كورس تجريبي', 'price' => 900,
             'authoring_version' => 1, 'is_coming_soon' => true, 'is_catalog_visible' => false,
         ])->save();
+
         return $course;
     }
 

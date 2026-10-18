@@ -16,9 +16,7 @@ final readonly class UserPathProgressService
         private CourseSectionSequenceService $sectionSequence,
         private CourseRevisionLearnerReadService $revisionReads,
         private CourseCatalogueQueryService $catalogue
-    )
-    {
-    }
+    ) {}
 
     /**
      * @return array<int, array<string, mixed>>
@@ -43,8 +41,7 @@ final readonly class UserPathProgressService
                 'course.sections',
             ])
             ->get()
-            ->reject(fn (CourseEnrollment $enrollment): bool =>
-                $this->holds->enrollmentHasActiveHold($enrollment, ['course'])
+            ->reject(fn (CourseEnrollment $enrollment): bool => $this->holds->enrollmentHasActiveHold($enrollment, ['course'])
             )
             ->values();
 
@@ -208,8 +205,7 @@ final readonly class UserPathProgressService
             ];
         }
 
-        usort($data, static fn (array $left, array $right): int =>
-            ((int) ($left['path']['id'] ?? 0)) <=> ((int) ($right['path']['id'] ?? 0))
+        usort($data, static fn (array $left, array $right): int => ((int) ($left['path']['id'] ?? 0)) <=> ((int) ($right['path']['id'] ?? 0))
         );
 
         return array_values($data);

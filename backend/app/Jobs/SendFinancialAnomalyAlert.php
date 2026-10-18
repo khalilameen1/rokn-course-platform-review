@@ -18,8 +18,11 @@ final class SendFinancialAnomalyAlert implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 30;
+
     public bool $failOnTimeout = true;
+
     public array $backoff = [15, 60, 180];
 
     public function __construct(
@@ -35,7 +38,7 @@ final class SendFinancialAnomalyAlert implements ShouldQueue
         $anomaly = FinancialAnomaly::query()
             ->with(['user:id,name,email', 'course:id,name_ar,name_en'])
             ->find($this->anomalyId);
-        if (!$anomaly || $anomaly->status !== FinancialAnomaly::STATUS_OPEN) {
+        if (! $anomaly || $anomaly->status !== FinancialAnomaly::STATUS_OPEN) {
             return;
         }
 
@@ -50,16 +53,16 @@ final class SendFinancialAnomalyAlert implements ShouldQueue
         foreach ($recipients as $email) {
             $messageId = hash(
                 'sha256',
-                'financial-anomaly|' . $anomaly->public_id . '|'
-                    . (string) $this->occurrence . '|' . (string) $email
-            ) . '@rokn.app';
+                'financial-anomaly|'.$anomaly->public_id.'|'
+                    .(string) $this->occurrence.'|'.(string) $email
+            ).'@rokn.app';
             Mail::raw(
                 "تم إيقاف AI لهذه الفئة على حساب الطالب فقط لحين المراجعة\n"
-                . 'الطالب: ' . ($anomaly->user?->email ?: '#' . $anomaly->user_id) . "\n"
-                . 'الكورس: ' . ($anomaly->course?->name_ar ?: $anomaly->course?->name_en) . "\n"
-                . 'المفروض مدفوع: ' . $anomaly->expected_paid_coins . " عملة\n"
-                . 'الفعلي المدفوع: ' . $anomaly->actual_paid_coins . " عملة\n"
-                . 'رقم التنبيه: ' . $anomaly->public_id,
+                .'الطالب: '.($anomaly->user?->email ?: '#'.$anomaly->user_id)."\n"
+                .'الكورس: '.($anomaly->course?->name_ar ?: $anomaly->course?->name_en)."\n"
+                .'المفروض مدفوع: '.$anomaly->expected_paid_coins." عملة\n"
+                .'الفعلي المدفوع: '.$anomaly->actual_paid_coins." عملة\n"
+                .'رقم التنبيه: '.$anomaly->public_id,
                 static function ($message) use ($email, $messageId): void {
                     $message->to((string) $email)
                         ->subject('تنبيه مالي من ركن: شراء أقل من الحد المدفوع');

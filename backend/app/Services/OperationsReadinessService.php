@@ -35,11 +35,11 @@ final class OperationsReadinessService
         $recovery = $this->recoveryEvidence->readiness();
         $checks = [
             'runbook' => is_file($runbookPath),
-            'recovery_mode_cleared' => !(bool) ($recovery['recovery_mode'] ?? false),
+            'recovery_mode_cleared' => ! (bool) ($recovery['recovery_mode'] ?? false),
         ] + (array) ($recovery['checks'] ?? []);
 
         return [
-            'ready' => !in_array(false, $checks, true),
+            'ready' => ! in_array(false, $checks, true),
             'checks' => $checks,
             'provider' => $recovery['provider'] ?? null,
             'last_backup_at' => $recovery['last_backup_at'] ?? null,

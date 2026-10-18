@@ -28,7 +28,7 @@ final class AdminHomeCurationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->administrator = new User();
+        $this->administrator = new User;
         $this->administrator->forceFill([
             'name_ar' => 'مدير المحتوى',
             'email' => 'home-curation@example.test',
@@ -215,16 +215,13 @@ final class AdminHomeCurationTest extends TestCase
         ])->assertRedirect(route('admin.classifications.index'));
 
         $orderedIds = collect([$current->id, $requested->id])->sort()->values()->all();
-        $lockQueryIndex = collect($queries)->search(fn (array $query): bool =>
-            str_contains($query['sql'], 'from "courses"')
+        $lockQueryIndex = collect($queries)->search(fn (array $query): bool => str_contains($query['sql'], 'from "courses"')
                 && str_contains($query['sql'], 'order by "id" asc')
                 && str_contains($query['sql'], 'in ('.implode(', ', $orderedIds).')')
         );
-        $syncDeleteIndex = collect($queries)->search(fn (array $query): bool =>
-            str_starts_with($query['sql'], 'delete from "classification_course"')
+        $syncDeleteIndex = collect($queries)->search(fn (array $query): bool => str_starts_with($query['sql'], 'delete from "classification_course"')
         );
-        $classificationLockIndex = collect($queries)->search(fn (array $query): bool =>
-            str_contains($query['sql'], 'from "classifications"')
+        $classificationLockIndex = collect($queries)->search(fn (array $query): bool => str_contains($query['sql'], 'from "classifications"')
                 && str_contains($query['sql'], '"classifications"."id" = ?')
         );
 
@@ -369,12 +366,10 @@ final class AdminHomeCurationTest extends TestCase
         $this->assertDatabaseMissing('classification_course', ['classification_id' => $row->id]);
         $this->assertDatabaseHas('courses', ['id' => $course->id]);
         $this->assertDatabaseHas('courses', ['id' => $draft->id]);
-        $courseLock = collect($queries)->search(fn (string $sql): bool =>
-            str_contains($sql, 'from "courses"') && str_contains($sql, 'order by "id" asc')
+        $courseLock = collect($queries)->search(fn (string $sql): bool => str_contains($sql, 'from "courses"') && str_contains($sql, 'order by "id" asc')
                 && str_contains($sql, 'in ('.$course->id.', '.$draft->id.')')
         );
-        $rowLock = collect($queries)->search(fn (string $sql): bool =>
-            str_contains($sql, 'from "classifications"')
+        $rowLock = collect($queries)->search(fn (string $sql): bool => str_contains($sql, 'from "classifications"')
                 && str_contains($sql, '"classifications"."id" = ?')
         );
         self::assertNotFalse($courseLock, 'Canonical owner and revision must be selected before the row.');
@@ -399,7 +394,7 @@ final class AdminHomeCurationTest extends TestCase
         // Controlled interleaving, not a claim of concurrent SQLite row locks.
         DB::listen(static function ($query) use (&$changed, $row, $secondDraft): void {
             $sql = strtolower($query->sql);
-            if (!$changed && str_contains($sql, 'from "courses"')
+            if (! $changed && str_contains($sql, 'from "courses"')
                 && str_contains($sql, 'order by "id" asc')) {
                 $changed = true;
                 $row->courses()->attach($secondDraft->id);
@@ -480,7 +475,7 @@ final class AdminHomeCurationTest extends TestCase
 
     private function course(string $name, bool $comingSoon, bool $visible, int $order): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => $name,

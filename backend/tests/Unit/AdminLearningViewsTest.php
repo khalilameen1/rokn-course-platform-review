@@ -117,7 +117,7 @@ final class AdminLearningViewsTest extends TestCase
 
         self::assertStringContainsString("@method('DELETE')", $index);
         self::assertStringContainsString("@method('PUT')", $edit);
-        self::assertStringContainsString("rel=\"noopener noreferrer\"", $index);
+        self::assertStringContainsString('rel="noopener noreferrer"', $index);
         self::assertStringContainsString('name="editor_version"', $index);
         self::assertStringContainsString('name="editor_version"', $edit);
     }

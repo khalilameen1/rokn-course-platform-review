@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 final class MaintainInternalSignals extends Command
 {
     protected $signature = 'internal-signals:maintain {--limit=500} {--prune=0}';
+
     protected $description = 'Recover stale internal effects and dispatch due durable signals.';
 
     public function handle(): int

@@ -7,8 +7,8 @@ namespace App\Console\Commands;
 use App\Services\AppReleaseAuthoringService;
 use App\Services\AppReleasePolicyService;
 use Illuminate\Console\Command;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 final class BootstrapDirectAppRelease extends Command
@@ -28,17 +28,17 @@ final class BootstrapDirectAppRelease extends Command
 
             return self::INVALID;
         }
-        if (!in_array(AppReleasePolicyService::CHANNEL_DIRECT, (array) config('mobile_contract.launch_channels'), true)) {
+        if (! in_array(AppReleasePolicyService::CHANNEL_DIRECT, (array) config('mobile_contract.launch_channels'), true)) {
             $this->error('The direct channel is not declared in MOBILE_RELEASE_REQUIRED_CHANNELS.');
 
             return self::INVALID;
         }
-        if (!(bool) $this->option('activate')) {
+        if (! (bool) $this->option('activate')) {
             $this->error('Pass --activate explicitly; the command never creates an ambiguous inactive bootstrap row.');
 
             return self::INVALID;
         }
-        if (!Schema::hasTable('app_versions') || !Schema::hasColumn('app_versions', 'distribution_channel')) {
+        if (! Schema::hasTable('app_versions') || ! Schema::hasColumn('app_versions', 'distribution_channel')) {
             $this->error('Run the current forward migrations before bootstrapping a release.');
 
             return self::FAILURE;
@@ -61,7 +61,7 @@ final class BootstrapDirectAppRelease extends Command
 
             return self::INVALID;
         }
-        if (!$releasePolicy->isAllowedDownloadUrl(AppReleasePolicyService::CHANNEL_DIRECT, $downloadUrl)) {
+        if (! $releasePolicy->isAllowedDownloadUrl(AppReleasePolicyService::CHANNEL_DIRECT, $downloadUrl)) {
             $this->error('The download URL must be a direct HTTPS .apk URL on rokn.app.');
 
             return self::INVALID;

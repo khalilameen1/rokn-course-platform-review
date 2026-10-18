@@ -9,10 +9,15 @@ use Illuminate\Database\Eloquent\Model;
 final class WalletCreditLot extends Model
 {
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_FROZEN = 'frozen';
+
     public const STATUS_REVERSED = 'reversed';
+
     public const STATUS_REPAID = 'repaid';
+
     public const STATUS_WAIVED = 'waived';
+
     public const STATUS_LEGACY_REVIEW = 'legacy_review';
 
     protected $fillable = [

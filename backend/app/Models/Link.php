@@ -9,11 +9,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Link extends Model
 {
-    use HasFactory, SoftDeletes, ResolvesLocalizedAttributes;
+    use HasFactory, ResolvesLocalizedAttributes, SoftDeletes;
 
     protected $fillable = [
-        'list_id', 'type', 'link', 'title_ar', 'title_en', 
-        'description_ar', 'description_en'
+        'list_id', 'type', 'link', 'title_ar', 'title_en',
+        'description_ar', 'description_en',
     ];
 
     public function course()
@@ -36,4 +36,3 @@ class Link extends Model
         return $this->morphOne(CourseSection::class, 'sectionable');
     }
 }
-

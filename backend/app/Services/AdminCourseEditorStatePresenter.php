@@ -21,7 +21,7 @@ final class AdminCourseEditorStatePresenter
     ];
 
     /**
-     * @param array{status:string,course:Course,issues?:array<int,string>} $result
+     * @param  array{status:string,course:Course,issues?:array<int,string>}  $result
      * @return array{http_status:int,payload:array<string,mixed>}
      */
     public function result(array $result): array

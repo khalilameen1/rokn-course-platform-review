@@ -51,9 +51,10 @@ final class ProductEventController extends Controller
         $validatedEvents = [];
         $validationErrors = [];
         foreach ($rawEvents as $index => $rawEvent) {
-            if (!is_array($rawEvent)) {
+            if (! is_array($rawEvent)) {
                 if ($isBatch) {
                     $validationErrors['events.'.$index.'.event'] = ['يجب أن يكون الحدث عنصرًا منظمًا'];
+
                     continue;
                 }
                 throw ValidationException::withMessages([
@@ -67,6 +68,7 @@ final class ProductEventController extends Controller
                     $validationErrors['events.'.$index.'.payload'] = [
                         'Unsupported product-event fields: '.implode(', ', $unknown),
                     ];
+
                     continue;
                 }
                 throw ValidationException::withMessages([
@@ -96,9 +98,9 @@ final class ProductEventController extends Controller
             $validator->after(static function ($validator) use ($rawEvent): void {
                 $isMilestone = ($rawEvent['event_name'] ?? null) === 'lesson_milestone';
                 $hasMilestone = array_key_exists('milestone', $rawEvent) && $rawEvent['milestone'] !== null;
-                if ($isMilestone && !$hasMilestone) {
+                if ($isMilestone && ! $hasMilestone) {
                     $validator->errors()->add('milestone', 'A lesson milestone value is required.');
-                } elseif (!$isMilestone && $hasMilestone) {
+                } elseif (! $isMilestone && $hasMilestone) {
                     $validator->errors()->add('milestone', 'Milestone is only valid for lesson_milestone events.');
                 }
             });
@@ -106,7 +108,7 @@ final class ProductEventController extends Controller
             try {
                 $validatedEvents[] = $validator->validate();
             } catch (ValidationException $exception) {
-                if (!$isBatch) {
+                if (! $isBatch) {
                     throw $exception;
                 }
                 foreach ($exception->errors() as $field => $messages) {
@@ -130,7 +132,7 @@ final class ProductEventController extends Controller
                 $record = $events->record($event, $user);
                 $record->wasRecentlyCreated ? $accepted++ : $duplicates++;
             } catch (ProductEventConflictException) {
-                if (!$isBatch) {
+                if (! $isBatch) {
                     return $responses->error(
                         'معرّف الحدث مستخدم لطلب مختلف',
                         409,

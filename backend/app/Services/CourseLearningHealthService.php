@@ -12,8 +12,7 @@ final class CourseLearningHealthService
     public function __construct(
         private readonly CourseSectionSequenceService $sectionSequence,
         private readonly CourseRevisionLearnerReadService $revisionReads
-    ) {
-    }
+    ) {}
 
     /**
      * Real learner progress for one course, aggregated without exposing student

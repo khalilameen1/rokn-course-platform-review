@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Controllers\Admin\CourseCodeController;
-use App\Models\CourseCode;
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
+use App\Models\CourseCode;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\AdminAuthoringCreateIntentService;
@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Support\ProductionCourseCodeSchema;
 use Tests\TestCase;
 
 final class AdminCourseCodeAuthoringOwnershipTest extends TestCase
@@ -29,7 +30,7 @@ final class AdminCourseCodeAuthoringOwnershipTest extends TestCase
         self::assertSame('testing', app()->environment());
         self::assertSame(':memory:', DB::connection()->getDatabaseName());
         $this->artisan('migrate:fresh')->assertExitCode(0);
-        \Tests\Support\ProductionCourseCodeSchema::applySqliteBridge();
+        ProductionCourseCodeSchema::applySqliteBridge();
         Http::preventStrayRequests();
         foreach ([CourseCodeController::class, AdminAuthoringCreateIntentService::class] as $httpOwner) {
             $this->app->bind($httpOwner, static function (): never {

@@ -17,6 +17,7 @@ final class ResumeCourseCheckouts extends Command
     private const MAX_BACKOFF_MINUTES = 30;
 
     protected $signature = 'courses:resume-checkouts {--limit=100}';
+
     protected $description = 'Resume explicitly authorized course checkouts after verified payment';
 
     public function handle(CourseCheckoutService $checkouts): int
@@ -39,20 +40,28 @@ final class ResumeCourseCheckouts extends Command
         foreach ($rows as $row) {
             try {
                 $user = User::query()->find($row->user_id);
-                if (!$user) continue;
-                if (!$row->funding_order_id && $row->channel === 'google') {
+                if (! $user) {
+                    continue;
+                }
+                if (! $row->funding_order_id && $row->channel === 'google') {
                     // Exact, Google-verified intent binding; no package/SKU inference.
                     $receipt = StorePurchase::query()->where('user_id', $user->id)->where('provider', 'google')
                         ->where('provider_payload->checkout_profile_id', $row->public_id)->oldest('id')->first();
-                    if ($receipt) $checkouts->bindStorePurchase($user, $row->public_id, $receipt);
+                    if ($receipt) {
+                        $checkouts->bindStorePurchase($user, $row->public_id, $receipt);
+                    }
                 }
                 $checkouts->resume($user, $row->public_id);
-            } catch (\Throwable $exception) { report($exception); }
-            finally {
-                if ($backoff) $this->deferIfStillPending($row);
+            } catch (\Throwable $exception) {
+                report($exception);
+            } finally {
+                if ($backoff) {
+                    $this->deferIfStillPending($row);
+                }
             }
         }
         $this->info('Checked '.$rows->count().' authorized checkouts');
+
         return self::SUCCESS;
     }
 

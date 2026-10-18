@@ -10,6 +10,7 @@ use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
 
 final class ApiRateLimitSecurityTest extends TestCase
@@ -41,10 +42,10 @@ final class ApiRateLimitSecurityTest extends TestCase
         }
     }
 
-    private function numericRequest(string $method, string $url): \Symfony\Component\HttpFoundation\Response
+    private function numericRequest(string $method, string $url): Response
     {
         $request = Request::create($url, $method);
-        $user = new User();
+        $user = new User;
         $user->id = 701;
         $request->setUserResolver(static fn () => $user);
         $route = app('router')->getRoutes()->match($request);

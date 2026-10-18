@@ -15,8 +15,8 @@ final class PaymentApiResponseService
      * top level for released mobile clients. The payment status endpoint owns
      * the legacy `status` key, so its HTTP code is also exposed as status_code.
      *
-     * @param array<string, mixed> $data
-     * @param array<string, list<string>>|null $errors
+     * @param  array<string, mixed>  $data
+     * @param  array<string, list<string>>|null  $errors
      */
     public function make(
         bool $success,
@@ -35,7 +35,7 @@ final class PaymentApiResponseService
             'server_time' => BusinessClock::utcNow()->toIso8601String(),
         ];
 
-        if (!$success) {
+        if (! $success) {
             $payload['code'] = $code ?? ApiErrorContract::codeForStatus($httpStatus);
             $payload['retryable'] = ApiErrorContract::retryable($httpStatus);
         } elseif ($code !== null) {
@@ -52,7 +52,7 @@ final class PaymentApiResponseService
 
                 continue;
             }
-            if (!array_key_exists($key, $payload)) {
+            if (! array_key_exists($key, $payload)) {
                 $payload[$key] = $value;
             }
         }

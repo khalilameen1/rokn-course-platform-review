@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Support\BunnyStoragePath;
+use Exception;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Exception;
 use RuntimeException;
 use Throwable;
 
@@ -35,12 +35,12 @@ class BunnyService
     /**
      * Create a new video in Bunny Stream and get upload URL
      *
-     * @param string $title Video title
+     * @param  string  $title  Video title
      * @return array|null Returns video data with guid and upload URL, or null on failure
      */
     public function createVideo(string $title): ?array
     {
-        if (!$this->isEnabled()) {
+        if (! $this->isEnabled()) {
             return null;
         }
 
@@ -54,6 +54,7 @@ class BunnyService
 
             if ($response->successful()) {
                 $data = $response->json();
+
                 return [
                     'guid' => $data['guid'],
                     'title' => $data['title'],
@@ -64,11 +65,13 @@ class BunnyService
                 'status' => $response->status(),
                 'response_fingerprint' => hash('sha256', $response->body()),
             ]);
+
             return null;
         } catch (Throwable $e) {
             Log::error('Bunny.net create video exception', [
                 'exception' => $e::class,
             ]);
+
             return null;
         }
     }
@@ -78,7 +81,7 @@ class BunnyService
     {
         $libraryId = trim((string) $this->configuration->getLibraryId());
         $apiKey = trim((string) $this->configuration->getApiKey());
-        if (!$this->isEnabled() || $libraryId === '' || $apiKey === '') {
+        if (! $this->isEnabled() || $libraryId === '' || $apiKey === '') {
             throw new RuntimeException('Bunny Stream is not configured.');
         }
         // Bunny fixes the resumable upload resource lifetime from the
@@ -112,7 +115,7 @@ class BunnyService
         int $expiresAt,
         string $videoGuid
     ): string {
-        return hash('sha256', $libraryId . $streamApiKey . $expiresAt . $videoGuid);
+        return hash('sha256', $libraryId.$streamApiKey.$expiresAt.$videoGuid);
     }
 
     /** Confirm a direct TUS upload contains bytes, not merely a created GUID. */
@@ -135,7 +138,7 @@ class BunnyService
                 && hash_equals(strtolower($videoGuid), $remoteGuid)
                 && $uploadComplete
                 && $this->remoteVideoIntegrityError($details, $videoGuid) === null
-                && !self::providerVideoStatusIsFailure($status)) {
+                && ! self::providerVideoStatusIsFailure($status)) {
                 return true;
             }
             if ($attempt < 3) {
@@ -163,7 +166,7 @@ class BunnyService
      */
     public function inspectRemoteVideo(string $videoGuid): array
     {
-        if (!$this->isEnabled()) {
+        if (! $this->isEnabled()) {
             return ['state' => 'unconfigured', 'details' => null, 'http_status' => null];
         }
         if ($this->probeCircuitIsOpen()) {
@@ -188,8 +191,9 @@ class BunnyService
                 return ['state' => 'not_found', 'details' => null, 'http_status' => $response->status()];
             }
             if (in_array($response->status(), [401, 403, 429], true) || $response->serverError()) {
-                $this->recordProbeFailure('http_' . $response->status());
+                $this->recordProbeFailure('http_'.$response->status());
             }
+
             return [
                 'state' => match (true) {
                     in_array($response->status(), [401, 403], true) => 'unauthorized',
@@ -205,6 +209,7 @@ class BunnyService
                 'video_guid' => $videoGuid,
                 'exception' => $exception::class,
             ]);
+
             return ['state' => 'unavailable', 'details' => null, 'http_status' => null];
         }
     }
@@ -213,7 +218,9 @@ class BunnyService
     public function findVideoGuidsByTitleMarker(string $marker): array
     {
         $marker = trim($marker);
-        if (!$this->isEnabled() || $marker === '' || strlen($marker) > 100) return [];
+        if (! $this->isEnabled() || $marker === '' || strlen($marker) > 100) {
+            return [];
+        }
         try {
             $response = $this->client(15)
                 ->withHeaders(['AccessKey' => $this->configuration->getApiKey()])
@@ -222,7 +229,10 @@ class BunnyService
                     'itemsPerPage' => 100,
                     'search' => $marker,
                 ]);
-            if (!$response->successful()) return [];
+            if (! $response->successful()) {
+                return [];
+            }
+
             return collect((array) data_get($response->json(), 'items', []))
                 ->filter(fn ($item): bool => is_array($item)
                     && str_contains((string) ($item['title'] ?? ''), $marker))
@@ -237,6 +247,7 @@ class BunnyService
                 'marker_hash' => hash('sha256', $marker),
                 'exception' => $exception::class,
             ]);
+
             return [];
         }
     }
@@ -245,14 +256,14 @@ class BunnyService
     public function remoteVideoIntegrityError(array $details, string $expectedGuid): ?string
     {
         $remoteGuid = strtolower(trim((string) ($details['guid'] ?? '')));
-        if ($remoteGuid === '' || !hash_equals(strtolower(trim($expectedGuid)), $remoteGuid)) {
+        if ($remoteGuid === '' || ! hash_equals(strtolower(trim($expectedGuid)), $remoteGuid)) {
             return 'provider_guid_mismatch';
         }
 
         $remoteLibraryId = trim((string) ($details['videoLibraryId'] ?? ''));
         $configuredLibraryId = trim((string) $this->configuration->getLibraryId());
         if ($remoteLibraryId === '' || $configuredLibraryId === ''
-            || !hash_equals($configuredLibraryId, $remoteLibraryId)) {
+            || ! hash_equals($configuredLibraryId, $remoteLibraryId)) {
             return 'provider_library_mismatch';
         }
 
@@ -350,12 +361,11 @@ class BunnyService
     /**
      * Delete a video from Bunny Stream
      *
-     * @param string $videoGuid The video GUID
-     * @return bool
+     * @param  string  $videoGuid  The video GUID
      */
     public function deleteVideo(string $videoGuid): bool
     {
-        if (!$this->isEnabled()) {
+        if (! $this->isEnabled()) {
             return false;
         }
 
@@ -371,6 +381,7 @@ class BunnyService
             Log::error('Bunny.net delete video exception', [
                 'exception' => $e::class,
             ]);
+
             return false;
         }
     }
@@ -378,8 +389,6 @@ class BunnyService
     /**
      * Upload a file to Bunny Storage
      *
-     * @param UploadedFile $file
-     * @param string $folder
      * @return string|null Returns the file path/URL on success, or null on failure
      */
     public function uploadFileToStorage(
@@ -387,22 +396,23 @@ class BunnyService
         string $folder = 'general',
         ?string $objectKey = null,
         ?string $cleanupReason = 'unpublished_storage_upload'
-    ): ?string
-    {
-        if (!$this->isEnabled()) {
+    ): ?string {
+        if (! $this->isEnabled()) {
             return null;
         }
 
         $storageZone = $this->configuration->getStorageZoneName();
         $password = $this->configuration->getStoragePassword();
-        if (!$storageZone || !$password) {
+        if (! $storageZone || ! $password) {
             Log::error('Bunny Storage not configured');
+
             return null;
         }
 
         $folder = trim(str_replace('\\', '/', $folder), '/');
         if ($folder === '' || preg_match('#^(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+$#', $folder) !== 1) {
             Log::warning('Rejected unsafe Bunny Storage folder.');
+
             return null;
         }
 
@@ -412,13 +422,13 @@ class BunnyService
         // same-second collisions and never exposes or trusts the client name.
         $fileName = ($objectKey && Str::isUuid($objectKey)
             ? strtolower($objectKey)
-            : Str::uuid()->toString()) . '.' . $extension;
+            : Str::uuid()->toString()).'.'.$extension;
         $path = "{$folder}/{$fileName}";
         if ($cleanupReason !== null) {
             // The deterministic path and cleanup row are durable before the
             // external PUT, closing the process-death gap after Bunny accepts
             // bytes but before the application publishes a reference.
-            if (!$this->mediaRegistry->queueStorageCleanup($path, $cleanupReason, 24 * 60)) {
+            if (! $this->mediaRegistry->queueStorageCleanup($path, $cleanupReason, 24 * 60)) {
                 // A cleanup worker has already claimed this deterministic key.
                 // Never overwrite an object whose delete outcome is uncertain.
                 return null;
@@ -449,11 +459,13 @@ class BunnyService
                 'status' => $response->status(),
                 'response_fingerprint' => hash('sha256', $response->body()),
             ]);
+
             return null;
         } catch (Throwable $e) {
             Log::error('Bunny Storage upload exception', [
                 'exception' => $e::class,
             ]);
+
             return null;
         } finally {
             if (is_resource($stream)) {
@@ -480,19 +492,18 @@ class BunnyService
     /**
      * Delete a file from Bunny Storage
      *
-     * @param string $fileUrl Full URL of the file
-     * @return bool
+     * @param  string  $fileUrl  Full URL of the file
      */
     public function deleteFileFromStorage(string $fileUrl): bool
     {
-        if (!$this->isEnabled()) {
+        if (! $this->isEnabled()) {
             return false;
         }
 
         $storageZone = $this->configuration->getStorageZoneName();
         $password = $this->configuration->getStoragePassword();
 
-        if (!$storageZone || !$password) {
+        if (! $storageZone || ! $password) {
             return false;
         }
 
@@ -500,6 +511,7 @@ class BunnyService
         $path = BunnyStoragePath::normalize($fileUrl, $this->configuration->getStorageCdnHostname());
         if ($path === null) {
             Log::warning('Rejected an invalid Bunny Storage deletion path.');
+
             return false;
         }
 
@@ -515,6 +527,7 @@ class BunnyService
             Log::error('Bunny Storage delete exception', [
                 'exception' => $e::class,
             ]);
+
             return false;
         }
     }
@@ -527,10 +540,6 @@ class BunnyService
 
     /**
      * Test connection to Bunny.net API
-     *
-     * @param string $apiKey
-     * @param string $libraryId
-     * @return array
      */
     public static function testConnection(string $apiKey, string $libraryId): array
     {
@@ -542,6 +551,7 @@ class BunnyService
 
             if ($response->successful()) {
                 $data = $response->json();
+
                 return [
                     'success' => true,
                     'message' => 'تم الاتصال بنجاح',
@@ -551,7 +561,7 @@ class BunnyService
 
             return [
                 'success' => false,
-                'message' => 'فشل الاتصال: ' . $response->status(),
+                'message' => 'فشل الاتصال: '.$response->status(),
             ];
         } catch (Exception) {
             return [
@@ -561,4 +571,3 @@ class BunnyService
         }
     }
 }
-

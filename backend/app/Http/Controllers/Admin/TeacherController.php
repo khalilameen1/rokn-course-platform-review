@@ -4,12 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Auth\AdminPermissionMatrix;
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\CourseAuthoringRevision;
-use Illuminate\Http\Request;
+use App\Models\User;
+use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminTeacherAuthoringService;
 use App\Support\TeacherEditorVersion;
-use App\Services\AdminAuthoringCreateIntentService;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
 
 class TeacherController extends Controller
@@ -17,13 +18,12 @@ class TeacherController extends Controller
     public function __construct(
         private readonly AdminPermissionMatrix $permissions,
         private readonly AdminTeacherAuthoringService $authoring
-    ) {
-    }
+    ) {}
 
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function index(Request $request)
     {
@@ -36,11 +36,11 @@ class TeacherController extends Controller
                 'teachingCourses' => fn ($courses) => $this->onlyCanonicalCourses($courses),
             ]);
 
-        if ($request->has('search') && !empty($request->search)) {
+        if ($request->has('search') && ! empty($request->search)) {
             $search = $request->search;
-            $teachers->where(function($query) use ($search, $canManageCredentials) {
+            $teachers->where(function ($query) use ($search, $canManageCredentials) {
                 $query->where('name_ar', 'LIKE', "%{$search}%")
-                      ->orWhere('name_en', 'LIKE', "%{$search}%");
+                    ->orWhere('name_en', 'LIKE', "%{$search}%");
                 if ($canManageCredentials) {
                     $query->orWhere('email', 'LIKE', "%{$search}%")
                         ->orWhere('phone', 'LIKE', "%{$search}%");
@@ -65,7 +65,7 @@ class TeacherController extends Controller
     /**
      * Show the form for creating a new resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function create(Request $request)
     {
@@ -77,8 +77,7 @@ class TeacherController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function store(Request $request, AdminAuthoringCreateIntentService $createIntents)
     {
@@ -134,7 +133,7 @@ class TeacherController extends Controller
      * Display the specified resource.
      *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function show(Request $request, $id)
     {
@@ -164,11 +163,12 @@ class TeacherController extends Controller
      * Show the form for editing the specified resource.
      *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function edit(Request $request, $id)
     {
         $teacher = User::query()->where('role', 'teacher')->with('photo')->findOrFail($id);
+
         return view('admin.teachers.edit', [
             'teacher' => $teacher,
             'editorVersion' => TeacherEditorVersion::for($teacher),
@@ -179,9 +179,8 @@ class TeacherController extends Controller
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function update(Request $request, $id)
     {
@@ -218,6 +217,7 @@ class TeacherController extends Controller
             (string) $request->input('editor_version'),
             $request->file('image')
         );
+
         return redirect()->route('admin.teachers.index')->with('success', 'تم تعديل بيانات المعلم بنجاح');
     }
 
@@ -225,11 +225,11 @@ class TeacherController extends Controller
      * Remove the specified resource from storage.
      *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function destroy($id)
     {
-        if (!$this->authoring->delete((int) $id)) {
+        if (! $this->authoring->delete((int) $id)) {
             return redirect()->route('admin.teachers.index')
                 ->with('error', 'انقل الكورسات إلى مدرب آخر قبل حذف هذا المدرب');
         }
@@ -241,12 +241,13 @@ class TeacherController extends Controller
      * Toggle active status.
      *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function deactive(Request $request, $id)
     {
         $validated = $request->validate(['expected_active' => 'required|boolean']);
         $teacher = $this->authoring->toggleActive((int) $id, (bool) $validated['expected_active']);
+
         return redirect()->back()->with('success', $teacher->active ? 'تم التفعيل بنجاح' : 'تم التعطيل بنجاح');
     }
 
@@ -269,7 +270,7 @@ class TeacherController extends Controller
     /** @return array<string, list<mixed>> */
     private function credentialRules(Request $request, ?int $teacherId = null): array
     {
-        if (!$this->canManageCredentials($request)) {
+        if (! $this->canManageCredentials($request)) {
             return [
                 'manage_credentials' => ['prohibited'],
                 'email' => ['prohibited'],
@@ -279,7 +280,7 @@ class TeacherController extends Controller
             ];
         }
 
-        if (!$request->boolean('manage_credentials')) {
+        if (! $request->boolean('manage_credentials')) {
             return [
                 'manage_credentials' => ['nullable', 'boolean'],
                 'email' => ['exclude'],

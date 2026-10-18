@@ -120,8 +120,7 @@ final class CourseRevisionProjectProgressProjectionTest extends TestCase
             $reviewedAt
         );
         self::assertFalse($beforeReview->contains(
-            fn (StudentSectionProgress $row): bool =>
-                (int) $row->course_section_id === (int) $currentProjectSection->id
+            fn (StudentSectionProgress $row): bool => (int) $row->course_section_id === (int) $currentProjectSection->id
         ));
 
         $afterReview = $reads->sectionProgressRowsForUsers(
@@ -130,14 +129,12 @@ final class CourseRevisionProjectProgressProjectionTest extends TestCase
             $reviewedAt->copy()->addSecond()
         );
         self::assertTrue($afterReview->contains(
-            fn (StudentSectionProgress $row): bool =>
-                (int) $row->user_id === (int) $student->id
+            fn (StudentSectionProgress $row): bool => (int) $row->user_id === (int) $student->id
                 && (int) $row->course_section_id === (int) $currentProjectSection->id
                 && $row->is_completed
         ));
         self::assertFalse($afterReview->contains(
-            fn (StudentSectionProgress $row): bool =>
-                (int) $row->user_id === (int) $otherStudent->id
+            fn (StudentSectionProgress $row): bool => (int) $row->user_id === (int) $otherStudent->id
                 && (int) $row->course_section_id === (int) $currentProjectSection->id
         ));
 
@@ -156,8 +153,7 @@ final class CourseRevisionProjectProgressProjectionTest extends TestCase
         DB::disableQueryLog();
         self::assertSame(1, $submissionQueryCount);
         $otherProject = $allRows->first(
-            fn (StudentSectionProgress $row): bool =>
-                (int) $row->user_id === (int) $otherStudent->id
+            fn (StudentSectionProgress $row): bool => (int) $row->user_id === (int) $otherStudent->id
                 && (int) $row->course_section_id === (int) $currentProjectSection->id
         );
         self::assertNotNull($otherProject);
@@ -167,8 +163,7 @@ final class CourseRevisionProjectProgressProjectionTest extends TestCase
             [$currentProjectSection->id]
         )->contains((int) $currentProjectSection->id));
         $lessonProgress = $allRows->first(
-            fn (StudentSectionProgress $row): bool =>
-                (int) $row->user_id === (int) $student->id
+            fn (StudentSectionProgress $row): bool => (int) $row->user_id === (int) $student->id
                 && (int) $row->course_section_id === (int) $lessonSection->id
         );
         self::assertNotNull($lessonProgress);
@@ -179,7 +174,7 @@ final class CourseRevisionProjectProgressProjectionTest extends TestCase
 
     private function student(string $email): User
     {
-        $student = new User();
+        $student = new User;
         $student->forceFill([
             'name_ar' => 'طالب ركن',
             'email' => $email,
@@ -192,7 +187,7 @@ final class CourseRevisionProjectProgressProjectionTest extends TestCase
 
     private function course(string $name): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => $name,

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\BunnyVideoCleanupCandidate;
+use App\Models\Course;
+use App\Models\CourseEnrollment;
 use App\Models\PortfolioItem;
 use App\Models\PortfolioVideoUpload;
 use App\Models\User;
@@ -70,10 +72,10 @@ final class PortfolioVideoUploadLeaseTest extends TestCase
             'authorization_expires_in_seconds' => 1800,
         ]);
 
-        $course = \App\Models\Course::query()->forceCreate([
+        $course = Course::query()->forceCreate([
             'tenant_id' => 1, 'name_ar' => 'كورس بشهادة', 'price' => 100,
         ]);
-        \App\Models\CourseEnrollment::query()->forceCreate([
+        CourseEnrollment::query()->forceCreate([
             'tenant_id' => $course->tenant_id,
             'user_id' => $user->id, 'course_id' => $course->id, 'is_active' => true,
         ]);

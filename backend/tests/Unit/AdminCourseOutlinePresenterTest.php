@@ -17,17 +17,17 @@ final class AdminCourseOutlinePresenterTest extends TestCase
 {
     public function test_initial_graph_and_mutation_nodes_share_one_editor_contract(): void
     {
-        $course = $this->model(new Course(), [
+        $course = $this->model(new Course, [
             'id' => 40,
             'authoring_version' => 7,
         ]);
-        $module = $this->model(new CourseModule(), [
+        $module = $this->model(new CourseModule, [
             'id' => 50,
             'course_id' => 40,
             'title_ar' => 'الوحدة الأولى',
             'order' => 1,
         ]);
-        $lesson = $this->model(new Lesson(), [
+        $lesson = $this->model(new Lesson, [
             'id' => 60,
             'list_id' => 40,
             'description_ar' => 'كابشن واضح',
@@ -35,7 +35,7 @@ final class AdminCourseOutlinePresenterTest extends TestCase
             'is_opened' => true,
             'bunny_video_id' => 'video-guid',
         ]);
-        $lessonSection = $this->model(new CourseSection(), [
+        $lessonSection = $this->model(new CourseSection, [
             'id' => 70,
             'course_id' => 40,
             'module_id' => 50,
@@ -46,13 +46,13 @@ final class AdminCourseOutlinePresenterTest extends TestCase
         ]);
         $lessonSection->setRelation('sectionable', $lesson);
 
-        $project = $this->model(new Project(), [
+        $project = $this->model(new Project, [
             'id' => 61,
             'requirements_text_ar' => 'نفذ المطلوب',
             'submission_text_enabled' => true,
             'submission_allowed_mime_types' => ['application/pdf'],
         ]);
-        $projectSection = $this->model(new CourseSection(), [
+        $projectSection = $this->model(new CourseSection, [
             'id' => 71,
             'course_id' => 40,
             'module_id' => 50,

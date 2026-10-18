@@ -42,7 +42,9 @@ class CourseRequest extends FormRequest
         $plans = $this->input('access_plans');
         if (is_array($plans)) {
             foreach (['basic', 'guided', 'mentor'] as $code) {
-                if (!is_array($plans[$code] ?? null)) continue;
+                if (! is_array($plans[$code] ?? null)) {
+                    continue;
+                }
                 // Runtime AI policy is neither displayed nor owned here. Drop
                 // stale or crafted fields before validation; the plan service
                 // reloads its authoritative runtime values under the DB lock.
@@ -66,7 +68,9 @@ class CourseRequest extends FormRequest
             }
             $normalized['access_plans'] = $plans;
         }
-        if ($normalized !== []) $this->merge($normalized);
+        if ($normalized !== []) {
+            $this->merge($normalized);
+        }
     }
 
     /**
@@ -159,5 +163,4 @@ class CourseRequest extends FormRequest
     {
         return CourseAuthoringEdit::fromValidated($this->validated());
     }
-
 }

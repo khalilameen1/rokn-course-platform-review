@@ -21,7 +21,7 @@ final class CommonMarkDependencyCompatibilityTest extends TestCase
 
     public function test_arabic_text_headings_and_emphasis_still_render(): void
     {
-        $converter = new GithubFlavoredMarkdownConverter();
+        $converter = new GithubFlavoredMarkdownConverter;
         $html = (string) $converter->convert("# رُكن\n\n**تقرير المشروع**\n\nخطوة جديدة في الكورس");
 
         self::assertStringContainsString('<h1>رُكن</h1>', $html);
@@ -31,7 +31,7 @@ final class CommonMarkDependencyCompatibilityTest extends TestCase
 
     public function test_gfm_tables_and_normal_multiline_paragraphs_still_render(): void
     {
-        $converter = new GithubFlavoredMarkdownConverter();
+        $converter = new GithubFlavoredMarkdownConverter;
         $html = (string) $converter->convert("المشروع | النتيجة\n--- | ---\nالأول | مكتمل\n\nسطر أول\nسطر ثان");
 
         self::assertStringContainsString('<table>', $html);
@@ -43,7 +43,7 @@ final class CommonMarkDependencyCompatibilityTest extends TestCase
     public function test_bare_disallowed_html_tag_names_are_escaped_by_the_upstream_renderer(): void
     {
         // Upstream regression shape: GHSA-97jj-33gv-5xf9; no custom sanitizer.
-        $converter = new GithubFlavoredMarkdownConverter();
+        $converter = new GithubFlavoredMarkdownConverter;
 
         foreach (['script', 'iframe'] as $tag) {
             $html = (string) $converter->convert("<div>\n<{$tag}\n\n<span src=\"/example.js\">\n");

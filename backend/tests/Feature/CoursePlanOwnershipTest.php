@@ -76,10 +76,12 @@ final class CoursePlanOwnershipTest extends TestCase
         self::assertTrue($updated['chat_attachments_enabled']);
         self::assertTrue($updated['project_followup_attachments_enabled']);
         foreach ($receipt as $key => $value) {
-            if (!in_array($key, [
+            if (! in_array($key, [
                 'chat_attachments_enabled', 'chat_attachment_max_files',
                 'project_followup_attachments_enabled', 'project_followup_attachment_max_files',
-            ], true)) self::assertSame($value, $updated[$key], $key);
+            ], true)) {
+                self::assertSame($value, $updated[$key], $key);
+            }
         }
         self::assertSame($orderBefore, $order->fresh()->getAttributes());
         self::assertSame(0, $grants->grantAttachmentsToCurrentEnrollments($course, true, true));
@@ -128,7 +130,7 @@ final class CoursePlanOwnershipTest extends TestCase
         app(CoursePlanAuthoringService::class)->createDefaults($course);
         $plan = $course->accessPlans()->where('code', CourseAccessPlan::MENTOR)->firstOrFail();
         $snapshot = app(CourseAccessPlanService::class)->snapshot($plan);
-        if (!$attachments) {
+        if (! $attachments) {
             $snapshot['chat_attachments_enabled'] = false;
             $snapshot['chat_attachment_max_files'] = 0;
             $snapshot['project_followup_attachments_enabled'] = false;
@@ -154,6 +156,7 @@ final class CoursePlanOwnershipTest extends TestCase
             'access_plan_snapshot' => $snapshot, 'enrolled_at' => now(),
             'is_active' => true, 'access_granted_at' => now(),
         ]);
+
         return [$course, $plan, $order, $enrollment];
     }
 

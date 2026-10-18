@@ -2,8 +2,6 @@
 
 namespace App\Http\Requests\API;
 
-use App\Http\Requests\API\FormRequest;
-
 class OrderRequest extends FormRequest
 {
     /**
@@ -24,18 +22,18 @@ class OrderRequest extends FormRequest
     public function rules()
     {
         return [
-           // 'user_id' => 'required|exists:users,id',
+            // 'user_id' => 'required|exists:users,id',
             'provider' => 'exists:users,id',
-            //'price' => 'required',
-            //'tax' => 'required',
+            // 'price' => 'required',
+            // 'tax' => 'required',
 
             'client_lat' => 'required',
             'client_lng' => 'required',
             'delivering_lat' => 'required',
-            'delivering_lng' => 'required', 
+            'delivering_lng' => 'required',
             'coupon_id' => 'exists:coupons,id',
-            'delivery_time_id' => 'required',      
-            //'total'=> 'required', 
+            'delivery_time_id' => 'required',
+            // 'total'=> 'required',
         ];
     }
 
@@ -45,17 +43,17 @@ class OrderRequest extends FormRequest
     public function attributes()
     {
         return [
-          //  'user_id' => 'تأكد من وجود هذا العضو',
+            //  'user_id' => 'تأكد من وجود هذا العضو',
             'provider' => 'تأكد من وجود هذا المندوب',
-            //'price' => 'من فضلك ضع السعر العام ',
-            //'tax' => 'الضريبة',
+            // 'price' => 'من فضلك ضع السعر العام ',
+            // 'tax' => 'الضريبة',
             'client_lat' => ' أضف موقع الاستلام',
             'client_lng' => ' أضف موقع الاستلام',
             'delivering_lat' => ' أضف موقع التسليم',
             'delivering_lng' => ' أضف موقع التسليم',
-            'coupon_id' => 'تأكد من صحة الكوبون',  
-            'delivery_time_id' => 'وقت التسليم',      
-            //'total'=> 'أضف السعر النهائي', 
+            'coupon_id' => 'تأكد من صحة الكوبون',
+            'delivery_time_id' => 'وقت التسليم',
+            // 'total'=> 'أضف السعر النهائي',
         ];
     }
 }

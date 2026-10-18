@@ -11,8 +11,8 @@ use App\Models\RewardRule;
 use App\Models\User;
 use App\Models\UserDailyLearningActivity;
 use App\Models\WalletTransaction;
-use App\Support\DatabaseCapabilities;
 use App\Support\BusinessClock;
+use App\Support\DatabaseCapabilities;
 use Illuminate\Support\Facades\DB;
 
 /** Records earned activity contracts; delegates wallet settlement to the credit owner. */
@@ -22,8 +22,7 @@ final class LearningRewardService
         private readonly WalletService $wallet,
         private readonly CourseEntitlementService $courseAccess,
         private readonly LearningRewardCreditService $credits
-    ) {
-    }
+    ) {}
 
     public function claimDaily(User $user): array
     {
@@ -47,7 +46,7 @@ final class LearningRewardService
                 ->where('checkin_date', $today)
                 ->lockForUpdate()
                 ->first();
-            if (!$checkin->rules_snapshotted_at) {
+            if (! $checkin->rules_snapshotted_at) {
                 DB::table('user_reward_checkins')->where('id', $checkin->id)->update([
                     'daily_rule_snapshot' => $this->encodeRuleSnapshot($dailyRule),
                     'streak_rule_snapshot' => $this->encodeRuleSnapshot($streakRule),
@@ -135,11 +134,11 @@ final class LearningRewardService
                 ->where('activity_date', $today)
                 ->lockForUpdate()
                 ->first();
-            if (!$activity) {
+            if (! $activity) {
                 return null;
             }
-            if (!is_array($activity->reward_contract)) {
-                if (!$rule) {
+            if (! is_array($activity->reward_contract)) {
+                if (! $rule) {
                     return null;
                 }
                 $activity->reward_contract = [
@@ -158,7 +157,7 @@ final class LearningRewardService
 
             return $activity->fresh();
         });
-        if (!$activity) {
+        if (! $activity) {
             return $this->result($user, null);
         }
 
@@ -213,8 +212,7 @@ final class LearningRewardService
         Project|int $project,
         ?array $rewardContract = null,
         ?int $courseId = null
-    ): array
-    {
+    ): array {
         $projectId = $project instanceof Project ? (int) $project->id : (int) $project;
         $course = $courseId ? Course::withTrashed()->find($courseId) : null;
         $course ??= $project instanceof Project ? $project->course : null;
@@ -224,7 +222,7 @@ final class LearningRewardService
 
         $rule = RewardRule::activeFor('first_project_passed');
         $contract = $this->achievementContract($rewardContract, $rule);
-        if (!$contract) {
+        if (! $contract) {
             return $this->result($user, null);
         }
         $transaction = $this->credits->credit(
@@ -245,8 +243,7 @@ final class LearningRewardService
         User $user,
         Course $course,
         ?array $rewardContract = null
-    ): array
-    {
+    ): array {
         $course = $this->canonicalRewardCourse($course);
         if ($this->usesInstitutionalGrant($user, $course)) {
             return $this->result($user, null, ['excluded_for_grant' => true]);
@@ -254,7 +251,7 @@ final class LearningRewardService
 
         $rule = RewardRule::activeFor('course_completed');
         $contract = $this->achievementContract($rewardContract, $rule);
-        if (!$contract) {
+        if (! $contract) {
             return $this->result($user, null);
         }
         $transaction = $this->credits->credit(
@@ -312,7 +309,7 @@ final class LearningRewardService
 
     private function encodeRuleSnapshot(?RewardRule $rule): ?string
     {
-        if (!$rule) {
+        if (! $rule) {
             return null;
         }
 
@@ -351,7 +348,9 @@ final class LearningRewardService
                 ),
             ];
         }
-        if (!$fallback) return null;
+        if (! $fallback) {
+            return null;
+        }
 
         return [
             'rule_id' => (int) $fallback->id,
@@ -375,7 +374,7 @@ final class LearningRewardService
 
     private function canonicalRewardCourse(Course $course): Course
     {
-        if (!DatabaseCapabilities::hasTable('course_authoring_revisions')) {
+        if (! DatabaseCapabilities::hasTable('course_authoring_revisions')) {
             return $course;
         }
 

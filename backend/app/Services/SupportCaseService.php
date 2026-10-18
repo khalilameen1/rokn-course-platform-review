@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Support\StudentNotificationIntent;
-
 use App\Models\FeedbackReport;
 use App\Models\SupportCaseEvent;
 use App\Models\SupportCaseMessage;
 use App\Models\User;
+use App\Support\StudentNotificationIntent;
+use Carbon\CarbonInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -22,9 +22,7 @@ final class SupportCaseService
         private readonly StudentNotificationService $notifications,
         private readonly SupportCaseScreenshotService $screenshots,
         private readonly SupportCaseAccessService $access
-    )
-    {
-    }
+    ) {}
 
     public function appendLearnerMessage(
         FeedbackReport $report,
@@ -45,6 +43,7 @@ final class SupportCaseService
             ->first();
         if ($existing) {
             abort_unless(hash_equals((string) $existing->request_fingerprint, $fingerprint), 409);
+
             return $existing;
         }
 
@@ -53,61 +52,62 @@ final class SupportCaseService
             : null;
 
         return DB::transaction(function () use (
-                $report,
-                $user,
-                $body,
-                $clientRequestId,
-                $fingerprint,
-                $stagedAttachment
-            ): SupportCaseMessage {
-                if ($user) {
-                    User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
-                }
-                $locked = FeedbackReport::query()->lockForUpdate()->findOrFail($report->id);
-                $existing = SupportCaseMessage::query()
-                    ->where('feedback_report_id', $locked->id)
-                    ->where('client_request_id', $clientRequestId)
-                    ->first();
-                if ($existing) {
-                    abort_unless(hash_equals((string) $existing->request_fingerprint, $fingerprint), 409);
-                    return $existing;
-                }
+            $report,
+            $user,
+            $body,
+            $clientRequestId,
+            $fingerprint,
+            $stagedAttachment
+        ): SupportCaseMessage {
+            if ($user) {
+                User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            }
+            $locked = FeedbackReport::query()->lockForUpdate()->findOrFail($report->id);
+            $existing = SupportCaseMessage::query()
+                ->where('feedback_report_id', $locked->id)
+                ->where('client_request_id', $clientRequestId)
+                ->first();
+            if ($existing) {
+                abort_unless(hash_equals((string) $existing->request_fingerprint, $fingerprint), 409);
 
-                $fromStatus = (string) $locked->status;
-                $reopened = in_array($fromStatus, ['resolved', 'closed', 'dismissed'], true);
-                $message = SupportCaseMessage::query()->create([
-                    'public_id' => (string) Str::ulid(),
-                    'feedback_report_id' => $locked->id,
-                    'author_id' => $user?->id,
-                    'author_type' => SupportCaseMessage::AUTHOR_LEARNER,
-                    'visibility' => SupportCaseMessage::VISIBILITY_CUSTOMER,
-                    'body' => $body,
-                    'client_request_id' => $clientRequestId,
-                    'request_fingerprint' => $fingerprint,
-                ]);
+                return $existing;
+            }
 
-                if ($stagedAttachment) {
-                    $this->screenshots->attach($locked, $message, $stagedAttachment);
-                }
+            $fromStatus = (string) $locked->status;
+            $reopened = in_array($fromStatus, ['resolved', 'closed', 'dismissed'], true);
+            $message = SupportCaseMessage::query()->create([
+                'public_id' => (string) Str::ulid(),
+                'feedback_report_id' => $locked->id,
+                'author_id' => $user?->id,
+                'author_type' => SupportCaseMessage::AUTHOR_LEARNER,
+                'visibility' => SupportCaseMessage::VISIBILITY_CUSTOMER,
+                'body' => $body,
+                'client_request_id' => $clientRequestId,
+                'request_fingerprint' => $fingerprint,
+            ]);
 
-                $updates = [
-                    'last_user_message_at' => now(),
-                    'version' => (int) $locked->version + 1,
-                    'updated_at' => now(),
+            if ($stagedAttachment) {
+                $this->screenshots->attach($locked, $message, $stagedAttachment);
+            }
+
+            $updates = [
+                'last_user_message_at' => now(),
+                'version' => (int) $locked->version + 1,
+                'updated_at' => now(),
+            ];
+            if ($reopened) {
+                $updates += [
+                    'status' => 'reviewing',
+                    'resolved_at' => null,
+                    'closed_at' => null,
+                    'reopened_at' => now(),
                 ];
-                if ($reopened) {
-                    $updates += [
-                        'status' => 'reviewing',
-                        'resolved_at' => null,
-                        'closed_at' => null,
-                        'reopened_at' => now(),
-                    ];
-                }
-                $locked->update($updates);
-                $this->event($locked, $user?->id, $reopened ? 'reopened' : 'learner_replied', $fromStatus, $updates['status'] ?? $fromStatus);
+            }
+            $locked->update($updates);
+            $this->event($locked, $user?->id, $reopened ? 'reopened' : 'learner_replied', $fromStatus, $updates['status'] ?? $fromStatus);
 
-                return $message;
-            }, 3);
+            return $message;
+        }, 3);
     }
 
     public function appendStaffMessage(
@@ -146,6 +146,7 @@ final class SupportCaseService
                 if ($visibility === SupportCaseMessage::VISIBILITY_CUSTOMER && $locked->user_id) {
                     $this->notifyCustomer($locked, $existing);
                 }
+
                 return $existing;
             }
             abort_if((int) $locked->version !== $expectedVersion, 409, "عدّل شخص آخر هذه الحالة\nحدّث الصفحة ثم أعد المحاولة");
@@ -163,7 +164,9 @@ final class SupportCaseService
             $updates = ['version' => (int) $locked->version + 1, 'updated_at' => now()];
             if ($visibility === SupportCaseMessage::VISIBILITY_CUSTOMER) {
                 $updates['last_staff_message_at'] = now();
-                if ($locked->status === 'new') $updates['status'] = 'reviewing';
+                if ($locked->status === 'new') {
+                    $updates['status'] = 'reviewing';
+                }
             }
             $locked->update($updates);
             $this->event($locked, $staff->id, $visibility === 'internal' ? 'internal_note' : 'staff_replied');
@@ -173,6 +176,7 @@ final class SupportCaseService
 
             return $message;
         }, 3);
+
         return $message;
     }
 
@@ -201,6 +205,7 @@ final class SupportCaseService
                     && ($locked->assigned_to === null ? null : (int) $locked->assigned_to) === $desiredAssignedTo
                     && ($locked->resolution_kind ?: null) === $desiredResolutionKind;
                 abort_unless($alreadyApplied, 409, "عدّل شخص آخر هذه الحالة\nحدّث الصفحة ثم أعد المحاولة");
+
                 return;
             }
             $statusChanged = $fromStatus !== $validated['status'];
@@ -214,7 +219,7 @@ final class SupportCaseService
                     ? ($locked->closed_at ?: now()) : null,
                 'version' => (int) $locked->version + 1,
             ];
-            if (!$locked->last_staff_message_at && $locked->priority !== $validated['priority']) {
+            if (! $locked->last_staff_message_at && $locked->priority !== $validated['priority']) {
                 $updates['first_response_due_at'] = $this->firstResponseDueAt($validated['priority']);
             }
             $locked->update($updates);
@@ -240,7 +245,7 @@ final class SupportCaseService
             $locked = FeedbackReport::query()->lockForUpdate()->findOrFail($report->id);
             $this->access->authorizeViewer($locked, $user, $accessToken);
             abort_if($locked->user_id && (int) $locked->user_id !== (int) $user->id, 404);
-            if (!$locked->user_id) {
+            if (! $locked->user_id) {
                 $locked->update([
                     'user_id' => $user->id,
                     'guest_access_hash' => null,
@@ -253,16 +258,19 @@ final class SupportCaseService
         }, 3);
     }
 
-    public function firstResponseDueAt(string $priority = 'normal'): \Carbon\CarbonInterface
+    public function firstResponseDueAt(string $priority = 'normal'): CarbonInterface
     {
         $hours = ['urgent' => 2, 'high' => 8, 'normal' => 24, 'low' => 72][$priority] ?? 24;
+
         return now()->addHours($hours);
     }
 
     public function notifyStatus(FeedbackReport $report, string $status, string $deliveryKey): void
     {
         $user = $report->user;
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
         [$titleAr, $messageAr] = match ($status) {
             'resolved' => ['تم حل البلاغ', 'راجع رد فريق الدعم على البلاغ '.strtoupper(substr((string) $report->public_id, -8))],
             'waiting_for_user' => ['ينتظر الدعم ردك', 'أرسل التفاصيل المطلوبة في البلاغ '.strtoupper(substr((string) $report->public_id, -8))],
@@ -306,7 +314,9 @@ final class SupportCaseService
     private function notifyCustomer(FeedbackReport $report, SupportCaseMessage $message): void
     {
         $user = $report->user;
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
         $this->notifications->notifyUser(
             $user,
             new StudentNotificationIntent(

@@ -18,8 +18,7 @@ final class SocialAccountBindingService
     public function __construct(
         private readonly SocialIdentityGuardService $identityGuards,
         private readonly PortfolioShareIdentityService $portfolioShares
-    ) {
-    }
+    ) {}
 
     public function bind(
         VerifiedSocialIdentity $identity,
@@ -47,23 +46,23 @@ final class SocialAccountBindingService
                     ->lockForUpdate()
                     ->first()
                 : null;
-            if ($socialAccount && (!$user || $user->trashed() || !(bool) $user->active)) {
+            if ($socialAccount && (! $user || $user->trashed() || ! (bool) $user->active)) {
                 throw new \DomainException('social_account_disabled');
             }
 
             // Linking by email is allowed only when the provider itself verified that email.
-            if (!$user && $identity->emailVerified) {
+            if (! $user && $identity->emailVerified) {
                 $emailOwner = User::withTrashed()
                     ->where('email', $identity->email)
                     ->lockForUpdate()
                     ->first();
-                if ($emailOwner && ($emailOwner->trashed() || !(bool) $emailOwner->active)) {
+                if ($emailOwner && ($emailOwner->trashed() || ! (bool) $emailOwner->active)) {
                     throw new \DomainException('social_account_disabled');
                 }
                 if ($emailOwner && strtolower((string) $emailOwner->role) !== 'client') {
                     throw new \DomainException('social_account_email_reserved');
                 }
-                if ($emailOwner && !$emailOwner->email_verified_at) {
+                if ($emailOwner && ! $emailOwner->email_verified_at) {
                     // A learner may type any available address while
                     // editing the profile. That unverified string is not
                     // proof that a later provider identity owns this row.
@@ -72,7 +71,7 @@ final class SocialAccountBindingService
                 $user = $emailOwner;
             }
 
-            if (!$user) {
+            if (! $user) {
                 $internalEmail = $identity->emailVerified
                     ? $identity->email
                     : sprintf('%s-%s@accounts.rokn.app', $identity->provider, hash('sha256', $identity->providerUserId));
@@ -147,7 +146,7 @@ final class SocialAccountBindingService
                 $updates['social_provider'] = $identity->provider;
                 $updates['social_id'] = $identity->providerUserId;
             }
-            if ($identity->picture && !$user->profile_image) {
+            if ($identity->picture && ! $user->profile_image) {
                 $updates['profile_image'] = $identity->picture;
             }
             $currentEmail = Str::lower((string) $user->email);
@@ -157,7 +156,7 @@ final class SocialAccountBindingService
                 if ($identity->email !== $currentEmail) {
                     $updates['email'] = $identity->email;
                 }
-                if (!$user->email_verified_at) {
+                if (! $user->email_verified_at) {
                     // Never mark a separately edited email as verified just
                     // because the provider verified a different address.
                     $updates['email_verified_at'] = now();

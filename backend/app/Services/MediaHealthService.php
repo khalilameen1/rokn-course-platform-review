@@ -29,7 +29,7 @@ final class MediaHealthService
                 ?: new LessonMediaState(['status' => 'failed']);
         }
 
-        if (!$observedUsesBunny) {
+        if (! $observedUsesBunny) {
             return $this->persistObservation($lessonId, $observedGuid, false, $probeStartedAt, $probeGeneration, [
                 'status' => 'failed',
                 'last_error_code' => 'missing_source',
@@ -57,7 +57,7 @@ final class MediaHealthService
                 'last_error_message' => 'The remote media identity does not match the configured lesson and library.',
             ], true);
         }
-        if (!$details) {
+        if (! $details) {
             return $this->persistObservation($lessonId, $observedGuid, true, $probeStartedAt, $probeGeneration, [
                 // A transient control-plane outage must not demote a
                 // previously playable data-plane source.
@@ -78,7 +78,7 @@ final class MediaHealthService
         $ready = BunnyService::providerVideoStatusIsPlayable($providerStatus);
         $failed = BunnyService::providerVideoStatusIsFailure($providerStatus);
         $qualities = $resolutions
-            ->map(fn ($value) => str_ends_with($value, 'p') ? $value : $value . 'p')
+            ->map(fn ($value) => str_ends_with($value, 'p') ? $value : $value.'p')
             ->filter(fn ($value) => in_array($value, ['1080p', '720p', '480p', '360p'], true))
             ->prepend('auto')->unique()->values()->all();
 
@@ -100,7 +100,7 @@ final class MediaHealthService
             ],
             'last_error_code' => $failed ? 'provider_encode_failed' : null,
             'last_error_message' => $failed ? 'Bunny reported a failed encode.' : null,
-        ], $failed, !$failed);
+        ], $failed, ! $failed);
     }
 
     /** Allocate a durable generation before provider I/O. */
@@ -112,9 +112,9 @@ final class MediaHealthService
         return DB::transaction(function () use ($lessonId, $observedGuid, $observedUsesBunny): int {
             $currentLesson = Lesson::query()->whereKey($lessonId)->lockForUpdate()->first();
             if (
-                !$currentLesson
+                ! $currentLesson
                 || $currentLesson->usesBunnyVideo() !== $observedUsesBunny
-                || !hash_equals(
+                || ! hash_equals(
                     strtolower(trim((string) $currentLesson->bunny_video_id)),
                     $observedGuid
                 )
@@ -170,7 +170,7 @@ final class MediaHealthService
             $resetRetry
         ): LessonMediaState {
             $currentLesson = Lesson::query()->whereKey($lessonId)->lockForUpdate()->first();
-            if (!$currentLesson) {
+            if (! $currentLesson) {
                 return new LessonMediaState(['status' => 'failed']);
             }
 
@@ -192,7 +192,7 @@ final class MediaHealthService
             $currentGuid = strtolower(trim((string) $currentLesson->bunny_video_id));
             if (
                 $currentLesson->usesBunnyVideo() !== $observedUsesBunny
-                || !hash_equals($currentGuid, $observedGuid)
+                || ! hash_equals($currentGuid, $observedGuid)
                 || (int) $state->probe_generation !== $probeGeneration
             ) {
                 return $state;
@@ -217,6 +217,7 @@ final class MediaHealthService
             }
 
             $state->forceFill($attributes)->save();
+
             return $state;
         }, 3);
     }

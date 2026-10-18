@@ -27,6 +27,7 @@ final readonly class CoursePromotionPolicy
             ->where('course_id', $courseId)->whereNull('package_id')
             ->where('payment_method', Order::PAYMENT_METHOD_WALLET_COINS)
             ->whereNotNull('wallet_transaction_id')->sum('discount_amount'));
+
         return ['percent' => $percent, 'cap' => $cap, 'used' => $reward + $coupon,
             'remaining' => max(0, $cap - $reward - $coupon),
             'reward_used' => $reward, 'coupon_used' => $coupon];

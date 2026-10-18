@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\ProductEvent;
-use Illuminate\Support\Collection;
 use App\Support\BusinessClock;
 use App\Support\ReportPeriod;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final class ProductAnalyticsService
@@ -140,6 +140,7 @@ final class ProductAnalyticsService
             .'SUM(CASE WHEN campaign_key IS NOT NULL THEN 1 ELSE 0 END) as campaign_events, '
             .'MAX(received_at) as last_received_at'
         )->first();
+
         return [
             'events' => (int) ($totals?->events ?? 0),
             'actors' => (int) ($totals?->actors ?? 0),

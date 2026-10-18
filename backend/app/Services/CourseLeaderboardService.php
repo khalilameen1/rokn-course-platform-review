@@ -6,8 +6,8 @@ namespace App\Services;
 
 use App\Models\Course;
 use App\Models\User;
-use Carbon\Carbon;
 use App\Support\BusinessClock;
+use Carbon\Carbon;
 
 final readonly class CourseLeaderboardService
 {
@@ -149,7 +149,7 @@ final readonly class CourseLeaderboardService
 
     private function formatCompletionDate(mixed $date): ?string
     {
-        if (!$date) {
+        if (! $date) {
             return null;
         }
 
@@ -159,8 +159,8 @@ final readonly class CourseLeaderboardService
     }
 
     /**
-     * @param array<string, mixed> $left
-     * @param array<string, mixed> $right
+     * @param  array<string, mixed>  $left
+     * @param  array<string, mixed>  $right
      */
     private function shortCourseComparator(array $left, array $right): int
     {
@@ -185,8 +185,8 @@ final readonly class CourseLeaderboardService
     }
 
     /**
-     * @param array<string, mixed> $left
-     * @param array<string, mixed> $right
+     * @param  array<string, mixed>  $left
+     * @param  array<string, mixed>  $right
      */
     private function standardComparator(array $left, array $right): int
     {

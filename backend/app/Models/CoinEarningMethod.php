@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use App\Services\PublicAppSettingsService;
+use App\Support\DatabaseCapabilities;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use App\Support\DatabaseCapabilities;
 
 class CoinEarningMethod extends Model
 {
@@ -121,7 +121,7 @@ class CoinEarningMethod extends Model
 
         return $this->isAvailableNow()
             && $actionKey !== ''
-            && !in_array($actionKey, self::AUTOMATIC_ACTION_KEYS, true)
+            && ! in_array($actionKey, self::AUTOMATIC_ACTION_KEYS, true)
             && (int) $this->coins_amount > 0;
     }
 
@@ -143,9 +143,9 @@ class CoinEarningMethod extends Model
 
     public function isAvailableNow(): bool
     {
-        return !$this->trashed()
+        return ! $this->trashed()
             && (bool) $this->is_active
-            && ($this->starts_at === null || !$this->starts_at->isFuture())
+            && ($this->starts_at === null || ! $this->starts_at->isFuture())
             && ($this->ends_at === null || $this->ends_at->isFuture());
     }
 
@@ -168,14 +168,28 @@ class CoinEarningMethod extends Model
         $key = strtolower(trim((string) $this->action_key));
         $title = trim((string) ($this->title_ar ?: $this->title_en));
 
-        if (!$this->titleRevealsMechanism($title) && $title !== '') return $title;
+        if (! $this->titleRevealsMechanism($title) && $title !== '') {
+            return $title;
+        }
 
-        if (str_contains($key, 'coin_guide')) return 'تعرّف إلى رصيد ركن';
-        if (str_contains($key, 'instagram')) return 'تابعنا على إنستجرام';
-        if (str_contains($key, 'tiktok')) return 'تابعنا على تيك توك';
-        if (str_contains($key, 'facebook')) return 'تابعنا على فيسبوك';
-        if (str_contains($key, 'youtube')) return 'اشترك في قناتنا على يوتيوب';
-        if ($key === 'link_whatsapp') return 'اربط واتسابك بركن';
+        if (str_contains($key, 'coin_guide')) {
+            return 'تعرّف إلى رصيد ركن';
+        }
+        if (str_contains($key, 'instagram')) {
+            return 'تابعنا على إنستجرام';
+        }
+        if (str_contains($key, 'tiktok')) {
+            return 'تابعنا على تيك توك';
+        }
+        if (str_contains($key, 'facebook')) {
+            return 'تابعنا على فيسبوك';
+        }
+        if (str_contains($key, 'youtube')) {
+            return 'اشترك في قناتنا على يوتيوب';
+        }
+        if ($key === 'link_whatsapp') {
+            return 'اربط واتسابك بركن';
+        }
 
         return 'مهمة مكافأة';
     }
@@ -185,14 +199,28 @@ class CoinEarningMethod extends Model
         $key = strtolower(trim((string) $this->action_key));
         $title = trim((string) ($this->title_en ?: $this->title_ar));
 
-        if (!$this->titleRevealsMechanism($title) && $title !== '') return $title;
+        if (! $this->titleRevealsMechanism($title) && $title !== '') {
+            return $title;
+        }
 
-        if (str_contains($key, 'coin_guide')) return 'Learn about your Rokn balance';
-        if (str_contains($key, 'instagram')) return 'Follow us on Instagram';
-        if (str_contains($key, 'tiktok')) return 'Follow us on TikTok';
-        if (str_contains($key, 'facebook')) return 'Follow us on Facebook';
-        if (str_contains($key, 'youtube')) return 'Subscribe to our YouTube channel';
-        if ($key === 'link_whatsapp') return 'Link WhatsApp to Rokn';
+        if (str_contains($key, 'coin_guide')) {
+            return 'Learn about your Rokn balance';
+        }
+        if (str_contains($key, 'instagram')) {
+            return 'Follow us on Instagram';
+        }
+        if (str_contains($key, 'tiktok')) {
+            return 'Follow us on TikTok';
+        }
+        if (str_contains($key, 'facebook')) {
+            return 'Follow us on Facebook';
+        }
+        if (str_contains($key, 'youtube')) {
+            return 'Subscribe to our YouTube channel';
+        }
+        if ($key === 'link_whatsapp') {
+            return 'Link WhatsApp to Rokn';
+        }
 
         return 'Reward task';
     }
@@ -207,13 +235,13 @@ class CoinEarningMethod extends Model
                 ) === 1;
         }
 
-        return !$this->requires_external_visit || $this->resolvedActionUrl() !== null;
+        return ! $this->requires_external_visit || $this->resolvedActionUrl() !== null;
     }
 
     public static function isTrustedActionUrl(?string $value): bool
     {
         $parts = parse_url(trim((string) $value));
-        if (!is_array($parts) || strtolower((string) ($parts['scheme'] ?? '')) !== 'https') {
+        if (! is_array($parts) || strtolower((string) ($parts['scheme'] ?? '')) !== 'https') {
             return false;
         }
         if (isset($parts['user']) || isset($parts['pass'])) {

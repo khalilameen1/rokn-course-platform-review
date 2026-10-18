@@ -19,17 +19,16 @@ final class AiPromptPolicy
         string $courseName,
         string $courseOutline = '',
         string $courseDescription = ''
-    ): string
-    {
+    ): string {
         return $this->voice(false)
-            . "\nانت مدرب الكورس ده والطالب بيبعتلك سؤاله في الشات"
-            . "\nاسم الكورس ووصفه وخريطته عشان تفهم هو بيتعلم ايه وسؤاله جاي منين"
-            . "\nجاوب أي سؤال حتى لو برا الكورس من معرفتك الكاملة"
-            . "\nولو المعلومة حديثة أو محتاجة تتأكد منها دوّر عليها"
-            . "\nوما تنسبش للكورس حاجة مش فيه"
-            . $this->reference('COURSE NAME', $courseName)
-            . $this->reference('COURSE DESCRIPTION', $courseDescription)
-            . $this->reference('PUBLISHED COURSE OUTLINE', $courseOutline);
+            ."\nانت مدرب الكورس ده والطالب بيبعتلك سؤاله في الشات"
+            ."\nاسم الكورس ووصفه وخريطته عشان تفهم هو بيتعلم ايه وسؤاله جاي منين"
+            ."\nجاوب أي سؤال حتى لو برا الكورس من معرفتك الكاملة"
+            ."\nولو المعلومة حديثة أو محتاجة تتأكد منها دوّر عليها"
+            ."\nوما تنسبش للكورس حاجة مش فيه"
+            .$this->reference('COURSE NAME', $courseName)
+            .$this->reference('COURSE DESCRIPTION', $courseDescription)
+            .$this->reference('PUBLISHED COURSE OUTLINE', $courseOutline);
     }
 
     public function courseChatResponseContract(): string
@@ -43,30 +42,29 @@ final class AiPromptPolicy
 
     public function currentLesson(string $title, string $description = ''): string
     {
-        return "دي بيانات المقطع اللي الطالب واقف عليه وما تفترضش محتوى غيرها"
-            . $this->reference('CURRENT LESSON TITLE', $title)
-            . $this->reference('CURRENT LESSON CONTEXT', $description);
+        return 'دي بيانات المقطع اللي الطالب واقف عليه وما تفترضش محتوى غيرها'
+            .$this->reference('CURRENT LESSON TITLE', $title)
+            .$this->reference('CURRENT LESSON CONTEXT', $description);
     }
 
     public function projectReport(
         string $requirements,
         string $courseTitle = '',
         string $projectTitle = ''
-    ): string
-    {
+    ): string {
         return $this->voice()
-            . "\nانت المدرب وبتبعت للطالب رأيك في محاولته في المشروع"
-            . "\nما تغيرش قرار النجاح ولا تدي درجة"
-            . "\nاتكلم عن اللي وصلك فعلا من نص وصور وملفات بس"
-            . "\nلو فيه حاجة عملها كويس قولها بتحديد"
-            . "\nوبعدها أهم حاجة أو اتنين يعدلهم وقوله يعدلهم إزاي بالظبط"
-            . "\nالذوق والاختيارات الفنية مش قواعد فقول سبب رأيك كتفكير مدرب"
-            . "\nوالاختيار التاني مش غلط إلا لو بوّظ القراية أو خالف المطلوب"
-            . "\nمن غير قالب ثابت ولا عناوين ولا تلخيص في الآخر"
-            . "\nمثال لشكل الرأي\nالألوان ماشية مع بعض والعنوان باين من أول نظرة\n\nالمسافة بين اللوجو والعنوان ضيقة فالعين مش عارفة تبدأ منين\nكبّرها لضعف المسافة اللي بين السطور\n\nالنص اللي تحت صغير على الموبايل\nخليه 14 على الأقل"
-            . $this->reference('COURSE TITLE', $courseTitle)
-            . $this->reference('PROJECT TITLE', $projectTitle)
-            . $this->reference('PROJECT REQUIREMENTS', $requirements);
+            ."\nانت المدرب وبتبعت للطالب رأيك في محاولته في المشروع"
+            ."\nما تغيرش قرار النجاح ولا تدي درجة"
+            ."\nاتكلم عن اللي وصلك فعلا من نص وصور وملفات بس"
+            ."\nلو فيه حاجة عملها كويس قولها بتحديد"
+            ."\nوبعدها أهم حاجة أو اتنين يعدلهم وقوله يعدلهم إزاي بالظبط"
+            ."\nالذوق والاختيارات الفنية مش قواعد فقول سبب رأيك كتفكير مدرب"
+            ."\nوالاختيار التاني مش غلط إلا لو بوّظ القراية أو خالف المطلوب"
+            ."\nمن غير قالب ثابت ولا عناوين ولا تلخيص في الآخر"
+            ."\nمثال لشكل الرأي\nالألوان ماشية مع بعض والعنوان باين من أول نظرة\n\nالمسافة بين اللوجو والعنوان ضيقة فالعين مش عارفة تبدأ منين\nكبّرها لضعف المسافة اللي بين السطور\n\nالنص اللي تحت صغير على الموبايل\nخليه 14 على الأقل"
+            .$this->reference('COURSE TITLE', $courseTitle)
+            .$this->reference('PROJECT TITLE', $projectTitle)
+            .$this->reference('PROJECT REQUIREMENTS', $requirements);
     }
 
     public function projectFollowup(
@@ -76,14 +74,14 @@ final class AiPromptPolicy
         string $projectTitle = ''
     ): string {
         return $this->voice()
-            . "\nانت المدرب في محادثة المشروع ده مع الطالب"
-            . "\nركز على المشروع وتنفيذه ولو سأل حاجة عامة ليها علاقة جاوبه"
-            . "\nما تغيرش قرار النجاح ولا تدي درجة ولا تقول إنك شفت ملف ما وصلكش"
-            . "\nمثال\nسؤال طب أخلي الخلفية غامقة؟\nرد جربها\nبس ساعتها العنوان لازم يبقى فاتح عشان يفضل باين"
-            . $this->reference('COURSE TITLE', $courseTitle)
-            . $this->reference('PROJECT TITLE', $projectTitle)
-            . $this->reference('PROJECT REQUIREMENTS', $requirements)
-            . $this->reference('LEARNER SUBMISSION', $submission);
+            ."\nانت المدرب في محادثة المشروع ده مع الطالب"
+            ."\nركز على المشروع وتنفيذه ولو سأل حاجة عامة ليها علاقة جاوبه"
+            ."\nما تغيرش قرار النجاح ولا تدي درجة ولا تقول إنك شفت ملف ما وصلكش"
+            ."\nمثال\nسؤال طب أخلي الخلفية غامقة؟\nرد جربها\nبس ساعتها العنوان لازم يبقى فاتح عشان يفضل باين"
+            .$this->reference('COURSE TITLE', $courseTitle)
+            .$this->reference('PROJECT TITLE', $projectTitle)
+            .$this->reference('PROJECT REQUIREMENTS', $requirements)
+            .$this->reference('LEARNER SUBMISSION', $submission);
     }
 
     public function learnerSubmission(string $submission): string
@@ -96,7 +94,7 @@ final class AiPromptPolicy
     {
         ksort($context);
 
-        return sha1(self::VERSION . '|' . $scope . '|' . json_encode(
+        return sha1(self::VERSION.'|'.$scope.'|'.json_encode(
             $context,
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
         ));
@@ -165,6 +163,6 @@ final class AiPromptPolicy
         }
 
         return ($leadingNewline ? "\n" : '')
-            . "BEGIN {$label}\n{$content}\nEND {$label}";
+            ."BEGIN {$label}\n{$content}\nEND {$label}";
     }
 }

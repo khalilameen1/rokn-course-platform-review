@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\User;
 use App\Models\CourseEnrollment;
 use App\Models\CourseSection;
+use App\Models\User;
 use App\Support\AdminStudentSearch;
 use App\Support\SectionProgressSummary;
 
@@ -19,12 +19,11 @@ final class AdminStudentProgressReadService
         private readonly CourseAccessPlanService $plans,
         private readonly StudentProgressSummaryService $summaries,
         private readonly AdminContentInventoryReadService $inventory
-    ) {
-    }
+    ) {}
 
     /** @param array<string, mixed> $filters
-     *  @param array<string, mixed> $queryParameters
-     *  @return array<string, mixed>
+     * @param  array<string, mixed>  $queryParameters
+     * @return array<string, mixed>
      */
     public function listing(array $filters, array $queryParameters): array
     {
@@ -35,8 +34,8 @@ final class AdminStudentProgressReadService
         AdminStudentSearch::apply($query, (string) ($filters['search'] ?? ''));
 
         // Filter by course enrollment
-        if (!empty($filters['course_id'])) {
-            $query->whereHas('enrollments', function($q) use ($filters) {
+        if (! empty($filters['course_id'])) {
+            $query->whereHas('enrollments', function ($q) use ($filters) {
                 $q->active()->where('course_id', $filters['course_id']);
             });
         }
@@ -45,7 +44,7 @@ final class AdminStudentProgressReadService
 
         $summaryByUser = $this->summaries->latestForUsers(
             $users->getCollection(),
-            !empty($filters['course_id']) ? (int) $filters['course_id'] : null
+            ! empty($filters['course_id']) ? (int) $filters['course_id'] : null
         );
         $usersWithProgress = $users->getCollection()
             ->map(fn (User $user) => $summaryByUser->get($user->id));
@@ -61,10 +60,9 @@ final class AdminStudentProgressReadService
             'usersWithProgress' => $usersWithProgress,
             'users' => $users,
             'courses' => $courses,
-            'filters' => $filters
+            'filters' => $filters,
         ];
     }
-
 
     public function workspace(int $userId): array
     {
@@ -124,7 +122,7 @@ final class AdminStudentProgressReadService
         return [
             'user' => $user,
             'coursesProgress' => $coursesProgress,
-            'totalEnrollments' => $enrollments->count()
+            'totalEnrollments' => $enrollments->count(),
         ];
     }
 }

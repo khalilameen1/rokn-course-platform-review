@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Models\NotificationPushDelivery;
 use App\Models\StudentNotification;
 use App\Models\User;
 use App\Models\UserDeviceToken;
-use App\Models\NotificationPushDelivery;
 use App\Services\FcmNotificationService;
 use App\Services\NotificationDeliveryPolicy;
 use App\Services\StudentNotificationPresentationService;
@@ -19,13 +19,16 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 
-final class SendUserPushNotification implements ShouldQueue, ShouldBeUnique
+final class SendUserPushNotification implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 45;
+
     public int $uniqueFor = 900;
+
     public array $backoff = [10, 60, 180];
 
     private int $notificationId;
@@ -38,7 +41,7 @@ final class SendUserPushNotification implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'notification:' . $this->notificationId;
+        return 'notification:'.$this->notificationId;
     }
 
     public function handle(StudentNotificationPresentationService $presentations): void
@@ -65,9 +68,11 @@ final class SendUserPushNotification implements ShouldQueue, ShouldBeUnique
         $notification = StudentNotification::query()
             ->with(['user.deviceTokens', 'notifiable'])
             ->find($this->notificationId);
-        if (!$notification || !$notification->user) return;
+        if (! $notification || ! $notification->user) {
+            return;
+        }
         $user = $notification->user;
-        if (!NotificationDeliveryPolicy::allowsPush($user, (string) $notification->notification_type)) {
+        if (! NotificationDeliveryPolicy::allowsPush($user, (string) $notification->notification_type)) {
             NotificationPushDelivery::query()
                 ->where('student_notification_id', $notification->id)
                 ->whereIn('status', [
@@ -86,6 +91,7 @@ final class SendUserPushNotification implements ShouldQueue, ShouldBeUnique
                     ? 'preference_disabled'
                     : 'account_inactive',
             ])->save();
+
             return;
         }
 
@@ -109,6 +115,7 @@ final class SendUserPushNotification implements ShouldQueue, ShouldBeUnique
                 'push_failed_at' => now(),
                 'push_failure_code' => 'no_registered_device',
             ])->save();
+
             return;
         }
 
@@ -149,7 +156,7 @@ final class SendUserPushNotification implements ShouldQueue, ShouldBeUnique
             ->get();
         foreach ($deliveries as $delivery) {
             $token = $tokens->firstWhere('id', $delivery->user_device_token_id);
-            if (!$token || !hash_equals(
+            if (! $token || ! hash_equals(
                 (string) $delivery->token_fingerprint,
                 hash('sha256', (string) $token->device_token)
             )) {
@@ -158,6 +165,7 @@ final class SendUserPushNotification implements ShouldQueue, ShouldBeUnique
                     'failed_at' => now(),
                     'failure_code' => 'token_rotated',
                 ])->save();
+
                 continue;
             }
 
@@ -172,17 +180,18 @@ final class SendUserPushNotification implements ShouldQueue, ShouldBeUnique
                 ->where('user_id', $user->id)
                 ->where('device_token', (string) $token->device_token)
                 ->first();
-            if (!$currentUser
-                || !NotificationDeliveryPolicy::allowsPush(
+            if (! $currentUser
+                || ! NotificationDeliveryPolicy::allowsPush(
                     $currentUser,
                     (string) $notification->notification_type
                 )
-                || !$currentToken) {
+                || ! $currentToken) {
                 $delivery->forceFill([
                     'status' => NotificationPushDelivery::STATUS_SUPERSEDED,
                     'failed_at' => now(),
                     'failure_code' => $currentToken ? 'preference_disabled' : 'token_unbound',
                 ])->save();
+
                 continue;
             }
             if ((int) $delivery->attempts >= $this->tries) {
@@ -191,6 +200,7 @@ final class SendUserPushNotification implements ShouldQueue, ShouldBeUnique
                     'failed_at' => now(),
                     'failure_code' => 'provider_retry_exhausted',
                 ])->save();
+
                 continue;
             }
 
@@ -208,7 +218,9 @@ final class SendUserPushNotification implements ShouldQueue, ShouldBeUnique
                     'failure_code' => null,
                     'updated_at' => now(),
                 ]);
-            if ($claimed !== 1) continue;
+            if ($claimed !== 1) {
+                continue;
+            }
 
             $result = FcmNotificationService::sendToDeviceDetailed(
                 $currentUser,
@@ -237,6 +249,7 @@ final class SendUserPushNotification implements ShouldQueue, ShouldBeUnique
                     'failure_code' => null,
                     'updated_at' => now(),
                 ]);
+
                 continue;
             }
             if ($result['unknown']) {
@@ -246,6 +259,7 @@ final class SendUserPushNotification implements ShouldQueue, ShouldBeUnique
                     'failure_code' => $result['failure_code'] ?: 'provider_outcome_unknown',
                     'updated_at' => now(),
                 ]);
+
                 continue;
             }
             if ($result['retryable']) {
@@ -256,6 +270,7 @@ final class SendUserPushNotification implements ShouldQueue, ShouldBeUnique
                     'updated_at' => now(),
                 ]);
                 $retryNeeded = true;
+
                 continue;
             }
 
@@ -287,7 +302,9 @@ final class SendUserPushNotification implements ShouldQueue, ShouldBeUnique
         $deliveries = NotificationPushDelivery::query()
             ->where('student_notification_id', $this->notificationId)
             ->get();
-        if ($deliveries->isEmpty()) return;
+        if ($deliveries->isEmpty()) {
+            return;
+        }
         $accepted = $deliveries->where('status', NotificationPushDelivery::STATUS_ACCEPTED);
         $active = $deliveries->whereIn('status', [
             NotificationPushDelivery::STATUS_PENDING,
@@ -327,8 +344,13 @@ final class SendUserPushNotification implements ShouldQueue, ShouldBeUnique
 
     private function channelFor(string $type): string
     {
-        if (NotificationDeliveryPolicy::isMarketing($type)) return 'rokn-offers';
-        if (NotificationDeliveryPolicy::isLearningReminder($type)) return 'rokn-learning';
+        if (NotificationDeliveryPolicy::isMarketing($type)) {
+            return 'rokn-offers';
+        }
+        if (NotificationDeliveryPolicy::isLearningReminder($type)) {
+            return 'rokn-learning';
+        }
+
         return 'rokn-updates';
     }
 }

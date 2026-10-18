@@ -27,7 +27,7 @@ final class AdminInlineStyleContractTest extends TestCase
 
         /** @var SplFileInfo $file */
         foreach ($iterator as $file) {
-            if (!$file->isFile() || !str_ends_with($file->getFilename(), '.blade.php')) {
+            if (! $file->isFile() || ! str_ends_with($file->getFilename(), '.blade.php')) {
                 continue;
             }
 
@@ -71,7 +71,7 @@ final class AdminInlineStyleContractTest extends TestCase
         self::assertStringContainsString('id="studioCourseAttachments"', $panel);
         self::assertStringContainsString('$coursePdfStoreUrl', $panel);
         self::assertStringContainsString('$coursePdfReorderUrl', $panel);
-        self::assertStringContainsString("admin.course-pdfs.partials.form", $panel);
+        self::assertStringContainsString('admin.course-pdfs.partials.form', $panel);
     }
 
     public function test_shared_shell_styles_load_after_page_styles(): void
@@ -105,7 +105,7 @@ final class AdminInlineStyleContractTest extends TestCase
             $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));
             /** @var SplFileInfo $file */
             foreach ($iterator as $file) {
-                if (!$file->isFile() || !in_array($file->getExtension(), ['css', 'js', 'php'], true)) {
+                if (! $file->isFile() || ! in_array($file->getExtension(), ['css', 'js', 'php'], true)) {
                     continue;
                 }
                 $source = file_get_contents($file->getPathname());

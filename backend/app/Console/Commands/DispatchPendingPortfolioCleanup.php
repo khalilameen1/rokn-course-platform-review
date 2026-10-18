@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 final class DispatchPendingPortfolioCleanup extends Command
 {
     protected $signature = 'privacy:cleanup-portfolio-media {--limit=500}';
+
     protected $description = 'Retry Bunny cleanup for portfolio media belonging to deleted accounts';
 
     public function handle(): int

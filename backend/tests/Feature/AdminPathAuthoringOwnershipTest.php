@@ -74,7 +74,9 @@ final class AdminPathAuthoringOwnershipTest extends TestCase
         $before = Path::query()->count();
         try {
             app(AdminPathAuthoringService::class)->create($this->titles() + ['course_ids' => [$course->id]],
-                static function (): never { throw new \RuntimeException('receipt failed'); });
+                static function (): never {
+                    throw new \RuntimeException('receipt failed');
+                });
             self::fail('Receipt failure must roll back a moved course and the new path.');
         } catch (\RuntimeException $error) {
             self::assertSame('receipt failed', $error->getMessage());
@@ -94,7 +96,9 @@ final class AdminPathAuthoringOwnershipTest extends TestCase
             try {
                 app(AdminPathAuthoringService::class)->create(
                     $this->titles() + ['course_ids' => [$course->id, $invalidId]],
-                    static function (): never { self::fail('Invalid selection cannot complete a receipt.'); }
+                    static function (): never {
+                        self::fail('Invalid selection cannot complete a receipt.');
+                    }
                 );
                 self::fail('A hidden revision or missing course is not a path choice.');
             } catch (ValidationException $error) {

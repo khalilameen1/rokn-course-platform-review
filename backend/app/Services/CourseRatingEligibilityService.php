@@ -15,9 +15,7 @@ final readonly class CourseRatingEligibilityService
     public function __construct(
         private CourseEntitlementService $courseAccess,
         private CourseRevisionLearnerReadService $revisionReads
-    )
-    {
-    }
+    ) {}
 
     /** @return array{can_rate: bool, reason: string} */
     public function for(
@@ -25,11 +23,10 @@ final readonly class CourseRatingEligibilityService
         Course $course,
         ?bool $hasLearningAccess = null,
         ?bool $hasEarnedRatingEligibility = null
-    ): array
-    {
+    ): array {
         if (
-            !$course->isPublishedForLearning()
-            || !($hasLearningAccess
+            ! $course->isPublishedForLearning()
+            || ! ($hasLearningAccess
                 ?? $this->courseAccess->hasLearningAccess((int) $user->id, (int) $course->id))
         ) {
             return ['can_rate' => false, 'reason' => 'course_access_required'];

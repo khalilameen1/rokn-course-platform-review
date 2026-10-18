@@ -33,12 +33,43 @@ final class FeedbackReport extends Model
         'version' => 'integer',
     ];
 
-    public function user() { return $this->belongsTo(User::class); }
-    public function course() { return $this->belongsTo(Course::class); }
-    public function lesson() { return $this->belongsTo(Lesson::class); }
-    public function assignee() { return $this->belongsTo(User::class, 'assigned_to'); }
-    public function attachments() { return $this->hasMany(FeedbackAttachment::class); }
-    public function messages() { return $this->hasMany(SupportCaseMessage::class); }
-    public function events() { return $this->hasMany(SupportCaseEvent::class); }
-    public function order() { return $this->belongsTo(Order::class); }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function course()
+    {
+        return $this->belongsTo(Course::class);
+    }
+
+    public function lesson()
+    {
+        return $this->belongsTo(Lesson::class);
+    }
+
+    public function assignee()
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function attachments()
+    {
+        return $this->hasMany(FeedbackAttachment::class);
+    }
+
+    public function messages()
+    {
+        return $this->hasMany(SupportCaseMessage::class);
+    }
+
+    public function events()
+    {
+        return $this->hasMany(SupportCaseEvent::class);
+    }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
 }

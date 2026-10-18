@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\BunnyVideoCleanupCandidate;
 use App\Models\BunnyDirectUpload;
+use App\Models\BunnyVideoCleanupCandidate;
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
 use App\Models\CourseSection;
@@ -13,8 +13,8 @@ use App\Models\Lesson;
 use App\Models\User;
 use App\Support\DatabaseCapabilities;
 use Illuminate\Contracts\Encryption\DecryptException;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -23,6 +23,7 @@ use RuntimeException;
 final readonly class BunnyDirectUploadService
 {
     public const MAX_BYTES = 5 * 1024 * 1024 * 1024;
+
     public const MIMES = [
         'video/mp4',
         'video/quicktime',
@@ -30,9 +31,7 @@ final readonly class BunnyDirectUploadService
         'video/webm',
     ];
 
-    public function __construct(private BunnyService $bunny, private BunnyMediaRegistry $mediaRegistry)
-    {
-    }
+    public function __construct(private BunnyService $bunny, private BunnyMediaRegistry $mediaRegistry) {}
 
     /** @return array<string, mixed> */
     public function issue(
@@ -57,7 +56,7 @@ final readonly class BunnyDirectUploadService
         if ($size < 1 || $size > self::MAX_BYTES) {
             throw ValidationException::withMessages(['size' => 'حجم الفيديو يجب ألا يتجاوز 5GB']);
         }
-        if (!in_array($mime, self::MIMES, true)) {
+        if (! in_array($mime, self::MIMES, true)) {
             throw ValidationException::withMessages(['mime' => 'صيغة الفيديو غير مدعومة']);
         }
         $expectedExtension = match ($mime) {
@@ -109,7 +108,7 @@ final readonly class BunnyDirectUploadService
                 ->first();
             if ($session) {
                 $sameRequest = hash_equals((string) $session->request_hash, $requestHash);
-                if (!$sameRequest) {
+                if (! $sameRequest) {
                     throw $this->terminalOperation("تغيرت بيانات الملف\nاختره مرة أخرى");
                 }
                 if ($session->status === 'pending'
@@ -171,10 +170,10 @@ final readonly class BunnyDirectUploadService
 
             $videoId = null;
             try {
-                $remoteTitle = mb_substr($title, 0, 205) . ' [rokn:' . strtolower($idempotencyKey) . ']';
+                $remoteTitle = mb_substr($title, 0, 205).' [rokn:'.strtolower($idempotencyKey).']';
                 $video = $this->bunny->createVideo($remoteTitle);
                 $videoId = strtolower(trim((string) ($video['guid'] ?? '')));
-                if (!$this->validGuid($videoId)) {
+                if (! $this->validGuid($videoId)) {
                     throw new RuntimeException('تعذر تجهيز مساحة رفع الفيديو');
                 }
                 $claimed = BunnyDirectUpload::query()
@@ -193,7 +192,7 @@ final readonly class BunnyDirectUploadService
                     'direct_upload_pending',
                     24
                 );
-                if (!$candidate) {
+                if (! $candidate) {
                     $this->bunny->deleteVideo($videoId);
                     throw new RuntimeException('تعذر تسجيل عملية الرفع بأمان');
                 }
@@ -256,9 +255,10 @@ final readonly class BunnyDirectUploadService
         $videoId = strtolower(trim((string) $session->video_guid));
         if ($this->validGuid($videoId)) {
             $this->queueAbandonedAllocation($videoId, $admin, 'direct_upload_stale_allocation');
+
             return;
         }
-        $marker = '[rokn:' . strtolower((string) $session->idempotency_key) . ']';
+        $marker = '[rokn:'.strtolower((string) $session->idempotency_key).']';
         foreach ($this->bunny->findVideoGuidsByTitleMarker($marker) as $recoveredId) {
             $this->queueAbandonedAllocation(
                 $recoveredId,
@@ -271,7 +271,7 @@ final readonly class BunnyDirectUploadService
     private function queueAbandonedAllocation(string $videoId, User $admin, string $reason): void
     {
         $candidate = $this->mediaRegistry->queueVideoCleanup($videoId, null, $reason, 1);
-        if (!$candidate) {
+        if (! $candidate) {
             throw new RuntimeException('تعذر تسجيل الفيديو غير المكتمل بأمان');
         }
         $candidate->forceFill([
@@ -291,10 +291,10 @@ final readonly class BunnyDirectUploadService
                 ->whereKey((int) ($payload['upload_id'] ?? 0))
                 ->lockForUpdate()
                 ->first();
-            if (!$session
+            if (! $session
                 || $session->status !== 'pending'
                 || $session->expires_at->isPast()
-                || !hash_equals((string) $session->video_guid, (string) $payload['video_id'])) {
+                || ! hash_equals((string) $session->video_guid, (string) $payload['video_id'])) {
                 throw $this->terminalClaim('تم استخدام هذا الرفع من قبل أو انتهت صلاحيته', 'claim');
             }
 
@@ -304,7 +304,7 @@ final readonly class BunnyDirectUploadService
                 ->whereNull('last_attempt_at')
                 ->lockForUpdate()
                 ->first();
-            if (!$candidate) {
+            if (! $candidate) {
                 throw $this->terminalClaim('انتهت عملية الرفع أو تم استخدامها من قبل', 'claim');
             }
 
@@ -339,14 +339,14 @@ final readonly class BunnyDirectUploadService
             || ($actualSectionId !== null && (int) $claimedSectionId !== (int) $actualSectionId)) {
             throw $this->terminalClaim('هذا الرفع لا يخص المقطع الحالي');
         }
-        if (!BunnyVideoCleanupCandidate::query()
+        if (! BunnyVideoCleanupCandidate::query()
             ->where('video_guid', $payload['video_id'])
             ->whereNull('remote_deleted_at')
             ->whereNull('last_attempt_at')
             ->exists()) {
             throw $this->terminalClaim('تم استخدام هذا الرفع من قبل أو انتهت صلاحيته');
         }
-        if (!$this->bunny->verifyDirectUpload((string) $payload['video_id'], (int) $payload['size'])) {
+        if (! $this->bunny->verifyDirectUpload((string) $payload['video_id'], (int) $payload['size'])) {
             throw ValidationException::withMessages([
                 'bunny_video_claim' => "لم يكتمل رفع الفيديو بعد\nحاول الحفظ مرة أخرى بعد لحظات",
             ]);
@@ -367,7 +367,7 @@ final readonly class BunnyDirectUploadService
             ->whereNull('last_attempt_at')
             ->lockForUpdate()
             ->first();
-        if (!$candidate) {
+        if (! $candidate) {
             throw $this->terminalClaim('تم استخدام هذا الرفع من قبل');
         }
         BunnyDirectUpload::query()
@@ -387,15 +387,15 @@ final readonly class BunnyDirectUploadService
         } catch (DecryptException|\JsonException) {
             throw $this->terminalClaim('بيانات الرفع غير صالحة');
         }
-        if (!is_array($payload)
+        if (! is_array($payload)
             || (int) ($payload['v'] ?? 0) !== 2
             || (int) ($payload['course_id'] ?? 0) !== (int) $course->id
             || (int) ($payload['admin_id'] ?? 0) !== (int) $admin->id
             || (int) ($payload['expires_at'] ?? 0) < time()
-            || !$this->validGuid((string) ($payload['video_id'] ?? ''))
+            || ! $this->validGuid((string) ($payload['video_id'] ?? ''))
             || (int) ($payload['size'] ?? 0) < 1
             || (int) ($payload['size'] ?? 0) > self::MAX_BYTES
-            || !in_array((string) ($payload['mime'] ?? ''), self::MIMES, true)
+            || ! in_array((string) ($payload['mime'] ?? ''), self::MIMES, true)
             || trim((string) ($payload['title'] ?? '')) === ''
             || (int) ($payload['authoring_version'] ?? 0) < 1) {
             throw $this->terminalClaim('انتهت صلاحية الرفع أو لا يخص هذا الكورس');
@@ -460,10 +460,10 @@ final readonly class BunnyDirectUploadService
     private function assertPendingSession(array $payload): void
     {
         $session = BunnyDirectUpload::query()->find((int) ($payload['upload_id'] ?? 0));
-        if (!$session
+        if (! $session
             || $session->status !== 'pending'
             || $session->expires_at->isPast()
-            || !hash_equals((string) $session->video_guid, (string) $payload['video_id'])) {
+            || ! hash_equals((string) $session->video_guid, (string) $payload['video_id'])) {
             throw $this->terminalClaim('تم استخدام هذا الرفع من قبل أو انتهت صلاحيته');
         }
     }
@@ -486,7 +486,7 @@ final readonly class BunnyDirectUploadService
 
     private function assertAuthoringContext(Course $course, User $admin, ?CourseSection $section): void
     {
-        if (!in_array(strtolower(trim((string) $admin->role)), ['admin', 'moderator'], true)) {
+        if (! in_array(strtolower(trim((string) $admin->role)), ['admin', 'moderator'], true)) {
             abort(403);
         }
         if (DatabaseCapabilities::hasTable('course_authoring_revisions')
@@ -498,7 +498,7 @@ final readonly class BunnyDirectUploadService
                 'authoring_version' => "نُشرت هذه المسودة بالفعل\nأعد فتح استوديو الكورس قبل رفع الفيديو",
             ])->status(409);
         }
-        if (!$course->is_coming_soon) {
+        if (! $course->is_coming_soon) {
             throw ValidationException::withMessages([
                 'course' => 'حوّل الكورس إلى مسودة قبل استبدال الفيديو',
             ]);

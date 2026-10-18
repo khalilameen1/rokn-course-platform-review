@@ -16,7 +16,7 @@ final class TotpTest extends TestCase
         // truncation at six digits is therefore 287082.
         $secret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
 
-        self::assertSame('287082', (new Totp())->code($secret, 59));
-        self::assertSame(1, (new Totp())->matchingStep($secret, '287082', 59, 0));
+        self::assertSame('287082', (new Totp)->code($secret, 59));
+        self::assertSame(1, (new Totp)->matchingStep($secret, '287082', 59, 0));
     }
 }

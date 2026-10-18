@@ -67,12 +67,12 @@ final class CoursePublishingPriceFloorMessageTest extends TestCase
     /** @param array<string, array<string, mixed>> $terms @return list<string> */
     private function planIssues(array $terms): array
     {
-        $plans = collect($terms)->map(fn (array $values, string $code): CourseAccessPlan => (new CourseAccessPlan())->forceFill([
+        $plans = collect($terms)->map(fn (array $values, string $code): CourseAccessPlan => (new CourseAccessPlan)->forceFill([
             'code' => $code, 'name_ar' => $code, 'is_active' => true,
             'chat_enabled' => false, 'project_feedback_level' => CourseAccessPlan::FEEDBACK_PASS_ONLY,
             ...$values,
         ]))->values();
-        $course = new Course();
+        $course = new Course;
         $course->setRelation('accessPlans', $plans);
         $issues = [];
         $warnings = [];

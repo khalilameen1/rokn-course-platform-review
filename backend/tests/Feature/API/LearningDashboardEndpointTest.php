@@ -27,7 +27,7 @@ final class LearningDashboardEndpointTest extends TestCase
         $expected = [];
 
         foreach (['Grease Pencil', 'تعلم البرمجة'] as $title) {
-            $course = new Course();
+            $course = new Course;
             $course->forceFill([
                 'tenant_id' => 1,
                 'teacher_id' => $teacher->id,
@@ -64,7 +64,9 @@ final class LearningDashboardEndpointTest extends TestCase
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
-                if ($moduleOrder === 1) $firstLessonId = $lesson->id;
+                if ($moduleOrder === 1) {
+                    $firstLessonId = $lesson->id;
+                }
             }
             DB::table('course_enrollments')->insert([
                 'tenant_id' => 1,
@@ -116,7 +118,7 @@ final class LearningDashboardEndpointTest extends TestCase
 
     public function test_missing_module_is_still_rejected_in_a_multi_course_read(): void
     {
-        $section = new CourseSection();
+        $section = new CourseSection;
         $section->forceFill([
             'id' => 1,
             'course_id' => 1,
@@ -133,7 +135,7 @@ final class LearningDashboardEndpointTest extends TestCase
 
     private function user(string $role): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'name' => 'Dashboard learner',
             'email' => 'dashboard-'.str()->uuid().'@example.test',

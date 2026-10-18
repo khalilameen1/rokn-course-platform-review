@@ -6,15 +6,17 @@ namespace Tests\Feature;
 
 use App\Models\Course;
 use App\Models\PortfolioItem;
-use App\Models\PortfolioMedia;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\BunnyDeliveryService;
+use App\Services\BunnyService;
+use App\Services\CertificateQrDestinationService;
 use App\Services\PortfolioModerationService;
 use App\Services\PortfolioReviewReadService;
 use App\Services\PublicPortfolioService;
 use App\Support\RoknPublicUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -185,13 +187,13 @@ final class PortfolioPublicationTest extends TestCase
         $this->work($owner, 'Waiting for review');
         self::assertSame('pending', app(PortfolioReviewReadService::class)->status($owner->fresh()));
 
-        $qr = app(\App\Services\CertificateQrDestinationService::class)->forIssuance($owner->fresh(), (string) Str::uuid());
+        $qr = app(CertificateQrDestinationService::class)->forIssuance($owner->fresh(), (string) Str::uuid());
         self::assertSame('portfolio', $qr['type']);
         self::assertSame(RoknPublicUrl::portfolio($owner->portfolio_slug), $qr['url']);
 
         $owner->forceFill(['portfolio_sharing_suspended_at' => now()])->save();
         $publicId = (string) Str::uuid();
-        $qr = app(\App\Services\CertificateQrDestinationService::class)->forIssuance($owner->fresh(), $publicId);
+        $qr = app(CertificateQrDestinationService::class)->forIssuance($owner->fresh(), $publicId);
         self::assertSame(['certificate', RoknPublicUrl::certificate($publicId)], [$qr['type'], $qr['url']]);
     }
 
@@ -220,7 +222,7 @@ final class PortfolioPublicationTest extends TestCase
     public function test_public_pages_present_the_work_without_course_or_review_labels(): void
     {
         $owner = $this->owner();
-        $course = new Course();
+        $course = new Course;
         $course->forceFill(['tenant_id' => 1, 'name_ar' => 'كورس التصميم', 'name_en' => 'Design'])->save();
         $passedProject = Project::factory()->create();
         $this->submission($owner, $passedProject, 'passed');
@@ -363,8 +365,8 @@ final class PortfolioPublicationTest extends TestCase
     /** Video readiness comes from Bunny's API; fake a playable provider status. */
     private function approveWithReadyVideo(User $owner): void
     {
-        \Illuminate\Support\Facades\Cache::flush();
-        $this->mock(\App\Services\BunnyService::class)->shouldReceive('inspectRemoteVideo')
+        Cache::flush();
+        $this->mock(BunnyService::class)->shouldReceive('inspectRemoteVideo')
             ->andReturn(['state' => 'ok', 'details' => ['status' => 4], 'http_status' => 200]);
         $delivery = $this->mock(BunnyDeliveryService::class);
         $delivery->shouldReceive('storageUrl')->andReturn('https://cdn.rokn.test/ready.jpg');
@@ -375,7 +377,7 @@ final class PortfolioPublicationTest extends TestCase
             $owner->fresh(), $this->owner(['role' => 'admin']), $snapshot['revision'], $snapshot['hash'], 'approved', null
         );
         $this->app->forgetInstance(BunnyDeliveryService::class);
-        $this->app->forgetInstance(\App\Services\BunnyService::class);
+        $this->app->forgetInstance(BunnyService::class);
     }
 
     private function decide(User $owner, string $decision, ?string $reason = null): void

@@ -12,6 +12,5 @@ final readonly class CourseCodeRedemptionResult
     public function __construct(
         public CourseCode $courseCode,
         public bool $alreadyEnrolled
-    ) {
-    }
+    ) {}
 }

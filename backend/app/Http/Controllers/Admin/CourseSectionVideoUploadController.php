@@ -28,7 +28,7 @@ final class CourseSectionVideoUploadController extends Controller
             ]);
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
-                'size' => 'required|integer|min:1|max:' . BunnyDirectUploadService::MAX_BYTES,
+                'size' => 'required|integer|min:1|max:'.BunnyDirectUploadService::MAX_BYTES,
                 'mime' => ['required', 'string', Rule::in(BunnyDirectUploadService::MIMES)],
                 'original_name' => ['required', 'string', 'max:255'],
                 'idempotency_key' => ['required', 'uuid'],
@@ -43,7 +43,7 @@ final class CourseSectionVideoUploadController extends Controller
             ]);
             /** @var User $admin */
             $admin = $request->user();
-            $section = !empty($validated['section_id'])
+            $section = ! empty($validated['section_id'])
                 ? CourseSection::query()->where('course_id', $course->id)->findOrFail($validated['section_id'])
                 : null;
 
@@ -106,7 +106,7 @@ final class CourseSectionVideoUploadController extends Controller
         string $terminalCode
     ): JsonResponse {
         $errors = $exception->errors();
-        if (!array_key_exists($terminalField, $errors)) {
+        if (! array_key_exists($terminalField, $errors)) {
             throw $exception;
         }
 

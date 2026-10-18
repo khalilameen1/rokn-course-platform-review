@@ -16,9 +16,7 @@ use UnexpectedValueException;
 /** Persists validated content intent inside the caller's section transaction. */
 final readonly class CourseSectionContentService
 {
-    public function __construct(private CourseSectionTypeChangeGuard $typeChangeGuard)
-    {
-    }
+    public function __construct(private CourseSectionTypeChangeGuard $typeChangeGuard) {}
 
     public function create(CourseSectionEdit $edit, Course $course, CourseSectionMediaStage $media): Model
     {
@@ -95,7 +93,7 @@ final readonly class CourseSectionContentService
             $lesson = Lesson::query()->create($data);
         }
 
-        if ($media->videoChanged || !$lesson->mediaState()->exists()) {
+        if ($media->videoChanged || ! $lesson->mediaState()->exists()) {
             LessonMediaState::query()->updateOrCreate(
                 ['lesson_id' => $lesson->id],
                 LessonMediaState::resetForGeneration((string) $videoGuid)
@@ -110,6 +108,7 @@ final readonly class CourseSectionContentService
         $data = $this->projectData($edit, $project);
         if ($project) {
             $project->update($data);
+
             return $project;
         }
 
@@ -134,8 +133,7 @@ final readonly class CourseSectionContentService
             ->unique()
             ->values();
         $allowedMimeTypes = $selectedTypes
-            ->flatMap(static fn (string $type): array =>
-                (array) ($submissionTypes[$type]['mime_types'] ?? [])
+            ->flatMap(static fn (string $type): array => (array) ($submissionTypes[$type]['mime_types'] ?? [])
             )
             ->map(static fn ($mime): string => strtolower(trim((string) $mime)))
             ->filter()

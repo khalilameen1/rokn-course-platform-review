@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use App\Services\AppleService;
 use App\Exceptions\SocialProviderUnavailableException;
 use App\Models\SocialAccount;
+use App\Services\AppleService;
+use App\Services\SocialAuthProviderRegistry;
 use Exception;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Tests\Support\AppleIdentityFixture;
 use Tests\TestCase;
 
 final class AppleServiceNonceTest extends TestCase
 {
-    use \Tests\Support\AppleIdentityFixture;
+    use AppleIdentityFixture;
 
     protected function setUp(): void
     {
@@ -35,7 +39,7 @@ final class AppleServiceNonceTest extends TestCase
         Http::fake(['https://appleid.apple.com/auth/token' => Http::response([
             'id_token' => $token, 'refresh_token' => 'private-refresh-token',
         ])]);
-        $service = new AppleService();
+        $service = new AppleService;
         $identity = $service->exchange($token, $nonce, 'single-use-code');
         self::assertSame('private-refresh-token', $identity['apple_grant']['apple_refresh_token']);
         self::assertSame('com.rokn.app', $identity['apple_grant']['apple_client_id']);
@@ -67,7 +71,7 @@ final class AppleServiceNonceTest extends TestCase
             'refresh_token' => 'must-not-be-stored',
         ])]);
         $this->expectExceptionMessage('authorization does not match');
-        (new AppleService())->exchange($this->identityToken(hash('sha256', $nonce)), $nonce, 'another-code');
+        (new AppleService)->exchange($this->identityToken(hash('sha256', $nonce)), $nonce, 'another-code');
     }
 
     public function test_token_endpoint_failures_are_sanitized_and_not_successful_signins(): void
@@ -76,7 +80,7 @@ final class AppleServiceNonceTest extends TestCase
         Http::fake(['https://appleid.apple.com/auth/token' => Http::response(['error' => 'private-response'], 503)]);
         $this->expectException(SocialProviderUnavailableException::class);
         $this->expectExceptionMessage('Apple token exchange is unavailable.');
-        (new AppleService())->exchange($this->identityToken(hash('sha256', $nonce)), $nonce, 'retry-code');
+        (new AppleService)->exchange($this->identityToken(hash('sha256', $nonce)), $nonce, 'retry-code');
     }
 
     public function test_used_or_expired_code_requires_a_new_signin_not_an_infinite_retry(): void
@@ -84,12 +88,12 @@ final class AppleServiceNonceTest extends TestCase
         $nonce = str_repeat('8', 64);
         Http::fake(['https://appleid.apple.com/auth/token' => Http::response(['error' => 'invalid_grant'], 400)]);
         $this->expectExceptionMessage('start a fresh sign-in');
-        (new AppleService())->exchange($this->identityToken(hash('sha256', $nonce)), $nonce, 'expired-code');
+        (new AppleService)->exchange($this->identityToken(hash('sha256', $nonce)), $nonce, 'expired-code');
     }
 
     public function test_apple_discovery_requires_token_lifecycle_credentials(): void
     {
-        $registry = app(\App\Services\SocialAuthProviderRegistry::class);
+        $registry = app(SocialAuthProviderRegistry::class);
         self::assertTrue($registry->isReady('apple'));
         config(['services.apple.key_file' => storage_path('missing-apple-key.p8')]);
         self::assertFalse($registry->isReady('apple'));
@@ -102,17 +106,17 @@ final class AppleServiceNonceTest extends TestCase
             'services.apple.private_key_base64' => base64_encode($pem),
             'services.apple.key_file' => storage_path('missing-apple-key.p8'),
         ]);
-        self::assertTrue(app(\App\Services\SocialAuthProviderRegistry::class)->isReady('apple'));
+        self::assertTrue(app(SocialAuthProviderRegistry::class)->isReady('apple'));
         $nonce = str_repeat('9', 64);
         $token = $this->identityToken(hash('sha256', $nonce));
         Http::fake(['https://appleid.apple.com/auth/token' => Http::response([
             'id_token' => $token, 'refresh_token' => 'cloud-refresh-token',
         ])]);
-        (new AppleService())->exchange($token, $nonce, 'cloud-code');
+        (new AppleService)->exchange($token, $nonce, 'cloud-code');
         $request = Http::recorded(fn ($request) => $request->url() === 'https://appleid.apple.com/auth/token')->first()[0];
         $key = openssl_pkey_get_private($pem);
         $publicPem = openssl_pkey_get_details($key)['key'];
-        $claims = \Firebase\JWT\JWT::decode($request['client_secret'], new \Firebase\JWT\Key($publicPem, 'ES256'));
+        $claims = JWT::decode($request['client_secret'], new Key($publicPem, 'ES256'));
         self::assertSame('com.rokn.app', $claims->sub);
         self::assertSame('TESTTEAM01', $claims->iss);
     }
@@ -121,7 +125,7 @@ final class AppleServiceNonceTest extends TestCase
     {
         foreach (['not-base64!', base64_encode('not-a-key'), base64_encode($this->privateKey)] as $secret) {
             config(['services.apple.private_key_base64' => $secret]);
-            self::assertFalse(app(\App\Services\SocialAuthProviderRegistry::class)->isReady('apple'));
+            self::assertFalse(app(SocialAuthProviderRegistry::class)->isReady('apple'));
         }
     }
 
@@ -129,7 +133,7 @@ final class AppleServiceNonceTest extends TestCase
     {
         $rawNonce = str_repeat('1', 64);
 
-        $identity = (new AppleService())->verify(
+        $identity = (new AppleService)->verify(
             $this->identityToken(hash('sha256', $rawNonce)),
             $rawNonce
         );
@@ -144,7 +148,7 @@ final class AppleServiceNonceTest extends TestCase
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('nonce does not match');
 
-        (new AppleService())->verify(
+        (new AppleService)->verify(
             $this->identityToken(hash('sha256', str_repeat('2', 64))),
             str_repeat('3', 64)
         );
@@ -155,14 +159,14 @@ final class AppleServiceNonceTest extends TestCase
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Invalid Apple sign-in nonce');
 
-        (new AppleService())->verify('unused-token', '');
+        (new AppleService)->verify('unused-token', '');
     }
 
     public function test_an_identical_credential_can_retry_but_another_token_cannot_reuse_its_nonce(): void
     {
         $rawNonce = str_repeat('4', 64);
         $token = $this->identityToken(hash('sha256', $rawNonce));
-        $service = new AppleService();
+        $service = new AppleService;
 
         $service->verify($token, $rawNonce);
         self::assertSame('apple-user-123', $service->verify($token, $rawNonce)['id']);
@@ -174,5 +178,4 @@ final class AppleServiceNonceTest extends TestCase
             $rawNonce
         );
     }
-
 }

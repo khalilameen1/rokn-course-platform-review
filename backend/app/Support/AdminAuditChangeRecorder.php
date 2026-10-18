@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support;
 
-use App\Models\Coupon;
 use App\Models\CoinEarningMethod;
+use App\Models\Coupon;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
 use App\Models\CourseCode;
@@ -59,6 +59,7 @@ final class AdminAuditChangeRecorder
 
     /** Dispatcher the listener is registered on (one per application instance). */
     private static ?\WeakReference $listeningOn = null;
+
     private static ?self $current = null;
 
     /** @var list<array<string, mixed>> */
@@ -79,7 +80,7 @@ final class AdminAuditChangeRecorder
             self::$listeningOn = \WeakReference::create($dispatcher);
         }
 
-        return self::$current = new self();
+        return self::$current = new self;
     }
 
     /** @return list<array<string, mixed>> */

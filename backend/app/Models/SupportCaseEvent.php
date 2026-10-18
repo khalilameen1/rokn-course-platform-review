@@ -12,8 +12,16 @@ final class SupportCaseEvent extends Model
         'feedback_report_id', 'actor_id', 'event_type', 'from_status',
         'to_status', 'metadata',
     ];
+
     protected $casts = ['metadata' => 'array', 'created_at' => 'datetime'];
 
-    public function report() { return $this->belongsTo(FeedbackReport::class, 'feedback_report_id'); }
-    public function actor() { return $this->belongsTo(User::class, 'actor_id'); }
+    public function report()
+    {
+        return $this->belongsTo(FeedbackReport::class, 'feedback_report_id');
+    }
+
+    public function actor()
+    {
+        return $this->belongsTo(User::class, 'actor_id');
+    }
 }

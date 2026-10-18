@@ -12,7 +12,9 @@ use Illuminate\Support\Str;
 final readonly class NotificationCampaignIntent
 {
     public string $deliveryKey;
+
     public ?DateTimeImmutable $scheduledAt;
+
     public ?int $authoredBy;
 
     public function __construct(

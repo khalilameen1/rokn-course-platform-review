@@ -4,20 +4,19 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Support\StudentNotificationIntent;
-
 use App\Events\CourseCompleted;
 use App\Jobs\SendAiUsageThresholdAlert;
 use App\Jobs\SendFinancialAnomalyAlert;
 use App\Listeners\AwardCourseCompletionReward;
 use App\Listeners\AwardLevelBadge;
-use App\Models\InternalSignal;
 use App\Models\Course;
-use App\Models\Project;
-use App\Models\User;
-use App\Models\ProjectSubmission;
 use App\Models\CourseSection;
+use App\Models\InternalSignal;
+use App\Models\Project;
+use App\Models\ProjectSubmission;
+use App\Models\User;
 use App\Support\RoknAppLink;
+use App\Support\StudentNotificationIntent;
 
 final readonly class InternalSignalHandler
 {
@@ -32,8 +31,7 @@ final readonly class InternalSignalHandler
         private CourseRevisionResolver $revisionResolver,
         private readonly StudentNotificationService $notifications,
         private WatchHistoryCanonicalizationService $watchHistory
-    ) {
-    }
+    ) {}
 
     public function handle(InternalSignal $signal): void
     {
@@ -41,21 +39,27 @@ final readonly class InternalSignalHandler
         switch ($signal->type) {
             case 'course.completed':
                 $this->courseCompleted($payload);
+
                 return;
             case 'course.completed.badge':
                 $this->badges->handle($this->courseEvent($payload));
+
                 return;
             case 'course.completed.reward':
                 $this->rewards->handle($this->courseEvent($payload));
+
                 return;
             case 'financial_anomaly.opened':
                 $this->fanOutFinancialAlert($payload);
+
                 return;
             case 'project.passed.first_reward':
                 $this->projectPassedReward($payload);
+
                 return;
             case 'project.review.notification':
                 $this->projectReviewNotification($payload);
+
                 return;
             case 'financial_anomaly.alert_admin':
                 (new SendFinancialAnomalyAlert(
@@ -63,12 +67,15 @@ final readonly class InternalSignalHandler
                     (int) ($payload['admin_id'] ?? 0),
                     (string) ($payload['occurrence'] ?? '')
                 ))->handle();
+
                 return;
             case 'ai_usage.settled':
                 $this->aiUsage->record((int) ($payload['event_id'] ?? 0));
+
                 return;
             case 'ai_usage.threshold':
                 $this->fanOutAiAlert($payload);
+
                 return;
             case 'ai_usage.threshold_admin':
                 (new SendAiUsageThresholdAlert(
@@ -78,16 +85,19 @@ final readonly class InternalSignalHandler
                     max(0, (int) ($payload['threshold'] ?? 0)),
                     (int) ($payload['admin_id'] ?? 0)
                 ))->handle();
+
                 return;
             case 'course.attachments.grant':
                 $this->grantCourseAttachments($payload);
+
                 return;
             case 'course.watch_history.canonicalize':
                 $this->canonicalizeWatchHistory($payload);
+
                 return;
             default:
                 throw new \UnexpectedValueException(
-                    'Unknown internal signal type: ' . $signal->type
+                    'Unknown internal signal type: '.$signal->type
                 );
         }
     }
@@ -117,7 +127,7 @@ final readonly class InternalSignalHandler
                 $payloadForEffect['reward_contract'] = $payload['reward_contract'];
             }
             $this->internalSignals->record(
-                'course.completed.' . $effect,
+                'course.completed.'.$effect,
                 "user:{$userId}:course:{$courseId}{$revisionIdentity}:effect:{$effect}",
                 $payloadForEffect,
                 'course_enrollment',
@@ -163,7 +173,7 @@ final readonly class InternalSignalHandler
     {
         $course = Course::query()->find((int) ($payload['course_id'] ?? 0));
         $revision = max(0, (int) ($payload['published_revision'] ?? 0));
-        if (!$course || $revision === 0
+        if (! $course || $revision === 0
             || (int) $course->last_published_authoring_version < $revision) {
             return;
         }
@@ -202,7 +212,7 @@ final readonly class InternalSignalHandler
         $user = User::query()->find((int) ($payload['user_id'] ?? 0));
         $projectId = (int) ($payload['project_id'] ?? 0);
         $project = Project::query()->find($projectId);
-        if (!$user || ($projectId <= 0 && !$project)) {
+        if (! $user || ($projectId <= 0 && ! $project)) {
             return;
         }
 
@@ -221,12 +231,14 @@ final readonly class InternalSignalHandler
         $submission = ProjectSubmission::query()->find((int) ($payload['submission_id'] ?? 0));
         $user = User::query()->find((int) ($payload['user_id'] ?? 0));
         $historicalProjectId = (int) ($payload['project_id'] ?? 0);
-        if (!$submission || !$user || $historicalProjectId <= 0) return;
+        if (! $submission || ! $user || $historicalProjectId <= 0) {
+            return;
+        }
 
         $status = (string) ($payload['status'] ?? '');
         if (
             (int) $submission->user_id !== (int) $user->id
-            || !hash_equals((string) $submission->review_status, $status)
+            || ! hash_equals((string) $submission->review_status, $status)
         ) {
             return;
         }
@@ -242,10 +254,14 @@ final readonly class InternalSignalHandler
         $course = Course::query()->find((int) (
             $section?->course_id ?: ($payload['course_id'] ?? 0)
         ));
-        if (!$course) return;
+        if (! $course) {
+            return;
+        }
 
         $passed = $status === ProjectSubmission::STATUS_PASSED;
-        if (!$passed && $status !== ProjectSubmission::STATUS_NEEDS_RESUBMISSION) return;
+        if (! $passed && $status !== ProjectSubmission::STATUS_NEEDS_RESUBMISSION) {
+            return;
+        }
 
         $this->notifications->notifyUser(
             $user,
@@ -260,7 +276,7 @@ final readonly class InternalSignalHandler
                     : RoknAppLink::course((int) $course->id),
                 notifiableType: Course::class,
                 notifiableId: (int) $course->id,
-                deliveryKey: 'project-review:' . $submission->public_id . ':' . $status,
+                deliveryKey: 'project-review:'.$submission->public_id.':'.$status,
                 templateVariables: [
                     'course' => (string) $course->title,
                     'project' => (string) ($section?->title ?: 'مشروع العبور'),
@@ -285,7 +301,7 @@ final readonly class InternalSignalHandler
                 $identity,
                 array_merge($payload, ['admin_id' => $adminId]),
                 'ai_usage_period',
-                (string) ($payload['metric'] ?? '') . ':' . (string) ($payload['period'] ?? '')
+                (string) ($payload['metric'] ?? '').':'.(string) ($payload['period'] ?? '')
             );
         }
     }

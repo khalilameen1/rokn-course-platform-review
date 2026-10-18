@@ -49,7 +49,7 @@ final class CourseAttachmentExternalUrl
             $query = array_values(array_filter(
                 explode('&', $parts['query'] ?? ''),
                 static fn (string $part): bool => $part !== ''
-                    && !in_array(rawurldecode(explode('=', $part, 2)[0]), ['dl', 'raw'], true)
+                    && ! in_array(rawurldecode(explode('=', $part, 2)[0]), ['dl', 'raw'], true)
             ));
             $query[] = 'dl=1';
             $base = explode('?', explode('#', $url, 2)[0], 2)[0];

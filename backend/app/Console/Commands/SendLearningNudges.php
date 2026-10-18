@@ -4,18 +4,17 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Support\StudentNotificationIntent;
-
 use App\Models\CourseEnrollment;
 use App\Models\User;
-use App\Services\StudentNotificationService;
 use App\Services\EngagementMessageService;
 use App\Services\NotificationDeliveryPolicy;
+use App\Services\StudentNotificationService;
+use App\Support\BusinessClock;
+use App\Support\LearningReminderSchedule;
+use App\Support\StudentNotificationIntent;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Support\BusinessClock;
-use App\Support\LearningReminderSchedule;
 
 final class SendLearningNudges extends Command
 {
@@ -29,8 +28,9 @@ final class SendLearningNudges extends Command
     {
         $clock = BusinessClock::utcNow();
         $template = app(EngagementMessageService::class)->publicMessage('learning_nudge');
-        if (!$template) {
+        if (! $template) {
             $this->info('Learning nudges are disabled.');
+
             return self::SUCCESS;
         }
         $cooldownHours = max(1, (int) ($template['cooldown_hours'] ?? 24));
@@ -52,10 +52,13 @@ final class SendLearningNudges extends Command
         foreach (DB::table('users')->where('notifications_status', true)->distinct()
             ->pluck('learning_reminder_timezone') as $timezone) {
             $hour = LearningReminderSchedule::dueHour((string) $timezone, $clock);
-            if ($hour !== null) $due[] = ['timezone' => (string) $timezone, 'hour' => $hour];
+            if ($hour !== null) {
+                $due[] = ['timezone' => (string) $timezone, 'hour' => $hour];
+            }
         }
         if ($due === []) {
             $this->info('No learning reminder window is open.');
+
             return self::SUCCESS;
         }
 
@@ -134,11 +137,10 @@ final class SendLearningNudges extends Command
                 // deep-link a non-public graph merely because that unusable row
                 // sorted first.
                 $enrollment = $student->enrollments->first(
-                    fn (CourseEnrollment $candidate): bool =>
-                        $candidate->course?->isPublishedForLearning()
+                    fn (CourseEnrollment $candidate): bool => $candidate->course?->isPublishedForLearning()
                 );
                 $course = $enrollment?->course;
-                if (!$course) {
+                if (! $course) {
                     continue;
                 }
 
@@ -152,14 +154,14 @@ final class SendLearningNudges extends Command
                             titleEn: 'Continue learning',
                             messageAr: "{$courseName}\nمقطع واحد يكفي للعودة",
                             messageEn: "Continue {$courseName}",
-                            link: '/course/' . $course->id . '/watch',
+                            link: '/course/'.$course->id.'/watch',
                             notifiableType: $course::class,
                             notifiableId: (int) $course->id,
-                            deliveryKey: 'learning-nudge:' . $student->id . ':' . $course->id . ':' . $deliveryWindow,
+                            deliveryKey: 'learning-nudge:'.$student->id.':'.$course->id.':'.$deliveryWindow,
                             templateVariables: ['course' => $courseName]
                         )
                     );
-                    if (!$notification) {
+                    if (! $notification) {
                         continue;
                     }
                     $student->forceFill(['last_learning_nudge_at' => now()])->save();

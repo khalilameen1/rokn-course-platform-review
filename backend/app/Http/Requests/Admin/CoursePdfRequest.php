@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Admin;
 
-use App\Support\UnicodeText;
 use App\Models\CoursePdf;
 use App\Support\CourseAttachmentExternalUrl;
+use App\Support\UnicodeText;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class CoursePdfRequest extends FormRequest
@@ -72,7 +72,7 @@ final class CoursePdfRequest extends FormRequest
     {
         $normalized = [];
         foreach (['title', 'title_en'] as $field) {
-            if (!$this->exists($field)) {
+            if (! $this->exists($field)) {
                 continue;
             }
             $normalized[$field] = $this->filled($field)
@@ -80,7 +80,7 @@ final class CoursePdfRequest extends FormRequest
                 : null;
         }
         foreach (['description', 'description_en'] as $field) {
-            if (!$this->exists($field)) {
+            if (! $this->exists($field)) {
                 continue;
             }
             $normalized[$field] = $this->filled($field)

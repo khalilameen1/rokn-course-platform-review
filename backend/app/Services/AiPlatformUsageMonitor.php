@@ -18,13 +18,12 @@ final class AiPlatformUsageMonitor
 {
     public function __construct(
         private readonly InternalSignalService $internalSignals
-    ) {
-    }
+    ) {}
 
     public function record(int $eventId): void
     {
         $event = AiUsageEvent::query()->find($eventId);
-        if (!$event || $event->status !== 'completed') {
+        if (! $event || $event->status !== 'completed') {
             return;
         }
 
@@ -58,7 +57,7 @@ final class AiPlatformUsageMonitor
     private function refreshMetrics(string $day, string $month): array
     {
         [$dayStart, $dayEnd] = BusinessClock::localDayRangeUtc($day);
-        $monthStartLocal = BusinessClock::localDate($month . '-01')->startOfMonth();
+        $monthStartLocal = BusinessClock::localDate($month.'-01')->startOfMonth();
         $monthStart = $monthStartLocal->utc();
         $monthEnd = $monthStartLocal->addMonth()->utc();
         $daily = AiUsageEvent::query()
@@ -101,10 +100,10 @@ final class AiPlatformUsageMonitor
             // first durable alert owns the period; a later, higher snapshot is
             // not an identity conflict that should stall usage settlement.
             $exists = InternalSignal::query()
-                ->where('signal_key', hash('sha256', 'ai_usage.threshold|' . $identity))
+                ->where('signal_key', hash('sha256', 'ai_usage.threshold|'.$identity))
                 ->where('type', 'ai_usage.threshold')
                 ->exists();
-            if (!$exists) {
+            if (! $exists) {
                 throw $exception;
             }
         }

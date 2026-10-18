@@ -11,7 +11,6 @@ use App\Models\CourseEnrollment;
 use App\Models\User;
 use App\Support\RoknLocale;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 
 final readonly class CoursePresentationService
 {
@@ -23,9 +22,7 @@ final readonly class CoursePresentationService
         private LatestWatchResumeService $latestResume,
         private CourseAccessPlanService $plans,
         private CourseSectionAccessService $sectionAccess
-    )
-    {
-    }
+    ) {}
 
     /**
      * @return array{courses: array<int, mixed>, pagination: array<string, int|null>}
@@ -154,7 +151,7 @@ final readonly class CoursePresentationService
      * Build the exact entitled learner resource for a dashboard-only preview.
      * No enrollment, progress row or publication flag is written.
      *
-     * @param array<string, mixed> $planContract
+     * @param  array<string, mixed>  $planContract
      */
     public function dashboardPreview(
         Course $course,
@@ -246,6 +243,7 @@ final readonly class CoursePresentationService
             $userId,
             $learningSections->pluck('id')
         );
+
         return $this->progressState->summarize(
             $learningSections,
             $completedSectionIds

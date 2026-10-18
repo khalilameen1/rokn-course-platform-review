@@ -1,10 +1,11 @@
 <?php
 
+use App\Logging\RedactSensitiveContext;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
 
-$redact = [\App\Logging\RedactSensitiveContext::class];
+$redact = [RedactSensitiveContext::class];
 
 return [
 

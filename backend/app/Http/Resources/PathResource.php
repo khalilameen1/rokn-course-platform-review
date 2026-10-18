@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class PathResource extends JsonResource
@@ -9,7 +10,7 @@ class PathResource extends JsonResource
     /**
      * Transform the resource into an array.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  Request  $request
      * @return array
      */
     public function toArray($request)
@@ -19,7 +20,7 @@ class PathResource extends JsonResource
             'title_ar' => $this->title_ar,
             'title_en' => $this->title_en,
             'title' => $this->title,
-            'interests' => $this->interests->map(function($interest) {
+            'interests' => $this->interests->map(function ($interest) {
                 return [
                     'id' => $interest->id,
                     'name_ar' => $interest->name_ar,

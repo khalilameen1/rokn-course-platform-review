@@ -20,11 +20,10 @@ final class AdminNotificationTemplateAuthoringService
     public function __construct(
         private readonly StoredFileUploadService $uploads,
         private readonly StoredFileDeletionService $cleanup
-    ) {
-    }
+    ) {}
 
     /** @param array<string, mixed> $validated
-     *  @param Closure(AdminNotification):void $complete Completes the receipt in this transaction.
+     * @param  Closure(AdminNotification):void  $complete  Completes the receipt in this transaction.
      */
     public function create(array $validated, string $requestId, ?UploadedFile $image, Closure $complete): AdminNotification
     {
@@ -36,7 +35,7 @@ final class AdminNotificationTemplateAuthoringService
                 $notification = AdminNotification::query()->where('authoring_request_id', $requestId)
                     ->lockForUpdate()->first();
                 if ($notification) {
-                    if (!$this->sameCreatePayload($notification, $payload, $image)) {
+                    if (! $this->sameCreatePayload($notification, $payload, $image)) {
                         throw ValidationException::withMessages([
                             'authoring_request_id' => ["تغيّرت بيانات القالب\nأعد فتح النموذج ثم أرسل"],
                         ]);
@@ -52,7 +51,9 @@ final class AdminNotificationTemplateAuthoringService
                 return $notification;
             }, 3);
         } catch (\Throwable $exception) {
-            if ($path !== null) $this->cleanup->deleteOrQueue('public', $path);
+            if ($path !== null) {
+                $this->cleanup->deleteOrQueue('public', $path);
+            }
             throw $exception;
         }
     }
@@ -82,7 +83,9 @@ final class AdminNotificationTemplateAuthoringService
                 }
             }, 3);
         } catch (\Throwable $exception) {
-            if ($path !== null) $this->cleanup->deleteOrQueue('public', $path);
+            if ($path !== null) {
+                $this->cleanup->deleteOrQueue('public', $path);
+            }
             throw $exception;
         }
     }
@@ -95,28 +98,34 @@ final class AdminNotificationTemplateAuthoringService
             $this->assertCurrentVersion($notification, $editorVersion, 'الإيقاف أو الحذف');
             if ($notification->isSystemTemplate()) {
                 $notification->update(['is_active' => false]);
+
                 return true;
             }
             $notification->delete();
+
             return false;
         }, 3);
     }
 
     private function stageImage(?UploadedFile $image, string $identityPrefix): ?string
     {
-        if ($image === null) return null;
+        if ($image === null) {
+            return null;
+        }
         $path = $this->uploads->storeTrackedUpload(
             $image, 'admin_notifications', 'public', 60,
             $identityPrefix.'|'.hash_file('sha256', $image->getRealPath())
         );
-        if ($path === '') throw new \RuntimeException('Notification template image storage failed');
+        if ($path === '') {
+            throw new \RuntimeException('Notification template image storage failed');
+        }
 
         return $path;
     }
 
     private function assertCurrentVersion(AdminNotification $notification, string $version, string $operation): void
     {
-        if (!hash_equals(NotificationTemplateEditorVersion::for($notification), $version)) {
+        if (! hash_equals(NotificationTemplateEditorVersion::for($notification), $version)) {
             throw ValidationException::withMessages([
                 'editor_version' => "تغيّر القالب منذ فتح الصفحة\nأعد تحميله قبل {$operation}",
             ]);
@@ -154,27 +163,37 @@ final class AdminNotificationTemplateAuthoringService
             }
         }
         foreach (['priority', 'cooldown_hours'] as $field) {
-            if ((int) $notification->{$field} !== (int) ($payload[$field] ?? 0)) return false;
+            if ((int) $notification->{$field} !== (int) ($payload[$field] ?? 0)) {
+                return false;
+            }
         }
         foreach (['is_active', 'is_dismissible'] as $field) {
-            if ((bool) $notification->{$field} !== (bool) ($payload[$field] ?? false)) return false;
+            if ((bool) $notification->{$field} !== (bool) ($payload[$field] ?? false)) {
+                return false;
+            }
         }
         foreach (['starts_at', 'ends_at'] as $field) {
             $stored = $notification->{$field}?->getTimestamp();
             $submitted = ($payload[$field] ?? null)?->getTimestamp();
-            if ($stored !== $submitted) return false;
+            if ($stored !== $submitted) {
+                return false;
+            }
         }
 
         $photo = $notification->photo()->first();
-        if ($image === null) return $photo === null;
+        if ($image === null) {
+            return $photo === null;
+        }
         // A prior worker can die after the template row commits but before
         // its deterministic image is attached. Let the same intent finish it.
-        if (!$photo) return true;
+        if (! $photo) {
+            return true;
+        }
 
         return $this->trackedImageMatches(
             (string) $photo->path,
             $image,
-            'admin-message-template|' . strtolower((string) $notification->authoring_request_id)
+            'admin-message-template|'.strtolower((string) $notification->authoring_request_id)
         );
     }
 
@@ -185,9 +204,7 @@ final class AdminNotificationTemplateAuthoringService
 
         return $storedIdentity !== '' && hash_equals(
             $storedIdentity,
-            hash('sha256', $identityPrefix . '|' . $contentHash)
+            hash('sha256', $identityPrefix.'|'.$contentHash)
         );
     }
-
-
 }

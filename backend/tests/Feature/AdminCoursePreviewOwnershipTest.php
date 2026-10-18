@@ -35,7 +35,7 @@ final class AdminCoursePreviewOwnershipTest extends TestCase
         $course = $this->course();
         $url = route('admin.courses.student-preview', $course);
         if ($role !== null) {
-            $user = new User();
+            $user = new User;
             $user->forceFill([
                 'name_ar' => 'المستخدم', 'email' => $role.'-preview-guard@example.test',
                 'role' => $role, 'active' => true,
@@ -43,8 +43,11 @@ final class AdminCoursePreviewOwnershipTest extends TestCase
             $this->actingAs($user, 'web');
         }
         $response = $this->get($url);
-        if ($redirect === null) $response->assertForbidden();
-        else $response->assertRedirect(route($redirect));
+        if ($redirect === null) {
+            $response->assertForbidden();
+        } else {
+            $response->assertRedirect(route($redirect));
+        }
         $this->assertNoLearningWrites();
     }
 
@@ -104,7 +107,7 @@ final class AdminCoursePreviewOwnershipTest extends TestCase
     public function test_http_grant_preview_and_invalid_plan_do_not_create_learning_access(): void
     {
         $course = $this->course(true);
-        (new CourseCode())->forceFill([
+        (new CourseCode)->forceFill([
             'tenant_id' => 1, 'type' => 'course', 'course_id' => $course->id,
             'code' => 'preview-only-grant', 'is_grant' => true,
             'is_active' => true, 'max_uses' => 10, 'used_count' => 0,
@@ -124,10 +127,10 @@ final class AdminCoursePreviewOwnershipTest extends TestCase
 
     private function course(bool $draft = false): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1, 'name_ar' => $draft ? 'المسودة' : 'المنشور',
-            'price' => 400, 'is_coming_soon' => $draft, 'is_catalog_visible' => !$draft,
+            'price' => 400, 'is_coming_soon' => $draft, 'is_catalog_visible' => ! $draft,
             'authoring_version' => 4, 'last_published_authoring_version' => $draft ? null : 4,
             'published_at' => $draft ? null : now(), 'certificate_text_template_key' => 'completion',
         ])->save();
@@ -154,7 +157,7 @@ final class AdminCoursePreviewOwnershipTest extends TestCase
 
     private function asModerator(): void
     {
-        $moderator = new User();
+        $moderator = new User;
         $moderator->forceFill([
             'name_ar' => 'المشرف', 'email' => 'preview-owner@example.test',
             'role' => 'moderator', 'active' => true,

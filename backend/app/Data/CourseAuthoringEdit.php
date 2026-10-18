@@ -10,10 +10,10 @@ use Illuminate\Http\UploadedFile;
 final readonly class CourseAuthoringEdit
 {
     /**
-     * @param array<string,mixed> $attributes
-     * @param array<string,array<string,mixed>>|null $planOffers
-     * @param list<int>|null $classificationIds
-     * @param list<int>|null $teacherIds
+     * @param  array<string,mixed>  $attributes
+     * @param  array<string,array<string,mixed>>|null  $planOffers
+     * @param  list<int>|null  $classificationIds
+     * @param  list<int>|null  $teacherIds
      */
     private function __construct(
         public array $attributes,
@@ -28,15 +28,14 @@ final readonly class CourseAuthoringEdit
         public ?array $teacherIds,
         public bool $grantChatAttachments,
         public bool $grantProjectAttachments
-    ) {
-    }
+    ) {}
 
     /**
      * Call only after the HTTP/input boundary has validated and authorized fields.
      * CourseRequest strips moderator-owned versus administrator-owned plan fields
      * before this point. Application permissions are still checked by the writer.
      *
-     * @param array<string,mixed> $fields
+     * @param  array<string,mixed>  $fields
      */
     public static function fromValidated(array $fields): self
     {
@@ -71,7 +70,7 @@ final readonly class CourseAuthoringEdit
     /** @return list<int>|null */
     private static function selection(array $fields, string $key): ?array
     {
-        if (!array_key_exists($key, $fields) && !self::submittedBoolean($fields, $key.'_present')) {
+        if (! array_key_exists($key, $fields) && ! self::submittedBoolean($fields, $key.'_present')) {
             return null;
         }
 

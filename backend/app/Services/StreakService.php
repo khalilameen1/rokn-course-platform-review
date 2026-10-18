@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use Carbon\Carbon;
 use App\Support\BusinessClock;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class StreakService
@@ -15,9 +15,6 @@ class StreakService
      * here made the streak screen disagree with the daily reward response and
      * made a valid check-in look broken until a lesson happened to complete.
      *
-     * @param int $userId
-     * @param Carbon|null $from
-     * @param Carbon|null $to
      * @return array Array of Y-m-d date strings
      */
     public static function getActivityDatesForUser(int $userId, ?Carbon $from = null, ?Carbon $to = null): array
@@ -52,9 +49,6 @@ class StreakService
 
     /**
      * Get streak data for the authenticated user: week view, current streak, status.
-     *
-     * @param int $userId
-     * @return array
      */
     public static function getStreakDataForUser(int $userId): array
     {
@@ -107,7 +101,7 @@ class StreakService
         }
 
         $lastStreakBeforeGap = 0;
-        if (!$anchor && $activityDates !== []) {
+        if (! $anchor && $activityDates !== []) {
             $latest = collect($activityDates)
                 ->filter(fn (string $date): bool => $date < $today)
                 ->sortDesc()
@@ -142,7 +136,7 @@ class StreakService
             'current_streak' => $currentStreak,
             'last_streak_before_gap' => $lastStreakBeforeGap,
             'checked_in_today' => $checkedInToday,
-            'grace_day' => !$checkedInToday && $currentStreak > 0,
+            'grace_day' => ! $checkedInToday && $currentStreak > 0,
             'status' => $status,
             'status_message_ar' => $statusMessageAr,
             'status_message_en' => $statusMessageEn,
@@ -161,6 +155,7 @@ class StreakService
                 ? 'كان لديك يوم واحد بنشاط قبل التوقف'
                 : "كان لديك {$lastStreakBeforeGap} أيام متتالية بنشاط قبل التوقف";
         }
+
         return 'لا يوجد سلسلة نشاط حالياً';
     }
 
@@ -176,6 +171,7 @@ class StreakService
                 ? 'You had 1 day with activity before the gap'
                 : "You had {$lastStreakBeforeGap} consecutive days with activity before the gap";
         }
+
         return 'No current streak';
     }
 }

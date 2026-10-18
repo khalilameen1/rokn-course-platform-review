@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Support\StudentNotificationIntent;
-
-use App\Support\NotificationAudience;
 use App\Http\Controllers\Admin\NotificationsController;
 use App\Jobs\SendStudentNotification;
 use App\Models\NotificationCampaign;
 use App\Services\NotificationCampaignService;
 use App\Services\StudentNotificationService;
+use App\Support\NotificationAudience;
+use App\Support\StudentNotificationIntent;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
@@ -19,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Tests\Feature\API\ApiTestCase;
 
 final class AdminNotificationParityTest extends ApiTestCase
@@ -187,7 +187,7 @@ final class AdminNotificationParityTest extends ApiTestCase
         ]);
         $request->setUserResolver(fn () => $this->user);
 
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $this->expectException(ValidationException::class);
         app()->call([app(NotificationsController::class), 'store'], ['request' => $request]);
     }
 

@@ -6,23 +6,22 @@ use App\Http\Controllers\Controller;
 use App\Models\Package;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminEconomyReadService;
-use App\Services\AdminPaymentOperationsReadService;
 use App\Services\AdminPackageAuthoringService;
+use App\Services\AdminPaymentOperationsReadService;
+use App\Support\PackageEditorVersion;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Support\PackageEditorVersion;
 
 class PackageController extends Controller
 {
-    public function __construct(private readonly AdminPackageAuthoringService $authoring)
-    {
-    }
+    public function __construct(private readonly AdminPackageAuthoringService $authoring) {}
 
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function index(AdminEconomyReadService $economy)
     {
@@ -30,13 +29,14 @@ class PackageController extends Controller
         $editorVersions = $packages->getCollection()->mapWithKeys(fn (Package $package): array => [
             $package->id => PackageEditorVersion::for($package),
         ]);
+
         return view('admin.packages.index', compact('packages', 'editorVersions'));
     }
 
     /**
      * Show the form for creating a new resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function create()
     {
@@ -46,8 +46,7 @@ class PackageController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function store(Request $request, AdminAuthoringCreateIntentService $createIntents)
     {
@@ -107,8 +106,7 @@ class PackageController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\Package  $package
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function show(Package $package, AdminPaymentOperationsReadService $payments)
     {
@@ -122,21 +120,19 @@ class PackageController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\Package  $package
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function edit(Package $package)
     {
         $editorVersion = PackageEditorVersion::for($package);
+
         return view('admin.packages.edit', compact('package', 'editorVersion'));
     }
 
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Package  $package
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function update(Request $request, Package $package)
     {
@@ -158,19 +154,18 @@ class PackageController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Package  $package
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function destroy(Request $request, Package $package)
     {
         $validated = $request->validate(['editor_version' => 'required|string|size:64']);
-        if (!$this->authoring->deleteIfUnused((int) $package->id, (string) $validated['editor_version'])) {
+        if (! $this->authoring->deleteIfUnused((int) $package->id, (string) $validated['editor_version'])) {
             return redirect()->back()->with(
                 'error',
                 'لا يمكن حذف باقة دخلت دورة بيع. عطّل قنواتها مع الاحتفاظ بالسجل المالي.'
             );
         }
+
         return redirect()->route('admin.packages.index')->with('success', 'تم حذف الباقة بنجاح');
     }
-
 }

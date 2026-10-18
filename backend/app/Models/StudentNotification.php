@@ -3,7 +3,10 @@
 namespace App\Models;
 
 use App\Support\RoknLocale;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class StudentNotification extends Model
 {
@@ -61,7 +64,7 @@ class StudentNotification extends Model
     /**
      * Get the user that owns the notification.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
     public function user()
     {
@@ -71,7 +74,7 @@ class StudentNotification extends Model
     /**
      * Get the notifiable entity (polymorphic).
      *
-     * @return \Illuminate\Database\Eloquent\Relations\MorphTo
+     * @return MorphTo
      */
     public function notifiable()
     {
@@ -86,8 +89,8 @@ class StudentNotification extends Model
     /**
      * Scope a query to only include unread notifications.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @param  Builder  $query
+     * @return Builder
      */
     public function scopeUnread($query)
     {
@@ -97,8 +100,8 @@ class StudentNotification extends Model
     /**
      * Scope a query to only include read notifications.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @param  Builder  $query
+     * @return Builder
      */
     public function scopeRead($query)
     {
@@ -108,9 +111,9 @@ class StudentNotification extends Model
     /**
      * Scope a query to filter by notification type.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param string $type
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @param  Builder  $query
+     * @param  string  $type
+     * @return Builder
      */
     public function scopeByType($query, $type)
     {
@@ -145,7 +148,7 @@ class StudentNotification extends Model
         // A concurrent tap may have won the conditional update. Reflect its
         // first-read timestamp instead of overwriting it with this request.
         $current = $this->fresh();
-        if (!$current) {
+        if (! $current) {
             return false;
         }
         $this->setRawAttributes($current->getAttributes(), true);
@@ -177,4 +180,3 @@ class StudentNotification extends Model
             : ($this->message_en ?: $this->message_ar);
     }
 }
-

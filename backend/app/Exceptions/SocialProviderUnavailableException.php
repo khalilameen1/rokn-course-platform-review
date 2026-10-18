@@ -6,6 +6,4 @@ namespace App\Exceptions;
 
 use RuntimeException;
 
-final class SocialProviderUnavailableException extends RuntimeException
-{
-}
+final class SocialProviderUnavailableException extends RuntimeException {}

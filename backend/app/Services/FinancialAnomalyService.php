@@ -6,11 +6,11 @@ namespace App\Services;
 
 use App\Models\CourseEnrollment;
 use App\Models\FinancialAnomaly;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Illuminate\Support\Collection;
 
 final readonly class FinancialAnomalyService
 {
@@ -18,19 +18,18 @@ final readonly class FinancialAnomalyService
         private CourseAccessPlanService $plans,
         private WalletService $wallet,
         private InternalSignalService $internalSignals
-    ) {
-    }
+    ) {}
 
     /**
      * Read-only entitlement decisions for a loaded enrollment set.
      *
-     * @param Collection<int,CourseEnrollment> $enrollments
+     * @param  Collection<int,CourseEnrollment>  $enrollments
      * @return array<int,bool> keyed by enrollment id
      */
     public function variableCostDecisions(Collection $enrollments): array
     {
         $enrollments = $enrollments->filter(fn ($row) => $row instanceof CourseEnrollment)->values();
-        if ($enrollments->isEmpty() || !Schema::hasTable('financial_anomalies')) {
+        if ($enrollments->isEmpty() || ! Schema::hasTable('financial_anomalies')) {
             return $enrollments->mapWithKeys(fn (CourseEnrollment $row) => [(int) $row->id => true])->all();
         }
 
@@ -52,6 +51,7 @@ final readonly class FinancialAnomalyService
             $expected = max(0, (int) (($this->plans->termsForEnrollment($enrollment)['minimum_paid_coins'] ?? 0)));
             $actual = max(0, (int) ($paid->get($key)?->paid_total ?? 0));
             $unresolvedExpected = max(0, (int) ($openExpected->get($key)?->expected_total ?? 0));
+
             return [(int) $enrollment->id => $actual >= $expected && $actual >= $unresolvedExpected];
         })->all();
     }
@@ -63,7 +63,7 @@ final readonly class FinancialAnomalyService
 
     public function allowsVariableCostFeatures(CourseEnrollment $enrollment): bool
     {
-        if (!Schema::hasTable('financial_anomalies')) {
+        if (! Schema::hasTable('financial_anomalies')) {
             // Lightweight test/upgrade schemas may not have reached the new
             // ledger yet. ProductionPreflight blocks a real release in that
             // state, so runtime remains backward-compatible during rollout.
@@ -96,7 +96,7 @@ final readonly class FinancialAnomalyService
                     'updated_at' => now(),
                 ]);
 
-            return !FinancialAnomaly::query()
+            return ! FinancialAnomaly::query()
                 ->where('user_id', $enrollment->user_id)
                 ->where('course_id', $enrollment->course_id)
                 ->where('status', FinancialAnomaly::STATUS_OPEN)
@@ -120,7 +120,7 @@ final readonly class FinancialAnomalyService
                 : $query->where('enrollment_id', $enrollment->id)->whereNull('order_id');
 
             $anomaly = $query->lockForUpdate()->first();
-            if (!$anomaly) {
+            if (! $anomaly) {
                 $anomaly = new FinancialAnomaly([
                     'public_id' => (string) Str::uuid(),
                     'order_id' => $orderId ?: null,
@@ -153,8 +153,8 @@ final readonly class FinancialAnomalyService
                 $occurrence = (string) $anomaly->detected_at?->format('Y-m-d\TH:i:s.uP');
                 $this->internalSignals->record(
                     'financial_anomaly.opened',
-                    'anomaly:' . $anomaly->public_id . ':opened:'
-                        . $occurrence,
+                    'anomaly:'.$anomaly->public_id.':opened:'
+                        .$occurrence,
                     ['anomaly_id' => (int) $anomaly->id, 'occurrence' => $occurrence],
                     FinancialAnomaly::class,
                     (int) $anomaly->id

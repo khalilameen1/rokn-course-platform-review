@@ -8,26 +8,33 @@ use App\Models\StudentNotification;
 use App\Models\User;
 use App\Support\DurableJobDispatch;
 use App\Support\StudentNotificationIntent;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Database\QueryException;
 
 class StudentNotificationService
 {
     public function __construct(
         private readonly EngagementMessageService $templates,
         private readonly StudentNotificationPresentationService $presentation
-    ) {
-    }
+    ) {}
 
     public const TYPE_COURSE_ENROLLED = 'course_enrolled';
+
     public const TYPE_COINS_CLAIMED = 'coins_claimed';
+
     public const TYPE_PACKAGE_PURCHASED = 'package_purchased';
+
     public const TYPE_COURSE_COMPLETED = 'course_completed';
+
     public const TYPE_CERTIFICATE_READY = 'certificate_ready';
+
     public const TYPE_INSTITUTIONAL_GRANT = 'institutional_grant';
+
     public const TYPE_WHATSAPP_CONNECTED = 'whatsapp_connected';
+
     public const TYPE_SUPPORT_CASE_UPDATE = 'support_case_update';
+
     public const TYPE_PROJECT_UPDATE = 'project_update';
 
     /** Null when the template is disabled or the recipient cannot receive it. */
@@ -74,7 +81,7 @@ class StudentNotificationService
             // before clearing inbox rows, so a stale callback cannot recreate
             // personal notifications after the account has gone away.
             $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->first();
-            if (!$lockedUser || !NotificationDeliveryPolicy::allowsInbox($lockedUser, $intent->notificationType)) {
+            if (! $lockedUser || ! NotificationDeliveryPolicy::allowsInbox($lockedUser, $intent->notificationType)) {
                 return null;
             }
 
@@ -95,7 +102,7 @@ class StudentNotificationService
                 ]);
             } catch (QueryException $exception) {
                 $existing = StudentNotification::query()->where($identity)->first();
-                if (!$existing) {
+                if (! $existing) {
                     throw $exception;
                 }
 
@@ -103,7 +110,7 @@ class StudentNotificationService
             }
         });
 
-        if (!$notification) {
+        if (! $notification) {
             return null;
         }
 
@@ -124,8 +131,7 @@ class StudentNotificationService
         User $user,
         int $coinsAmount,
         ?int $methodId
-    ): void
-    {
+    ): void {
         $copy = $this->templates->notificationPayload(
             'welcome_bonus_received',
             ['coins' => $coinsAmount],
@@ -133,8 +139,8 @@ class StudentNotificationService
                 'title_ar' => 'وصلت هديتك',
                 'title_en' => 'Your balance is ready',
                 'message_ar' => $this->arabicDigits($coinsAmount)
-                    . ' عملة ركن في محفظتك',
-                'message_en' => $coinsAmount . ' Rokn coins are in your wallet',
+                    .' عملة ركن في محفظتك',
+                'message_en' => $coinsAmount.' Rokn coins are in your wallet',
                 'action_label_ar' => 'افتح المحفظة',
                 'action_label_en' => 'View balance',
             ]
@@ -157,7 +163,7 @@ class StudentNotificationService
         $notification = StudentNotification::firstOrCreate(
             [
                 'user_id' => $user->id,
-                'delivery_key' => $this->normalizeDeliveryKey('registration-bonus:' . $user->id),
+                'delivery_key' => $this->normalizeDeliveryKey('registration-bonus:'.$user->id),
             ],
             [
                 'notification_type' => self::TYPE_COINS_CLAIMED,
@@ -175,7 +181,7 @@ class StudentNotificationService
             ]
         );
 
-        if (!$notification->wasRecentlyCreated) {
+        if (! $notification->wasRecentlyCreated) {
             return;
         }
 

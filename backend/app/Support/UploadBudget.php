@@ -11,14 +11,12 @@ use InvalidArgumentException;
 final readonly class UploadBudget
 {
     /** @param Closure():float $clock */
-    private function __construct(private float $deadline, private Closure $clock)
-    {
-    }
+    private function __construct(private float $deadline, private Closure $clock) {}
 
     /** @param (Closure():float)|null $clock Monotonic seconds; injectable for deterministic tests. */
     public static function start(float $seconds, ?Closure $clock = null): self
     {
-        if (!is_finite($seconds) || $seconds <= 0) {
+        if (! is_finite($seconds) || $seconds <= 0) {
             throw new InvalidArgumentException('An upload budget must be positive and finite.');
         }
         $clock ??= static fn (): float => hrtime(true) / 1_000_000_000;

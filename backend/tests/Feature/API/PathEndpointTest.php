@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\API;
 
+use App\Models\Lesson;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -184,7 +185,7 @@ class PathEndpointTest extends ApiTestCase
             'title_ar' => 'قسم 2',
             'title_en' => 'Section 2',
             'section_type' => 'lesson',
-            'sectionable_type' => \App\Models\Lesson::class,
+            'sectionable_type' => Lesson::class,
             'sectionable_id' => 10,
             'order' => 2,
             'sort_order' => 2,

@@ -1,5 +1,6 @@
 <?php
 
+use Database\Seeders\GradeSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -11,9 +12,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
-             $this->call([
-                 SettingsTableSeeder::class,
-                 \Database\Seeders\GradeSeeder::class,
-             ]);
+        $this->call([
+            SettingsTableSeeder::class,
+            GradeSeeder::class,
+        ]);
     }
 }

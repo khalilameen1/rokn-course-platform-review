@@ -45,10 +45,10 @@ final class SeptemberReleaseMigrationResumeTest extends TestCase
         $cases = [];
         foreach ($migrations as $migration => [$table, $columns]) {
             for ($completed = 0; $completed <= count($columns); $completed++) {
-                $cases[$migration . ' after ' . $completed . ' columns'] = [$migration, $table, $columns, $completed, false];
+                $cases[$migration.' after '.$completed.' columns'] = [$migration, $table, $columns, $completed, false];
             }
             if (array_key_exists('portfolio_sharing_status', $columns)) {
-                $cases[$migration . ' after index'] = [$migration, $table, $columns, count($columns), true];
+                $cases[$migration.' after index'] = [$migration, $table, $columns, count($columns), true];
             }
         }
 
@@ -85,7 +85,7 @@ final class SeptemberReleaseMigrationResumeTest extends TestCase
         }
         DB::table($tableName)->insert($existingRow);
 
-        $migration = require database_path('migrations/' . $file . '.php');
+        $migration = require database_path('migrations/'.$file.'.php');
         $migration->up();
         $migration->up();
 
@@ -94,7 +94,7 @@ final class SeptemberReleaseMigrationResumeTest extends TestCase
         self::assertTrue(Schema::hasIndex($tableName, ['existing_identity'], 'unique'));
         $expectedRow = $existingRow;
         foreach ($columns as $name => [, $default]) {
-            if (!array_key_exists($name, $expectedRow)) {
+            if (! array_key_exists($name, $expectedRow)) {
                 $expectedRow[$name] = $default;
             }
         }
@@ -103,7 +103,7 @@ final class SeptemberReleaseMigrationResumeTest extends TestCase
         DB::table($tableName)->insert(['id' => 2, 'existing_identity' => 'new-identity']);
         $newRow = (array) DB::table($tableName)->where('id', 2)->sole();
         foreach ($columns as $name => [, $default]) {
-            self::assertSame($default, $newRow[$name], 'Changed safe default for ' . $name);
+            self::assertSame($default, $newRow[$name], 'Changed safe default for '.$name);
         }
         if (array_key_exists('portfolio_sharing_status', $columns)) {
             self::assertTrue(Schema::hasIndex($tableName, ['portfolio_sharing_status']));

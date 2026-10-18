@@ -3,27 +3,26 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\AppVersion;
-use App\Services\AppReleasePolicyService;
 use App\Services\AdminAuthoringCreateIntentService;
-use Illuminate\Validation\Rule;
-use App\Support\AppVersionEditorVersion;
 use App\Services\AppReleaseAuthoringService;
+use App\Services\AppReleasePolicyService;
+use App\Support\AppVersionEditorVersion;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Validation\Rule;
 
 class AppVersionController extends Controller
 {
     public function __construct(
         private readonly AppReleasePolicyService $releasePolicy,
         private readonly AppReleaseAuthoringService $authoring
-    )
-    {
-    }
+    ) {}
 
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function index()
     {
@@ -39,7 +38,7 @@ class AppVersionController extends Controller
     /**
      * Show the form for creating a new resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function create()
     {
@@ -67,8 +66,7 @@ class AppVersionController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function store(Request $request, AdminAuthoringCreateIntentService $createIntents)
     {
@@ -91,7 +89,7 @@ class AppVersionController extends Controller
      * Display the specified resource.
      *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function show($id)
     {
@@ -104,7 +102,7 @@ class AppVersionController extends Controller
      * Show the form for editing the specified resource.
      *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function edit($id)
     {
@@ -116,15 +114,15 @@ class AppVersionController extends Controller
             );
         }
         $editorVersion = AppVersionEditorVersion::for($version);
+
         return view('admin.app-versions.edit', compact('version', 'editorVersion'));
     }
 
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function update(Request $request, $id)
     {
@@ -143,7 +141,7 @@ class AppVersionController extends Controller
      * Remove the specified resource from storage.
      *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function destroy(Request $request, $id)
     {
@@ -151,7 +149,7 @@ class AppVersionController extends Controller
         $editorVersion = (string) $request->validate([
             'editor_version' => 'required|string|size:64',
         ])['editor_version'];
-        $blocked = !$this->authoring->delete((int) $version->id, $editorVersion);
+        $blocked = ! $this->authoring->delete((int) $version->id, $editorVersion);
         if ($blocked) {
             return redirect()->back()->with(
                 'error',
@@ -166,7 +164,7 @@ class AppVersionController extends Controller
      * Toggle the active status of the specified resource.
      *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function toggleActive(Request $request, $id)
     {
@@ -175,7 +173,7 @@ class AppVersionController extends Controller
             'editor_version' => 'required|string|size:64',
         ])['editor_version'];
 
-        $blocked = !$this->authoring->toggleActive((int) $version->id, $editorVersion);
+        $blocked = ! $this->authoring->toggleActive((int) $version->id, $editorVersion);
         if ($blocked) {
             return redirect()->back()->with(
                 'error',
@@ -235,7 +233,7 @@ class AppVersionController extends Controller
                 'max:2048',
                 'url',
                 function (string $attribute, $value, $fail) use ($channel): void {
-                    if (!$this->releasePolicy->isAllowedDownloadUrl($channel, $value)) {
+                    if (! $this->releasePolicy->isAllowedDownloadUrl($channel, $value)) {
                         $fail(match ($channel) {
                             'play' => 'استخدم صفحة تطبيق ركن الصحيحة على Google Play',
                             'appstore' => 'استخدم صفحة تطبيق ركن على App Store',

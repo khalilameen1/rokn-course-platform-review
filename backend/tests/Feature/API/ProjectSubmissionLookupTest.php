@@ -126,7 +126,7 @@ final class ProjectSubmissionLookupTest extends TestCase
 
     private function fixture(string $status): array
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill(['name' => 'Learner', 'email' => Str::uuid().'@test.rokn',
             'password' => bcrypt('test'), 'active' => true, 'role' => 'client'])->save();
         $project = Project::factory()->create();
@@ -140,6 +140,7 @@ final class ProjectSubmissionLookupTest extends TestCase
             'auto_pass_at' => $status === 'pending' ? now()->subMinute() : null,
             'submitted_at' => now()->subMinute(), 'reviewed_at' => $status === 'pending' ? null : now(),
         ]);
+
         return [$user, $project, $submission];
     }
 }

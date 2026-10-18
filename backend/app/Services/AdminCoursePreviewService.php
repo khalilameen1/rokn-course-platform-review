@@ -16,8 +16,7 @@ final readonly class AdminCoursePreviewService
         private CertificateTextTemplateService $certificateTemplates,
         private CourseRevisionResolver $revisionResolver,
         private CoursePlanUpgradeEligibilityService $upgrades
-    ) {
-    }
+    ) {}
 
     /** @return array<string, mixed> */
     public function prepare(Course $course, ?string $requestedPlan): array
@@ -44,7 +43,7 @@ final readonly class AdminCoursePreviewService
         $selectedPlan = $requestedPlan !== ''
             ? $planOptions->firstWhere('code', $requestedPlan)
             : ($planOptions->firstWhere('code', CourseAccessPlan::BASIC) ?? $planOptions->first());
-        if (!$selectedPlan) {
+        if (! $selectedPlan) {
             return ['error' => 'هذه الفئة لم تعد متاحة للمعاينة.'];
         }
 

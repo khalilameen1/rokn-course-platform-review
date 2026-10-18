@@ -156,7 +156,7 @@ final class WatchHistoryReadWritePathTest extends ApiTestCase
         );
         $plan = collect(DB::select(
             'EXPLAIN QUERY PLAN SELECT id FROM watching_logs WHERE user_id = ? '
-            . 'ORDER BY watched_at DESC, id DESC LIMIT 7',
+            .'ORDER BY watched_at DESC, id DESC LIMIT 7',
             [$this->user->id]
         ))->pluck('detail')->implode(' | ');
         self::assertStringContainsString('watching_logs_user_watched_index', $plan);
@@ -234,7 +234,7 @@ final class WatchHistoryReadWritePathTest extends ApiTestCase
     private function history(array $query = []): TestResponse
     {
         return $this->actingAs($this->user, 'api')
-            ->getJson('/api/v1/user/watch-history' . ($query ? '?' . http_build_query($query) : ''));
+            ->getJson('/api/v1/user/watch-history'.($query ? '?'.http_build_query($query) : ''));
     }
 
     private function enrolledSession(): PlaybackSession
@@ -391,7 +391,9 @@ final class WatchHistoryReadWritePathTest extends ApiTestCase
         $queries = [];
         $recording = true;
         DB::listen(function (QueryExecuted $query) use (&$queries, &$recording): void {
-            if ($recording) $queries[] = $query->sql;
+            if ($recording) {
+                $queries[] = $query->sql;
+            }
         });
         try {
             $callback();

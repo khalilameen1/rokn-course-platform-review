@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -58,7 +59,7 @@ final class WhatsAppTaskRetirementTest extends TestCase
         $this->assertDatabaseMissing('wallet_transactions', ['user_id' => $student->id]);
         $this->assertDatabaseMissing('student_notifications', [
             'user_id' => $student->id,
-            'delivery_key' => 'whatsapp-linked:' . $student->id,
+            'delivery_key' => 'whatsapp-linked:'.$student->id,
         ]);
         $this->withToken($token)->getJson('/api/v1/wallet')
             ->assertOk()->assertJsonPath('data.balance', 0)
@@ -110,7 +111,7 @@ final class WhatsAppTaskRetirementTest extends TestCase
         ]);
         $this->app['auth']->forgetGuards();
         $otherStart = $this->withToken($otherStudent->generateApiToken())
-            ->postJson('/api/v1/coin-earning-methods/' . $method->id . '/start')
+            ->postJson('/api/v1/coin-earning-methods/'.$method->id.'/start')
             ->assertOk();
         parse_str((string) parse_url((string) $otherStart->json('data.action_url'), PHP_URL_QUERY), $query);
         $this->postInbound((string) $query['text'], '201022345678')
@@ -179,7 +180,7 @@ final class WhatsAppTaskRetirementTest extends TestCase
             'total_claim_limit' => $quota,
         ]);
         $start = $this->withToken($token)
-            ->postJson('/api/v1/coin-earning-methods/' . $method->id . '/start', [
+            ->postJson('/api/v1/coin-earning-methods/'.$method->id.'/start', [
                 'supports_ready_claim' => true,
             ])->assertOk()->assertJsonPath('data.task_state', 'started');
         parse_str((string) parse_url((string) $start->json('data.action_url'), PHP_URL_QUERY), $query);
@@ -204,7 +205,7 @@ final class WhatsAppTaskRetirementTest extends TestCase
         $this->assertSoftDeleted('coin_earning_methods', ['id' => $method->id]);
     }
 
-    private function postInbound(string $message, string $sender = '201012345678'): \Illuminate\Testing\TestResponse
+    private function postInbound(string $message, string $sender = '201012345678'): TestResponse
     {
         return $this->postJson('/api/v1/whatsapp/webhook?token=local-reward-test', [
             'from' => $sender,

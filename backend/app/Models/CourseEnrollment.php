@@ -20,7 +20,7 @@ class CourseEnrollment extends Model
      */
     public function shouldInvalidateCourseCatalogue(): bool
     {
-        if ($this->wasRecentlyCreated || !$this->exists) {
+        if ($this->wasRecentlyCreated || ! $this->exists) {
             return true;
         }
 
@@ -59,7 +59,7 @@ class CourseEnrollment extends Model
         'access_plan_snapshot' => 'array',
         'access_plan_order_id' => 'integer',
         'created_at' => 'datetime',
-        'updated_at' => 'datetime'
+        'updated_at' => 'datetime',
     ];
 
     /**
@@ -118,7 +118,7 @@ class CourseEnrollment extends Model
             $enrollment->assertCompletionTransition();
 
             if (
-                !$enrollment->exists
+                ! $enrollment->exists
                 || $enrollment->isDirty(['access_plan_id', 'access_plan_snapshot'])
             ) {
                 CourseAccessPlanSnapshot::assertValidForPlan(
@@ -130,8 +130,8 @@ class CourseEnrollment extends Model
             }
 
             if (
-                !(bool) $enrollment->is_active
-                || !$enrollment->order_id
+                ! (bool) $enrollment->is_active
+                || ! $enrollment->order_id
             ) {
                 return;
             }
@@ -155,9 +155,9 @@ class CourseEnrollment extends Model
     private function assertCompletionTransition(): void
     {
         if (
-            !$this->exists
+            ! $this->exists
             || $this->getOriginal('completed_curriculum_revision') === null
-            || !$this->isDirty([
+            || ! $this->isDirty([
                 'completed_curriculum_revision',
                 'curriculum_completed_at',
                 'completed_with_projects',
@@ -225,7 +225,7 @@ class CourseEnrollment extends Model
     public function revokeAccess()
     {
         $this->update([
-            'is_active' => false
+            'is_active' => false,
         ]);
     }
 }

@@ -16,5 +16,4 @@ final class AppVersionEditorVersion
             'update_message_en', 'download_url', 'release_notes_ar', 'release_notes_en',
         ]);
     }
-
 }

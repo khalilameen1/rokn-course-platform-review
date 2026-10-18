@@ -9,14 +9,21 @@ use App\Models\ProjectSubmission;
 final class ProjectSubmissionLifecycle
 {
     public const EVALUATING = 'evaluating';
+
     public const REVIEW_UNAVAILABLE = 'review_unavailable';
+
     public const PASSED = 'passed';
+
     public const NEEDS_CHANGES = 'needs_changes';
 
     public const REPORT_NOT_INCLUDED = 'not_included';
+
     public const REPORT_NOT_REQUESTED = 'not_requested';
+
     public const REPORT_QUEUED = 'queued';
+
     public const REPORT_READY = 'ready';
+
     public const REPORT_FAILED = 'failed';
 
     public static function submissionStatus(string $internalStatus, ?string $evaluationStatus = null): string
@@ -37,7 +44,7 @@ final class ProjectSubmissionLifecycle
         ?string $generationStatus,
         string $submissionReviewStatus
     ): string {
-        if (!$reportIncluded) {
+        if (! $reportIncluded) {
             return self::REPORT_NOT_INCLUDED;
         }
         if ($submissionReviewStatus !== ProjectSubmission::STATUS_PASSED) {
@@ -52,7 +59,7 @@ final class ProjectSubmissionLifecycle
         }
         if (
             $threadStatus === 'failed'
-            && !in_array($generationStatus, ['queued', 'processing', 'ready'], true)
+            && ! in_array($generationStatus, ['queued', 'processing', 'ready'], true)
         ) {
             return self::REPORT_FAILED;
         }
@@ -60,7 +67,5 @@ final class ProjectSubmissionLifecycle
         return self::REPORT_QUEUED;
     }
 
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 }

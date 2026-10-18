@@ -10,6 +10,7 @@ use Illuminate\Console\Command;
 class FinalizePendingProjectSubmissions extends Command
 {
     protected $signature = 'projects:finalize-pending {--limit=100}';
+
     protected $description = 'Requeue due project evaluations without granting progression';
 
     public function handle(ProjectSubmissionEvaluationScheduler $service): int

@@ -123,7 +123,7 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
         $createPage = $this->actingAs($administrator)
             ->get(route('admin.teachers.create'))
             ->assertOk();
-        $document = new \DOMDocument();
+        $document = new \DOMDocument;
         @$document->loadHTML('<?xml encoding="utf-8" ?>'.$createPage->getContent());
         $xpath = new \DOMXPath($document);
         self::assertSame(0, $xpath->query('//input[@name="email" and @required]')->length);
@@ -197,7 +197,7 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
     public function test_profile_image_precedence_preserves_learner_avatar_and_empty_profiles_stay_empty(): void
     {
         Storage::fake('public');
-        $student = new User();
+        $student = new User;
         $student->forceFill([
             'name_ar' => 'طالب بصورة حديثة',
             'email' => 'student-avatar@example.test',
@@ -216,7 +216,7 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
             $student->fresh()->profile_image_url
         );
 
-        $legacyTeacher = new User();
+        $legacyTeacher = new User;
         $legacyTeacher->forceFill([
             'name_ar' => 'محاضر بصورة قديمة',
             'email' => 'teacher-with-legacy-avatar@example.test',
@@ -230,7 +230,7 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
             $legacyTeacher->fresh()->profile_image_url
         );
 
-        $emptyStudent = new User();
+        $emptyStudent = new User;
         $emptyStudent->forceFill([
             'name_ar' => 'طالب بلا صورة',
             'email' => 'student-without-avatar@example.test',
@@ -240,7 +240,7 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
         ])->save();
         self::assertNull($emptyStudent->fresh()->profile_image_url);
 
-        $emptyTeacher = new User();
+        $emptyTeacher = new User;
         $emptyTeacher->forceFill([
             'name_ar' => 'محاضر بلا صورة',
             'email' => 'teacher-without-avatar@example.test',
@@ -310,7 +310,7 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
 
     private function teacher(): User
     {
-        $teacher = new User();
+        $teacher = new User;
         $teacher->forceFill([
             'name_ar' => 'محاضر ركن',
             'name_en' => 'Rokn Instructor',
@@ -329,13 +329,13 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
 
     private function course(string $name, bool $draft): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => $name,
             'price' => 500,
             'is_coming_soon' => $draft,
-            'is_catalog_visible' => !$draft,
+            'is_catalog_visible' => ! $draft,
             'authoring_version' => 1,
             'last_published_authoring_version' => $draft ? null : 1,
             'published_at' => $draft ? null : now(),
@@ -346,7 +346,7 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
 
     private function dashboardUser(string $role, string $email): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'name_ar' => $role === 'admin' ? 'مالك ركن' : 'محرر المحتوى',
             'email' => $email,
@@ -357,5 +357,4 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
 
         return $user;
     }
-
 }

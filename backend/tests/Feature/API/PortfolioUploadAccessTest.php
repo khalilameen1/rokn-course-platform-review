@@ -7,9 +7,9 @@ namespace Tests\Feature\API;
 use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
 use App\Models\Order;
-use App\Services\BunnyService;
 use App\Services\BunnyDeliveryService;
 use App\Services\BunnyMediaRegistry;
+use App\Services\BunnyService;
 use App\Services\CourseAccessPlanService;
 use App\Services\PortfolioUploadAccessService;
 use Illuminate\Http\UploadedFile;
@@ -32,8 +32,12 @@ final class PortfolioUploadAccessTest extends ApiTestCase
     {
         if ($case !== 'none') {
             $enrollment = $this->enroll($case !== 'watch_only');
-            if ($case === 'expired') $enrollment->update(['expires_at' => now()->subSecond()]);
-            if ($case === 'inactive') $enrollment->update(['is_active' => false]);
+            if ($case === 'expired') {
+                $enrollment->update(['expires_at' => now()->subSecond()]);
+            }
+            if ($case === 'inactive') {
+                $enrollment->update(['is_active' => false]);
+            }
             if ($case === 'grant') {
                 DB::table('course_codes')->where('id', 1)->update(['is_grant' => true]);
                 DB::table('orders')->where('id', $enrollment->order_id)->update([

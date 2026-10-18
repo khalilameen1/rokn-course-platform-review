@@ -27,6 +27,7 @@ final class WebWalletTest extends TestCase
     use RefreshDatabase;
 
     private User $student;
+
     private Package $package;
 
     protected function setUp(): void
@@ -293,6 +294,7 @@ final class WebWalletTest extends TestCase
     private function pendingOrder(): Order
     {
         $this->actingAs($this->student, 'student')->post('/recharge/checkout', $this->terms())->assertStatus(303);
+
         return Order::query()->latest('id')->firstOrFail();
     }
 
@@ -307,6 +309,7 @@ final class WebWalletTest extends TestCase
             rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '='), 'test-nonce');
         $code = Str::random(72);
         $service->issueCompletion($attempt, $code, Crypt::encryptString('verified-provider-token'));
+
         return [$code, $verifier];
     }
 }

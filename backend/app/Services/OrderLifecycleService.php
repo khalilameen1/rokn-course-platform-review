@@ -17,8 +17,7 @@ final readonly class OrderLifecycleService
         private WalletService $wallet,
         private FinancialProvenanceService $provenance,
         private CourseEnrollmentWriter $enrollments
-    ) {
-    }
+    ) {}
 
     /** Approval side effects use order-scoped idempotency keys. */
     public function approve(
@@ -26,8 +25,7 @@ final readonly class OrderLifecycleService
         ?int $actorId = null,
         ?string $notes = null,
         bool $providerVerified = false
-    ): Order
-    {
+    ): Order {
         return DB::transaction(function () use (
             $order,
             $actorId,
@@ -53,7 +51,7 @@ final readonly class OrderLifecycleService
             if ($locked->status !== Order::STATUS_APPROVED) {
                 if (
                     $actorId !== null
-                    && !$providerVerified
+                    && ! $providerVerified
                     && $locked->status !== Order::STATUS_PENDING
                 ) {
                     throw new \DomainException(
@@ -62,7 +60,7 @@ final readonly class OrderLifecycleService
                 }
                 if (
                     $locked->requiresProviderVerification()
-                    && !$providerVerified
+                    && ! $providerVerified
                 ) {
                     throw new \DomainException(
                         'Provider-controlled orders require verified provider evidence.'
@@ -209,7 +207,7 @@ final readonly class OrderLifecycleService
             Order::FINANCIAL_CHARGEBACK,
             Order::FINANCIAL_REVERSED,
         ];
-        if (!in_array($type, $allowed, true) || trim($eventKey) === '') {
+        if (! in_array($type, $allowed, true) || trim($eventKey) === '') {
             throw new \InvalidArgumentException('Invalid financial reversal event.');
         }
 
@@ -239,7 +237,7 @@ final readonly class OrderLifecycleService
             $atRisk = $locked->package_id
                 ? $locked->packageCoinAmount()
                 : max(0, (int) $locked->total_coins);
-            $result = !$wasFulfilled
+            $result = ! $wasFulfilled
                 ? ['recovered' => 0, 'unrecovered' => 0, 'holds' => 0]
                 : ($locked->package_id
                     ? $this->provenance->applyPackageReversal($locked, $reason, $eventKey)
@@ -318,7 +316,7 @@ final readonly class OrderLifecycleService
                 return $this->freshWithReceipt($locked);
             }
 
-            if (!in_array($locked->financial_status, [
+            if (! in_array($locked->financial_status, [
                 Order::FINANCIAL_REFUNDED,
                 Order::FINANCIAL_CHARGEBACK,
                 Order::FINANCIAL_REVERSED,
@@ -352,7 +350,7 @@ final readonly class OrderLifecycleService
         ?int $actorId = null,
         ?string $note = null
     ): Order {
-        if (!in_array($resolution, ['repaid', 'waived'], true) || trim($eventKey) === '') {
+        if (! in_array($resolution, ['repaid', 'waived'], true) || trim($eventKey) === '') {
             throw new \InvalidArgumentException('Invalid financial review resolution.');
         }
 
@@ -371,7 +369,7 @@ final readonly class OrderLifecycleService
                 ->where('event_key', $eventKey)
                 ->first();
             if ($existing) {
-                if ($existing->event_type !== 'resolution_' . $resolution) {
+                if ($existing->event_type !== 'resolution_'.$resolution) {
                     throw new \UnexpectedValueException(
                         'Financial resolution event key was reused for another decision.'
                     );
@@ -380,7 +378,7 @@ final readonly class OrderLifecycleService
                 return $this->freshWithReceipt($locked);
             }
             if (
-                !$locked->package_id
+                ! $locked->package_id
                 || $locked->financial_status !== Order::FINANCIAL_REVIEW_REQUIRED
             ) {
                 throw new \DomainException('Only a package under financial review can be resolved.');
@@ -411,7 +409,7 @@ final readonly class OrderLifecycleService
 
             $this->recordEvent(
                 $locked,
-                'resolution_' . $resolution,
+                'resolution_'.$resolution,
                 $eventKey,
                 $actorId,
                 $note,
@@ -446,10 +444,12 @@ final readonly class OrderLifecycleService
                 ->where('order_id', $locked->id)
                 ->where('event_key', $eventKey)
                 ->first();
-            if ($existingEvent) return $locked->fresh();
+            if ($existingEvent) {
+                return $locked->fresh();
+            }
 
             if (
-                !$locked->course_id
+                ! $locked->course_id
                 || $locked->package_id
                 || $locked->payment_method !== Order::PAYMENT_METHOD_WALLET_COINS
                 || $locked->status !== Order::STATUS_APPROVED
@@ -460,7 +460,7 @@ final readonly class OrderLifecycleService
 
             $debit = $locked->walletTransaction()->lockForUpdate()->first();
             if (
-                !$debit
+                ! $debit
                 || $debit->direction !== WalletTransaction::DIRECTION_DEBIT
                 || (int) $debit->user_id !== (int) $locked->user_id
                 || (int) $debit->amount !== (int) $locked->total_coins
@@ -483,7 +483,7 @@ final readonly class OrderLifecycleService
                 (int) $locked->user_id,
                 $amount,
                 'course_service_compensation',
-                'course-compensation:' . hash('sha256', $locked->id . '|' . $eventKey),
+                'course-compensation:'.hash('sha256', $locked->id.'|'.$eventKey),
                 $debit,
                 $locked,
                 [
@@ -513,7 +513,7 @@ final readonly class OrderLifecycleService
         if ((bool) $order->course_id === (bool) $order->package_id) {
             throw new \DomainException('An order must reference exactly one course or coin package.');
         }
-        if (!$order->user_id) {
+        if (! $order->user_id) {
             throw new \DomainException('An order must belong to a learner.');
         }
     }
@@ -543,7 +543,7 @@ final readonly class OrderLifecycleService
                 ->whereIn('environment', ['test', 'sandbox'])
                 ->whereNotNull('verified_at')
                 ->exists();
-        if (!$order->package || !$order->user || $coins <= 0 || ((float) $order->final_amount <= 0 && !$verifiedTest)) {
+        if (! $order->package || ! $order->user || $coins <= 0 || ((float) $order->final_amount <= 0 && ! $verifiedTest)) {
             throw new \DomainException('Coin package order is incomplete and cannot be approved.');
         }
         $existingCredit = WalletTransaction::query()
@@ -553,12 +553,12 @@ final readonly class OrderLifecycleService
             ->where('source_type', Order::class)
             ->where('source_id', $order->id)
             ->first();
-        if (!$existingCredit) {
+        if (! $existingCredit) {
             $existingCredit = $this->wallet->credit(
                 (int) $order->user_id,
                 $coins,
                 'package_purchase',
-                'order-lifecycle:package-credit:' . $order->id,
+                'order-lifecycle:package-credit:'.$order->id,
                 $order,
                 [
                     'package_id' => $order->package_id,
@@ -587,9 +587,9 @@ final readonly class OrderLifecycleService
     {
         $order->loadMissing(['course', 'user']);
         if (
-            !$order->course
-            || !$order->user
-            || !$order->course->isPublishedForLearning()
+            ! $order->course
+            || ! $order->user
+            || ! $order->course->isPublishedForLearning()
         ) {
             throw new \DomainException('Course order is incomplete and cannot be approved.');
         }

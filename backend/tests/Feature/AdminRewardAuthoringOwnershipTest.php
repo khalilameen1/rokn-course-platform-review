@@ -125,7 +125,9 @@ final class AdminRewardAuthoringOwnershipTest extends TestCase
         Setting::query()->firstOrFail()->forceFill(['reward_balance_cap' => 40])->save();
         $called = false;
         try {
-            $this->create($kind, static function () use (&$called): void { $called = true; });
+            $this->create($kind, static function () use (&$called): void {
+                $called = true;
+            });
             self::fail('Configuration must not promise an unpayable reward.');
         } catch (ValidationException $error) {
             self::assertArrayHasKey('coins_amount', $error->errors());
@@ -154,7 +156,7 @@ final class AdminRewardAuthoringOwnershipTest extends TestCase
 
     public function test_editor_fingerprints_are_read_only_and_keep_the_existing_wire_format(): void
     {
-        $settings = new Setting();
+        $settings = new Setting;
         $task = new CoinEarningMethod($this->payload('method'));
         $rule = new RewardRule($this->payload('rule'));
         DB::enableQueryLog();
@@ -163,7 +165,9 @@ final class AdminRewardAuthoringOwnershipTest extends TestCase
             RewardConfigurationVersion::method($task), RewardConfigurationVersion::rule($rule)];
         self::assertSame([], DB::getQueryLog());
         DB::disableQueryLog();
-        foreach ($versions as $version) self::assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $version);
+        foreach ($versions as $version) {
+            self::assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $version);
+        }
         self::assertSame(hash('sha256', json_encode([
             'course_completed', 'مكافأة اختبار', 'Test reward',
             50, 1, null, 500, true, 100,
@@ -176,6 +180,7 @@ final class AdminRewardAuthoringOwnershipTest extends TestCase
     private function create(string $kind, \Closure $complete): CoinEarningMethod|RewardRule
     {
         $writer = app(AdminRewardAuthoringService::class);
+
         return $kind === 'method'
             ? $writer->createMethod($this->payload($kind), $complete)
             : $writer->createRule($this->payload($kind), $complete);
@@ -185,6 +190,7 @@ final class AdminRewardAuthoringOwnershipTest extends TestCase
     {
         $common = ['title_ar' => 'مكافأة اختبار', 'title_en' => 'Test reward',
             'coins_amount' => 50, 'is_active' => true, 'sort_order' => 100];
+
         return $kind === 'method'
             ? $common + ['action_key' => 'internal-test-task', 'requires_external_visit' => false,
                 'verification_delay_seconds' => 0, 'is_repeatable' => false]

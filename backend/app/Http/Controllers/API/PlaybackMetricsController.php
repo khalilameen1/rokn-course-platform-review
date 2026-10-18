@@ -19,7 +19,7 @@ final class PlaybackMetricsController extends Controller
     ): JsonResponse {
         $validated = $request->validate([
             'hours' => 'nullable|integer|min:1|max:'
-                . max(1, (int) config('playback.metrics_max_window_hours', 720)),
+                .max(1, (int) config('playback.metrics_max_window_hours', 720)),
             'lesson_id' => 'nullable|integer|exists:lessons,id',
         ]);
 

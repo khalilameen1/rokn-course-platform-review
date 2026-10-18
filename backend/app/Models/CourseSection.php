@@ -2,15 +2,16 @@
 
 namespace App\Models;
 
-use App\Traits\ResolvesLocalizedAttributes;
+use App\Services\CourseRevisionLearnerReadService;
 use App\Traits\InvalidatesCourseCatalogue;
+use App\Traits\ResolvesLocalizedAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CourseSection extends Model
 {
-    use HasFactory, SoftDeletes, ResolvesLocalizedAttributes, InvalidatesCourseCatalogue;
+    use HasFactory, InvalidatesCourseCatalogue, ResolvesLocalizedAttributes, SoftDeletes;
 
     protected $fillable = [
         'title',
@@ -21,7 +22,7 @@ class CourseSection extends Model
         'section_type',
         'sectionable_type',
         'sectionable_id',
-        'order'
+        'order',
     ];
 
     protected static function booted(): void
@@ -41,7 +42,7 @@ class CourseSection extends Model
     public function getTitleAttribute()
     {
         // Check if we're accessing the raw attribute (to avoid infinite loop)
-        if (!array_key_exists('title_ar', $this->attributes) && !array_key_exists('title_en', $this->attributes)) {
+        if (! array_key_exists('title_ar', $this->attributes) && ! array_key_exists('title_en', $this->attributes)) {
             return $this->attributes['title'] ?? null;
         }
 
@@ -108,7 +109,7 @@ class CourseSection extends Model
      */
     public function isCompletedByUser(int $userId): bool
     {
-        return app(\App\Services\CourseRevisionLearnerReadService::class)
+        return app(CourseRevisionLearnerReadService::class)
             ->completedSectionIds($userId, [(int) $this->id])
             ->contains((int) $this->id);
     }
@@ -118,7 +119,7 @@ class CourseSection extends Model
      */
     public function userPassedProject(int $userId): bool
     {
-        if (!$this->isProject() || !$this->project) {
+        if (! $this->isProject() || ! $this->project) {
             return true;
         }
 

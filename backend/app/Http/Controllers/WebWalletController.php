@@ -43,7 +43,7 @@ final class WebWalletController extends Controller
         // Keep the same key after a lost redirect or browser Back. A new
         // package/price or a terminal receipt creates a fresh purchase intent.
         $intent = $request->session()->get('wallet.intent');
-        if ($student && $quote && (!is_array($intent) || ($intent['quote'] ?? null) !== $quote)) {
+        if ($student && $quote && (! is_array($intent) || ($intent['quote'] ?? null) !== $quote)) {
             $intent = ['key' => 'web-'.Str::uuid(), 'quote' => $quote];
             $request->session()->put('wallet.intent', $intent);
         }
@@ -70,7 +70,7 @@ final class WebWalletController extends Controller
 
     public function pay(Request $request): RedirectResponse
     {
-        if (!$this->features->enabled('checkout', 'user:'.$request->user('student')->id)) {
+        if (! $this->features->enabled('checkout', 'user:'.$request->user('student')->id)) {
             return redirect()->route('web-wallet.index')->with('error', 'الدفع غير متاح الآن حاول لاحقًا');
         }
         $request->validate([
@@ -99,6 +99,7 @@ final class WebWalletController extends Controller
             && $request->session()->get('wallet.intent.key') === $order->checkout_request_key) {
             $request->session()->forget('wallet.intent');
         }
+
         return view('web-wallet.receipt', [
             'student' => $student,
             'balance' => $this->wallet->summary($student)['total_balance'],
@@ -118,6 +119,7 @@ final class WebWalletController extends Controller
         if (data_get($result->getData(true), 'data.checkout_state') === 'pending_provider') {
             $request->session()->flash('wallet_provider_pending', $orderRef);
         }
+
         return $request->expectsJson() ? $result : redirect()->route('web-wallet.receipt', $orderRef);
     }
 
@@ -132,6 +134,7 @@ final class WebWalletController extends Controller
             'expected_coins' => $order->package_coins,
             'idempotency_key' => $order->checkout_request_key,
         ]);
+
         return $this->pay($request);
     }
 
@@ -142,8 +145,10 @@ final class WebWalletController extends Controller
         $order->refresh();
         if ($order->status === Order::STATUS_CANCELLED || $order->status === Order::STATUS_REJECTED) {
             $request->session()->forget('wallet.intent');
+
             return redirect()->route('web-wallet.index');
         }
+
         return redirect()->route('web-wallet.receipt', $orderRef);
     }
 
@@ -157,6 +162,7 @@ final class WebWalletController extends Controller
             ->where('user_id', $request->user('student')->id)->where('order_ref', $ref)->exists()) {
             return redirect()->route('web-wallet.receipt', $ref);
         }
+
         return redirect()->route('web-wallet.index')
             ->with('error', 'سجّل الدخول بنفس حسابك لمتابعة الرصيد وحالة الدفع');
     }
@@ -180,10 +186,12 @@ final class WebWalletController extends Controller
             if (($data['checkout_state'] ?? null) === 'pending_provider') {
                 $request->session()->flash('wallet_provider_pending', $data['order_ref']);
             }
+
             // An older pending order is presented for review, not silently
             // charged when the student chose a different package.
             return redirect()->route('web-wallet.receipt', $data['order_ref']);
         }
+
         return redirect()->route('web-wallet.index', ['package' => $request->integer('package_id')])
             ->with('error', $result['message'] ?? 'تعذّر بدء الدفع حاول مرة أخرى');
     }

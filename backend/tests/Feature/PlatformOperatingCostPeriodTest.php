@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Admin\OperatingCostPoolController;
 use App\Services\PlatformCommercialReportService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 final class PlatformOperatingCostPeriodTest extends TestCase
@@ -19,7 +22,9 @@ final class PlatformOperatingCostPeriodTest extends TestCase
         CarbonImmutable::setTestNow('2026-09-09 12:00:00 UTC');
         $this->createSchema();
         Schema::create('course_authoring_revisions', function (Blueprint $table): void {
-            $table->id(); $table->unsignedBigInteger('canonical_course_id'); $table->unsignedBigInteger('revision_course_id');
+            $table->id();
+            $table->unsignedBigInteger('canonical_course_id');
+            $table->unsignedBigInteger('revision_course_id');
         });
         Schema::table('courses', fn (Blueprint $table) => $table->string('name_en')->nullable());
         DB::table('courses')->insert(['id' => 10, 'name_ar' => 'Course', 'created_at' => now(), 'updated_at' => now()]);
@@ -119,8 +124,8 @@ final class PlatformOperatingCostPeriodTest extends TestCase
 
     public function test_controller_preserves_valid_period_in_pagination_and_exports_no_estimated_money(): void
     {
-        $request = \Illuminate\Http\Request::create('/dashboard/operating-costs/report', 'GET', ['period' => '7d', 'course_id' => 10]);
-        $controller = app(\App\Http\Controllers\Admin\OperatingCostPoolController::class);
+        $request = Request::create('/dashboard/operating-costs/report', 'GET', ['period' => '7d', 'course_id' => 10]);
+        $controller = app(OperatingCostPoolController::class);
         $service = app(PlatformCommercialReportService::class);
         $data = $controller->report($request, $service)->getData();
         self::assertSame('7d', $data['report']['period']->key);
@@ -131,8 +136,8 @@ final class PlatformOperatingCostPeriodTest extends TestCase
         $csv = ob_get_clean();
         self::assertStringContainsString('تكلفة OpenRouter المؤكدة USD', $csv);
         self::assertStringNotContainsString('تقدير', $csv);
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
-        $controller->report(\Illuminate\Http\Request::create('/report', 'GET', ['period' => 'future']), $service);
+        $this->expectException(ValidationException::class);
+        $controller->report(Request::create('/report', 'GET', ['period' => 'future']), $service);
     }
 
     public function test_course_rows_exclude_authoring_copies_and_empty_drafts_without_reading_a_third_window(): void
@@ -172,17 +177,26 @@ final class PlatformOperatingCostPeriodTest extends TestCase
     private function createSchema(): void
     {
         Schema::create('settings', function (Blueprint $table): void {
-            $table->id(); $table->decimal('openrouter_usd_to_egp_rate', 12, 4)->nullable(); $table->timestamps();
+            $table->id();
+            $table->decimal('openrouter_usd_to_egp_rate', 12, 4)->nullable();
+            $table->timestamps();
         });
         DB::table('settings')->insert(['openrouter_usd_to_egp_rate' => 50, 'created_at' => now(), 'updated_at' => now()]);
         Schema::create('users', function (Blueprint $table): void {
-            $table->id(); $table->string('name_ar')->nullable(); $table->string('name_en')->nullable();
-            $table->string('email')->unique(); $table->string('password'); $table->string('role');
-            $table->boolean('active')->default(true); $table->timestamps(); $table->softDeletes();
+            $table->id();
+            $table->string('name_ar')->nullable();
+            $table->string('name_en')->nullable();
+            $table->string('email')->unique();
+            $table->string('password');
+            $table->string('role');
+            $table->boolean('active')->default(true);
+            $table->timestamps();
+            $table->softDeletes();
         });
         Schema::create('courses', function (Blueprint $table): void {
             $table->id();
-            $table->string('name_ar'); $table->timestamps();
+            $table->string('name_ar');
+            $table->timestamps();
             $table->softDeletes();
         });
         Schema::create('course_sections', function (Blueprint $table): void {
@@ -203,72 +217,127 @@ final class PlatformOperatingCostPeriodTest extends TestCase
             $table->string('effective_quality')->nullable();
         });
         Schema::create('course_codes', function (Blueprint $table): void {
-            $table->id(); $table->string('code'); $table->boolean('is_grant')->default(false);
-            $table->json('allowed_email_domains')->nullable(); $table->timestamps();
+            $table->id();
+            $table->string('code');
+            $table->boolean('is_grant')->default(false);
+            $table->json('allowed_email_domains')->nullable();
+            $table->timestamps();
         });
         Schema::create('orders', function (Blueprint $table): void {
-            $table->id(); $table->unsignedBigInteger('user_id'); $table->unsignedBigInteger('course_id')->nullable();
-            $table->unsignedBigInteger('package_id')->nullable(); $table->unsignedBigInteger('course_code_id')->nullable();
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('course_id')->nullable();
+            $table->unsignedBigInteger('package_id')->nullable();
+            $table->unsignedBigInteger('course_code_id')->nullable();
             $table->unsignedBigInteger('wallet_transaction_id')->nullable();
-            $table->unsignedBigInteger('access_plan_id')->nullable(); $table->json('access_plan_snapshot')->nullable();
-            $table->string('payment_method'); $table->decimal('amount', 12, 2); $table->decimal('discount_amount', 12, 2);
-            $table->decimal('final_amount', 12, 2); $table->decimal('gateway_gross_amount', 12, 2)->nullable();
-            $table->decimal('gateway_fee_amount', 12, 2)->nullable(); $table->decimal('gateway_net_amount', 12, 2)->nullable();
-            $table->string('gateway_currency', 3)->nullable(); $table->string('status'); $table->string('financial_status');
-            $table->unsignedInteger('total_coins')->default(0); $table->unsignedInteger('paid_coins')->default(0);
-            $table->unsignedInteger('reward_coins')->default(0); $table->timestamp('approved_at')->nullable();
+            $table->unsignedBigInteger('access_plan_id')->nullable();
+            $table->json('access_plan_snapshot')->nullable();
+            $table->string('payment_method');
+            $table->decimal('amount', 12, 2);
+            $table->decimal('discount_amount', 12, 2);
+            $table->decimal('final_amount', 12, 2);
+            $table->decimal('gateway_gross_amount', 12, 2)->nullable();
+            $table->decimal('gateway_fee_amount', 12, 2)->nullable();
+            $table->decimal('gateway_net_amount', 12, 2)->nullable();
+            $table->string('gateway_currency', 3)->nullable();
+            $table->string('status');
+            $table->string('financial_status');
+            $table->unsignedInteger('total_coins')->default(0);
+            $table->unsignedInteger('paid_coins')->default(0);
+            $table->unsignedInteger('reward_coins')->default(0);
+            $table->timestamp('approved_at')->nullable();
             $table->timestamp('reversed_at')->nullable();
-            $table->timestamps(); $table->softDeletes();
+            $table->timestamps();
+            $table->softDeletes();
         });
         Schema::create('wallet_transactions', function (Blueprint $table): void {
-            $table->id(); $table->uuid('public_id')->unique(); $table->unsignedBigInteger('user_id');
-            $table->string('direction'); $table->string('category'); $table->string('bucket');
-            $table->unsignedInteger('amount'); $table->unsignedInteger('paid_amount');
-            $table->unsignedInteger('reward_amount'); $table->integer('balance_after');
-            $table->integer('paid_balance_after'); $table->integer('reward_balance_after');
-            $table->nullableMorphs('source'); $table->string('idempotency_key');
-            $table->timestamp('occurred_at'); $table->timestamps();
+            $table->id();
+            $table->uuid('public_id')->unique();
+            $table->unsignedBigInteger('user_id');
+            $table->string('direction');
+            $table->string('category');
+            $table->string('bucket');
+            $table->unsignedInteger('amount');
+            $table->unsignedInteger('paid_amount');
+            $table->unsignedInteger('reward_amount');
+            $table->integer('balance_after');
+            $table->integer('paid_balance_after');
+            $table->integer('reward_balance_after');
+            $table->nullableMorphs('source');
+            $table->string('idempotency_key');
+            $table->timestamp('occurred_at');
+            $table->timestamps();
         });
         Schema::create('course_enrollments', function (Blueprint $table): void {
-            $table->id(); $table->unsignedBigInteger('user_id'); $table->unsignedBigInteger('course_id');
-            $table->unsignedBigInteger('order_id')->nullable(); $table->unsignedBigInteger('access_plan_id')->nullable();
-            $table->json('access_plan_snapshot')->nullable(); $table->unsignedBigInteger('access_plan_order_id')->nullable();
-            $table->timestamp('enrolled_at')->nullable(); $table->timestamp('expires_at')->nullable();
-            $table->boolean('is_active'); $table->timestamp('access_granted_at')->nullable(); $table->timestamps();
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('course_id');
+            $table->unsignedBigInteger('order_id')->nullable();
+            $table->unsignedBigInteger('access_plan_id')->nullable();
+            $table->json('access_plan_snapshot')->nullable();
+            $table->unsignedBigInteger('access_plan_order_id')->nullable();
+            $table->timestamp('enrolled_at')->nullable();
+            $table->timestamp('expires_at')->nullable();
+            $table->boolean('is_active');
+            $table->timestamp('access_granted_at')->nullable();
+            $table->timestamps();
         });
         Schema::create('wallet_credit_lots', function (Blueprint $table): void {
-            $table->id(); $table->unsignedBigInteger('user_id'); $table->unsignedBigInteger('source_order_id')->nullable();
-            $table->unsignedInteger('original_amount'); $table->unsignedInteger('remaining_amount');
-            $table->timestamp('credited_at'); $table->timestamps();
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('source_order_id')->nullable();
+            $table->unsignedInteger('original_amount');
+            $table->unsignedInteger('remaining_amount');
+            $table->timestamp('credited_at');
+            $table->timestamps();
         });
         Schema::create('wallet_debit_allocations', function (Blueprint $table): void {
-            $table->id(); $table->unsignedBigInteger('credit_lot_id'); $table->unsignedBigInteger('course_order_id')->nullable();
-            $table->unsignedInteger('amount'); $table->timestamp('allocated_at'); $table->timestamps();
+            $table->id();
+            $table->unsignedBigInteger('credit_lot_id');
+            $table->unsignedBigInteger('course_order_id')->nullable();
+            $table->unsignedInteger('amount');
+            $table->timestamp('allocated_at');
+            $table->timestamps();
         });
         Schema::create('ai_usage_events', function (Blueprint $table): void {
-            $table->id(); $table->uuid('request_id'); $table->unsignedBigInteger('user_id');
+            $table->id();
+            $table->uuid('request_id');
+            $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('access_plan_id')->nullable();
-            $table->unsignedBigInteger('course_id'); $table->string('feature'); $table->string('status');
-            $table->unsignedInteger('total_tokens')->default(0); $table->decimal('cost_usd', 12, 6)->default(0);
-            $table->decimal('fx_rate_to_egp', 12, 4)->nullable(); $table->decimal('cost_egp', 14, 6)->nullable();
+            $table->unsignedBigInteger('course_id');
+            $table->string('feature');
+            $table->string('status');
+            $table->unsignedInteger('total_tokens')->default(0);
+            $table->decimal('cost_usd', 12, 6)->default(0);
+            $table->decimal('fx_rate_to_egp', 12, 4)->nullable();
+            $table->decimal('cost_egp', 14, 6)->nullable();
             $table->json('metadata')->nullable();
             $table->timestamps();
         });
         Schema::create('student_notifications', function (Blueprint $table): void {
-            $table->id(); $table->unsignedBigInteger('user_id');
+            $table->id();
+            $table->unsignedBigInteger('user_id');
             $table->boolean('is_read')->default(false);
             $table->timestamp('push_attempted_at')->nullable();
             $table->timestamp('push_sent_at')->nullable();
             $table->timestamps();
         });
         Schema::create('operating_cost_pools', function (Blueprint $table): void {
-            $table->id(); $table->string('name'); $table->string('service_key');
-            $table->unsignedBigInteger('course_id')->nullable(); $table->date('period_start'); $table->date('period_end');
-            $table->decimal('amount', 14, 4); $table->string('currency', 3);
-            $table->decimal('fx_rate_to_egp', 12, 4)->nullable(); $table->string('allocation_driver');
-            $table->boolean('is_final'); $table->text('notes')->nullable(); $table->unsignedBigInteger('created_by')->nullable();
-            $table->timestamps(); $table->softDeletes();
+            $table->id();
+            $table->string('name');
+            $table->string('service_key');
+            $table->unsignedBigInteger('course_id')->nullable();
+            $table->date('period_start');
+            $table->date('period_end');
+            $table->decimal('amount', 14, 4);
+            $table->string('currency', 3);
+            $table->decimal('fx_rate_to_egp', 12, 4)->nullable();
+            $table->string('allocation_driver');
+            $table->boolean('is_final');
+            $table->text('notes')->nullable();
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
         });
     }
-
 }

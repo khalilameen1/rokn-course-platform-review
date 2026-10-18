@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Project;
-use App\Models\ProjectSubmission;
-use App\Models\CourseSection;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
+use App\Models\CourseSection;
+use App\Models\Project;
+use App\Models\ProjectSubmission;
 use App\Models\User;
+use App\Support\DownloadFilename;
+use App\Support\ProjectSubmissionEvaluationSnapshot;
+use App\Support\UnicodeText;
+use App\Support\UploadBudget;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use App\Support\DownloadFilename;
-use App\Support\ProjectSubmissionEvaluationSnapshot;
-use App\Support\UnicodeText;
-use App\Support\UploadBudget;
 
 final class ProjectSubmissionService
 {
@@ -32,8 +32,7 @@ final class ProjectSubmissionService
         private readonly CourseRevisionResolver $revisionResolver,
         private readonly ProjectSubmissionFileRetentionService $fileRetention,
         private readonly ProjectSubmissionEvaluationScheduler $evaluations
-    ) {
-    }
+    ) {}
 
     /** Resolve a committed POST whose response was lost before mutable admission checks run again. */
     public function replayCommittedSubmission(
@@ -60,7 +59,7 @@ final class ProjectSubmissionService
             $this->inputs->fingerprint($text, $files)
         );
 
-        if (!$existing) {
+        if (! $existing) {
             return null;
         }
 
@@ -84,7 +83,7 @@ final class ProjectSubmissionService
             ]);
         }
         $submissionDisk = (string) config('projects.submission_disk', 'local');
-        if ($submissionDisk === '' || !is_array(config("filesystems.disks.{$submissionDisk}"))) {
+        if ($submissionDisk === '' || ! is_array(config("filesystems.disks.{$submissionDisk}"))) {
             throw new \RuntimeException('The configured project submission disk is not available.');
         }
 
@@ -131,7 +130,7 @@ final class ProjectSubmissionService
         // a process death or a losing concurrent request is therefore harmless.
         foreach ($files as $index => $file) {
             $sha = hash_file('sha256', $file->getRealPath());
-            if (!is_string($sha) || $sha === '') {
+            if (! is_string($sha) || $sha === '') {
                 throw new \RuntimeException('The project attachment could not be fingerprinted.');
             }
             $storedPath = $this->uploads->storeTrackedUpload(
@@ -191,7 +190,7 @@ final class ProjectSubmissionService
                     ->where('active', true)
                     ->lockForUpdate()
                     ->first();
-                if (!$activeUser) {
+                if (! $activeUser) {
                     throw new AuthorizationException(
                         'The learner account is no longer active.'
                     );
@@ -199,7 +198,7 @@ final class ProjectSubmissionService
                 $admissionCourse = $admissionCourseId
                     ? Course::query()->sharedLock()->find($admissionCourseId)
                     : null;
-                if (!$admissionCourse?->isPublishedForLearning()) {
+                if (! $admissionCourse?->isPublishedForLearning()) {
                     throw new AuthorizationException(
                         'The course is no longer available for project submissions.'
                     );
@@ -213,6 +212,7 @@ final class ProjectSubmissionService
                     ->first();
                 if ($existing) {
                     $this->assertIdempotentReplay($existing, $requestFingerprint);
+
                     return $existing;
                 }
 
@@ -236,7 +236,7 @@ final class ProjectSubmissionService
                     ->where('sectionable_id', $projectSnapshot->id)
                     ->with('course:id,name_ar,name_en')
                     ->first();
-                if (!$projectSection || (int) $projectSection->course_id !== (int) $admissionCourse->id) {
+                if (! $projectSection || (int) $projectSection->course_id !== (int) $admissionCourse->id) {
                     throw new AuthorizationException(
                         'The project is no longer part of the published course.'
                     );
@@ -253,8 +253,8 @@ final class ProjectSubmissionService
                         ->first()
                     : null;
                 if (
-                    !$enrollment?->isActive()
-                    || !$this->courseAccess->hasLearningAccess(
+                    ! $enrollment?->isActive()
+                    || ! $this->courseAccess->hasLearningAccess(
                         (int) $user->id,
                         (int) $projectSection->course_id
                     )
@@ -359,6 +359,7 @@ final class ProjectSubmissionService
 
             $result = $this->evaluations->dispatchIfDue($submission);
             $this->fileRetention->purgeIfEligible($result);
+
             return $result->fresh();
         } catch (QueryException $exception) {
             $existing = ProjectSubmission::query()
@@ -369,6 +370,7 @@ final class ProjectSubmissionService
 
             if ($existing) {
                 $this->assertIdempotentReplay($existing, $requestFingerprint);
+
                 return $this->evaluations->dispatchIfDue($existing);
             }
 
@@ -385,7 +387,7 @@ final class ProjectSubmissionService
             'request_fingerprint',
             ''
         );
-        if ($storedFingerprint === '' || !hash_equals($storedFingerprint, $fingerprint)) {
+        if ($storedFingerprint === '' || ! hash_equals($storedFingerprint, $fingerprint)) {
             throw new \UnexpectedValueException(
                 'Project submission idempotency key was reused for different content.'
             );
@@ -418,8 +420,8 @@ final class ProjectSubmissionService
         $hex[12] = '5';
         $hex[16] = dechex((hexdec($hex[16]) & 0x3) | 0x8);
 
-        return substr($hex, 0, 8) . '-' . substr($hex, 8, 4) . '-'
-            . substr($hex, 12, 4) . '-' . substr($hex, 16, 4) . '-'
-            . substr($hex, 20, 12);
+        return substr($hex, 0, 8).'-'.substr($hex, 8, 4).'-'
+            .substr($hex, 12, 4).'-'.substr($hex, 16, 4).'-'
+            .substr($hex, 20, 12);
     }
 }

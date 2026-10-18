@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 final class PlaybackSession extends Model
 {
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [

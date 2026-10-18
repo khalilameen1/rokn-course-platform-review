@@ -11,7 +11,7 @@ use App\Models\CourseAuthoringRevision;
 use App\Models\Lesson;
 use App\Models\LessonMediaState;
 use App\Models\User;
-use App\Services\CourseAccessPlanService;
+use App\Services\CoursePlanAuthoringService;
 use App\Services\CoursePublishingService;
 use App\Services\CourseStagedAuthoringService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -145,17 +145,17 @@ final class CourseStudioPublishReadinessRecoveryTest extends TestCase
         Http::fake();
         Storage::fake('public');
         $this->withoutMiddleware(RequireAdminMfa::class);
-        $moderator = (new User())->forceFill([
+        $moderator = (new User)->forceFill([
             'name_ar' => 'محرر الاستوديو', 'email' => 'studio-readiness@example.test',
             'role' => 'moderator', 'active' => true,
         ]);
         $moderator->save();
-        $teacher = (new User())->forceFill([
+        $teacher = (new User)->forceFill([
             'name_ar' => 'المحاضر', 'email' => 'studio-teacher@example.test',
             'role' => 'teacher', 'active' => true,
         ]);
         $teacher->save();
-        $canonical = (new Course())->forceFill([
+        $canonical = (new Course)->forceFill([
             'tenant_id' => 1, 'name_ar' => 'الكورس المنشور',
             'description_ar' => 'وصف الكورس المنشور', 'price' => 800,
             'is_coming_soon' => false, 'is_catalog_visible' => true,
@@ -169,7 +169,7 @@ final class CourseStudioPublishReadinessRecoveryTest extends TestCase
         $canonical->classifications()->attach($classification->id);
         Storage::disk('public')->put('courses/ready-cover.jpg', 'cover bytes');
         $canonical->allPhotos()->create(['path' => 'courses/ready-cover.jpg', 'type' => 'featured']);
-        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($canonical);
+        app(CoursePlanAuthoringService::class)->createDefaults($canonical);
         $module = $canonical->modules()->create(['title_ar' => 'الوحدة', 'order' => 1]);
         $guid = '33333333-3333-4333-8333-333333333333';
         $lesson = Lesson::query()->create([

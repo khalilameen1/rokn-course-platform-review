@@ -12,6 +12,7 @@ use App\Support\NotificationTemplateEditorVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\ViewErrorBag;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -150,7 +151,7 @@ final class WelcomePromptPresentationPolicyTest extends TestCase
         $html = view('admin.admin_notifications._form', [
             'admin_notification' => $welcome,
             'editorVersion' => NotificationTemplateEditorVersion::for($welcome),
-            'errors' => new \Illuminate\Support\ViewErrorBag(),
+            'errors' => new ViewErrorBag,
         ])->render();
         self::assertStringContainsString('مرة واحدة عند أول زيارة على الجهاز', $html);
         self::assertStringContainsString('يمكن للزائر إغلاقها دائمًا', $html);
@@ -166,7 +167,7 @@ final class WelcomePromptPresentationPolicyTest extends TestCase
         $other = AdminNotification::query()->where('system_key', 'coin_offer')->firstOrFail();
         $otherHtml = view('admin.admin_notifications._form', [
             'admin_notification' => $other, 'editorVersion' => NotificationTemplateEditorVersion::for($other),
-            'errors' => new \Illuminate\Support\ViewErrorBag(),
+            'errors' => new ViewErrorBag,
         ])->render();
         self::assertStringContainsString('id="cooldown_hours"', $otherHtml);
         self::assertStringContainsString('id="link"', $otherHtml);
@@ -198,6 +199,7 @@ final class WelcomePromptPresentationPolicyTest extends TestCase
         $request->setRouteResolver(static fn () => $route);
         $request->setContainer($this->app);
         $request->setRedirector($this->app->make('redirect'));
+
         return $request;
     }
 }

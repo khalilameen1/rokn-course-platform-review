@@ -23,22 +23,22 @@ final readonly class AdminCourseAuthoringService
         private CourseStagedAuthoringService $stagedAuthoring,
         private CourseRevisionResolver $revisions,
         private CourseCoverStorageService $covers
-    ) {
-    }
+    ) {}
 
     /**
-     * @param Closure(Course):void $completeIntent
+     * @param  Closure(Course):void  $completeIntent
      * @return array{status:string, course:?Course}
      */
     public function create(CourseAuthoringEdit $edit, Closure $completeIntent): array
     {
         $requestId = $edit->requestId;
-        if (!$requestId) {
+        if (! $requestId) {
             throw new \InvalidArgumentException('Course creation requires a stable request identity.');
         }
         $existing = Course::query()->where('authoring_request_id', $requestId)->first();
         if ($existing) {
             $this->completeExistingIntent($existing, $completeIntent);
+
             return ['status' => 'existing', 'course' => $existing];
         }
 
@@ -100,8 +100,7 @@ final readonly class AdminCourseAuthoringService
         Course $course,
         bool $administrator,
         bool $canCurateHome
-    ): array
-    {
+    ): array {
         $wasDraft = (bool) $course->is_coming_soon;
         $publishingRequested = $edit->publishingRequested;
         $catalogVisibilitySubmitted = $edit->catalogVisible !== null;
@@ -109,10 +108,10 @@ final readonly class AdminCourseAuthoringService
             ? $edit->catalogVisible
             : (bool) $course->is_catalog_visible;
         $data = $edit->attributes;
-        if (!$wasDraft && $publishingRequested) {
+        if (! $wasDraft && $publishingRequested) {
             $data['is_catalog_visible'] = $catalogVisible;
         }
-        if ($wasDraft && $catalogVisibilitySubmitted && !$catalogVisible) {
+        if ($wasDraft && $catalogVisibilitySubmitted && ! $catalogVisible) {
             $data['is_catalog_visible'] = false;
         }
         if ($wasDraft && $publishingRequested) {
@@ -133,7 +132,7 @@ final readonly class AdminCourseAuthoringService
             // explicitly checks or unchecks the control, the draft owns that
             // intent across every later partial save.
             ? ($explicitHero ?? (bool) $canonical->is_main_course)
-            : (!(bool) $course->is_coming_soon && (bool) $course->is_main_course);
+            : (! (bool) $course->is_coming_soon && (bool) $course->is_main_course);
         $heroRequested = $canCurateHome && $edit->mainCourse !== null
             ? $edit->mainCourse
             : $preservedHero;
@@ -176,7 +175,7 @@ final readonly class AdminCourseAuthoringService
                         $edit->planOffers
                     );
                 }
-                if (!$managedDraft && $administrator && (
+                if (! $managedDraft && $administrator && (
                     $edit->grantChatAttachments
                     || $edit->grantProjectAttachments
                 )) {
@@ -198,9 +197,9 @@ final readonly class AdminCourseAuthoringService
                     Photo::query()->whereIn('id', $oldPhotos->pluck('id'))
                         ->lockForUpdate()->get()->each->delete();
                 }
-                if (!$wasDraft && $publishingRequested) {
+                if (! $wasDraft && $publishingRequested) {
                     $audit = $this->publishing->audit($locked->fresh());
-                    if (!$audit['ready']) {
+                    if (! $audit['ready']) {
                         $liveIssues = $audit['issues'];
                         throw new \DomainException('published_course_incomplete');
                     }
@@ -247,6 +246,7 @@ final readonly class AdminCourseAuthoringService
                 throw $exception;
             } catch (\Throwable $exception) {
                 report($exception);
+
                 return ['status' => 'staged_publish_failed', 'course' => $course];
             }
         } elseif ($wasDraft && $publishingRequested) {
@@ -260,7 +260,7 @@ final readonly class AdminCourseAuthoringService
 
         $fresh = $course->fresh();
         if (
-            !$managedDraft
+            ! $managedDraft
             && $fresh->is_coming_soon
             && $catalogVisibilitySubmitted
             && $catalogVisible
@@ -272,11 +272,12 @@ final readonly class AdminCourseAuthoringService
             $ownedVersion = $catalog['version'];
         }
 
-        if (!($wasDraft && !$publishingRequested)) {
+        if (! ($wasDraft && ! $publishingRequested)) {
             try {
                 $this->heroSelection->synchronize($course, (int) $ownedVersion, $heroRequested);
             } catch (\Throwable $exception) {
                 report($exception);
+
                 return ['status' => 'hero_failed', 'course' => $course];
             }
         }
@@ -299,7 +300,7 @@ final readonly class AdminCourseAuthoringService
             ): void {
                 $locked = $this->authoring->lockExpected($course, $expectedVersion);
                 $audit = $this->publishing->audit($locked->fresh());
-                if (!$audit['ready']) {
+                if (! $audit['ready']) {
                     return;
                 }
                 $previousVersion = (int) ($locked->last_published_authoring_version ?? 0);
@@ -323,9 +324,10 @@ final readonly class AdminCourseAuthoringService
             }, 3);
         } catch (\Throwable $exception) {
             report($exception);
+
             return ['status' => 'publish_failed', 'course' => $course];
         }
-        if (!($audit['ready'] ?? false)) {
+        if (! ($audit['ready'] ?? false)) {
             return [
                 'status' => 'not_ready',
                 'course' => $course,
@@ -352,9 +354,10 @@ final readonly class AdminCourseAuthoringService
             }, 3);
         } catch (\Throwable $exception) {
             report($exception);
+
             return ['status' => 'catalog_publish_failed', 'course' => $course];
         }
-        if (!($audit['ready'] ?? false)) {
+        if (! ($audit['ready'] ?? false)) {
             return [
                 'status' => 'catalog_not_ready',
                 'course' => $course,

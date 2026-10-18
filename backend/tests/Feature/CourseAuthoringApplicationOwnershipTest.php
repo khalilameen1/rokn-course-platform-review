@@ -94,8 +94,7 @@ final class CourseAuthoringApplicationOwnershipTest extends TestCase
         self::assertNull($failed['course']);
         self::assertSame(0, Course::query()->count());
         self::assertSame(0, DB::table('course_access_plans')->count());
-        Exceptions::assertReported(fn (\RuntimeException $error): bool =>
-            $error->getMessage() === 'Receipt storage unavailable.'
+        Exceptions::assertReported(fn (\RuntimeException $error): bool => $error->getMessage() === 'Receipt storage unavailable.'
         );
         Exceptions::fake();
         $retried = $writer->create($edit, static function (Course $course): void {
@@ -180,8 +179,7 @@ final class CourseAuthoringApplicationOwnershipTest extends TestCase
         self::assertSame(0, Course::query()->count());
         self::assertSame(0, DB::table('course_access_plans')->count());
         self::assertSame('failed', DB::table('admin_authoring_create_intents')->value('status'));
-        Exceptions::assertReported(fn (QueryException $error): bool =>
-            str_contains($error->getMessage(), 'receipt unavailable')
+        Exceptions::assertReported(fn (QueryException $error): bool => str_contains($error->getMessage(), 'receipt unavailable')
         );
         Exceptions::fake();
         $this->app['session']->forget(['error', 'errors']);

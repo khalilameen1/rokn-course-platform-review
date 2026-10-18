@@ -54,8 +54,8 @@ try {
     fwrite(
         STDERR,
         'Migration baseline/tail verification failed: '
-        . $exception->getMessage()
-        . PHP_EOL
+        .$exception->getMessage()
+        .PHP_EOL
     );
     exit(1);
 }
@@ -63,7 +63,7 @@ try {
 /** @return array{baseline:string,cutoff:string,tailStartsAt:string,fileCount:int,aggregateSha256:string,aggregateFormat:string,firstCutoverRequiresRestoreDrillEvidence:bool} */
 function readManifest(string $path): array
 {
-    if (!is_file($path) || !is_readable($path)) {
+    if (! is_file($path) || ! is_readable($path)) {
         throw new RuntimeException("Migration baseline manifest is not readable: {$path}");
     }
 
@@ -82,7 +82,7 @@ function readManifest(string $path): array
         );
     }
 
-    if (!is_array($manifest)) {
+    if (! is_array($manifest)) {
         throw new RuntimeException('Migration baseline manifest must be a JSON object.');
     }
 
@@ -96,17 +96,17 @@ function readManifest(string $path): array
         'firstCutoverRequiresRestoreDrillEvidence',
     ];
     foreach ($required as $key) {
-        if (!array_key_exists($key, $manifest)) {
+        if (! array_key_exists($key, $manifest)) {
             throw new RuntimeException("Migration baseline manifest is missing [{$key}].");
         }
     }
 
-    if (!is_string($manifest['baseline']) || trim($manifest['baseline']) === '') {
+    if (! is_string($manifest['baseline']) || trim($manifest['baseline']) === '') {
         throw new RuntimeException('Manifest baseline must be a nonempty string.');
     }
     foreach (['cutoff', 'tailStartsAt'] as $key) {
         if (
-            !is_string($manifest[$key])
+            ! is_string($manifest[$key])
             || preg_match('/^\d{4}_\d{2}_\d{2}_\d{6}$/D', $manifest[$key]) !== 1
         ) {
             throw new RuntimeException("Manifest {$key} is not a migration timestamp.");
@@ -115,11 +115,11 @@ function readManifest(string $path): array
     if (strcmp($manifest['cutoff'], $manifest['tailStartsAt']) >= 0) {
         throw new RuntimeException('Manifest cutoff must be before tailStartsAt.');
     }
-    if (!is_int($manifest['fileCount']) || $manifest['fileCount'] < 1) {
+    if (! is_int($manifest['fileCount']) || $manifest['fileCount'] < 1) {
         throw new RuntimeException('Manifest fileCount must be a positive integer.');
     }
     if (
-        !is_string($manifest['aggregateSha256'])
+        ! is_string($manifest['aggregateSha256'])
         || preg_match('/^[a-f0-9]{64}$/D', $manifest['aggregateSha256']) !== 1
     ) {
         throw new RuntimeException('Manifest aggregateSha256 must be lowercase SHA-256.');
@@ -142,8 +142,8 @@ function readManifest(string $path): array
  */
 function collectMigrationFiles(string $root): array
 {
-    $directory = $root . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'migrations';
-    $paths = glob($directory . DIRECTORY_SEPARATOR . '*.php');
+    $directory = $root.DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'migrations';
+    $paths = glob($directory.DIRECTORY_SEPARATOR.'*.php');
     if ($paths === false || $paths === []) {
         throw new RuntimeException('No application migrations were found.');
     }
@@ -164,9 +164,9 @@ function collectMigrationFiles(string $root): array
 
         $files[] = [
             'absolute' => $path,
-            'relative' => 'database/migrations/' . $basename,
+            'relative' => 'database/migrations/'.$basename,
             'name' => $name,
-            'timestamp' => $matches[1] . '_' . (($matches[2] ?? '') !== '' ? $matches[2] : '000000'),
+            'timestamp' => $matches[1].'_'.(($matches[2] ?? '') !== '' ? $matches[2] : '000000'),
         ];
     }
 
@@ -182,7 +182,7 @@ function collectMigrationFiles(string $root): array
 }
 
 /**
- * @param list<array{absolute:string,relative:string,name:string,timestamp:string}> $files
+ * @param  list<array{absolute:string,relative:string,name:string,timestamp:string}>  $files
  * @return array{
  *   list<array{absolute:string,relative:string,name:string,timestamp:string}>,
  *   list<array{absolute:string,relative:string,name:string,timestamp:string}>
@@ -204,8 +204,8 @@ function partitionMigrations(array $files, string $cutoff): array
 }
 
 /**
- * @param list<array{absolute:string,relative:string,name:string,timestamp:string}> $files
- * @param array{fileCount:int,aggregateSha256:string} $manifest
+ * @param  list<array{absolute:string,relative:string,name:string,timestamp:string}>  $files
+ * @param  array{fileCount:int,aggregateSha256:string}  $manifest
  */
 function verifyFrozenBaseline(array $files, array $manifest): void
 {
@@ -214,11 +214,11 @@ function verifyFrozenBaseline(array $files, array $manifest): void
 
     if (
         $actualCount !== $manifest['fileCount']
-        || !hash_equals($manifest['aggregateSha256'], $actualAggregate)
+        || ! hash_equals($manifest['aggregateSha256'], $actualAggregate)
     ) {
         throw new RuntimeException(sprintf(
             'Frozen migration baseline changed. Expected count/hash %d/%s; got %d/%s. '
-            . 'Do not edit, delete, rename, or backdate migrations at/before the cutoff.',
+            .'Do not edit, delete, rename, or backdate migrations at/before the cutoff.',
             $manifest['fileCount'],
             $manifest['aggregateSha256'],
             $actualCount,
@@ -228,29 +228,29 @@ function verifyFrozenBaseline(array $files, array $manifest): void
 }
 
 /**
- * @param list<array{absolute:string,relative:string,name:string,timestamp:string}> $files
+ * @param  list<array{absolute:string,relative:string,name:string,timestamp:string}>  $files
  */
 function aggregateMigrationHash(array $files): string
 {
     $context = hash_init('sha256');
     foreach ($files as $file) {
         $contents = file_get_contents($file['absolute']);
-        if (!is_string($contents)) {
+        if (! is_string($contents)) {
             throw new RuntimeException("Could not hash {$file['relative']}.");
         }
         // Git may materialize text files with CRLF on Windows and LF in CI.
         // Freeze source content, not checkout-specific line-ending bytes.
         $fileHash = hash('sha256', str_replace(["\r\n", "\r"], "\n", $contents));
-        hash_update($context, $file['relative'] . "\t" . $fileHash . "\n");
+        hash_update($context, $file['relative']."\t".$fileHash."\n");
     }
 
     return hash_final($context);
 }
 
 /**
- * @param list<array{absolute:string,relative:string,name:string,timestamp:string}> $baselineFiles
- * @param list<array{absolute:string,relative:string,name:string,timestamp:string}> $tailFiles
- * @param array{baseline:string,cutoff:string,tailStartsAt:string,fileCount:int,aggregateSha256:string} $manifest
+ * @param  list<array{absolute:string,relative:string,name:string,timestamp:string}>  $baselineFiles
+ * @param  list<array{absolute:string,relative:string,name:string,timestamp:string}>  $tailFiles
+ * @param  array{baseline:string,cutoff:string,tailStartsAt:string,fileCount:int,aggregateSha256:string}  $manifest
  */
 function verifyBaselineAndTail(
     string $root,
@@ -268,20 +268,20 @@ function verifyBaselineAndTail(
     }
 
     $temporary = createTemporaryDirectory('rokn-migration-gate-');
-    $baselineDirectory = $temporary . DIRECTORY_SEPARATOR . 'baseline';
-    $tailDirectory = $temporary . DIRECTORY_SEPARATOR . 'tail';
-    $failureDirectory = $temporary . DIRECTORY_SEPARATOR . 'failure';
-    $database = $temporary . DIRECTORY_SEPARATOR . 'verification.sqlite';
-    $configCache = $temporary . DIRECTORY_SEPARATOR . 'config.php';
-    $viewsDirectory = $temporary . DIRECTORY_SEPARATOR . 'views';
+    $baselineDirectory = $temporary.DIRECTORY_SEPARATOR.'baseline';
+    $tailDirectory = $temporary.DIRECTORY_SEPARATOR.'tail';
+    $failureDirectory = $temporary.DIRECTORY_SEPARATOR.'failure';
+    $database = $temporary.DIRECTORY_SEPARATOR.'verification.sqlite';
+    $configCache = $temporary.DIRECTORY_SEPARATOR.'config.php';
+    $viewsDirectory = $temporary.DIRECTORY_SEPARATOR.'views';
     $relativeTemporary = relativePath($root, $temporary);
 
     foreach ([$baselineDirectory, $tailDirectory, $failureDirectory, $viewsDirectory] as $directory) {
-        if (!mkdir($directory, 0700, true) && !is_dir($directory)) {
+        if (! mkdir($directory, 0700, true) && ! is_dir($directory)) {
             throw new RuntimeException("Could not create temporary directory: {$directory}");
         }
     }
-    if (!touch($database)) {
+    if (! touch($database)) {
         throw new RuntimeException('Could not create the disposable SQLite database.');
     }
 
@@ -304,13 +304,13 @@ function verifyBaselineAndTail(
         // Laravel treats only slash-prefixed cache paths as absolute. Use a
         // root-relative path so Windows drive-letter paths are not prefixed
         // with the application root a second time.
-        'APP_CONFIG_CACHE' => $relativeTemporary . '/config.php',
-        'APP_EVENTS_CACHE' => $relativeTemporary . '/events.php',
-        'APP_PACKAGES_CACHE' => $relativeTemporary . '/packages.php',
-        'APP_SERVICES_CACHE' => $relativeTemporary . '/services.php',
+        'APP_CONFIG_CACHE' => $relativeTemporary.'/config.php',
+        'APP_EVENTS_CACHE' => $relativeTemporary.'/events.php',
+        'APP_PACKAGES_CACHE' => $relativeTemporary.'/packages.php',
+        'APP_SERVICES_CACHE' => $relativeTemporary.'/services.php',
         'VIEW_COMPILED_PATH' => $viewsDirectory,
     ];
-    $artisan = [PHP_BINARY, $root . DIRECTORY_SEPARATOR . 'artisan'];
+    $artisan = [PHP_BINARY, $root.DIRECTORY_SEPARATOR.'artisan'];
     $steps = [];
 
     $runArtisan = static function (
@@ -336,11 +336,11 @@ function verifyBaselineAndTail(
                 'Unexpected exit code %d for [%s]: %s',
                 $exitCode,
                 implode(' ', $arguments),
-                boundedOutput($stdout . $stderr)
+                boundedOutput($stdout.$stderr)
             ));
         }
 
-        return $stdout . $stderr;
+        return $stdout.$stderr;
     };
 
     try {
@@ -349,7 +349,7 @@ function verifyBaselineAndTail(
             '--force',
             '--no-interaction',
             '--realpath',
-            '--path=' . $baselineDirectory,
+            '--path='.$baselineDirectory,
         ]);
         assertMigrationsRecorded($database, array_column($baselineFiles, 'name'));
         assertMigrationsAbsent($database, array_column($tailFiles, 'name'));
@@ -360,7 +360,7 @@ function verifyBaselineAndTail(
                 '--force',
                 '--no-interaction',
                 '--realpath',
-                '--path=' . $tailDirectory,
+                '--path='.$tailDirectory,
             ]);
         }
         assertMigrationsRecorded($database, array_column($tailFiles, 'name'));
@@ -372,7 +372,7 @@ function verifyBaselineAndTail(
                 '--force',
                 '--no-interaction',
                 '--realpath',
-                '--path=' . $tailDirectory,
+                '--path='.$tailDirectory,
             ]);
         }
         if (migrationLedger($database) !== $afterTail) {
@@ -380,7 +380,7 @@ function verifyBaselineAndTail(
         }
 
         $failureName = '2099_01_01_000000_intentional_migration_gate_failure';
-        $failureFile = $failureDirectory . DIRECTORY_SEPARATOR . $failureName . '.php';
+        $failureFile = $failureDirectory.DIRECTORY_SEPARATOR.$failureName.'.php';
         $failureSource = <<<'PHP'
 <?php
 use Illuminate\Database\Migrations\Migration;
@@ -397,7 +397,7 @@ PHP;
             '--force',
             '--no-interaction',
             '--realpath',
-            '--path=' . $failureDirectory,
+            '--path='.$failureDirectory,
         ], false);
         assertMigrationsAbsent($database, [$failureName]);
 
@@ -408,7 +408,7 @@ PHP;
                 '--force',
                 '--no-interaction',
                 '--realpath',
-                '--path=' . $tailDirectory,
+                '--path='.$tailDirectory,
             ]);
         }
         if (migrationLedger($database) !== $afterTail) {
@@ -457,13 +457,13 @@ PHP;
 }
 
 /**
- * @param list<array{absolute:string,relative:string,name:string,timestamp:string}> $files
+ * @param  list<array{absolute:string,relative:string,name:string,timestamp:string}>  $files
  */
 function copyMigrations(array $files, string $destination): void
 {
     foreach ($files as $file) {
-        $target = $destination . DIRECTORY_SEPARATOR . basename($file['absolute']);
-        if (!copy($file['absolute'], $target)) {
+        $target = $destination.DIRECTORY_SEPARATOR.basename($file['absolute']);
+        if (! copy($file['absolute'], $target)) {
             throw new RuntimeException("Could not materialize {$file['relative']}.");
         }
     }
@@ -489,7 +489,7 @@ function runProcess(array $command, string $workingDirectory, array $environment
         2 => ['file', $stderrPath, 'wb'],
     ];
     $inherited = getenv();
-    if (!is_array($inherited)) {
+    if (! is_array($inherited)) {
         $inherited = [];
     }
     $process = proc_open(
@@ -499,10 +499,10 @@ function runProcess(array $command, string $workingDirectory, array $environment
         $workingDirectory,
         array_replace($inherited, $environment)
     );
-    if (!is_resource($process)) {
+    if (! is_resource($process)) {
         @unlink($stdoutPath);
         @unlink($stderrPath);
-        throw new RuntimeException('Could not start process: ' . implode(' ', $command));
+        throw new RuntimeException('Could not start process: '.implode(' ', $command));
     }
 
     $exitCode = proc_close($process);
@@ -524,11 +524,11 @@ function assertMigrationsRecorded(string $database, array $expected): void
     $recorded = array_fill_keys(array_keys(migrationLedger($database)), true);
     $missing = array_values(array_filter(
         $expected,
-        static fn (string $name): bool => !isset($recorded[$name])
+        static fn (string $name): bool => ! isset($recorded[$name])
     ));
     if ($missing !== []) {
         throw new RuntimeException(
-            "Expected migrations were not recorded:\n- " . implode("\n- ", $missing)
+            "Expected migrations were not recorded:\n- ".implode("\n- ", $missing)
         );
     }
 }
@@ -547,7 +547,7 @@ function assertMigrationsAbsent(string $database, array $unexpected): void
     ));
     if ($present !== []) {
         throw new RuntimeException(
-            "Unexpected migrations were recorded:\n- " . implode("\n- ", $present)
+            "Unexpected migrations were recorded:\n- ".implode("\n- ", $present)
         );
     }
 }
@@ -555,7 +555,7 @@ function assertMigrationsAbsent(string $database, array $unexpected): void
 /** @return array<string,int> */
 function migrationLedger(string $database): array
 {
-    $pdo = new PDO('sqlite:' . $database, null, null, [
+    $pdo = new PDO('sqlite:'.$database, null, null, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
@@ -572,9 +572,9 @@ function migrationLedger(string $database): array
 
 function createTemporaryDirectory(string $prefix): string
 {
-    $base = rtrim(sys_get_temp_dir(), "\\/");
+    $base = rtrim(sys_get_temp_dir(), '\\/');
     for ($attempt = 0; $attempt < 10; $attempt++) {
-        $path = $base . DIRECTORY_SEPARATOR . $prefix . bin2hex(random_bytes(8));
+        $path = $base.DIRECTORY_SEPARATOR.$prefix.bin2hex(random_bytes(8));
         if (@mkdir($path, 0700)) {
             return $path;
         }
@@ -591,11 +591,11 @@ function removeOwnedTemporaryDirectory(string $directory): void
         return;
     }
 
-    $basePrefix = rtrim($resolvedBase, "\\/") . DIRECTORY_SEPARATOR;
-    if (!str_starts_with($resolvedDirectory, $basePrefix)) {
+    $basePrefix = rtrim($resolvedBase, '\\/').DIRECTORY_SEPARATOR;
+    if (! str_starts_with($resolvedDirectory, $basePrefix)) {
         throw new RuntimeException('Refusing to remove a directory outside the system temp root.');
     }
-    if (!str_starts_with(basename($resolvedDirectory), 'rokn-migration-gate-')) {
+    if (! str_starts_with(basename($resolvedDirectory), 'rokn-migration-gate-')) {
         throw new RuntimeException('Refusing to remove an unowned temporary directory.');
     }
 
@@ -609,14 +609,14 @@ function removeOwnedTemporaryDirectory(string $directory): void
     foreach ($iterator as $item) {
         $path = $item->getPathname();
         if ($item->isLink() || $item->isFile()) {
-            if (!@unlink($path) && file_exists($path)) {
+            if (! @unlink($path) && file_exists($path)) {
                 throw new RuntimeException("Could not remove temporary file: {$path}");
             }
-        } elseif (!@rmdir($path) && is_dir($path)) {
+        } elseif (! @rmdir($path) && is_dir($path)) {
             throw new RuntimeException("Could not remove temporary directory: {$path}");
         }
     }
-    if (!@rmdir($resolvedDirectory) && is_dir($resolvedDirectory)) {
+    if (! @rmdir($resolvedDirectory) && is_dir($resolvedDirectory)) {
         throw new RuntimeException("Could not remove temporary directory: {$resolvedDirectory}");
     }
 }
@@ -624,14 +624,14 @@ function removeOwnedTemporaryDirectory(string $directory): void
 function writeJsonFile(string $path, array $payload): void
 {
     $directory = dirname($path);
-    if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) {
+    if (! is_dir($directory) && ! mkdir($directory, 0700, true) && ! is_dir($directory)) {
         throw new RuntimeException("Could not create evidence directory: {$directory}");
     }
     $encoded = json_encode(
         $payload,
         JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
     );
-    if (file_put_contents($path, $encoded . PHP_EOL) === false) {
+    if (file_put_contents($path, $encoded.PHP_EOL) === false) {
         throw new RuntimeException("Could not write verification evidence: {$path}");
     }
 }
@@ -649,7 +649,7 @@ function absolutePath(string $root, string $path): string
         return $path;
     }
 
-    return $root . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
+    return $root.DIRECTORY_SEPARATOR.str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
 }
 
 function relativePath(string $from, string $to): string
@@ -695,7 +695,7 @@ function relativePath(string $from, string $to): string
         $same = $fromDrive !== ''
             ? strcasecmp($left, $right) === 0
             : $left === $right;
-        if (!$same) {
+        if (! $same) {
             break;
         }
         $common++;
@@ -716,5 +716,5 @@ function boundedOutput(string $output): string
         return $output;
     }
 
-    return "[output truncated]\n" . substr($output, -$limit);
+    return "[output truncated]\n".substr($output, -$limit);
 }

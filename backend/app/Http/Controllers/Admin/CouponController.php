@@ -17,8 +17,7 @@ class CouponController extends Controller
     public function __construct(
         private readonly AdminCouponAuthoringService $authoring,
         private readonly AdminContentInventoryReadService $inventory
-    ) {
-    }
+    ) {}
 
     public function index()
     {

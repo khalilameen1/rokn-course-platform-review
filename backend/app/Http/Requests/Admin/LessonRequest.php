@@ -24,9 +24,9 @@ class LessonRequest extends FormRequest
     public function rules()
     {
         return [
-           // 'name_ar' => 'required|string|min:3|max:50',
-           // 'name_en' => 'required|string|min:3|max:50',
-           // 'image' => ($this->method() === 'POST' ? 'required|image' : '')
+            // 'name_ar' => 'required|string|min:3|max:50',
+            // 'name_en' => 'required|string|min:3|max:50',
+            // 'image' => ($this->method() === 'POST' ? 'required|image' : '')
         ];
     }
 
@@ -36,9 +36,9 @@ class LessonRequest extends FormRequest
     public function attributes()
     {
         return [
-          //  'name_ar' => 'أسم  المتجر ',
-          //  'name_en' => 'أسم المتجر باللإنجليزية',
-          //  'image' => 'صوره المتجر'
+            //  'name_ar' => 'أسم  المتجر ',
+            //  'name_en' => 'أسم المتجر باللإنجليزية',
+            //  'image' => 'صوره المتجر'
         ];
     }
 }

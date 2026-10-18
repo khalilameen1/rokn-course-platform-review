@@ -4,28 +4,32 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\Admin\CoinEarningMethodController;
 use App\Http\Controllers\Admin\AdminNotificationsController;
-use App\Http\Controllers\Admin\PackageController;
+use App\Http\Controllers\Admin\CoinEarningMethodController;
 use App\Http\Controllers\Admin\CourseCodeController;
+use App\Http\Controllers\Admin\PackageController;
 use App\Http\Requests\Admin\AdminNotificationRequest;
 use App\Models\AdminNotification;
-use App\Models\RewardRule;
-use App\Models\Package;
-use App\Models\CourseCode;
 use App\Models\Coupon;
-use App\Models\Setting;
+use App\Models\CourseCode;
 use App\Models\DesignSetting;
+use App\Models\Package;
+use App\Models\RewardRule;
+use App\Models\Setting;
 use App\Support\AdminSingletonLock;
+use App\Support\AppSettingsEditorVersion;
+use App\Support\CouponEditorVersion;
+use App\Support\CourseCodeEditorVersion;
+use App\Support\NotificationTemplateEditorVersion;
+use App\Support\PackageEditorVersion;
+use App\Support\RewardConfigurationVersion;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route as RouteFacade;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
-use ReflectionMethod;
-use App\Support\RewardConfigurationVersion;
 use Tests\TestCase;
 
 final class AdminMutableConfigurationConcurrencyTest extends TestCase
@@ -255,7 +259,7 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
             'cooldown_hours' => 0,
         ]);
         $controller = app(AdminNotificationsController::class);
-        $staleVersion = \App\Support\NotificationTemplateEditorVersion::for($notification);
+        $staleVersion = NotificationTemplateEditorVersion::for($notification);
 
         $notification->update([
             'title_ar' => 'أنجزت الكورس',
@@ -312,7 +316,7 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
             'apple_enabled' => false,
         ]);
         $controller = app(PackageController::class);
-        $staleVersion = \App\Support\PackageEditorVersion::for($package);
+        $staleVersion = PackageEditorVersion::for($package);
 
         $package->update(['price' => 150]);
 
@@ -346,7 +350,7 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
             'is_active' => true,
         ]);
         $controller = app(CourseCodeController::class);
-        $staleVersion = \App\Support\CourseCodeEditorVersion::for($code);
+        $staleVersion = CourseCodeEditorVersion::for($code);
         DB::table('course_codes')->where('id', $code->id)->update(['name' => 'دفعة الجامعة الجديدة']);
 
         try {
@@ -373,32 +377,32 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
             'expiry_date' => now()->addMonth(),
             'active' => true,
         ]);
-        $before = \App\Support\CouponEditorVersion::for($coupon);
+        $before = CouponEditorVersion::for($coupon);
 
         $coupon->allPhotos()->create(['path' => 'coupons/new.webp', 'type' => 'featured']);
         $coupon->unsetRelation('photo');
-        $after = \App\Support\CouponEditorVersion::for($coupon);
+        $after = CouponEditorVersion::for($coupon);
 
         self::assertNotSame($before, $after);
         $source = (string) file_get_contents(
             dirname(__DIR__, 2).'/app/Services/AdminCouponAuthoringService.php'
         );
         self::assertStringContainsString('storeTrackedUpload(', $source);
-        self::assertStringContainsString("->lockForUpdate()->get()", $source);
+        self::assertStringContainsString('->lockForUpdate()->get()', $source);
         self::assertStringNotContainsString('$coupon->replaceImage(', $source);
     }
 
     public function test_bunny_secret_ciphertext_participates_in_settings_revision(): void
     {
-        $design = new DesignSetting();
-        $first = new Setting();
+        $design = new DesignSetting;
+        $first = new Setting;
         $first->setRawAttributes(['bunny_api_key_secret' => 'cipher-one'], true);
-        $second = new Setting();
+        $second = new Setting;
         $second->setRawAttributes(['bunny_api_key_secret' => 'cipher-two'], true);
 
         self::assertNotSame(
-            \App\Support\AppSettingsEditorVersion::for($first, $design),
-            \App\Support\AppSettingsEditorVersion::for($second, $design)
+            AppSettingsEditorVersion::for($first, $design),
+            AppSettingsEditorVersion::for($second, $design)
         );
     }
 
@@ -427,5 +431,4 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
             'editor_version' => $editorVersion,
         ]);
     }
-
 }

@@ -21,8 +21,7 @@ final class PortfolioModerationService
         private readonly PortfolioReviewReadService $reviews,
         private readonly PortfolioShareIdentityService $shareIdentity,
         private readonly PortfolioMediaReadinessService $mediaReadiness
-    ) {
-    }
+    ) {}
 
     public static function invalidate(int $userId, ?int $expectedRevision = null): void
     {
@@ -51,7 +50,7 @@ final class PortfolioModerationService
         try {
             $state = DB::table('users')->where('id', $userId)
                 ->first(['portfolio_sharing_status', 'portfolio_approved_hash']);
-            if (!$state || $state->portfolio_sharing_status !== 'approved' || !$state->portfolio_approved_hash
+            if (! $state || $state->portfolio_sharing_status !== 'approved' || ! $state->portfolio_approved_hash
                 || PortfolioPublication::query()->where('user_id', $userId)->exists()) {
                 return;
             }
@@ -69,7 +68,7 @@ final class PortfolioModerationService
     /** Store a pre-publication approval as the publication while it still matches. */
     public function ensurePublication(User $user, ?array $snapshot = null): void
     {
-        if ($user->portfolio_sharing_status !== 'approved' || !$user->portfolio_approved_hash
+        if ($user->portfolio_sharing_status !== 'approved' || ! $user->portfolio_approved_hash
             || PortfolioPublication::query()->where('user_id', $user->id)->exists()) {
             return;
         }
@@ -91,7 +90,7 @@ final class PortfolioModerationService
             self::invalidate((int) $user->id, (int) $user->portfolio_sharing_revision);
             $user->refresh();
         } elseif ($status === 'approved' && ($user->portfolio_sharing_status !== 'approved'
-            || !hash_equals((string) $user->portfolio_approved_hash, $snapshot['hash']))) {
+            || ! hash_equals((string) $user->portfolio_approved_hash, $snapshot['hash']))) {
             // The draft equals the live publication (only removals since the
             // last approval): there is nothing left in the review queue.
             DB::table('users')->where('id', $user->id)
@@ -140,7 +139,7 @@ final class PortfolioModerationService
             abort_unless($snapshot['revision'] === $revision && hash_equals($snapshot['hash'], $hash), 409,
                 'تغير المعرض منذ فتح المعاينة أعد تحميله قبل المراجعة');
             if ($decision === 'approved') {
-                if (!$locked->active || !$this->shareIdentity->isValidUnlistedSlug((string) $locked->portfolio_slug)) {
+                if (! $locked->active || ! $this->shareIdentity->isValidUnlistedSlug((string) $locked->portfolio_slug)) {
                     throw ValidationException::withMessages(['decision' => 'يلزم حساب نشط ورابط معرض صالح قبل الاعتماد']);
                 }
                 foreach ($snapshot['items'] as $item) {

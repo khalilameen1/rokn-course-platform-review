@@ -46,12 +46,15 @@ final readonly class CourseRevisionLearnerReadService
         iterable $userIds,
         iterable $currentSectionIds,
         ?DateTimeInterface $completedBefore = null
-    ): Collection
-    {
+    ): Collection {
         $userIds = $this->ids($userIds);
-        if ($userIds->isEmpty()) return collect();
+        if ($userIds->isEmpty()) {
+            return collect();
+        }
         $currentSectionIds = $this->ids($currentSectionIds);
-        if ($currentSectionIds->isEmpty()) return collect();
+        if ($currentSectionIds->isEmpty()) {
+            return collect();
+        }
 
         $projectSections = CourseSection::query()
             ->whereIn('id', $currentSectionIds)
@@ -84,8 +87,7 @@ final readonly class CourseRevisionLearnerReadService
                         ->where('completed_at', '<', $completedBefore);
                 })
                 ->get()
-                ->each(fn (StudentSectionProgress $row) =>
-                    $row->course_section_id = $reverse[(int) $row->course_section_id]
+                ->each(fn (StudentSectionProgress $row) => $row->course_section_id = $reverse[(int) $row->course_section_id]
                 );
 
         $projectIds = $projectSections->pluck('sectionable_id')
@@ -104,8 +106,8 @@ final readonly class CourseRevisionLearnerReadService
                     $submission
                 );
                 if ($completedBefore && (
-                    !$row->is_completed
-                    || !$row->completed_at
+                    ! $row->is_completed
+                    || ! $row->completed_at
                     || $row->completed_at->getTimestamp() >= $completedBefore->getTimestamp()
                 )) {
                     continue;
@@ -116,18 +118,15 @@ final readonly class CourseRevisionLearnerReadService
 
         return $progressRows
             ->concat($projectRows)
-            ->groupBy(fn (StudentSectionProgress $row): string =>
-                $row->user_id . ':' . $row->course_section_id
+            ->groupBy(fn (StudentSectionProgress $row): string => $row->user_id.':'.$row->course_section_id
             )
             ->map(function (Collection $rows): StudentSectionProgress {
                 $completed = $rows->where('is_completed', true)
-                    ->sortBy(fn (StudentSectionProgress $row): int =>
-                        $row->completed_at?->getTimestamp() ?? PHP_INT_MAX
+                    ->sortBy(fn (StudentSectionProgress $row): int => $row->completed_at?->getTimestamp() ?? PHP_INT_MAX
                     )->first();
 
                 return $completed ?? $rows->sortByDesc(
-                    fn (StudentSectionProgress $row): int =>
-                        $row->updated_at?->getTimestamp() ?? 0
+                    fn (StudentSectionProgress $row): int => $row->updated_at?->getTimestamp() ?? 0
                 )->first();
             })
             ->values();
@@ -137,8 +136,7 @@ final readonly class CourseRevisionLearnerReadService
     public function passedProjectIds(int $userId, iterable $currentProjectIds): Collection
     {
         return $this->projectSubmissions($userId, $currentProjectIds)
-            ->filter(fn (ProjectSubmission $submission): bool =>
-                $submission->reviewOutcome()['passed']
+            ->filter(fn (ProjectSubmission $submission): bool => $submission->reviewOutcome()['passed']
             )
             ->keys()
             ->map(static fn ($id): int => (int) $id)
@@ -154,15 +152,14 @@ final readonly class CourseRevisionLearnerReadService
      * keeps navigation, reports, portfolio and certificate eligibility on one
      * state instead of a mutable shadow evaluation table.
      *
-     * @param list<string> $with
+     * @param  list<string>  $with
      * @return Collection<int,ProjectSubmission>
      */
     public function projectSubmissions(
         int $userId,
         iterable $currentProjectIds,
         array $with = []
-    ): Collection
-    {
+    ): Collection {
         return $this->projectSubmissionsForUsers([$userId], $currentProjectIds, $with)
             ->mapWithKeys(function (ProjectSubmission $submission, string $key): array {
                 [, $projectId] = explode(':', $key, 2);
@@ -172,24 +169,27 @@ final readonly class CourseRevisionLearnerReadService
     }
 
     /**
-     * @param iterable<int> $userIds
-     * @param iterable<int> $currentProjectIds
-     * @param list<string> $with
+     * @param  iterable<int>  $userIds
+     * @param  iterable<int>  $currentProjectIds
+     * @param  list<string>  $with
      * @return Collection<string,ProjectSubmission> keyed by user ID and current project ID
      */
     private function projectSubmissionsForUsers(
         iterable $userIds,
         iterable $currentProjectIds,
         array $with = []
-    ): Collection
-    {
+    ): Collection {
         $userIds = $this->ids($userIds);
         $currentProjectIds = $this->ids($currentProjectIds);
-        if ($userIds->isEmpty() || $currentProjectIds->isEmpty()) return collect();
+        if ($userIds->isEmpty() || $currentProjectIds->isEmpty()) {
+            return collect();
+        }
 
         $aliases = $this->revisions->equivalentEntityMap(Project::class, $currentProjectIds);
         $reverse = $this->reverse($aliases);
-        if ($reverse === []) return collect();
+        if ($reverse === []) {
+            return collect();
+        }
 
         $latestIds = ProjectSubmission::query()
             ->selectRaw('MAX(id)')
@@ -219,7 +219,9 @@ final readonly class CourseRevisionLearnerReadService
     {
         $aliases = $this->revisions->equivalentEntityMap(Lesson::class, $currentLessonIds);
         $reverse = $this->reverse($aliases);
-        if ($reverse === []) return collect();
+        if ($reverse === []) {
+            return collect();
+        }
 
         return LessonWatchEvidence::query()
             ->where('user_id', $userId)
@@ -233,14 +235,16 @@ final readonly class CourseRevisionLearnerReadService
     }
 
     /**
-     * @param array<int,list<int>> $aliases
+     * @param  array<int,list<int>>  $aliases
      * @return array<int,int> historical ID => current ID
      */
     private function reverse(array $aliases): array
     {
         $reverse = [];
         foreach ($aliases as $current => $ids) {
-            foreach ($ids as $id) $reverse[(int) $id] = (int) $current;
+            foreach ($ids as $id) {
+                $reverse[(int) $id] = (int) $current;
+            }
         }
 
         return $reverse;
@@ -258,7 +262,7 @@ final readonly class CourseRevisionLearnerReadService
 
     private function submissionKey(int $userId, int $projectId): string
     {
-        return $userId . ':' . $projectId;
+        return $userId.':'.$projectId;
     }
 
     /**
@@ -269,8 +273,7 @@ final readonly class CourseRevisionLearnerReadService
         int $userId,
         int $sectionId,
         ProjectSubmission $submission
-    ): StudentSectionProgress
-    {
+    ): StudentSectionProgress {
         $outcome = $submission->reviewOutcome();
         $completedAt = $outcome['passed']
             ? ($outcome['reviewed_at']
@@ -282,7 +285,7 @@ final readonly class CourseRevisionLearnerReadService
         $updatedAt = $submission->updated_at
             ?? $submission->submitted_at
             ?? $submission->created_at;
-        $row = new StudentSectionProgress();
+        $row = new StudentSectionProgress;
         $row->forceFill([
             'user_id' => $userId,
             'course_section_id' => $sectionId,

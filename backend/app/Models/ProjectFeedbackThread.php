@@ -14,10 +14,25 @@ final class ProjectFeedbackThread extends Model
         'can_reply' => 'boolean',
     ];
 
-    public function submission() { return $this->belongsTo(ProjectSubmission::class); }
-    public function enrollment() { return $this->belongsTo(CourseEnrollment::class); }
-    public function project() { return $this->belongsTo(Project::class); }
-    public function messages() { return $this->hasMany(ProjectFeedbackMessage::class, 'thread_id'); }
+    public function submission()
+    {
+        return $this->belongsTo(ProjectSubmission::class);
+    }
+
+    public function enrollment()
+    {
+        return $this->belongsTo(CourseEnrollment::class);
+    }
+
+    public function project()
+    {
+        return $this->belongsTo(Project::class);
+    }
+
+    public function messages()
+    {
+        return $this->hasMany(ProjectFeedbackMessage::class, 'thread_id');
+    }
 
     public function getRouteKeyName(): string
     {

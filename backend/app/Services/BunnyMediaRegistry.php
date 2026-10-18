@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Lesson;
-use App\Models\BunnyVideoCleanupCandidate;
 use App\Models\BunnyStorageCleanupCandidate;
+use App\Models\BunnyVideoCleanupCandidate;
+use App\Models\Lesson;
 use App\Support\BunnyStoragePath;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -59,7 +59,9 @@ class BunnyMediaRegistry
     public function queueStorageCleanup(string $path, string $reason, int $delayMinutes = 0): bool
     {
         $normalized = BunnyStoragePath::normalize($path, $this->configuration->getStorageCdnHostname());
-        if ($normalized === null) return false;
+        if ($normalized === null) {
+            return false;
+        }
 
         $attributes = [
             'path' => $normalized,
@@ -93,6 +95,7 @@ class BunnyMediaRegistry
             }
 
             $candidate->forceFill($attributes)->save();
+
             return true;
         }, 3);
     }
@@ -110,7 +113,7 @@ class BunnyMediaRegistry
             ->whereNull('last_attempt_at')
             ->lockForUpdate()
             ->first();
-        if (!$candidate) {
+        if (! $candidate) {
             throw new RuntimeException('The staged Bunny Storage object is no longer safe to publish.');
         }
 

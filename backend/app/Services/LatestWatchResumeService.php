@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\CourseSection;
 use App\Models\CourseAuthoringRevision;
+use App\Models\CourseSection;
 use App\Models\Lesson;
 use App\Models\WatchingLog;
 use Illuminate\Support\Collection;
@@ -19,8 +19,8 @@ final readonly class LatestWatchResumeService
      * Return one newest resume row per course in the database, rather than
      * loading a learner's entire watch history and de-duplicating it in PHP.
      *
-     * @param iterable<int, int|string> $courseIds
-     * @param list<string> $relations
+     * @param  iterable<int, int|string>  $courseIds
+     * @param  list<string>  $relations
      * @return Collection<int, WatchingLog> keyed by course id
      */
     public function forUser(int $userId, iterable $courseIds, array $relations = []): Collection
@@ -53,7 +53,9 @@ final readonly class LatestWatchResumeService
                 $lessonAliasToCurrent->put((int) $alias, (int) $currentId);
             }
         }
-        if ($lessonAliasToCurrent->isEmpty()) return collect();
+        if ($lessonAliasToCurrent->isEmpty()) {
+            return collect();
+        }
         $currentSectionByLesson = $currentLessonSections->pluck('id', 'sectionable_id');
 
         // A publish keeps the canonical course ID but moves the previous graph
@@ -95,7 +97,7 @@ final readonly class LatestWatchResumeService
             ->select(['id', 'canonical_course_id'])
             ->selectRaw(
                 'ROW_NUMBER() OVER (PARTITION BY canonical_course_id '
-                . 'ORDER BY watched_at DESC, id DESC) as resume_rank'
+                .'ORDER BY watched_at DESC, id DESC) as resume_rank'
             );
 
         $logs = WatchingLog::query()
@@ -115,7 +117,9 @@ final readonly class LatestWatchResumeService
                 $log->course_id = (int) $courseAliasToCurrent->get((int) $log->course_id, (int) $log->course_id);
                 $log->course_section_id = $currentSectionByLesson->get($currentLessonId);
             });
-        if ($relations !== []) $logs->load($relations);
+        if ($relations !== []) {
+            $logs->load($relations);
+        }
 
         return $logs->keyBy(static fn (WatchingLog $log): int => (int) $log->course_id);
     }

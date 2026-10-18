@@ -7,13 +7,14 @@ namespace App\Console\Commands;
 use App\Models\BunnyDirectUpload;
 use App\Models\BunnyVideoAllocationIntent;
 use App\Models\PortfolioVideoUpload;
-use App\Services\BunnyService;
 use App\Services\BunnyMediaRegistry;
+use App\Services\BunnyService;
 use Illuminate\Console\Command;
 
 final class RecoverBunnyAllocations extends Command
 {
     protected $signature = 'bunny:recover-allocations {--limit=100}';
+
     protected $description = 'Reconcile provider allocations interrupted before their GUID was persisted';
 
     public function handle(BunnyService $bunny, BunnyMediaRegistry $mediaRegistry): int
@@ -28,7 +29,7 @@ final class RecoverBunnyAllocations extends Command
                 $this->recover(
                     $bunny,
                     $mediaRegistry,
-                    '[rokn-upload:' . strtolower((string) $intent->marker) . ']',
+                    '[rokn-upload:'.strtolower((string) $intent->marker).']',
                     function (string $guid) use ($intent): void {
                         $intent->forceFill([
                             'video_guid' => $guid,
@@ -42,7 +43,7 @@ final class RecoverBunnyAllocations extends Command
             ->whereNotNull('video_guid')
             ->where('updated_at', '<=', now()->subMinutes(5))
             ->orderBy('id')->limit($limit)->get()
-            ->each(function (BunnyVideoAllocationIntent $intent) use ($bunny, $mediaRegistry): void {
+            ->each(function (BunnyVideoAllocationIntent $intent) use ($mediaRegistry): void {
                 $candidate = $mediaRegistry->queueVideoCleanup(
                     (string) $intent->video_guid,
                     null,
@@ -50,7 +51,9 @@ final class RecoverBunnyAllocations extends Command
                     1,
                     false
                 );
-                if (!$candidate) throw new \RuntimeException('Unable to persist recovered allocation.');
+                if (! $candidate) {
+                    throw new \RuntimeException('Unable to persist recovered allocation.');
+                }
                 $intent->forceFill(['status' => 'recovered'])->save();
             });
 
@@ -63,7 +66,7 @@ final class RecoverBunnyAllocations extends Command
                 $this->recover(
                     $bunny,
                     $mediaRegistry,
-                    '[rokn:' . strtolower((string) $upload->idempotency_key) . ']',
+                    '[rokn:'.strtolower((string) $upload->idempotency_key).']',
                     function (string $guid) use ($upload): void {
                         $upload->forceFill([
                             'video_guid' => $guid,
@@ -78,7 +81,7 @@ final class RecoverBunnyAllocations extends Command
             ->whereNotNull('video_guid')
             ->where('updated_at', '<=', now()->subMinutes(5))
             ->orderBy('id')->limit($limit)->get()
-            ->each(function (BunnyDirectUpload $upload) use ($bunny, $mediaRegistry): void {
+            ->each(function (BunnyDirectUpload $upload) use ($mediaRegistry): void {
                 $candidate = $mediaRegistry->queueVideoCleanup(
                     (string) $upload->video_guid,
                     null,
@@ -86,7 +89,9 @@ final class RecoverBunnyAllocations extends Command
                     1,
                     false
                 );
-                if (!$candidate) throw new \RuntimeException('Unable to persist recovered allocation.');
+                if (! $candidate) {
+                    throw new \RuntimeException('Unable to persist recovered allocation.');
+                }
                 $upload->forceFill(['status' => 'failed', 'allocation_token' => null])->save();
             });
 
@@ -99,7 +104,7 @@ final class RecoverBunnyAllocations extends Command
                 $this->recover(
                     $bunny,
                     $mediaRegistry,
-                    '[rokn-portfolio:' . strtolower((string) $upload->idempotency_key) . ']',
+                    '[rokn-portfolio:'.strtolower((string) $upload->idempotency_key).']',
                     function (string $guid) use ($upload): void {
                         $upload->forceFill([
                             'video_guid' => $guid,
@@ -114,7 +119,7 @@ final class RecoverBunnyAllocations extends Command
             ->whereNotNull('video_guid')
             ->where('updated_at', '<=', now()->subMinutes(5))
             ->orderBy('id')->limit($limit)->get()
-            ->each(function (PortfolioVideoUpload $upload) use ($bunny, $mediaRegistry): void {
+            ->each(function (PortfolioVideoUpload $upload) use ($mediaRegistry): void {
                 $candidate = $mediaRegistry->queueVideoCleanup(
                     (string) $upload->video_guid,
                     null,
@@ -122,7 +127,9 @@ final class RecoverBunnyAllocations extends Command
                     1,
                     false
                 );
-                if (!$candidate) throw new \RuntimeException('Unable to persist recovered allocation.');
+                if (! $candidate) {
+                    throw new \RuntimeException('Unable to persist recovered allocation.');
+                }
                 $upload->forceFill(['status' => 'failed', 'allocation_token' => null])->save();
             });
 
@@ -130,6 +137,7 @@ final class RecoverBunnyAllocations extends Command
             ->whereIn('status', ['uploaded', 'recovered', 'failed'])
             ->where('updated_at', '<=', now()->subDays(7))
             ->delete();
+
         return self::SUCCESS;
     }
 
@@ -143,7 +151,9 @@ final class RecoverBunnyAllocations extends Command
                 1,
                 false
             );
-            if (!$candidate) throw new \RuntimeException('Unable to persist recovered allocation.');
+            if (! $candidate) {
+                throw new \RuntimeException('Unable to persist recovered allocation.');
+            }
             $commit($guid);
         }
     }

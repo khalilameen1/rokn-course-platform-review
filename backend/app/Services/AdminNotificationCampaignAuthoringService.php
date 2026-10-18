@@ -8,10 +8,10 @@ use App\Data\NotificationAuthoringInput;
 use App\Models\Course;
 use App\Models\NotificationCampaign;
 use App\Models\User;
-use App\Support\PublicDiskUrl;
 use App\Support\NotificationAudience;
 use App\Support\NotificationCampaignIntent;
 use App\Support\NotificationRecipientSelector;
+use App\Support\PublicDiskUrl;
 use App\Support\RoknAppLink;
 use Closure;
 use Illuminate\Http\UploadedFile;
@@ -27,8 +27,7 @@ final readonly class AdminNotificationCampaignAuthoringService
         private StoredFileDeletionService $files,
         private StoredFileUploadService $uploads,
         private NotificationCampaignService $campaigns,
-    ) {
-    }
+    ) {}
 
     /** @param Closure(?NotificationCampaign):void $completeIntent */
     public function author(NotificationAuthoringInput $input, Closure $completeIntent): NotificationCampaign
@@ -36,7 +35,7 @@ final readonly class AdminNotificationCampaignAuthoringService
         $targetStudent = $input->targetStudentId !== null
             ? User::query()->students()->findOrFail($input->targetStudentId)
             : null;
-        if ($targetStudent && (!(bool) $targetStudent->active || $targetStudent->trashed())) {
+        if ($targetStudent && (! (bool) $targetStudent->active || $targetStudent->trashed())) {
             throw ValidationException::withMessages([
                 'user_id' => ['فعّل حساب الطالب قبل إرسال الإشعار'],
             ]);
@@ -53,7 +52,7 @@ final readonly class AdminNotificationCampaignAuthoringService
             ? ($audience === 'enrolled' ? 'أكمل من مكانك' : 'تفاصيل الكورس')
             : 'افتح ركن');
         $link = $courseId
-            ? RoknAppLink::course($courseId, !$targetStudent && $audience === 'enrolled')
+            ? RoknAppLink::course($courseId, ! $targetStudent && $audience === 'enrolled')
             : (RoknAppLink::normalize($input->actionLink) ?: 'rokn://home');
         $scheduledAt = $this->scheduledAt($input->sendAt);
         $authorId = $input->authorId;
@@ -65,13 +64,13 @@ final readonly class AdminNotificationCampaignAuthoringService
 
         $requestId = strtolower($input->requestId);
         $deliveryKey = ($targetStudent
-            ? 'admin-message:' . $authorId . ':' . $targetStudent->id . ':'
-            : 'admin-broadcast:' . $authorId . ':') . $requestId;
+            ? 'admin-message:'.$authorId.':'.$targetStudent->id.':'
+            : 'admin-broadcast:'.$authorId.':').$requestId;
         if (strlen($deliveryKey) > 64) {
             $deliveryKey = hash('sha256', $deliveryKey);
         }
         $userIds = $targetStudent ? [(int) $targetStudent->id] : [];
-        $imageIdentity = ($targetStudent ? 'notification-user|' : 'notification-campaign|') . $deliveryKey;
+        $imageIdentity = ($targetStudent ? 'notification-user|' : 'notification-campaign|').$deliveryKey;
 
         $existing = NotificationCampaign::query()->where('delivery_key', $deliveryKey)->first();
         if ($existing) {
@@ -97,12 +96,12 @@ final readonly class AdminNotificationCampaignAuthoringService
                 $image,
                 'student-notifications',
                 'public',
-                $imageIdentity . '|' . hash_file('sha256', $image->getRealPath())
+                $imageIdentity.'|'.hash_file('sha256', $image->getRealPath())
             );
             // Keep the content identity in the filename for replay checks,
             // but never reuse bytes an earlier failed attempt may be deleting.
-            $imagePath = dirname($logicalPath) . '/' . pathinfo($logicalPath, PATHINFO_FILENAME)
-                . '-' . Str::uuid() . '.' . pathinfo($logicalPath, PATHINFO_EXTENSION);
+            $imagePath = dirname($logicalPath).'/'.pathinfo($logicalPath, PATHINFO_FILENAME)
+                .'-'.Str::uuid().'.'.pathinfo($logicalPath, PATHINFO_EXTENSION);
             $this->files->trackPotentialOrphan('public', $imagePath);
             $this->uploads->writeTrackedUpload($image, $imagePath, 'public', false);
             $imageUrl = PublicDiskUrl::from($imagePath);
@@ -139,7 +138,7 @@ final readonly class AdminNotificationCampaignAuthoringService
                 $campaign = NotificationCampaign::query()
                     ->where('delivery_key', $intent->deliveryKey)
                     ->first();
-                if (!$queued && !$campaign) {
+                if (! $queued && ! $campaign) {
                     throw ValidationException::withMessages([
                         'notification_kind' => ['هذا النوع متوقف حاليًا من إعدادات الإشعارات'],
                     ]);
@@ -148,7 +147,7 @@ final readonly class AdminNotificationCampaignAuthoringService
             }, 3);
             $committed = true;
         } finally {
-            if (!$committed && is_string($imagePath) && $imagePath !== '') {
+            if (! $committed && is_string($imagePath) && $imagePath !== '') {
                 $this->files->deleteOrQueue('public', $imagePath);
             }
         }
@@ -164,7 +163,7 @@ final readonly class AdminNotificationCampaignAuthoringService
         if ($individual) {
             return 'admin_message';
         }
-        if (!$courseId) {
+        if (! $courseId) {
             return $kind === 'service' ? 'service_notice' : 'admin_broadcast';
         }
 
@@ -179,7 +178,7 @@ final readonly class AdminNotificationCampaignAuthoringService
     {
         if ($courseId) {
             $course = Course::query()->find($courseId);
-            if (!$course) {
+            if (! $course) {
                 return 0;
             }
         }
@@ -208,12 +207,12 @@ final readonly class AdminNotificationCampaignAuthoringService
     {
         $course = Course::query()->findOrFail($courseId);
         $audit = $this->publishing->audit($course);
-        if ($course->is_coming_soon || !($audit['ready'] ?? false)) {
+        if ($course->is_coming_soon || ! ($audit['ready'] ?? false)) {
             throw ValidationException::withMessages([
                 'course_id' => ['لا يمكن إرسال الطالب إلى كورس غير جاهز للنشر'],
             ]);
         }
-        if (!$individual && $audience !== 'enrolled' && !$course->is_catalog_visible) {
+        if (! $individual && $audience !== 'enrolled' && ! $course->is_catalog_visible) {
             throw ValidationException::withMessages([
                 'course_id' => ['هذا الكورس مخفي من الكتالوج ولا يصلح لإشعار ترويجي'],
             ]);
@@ -236,7 +235,7 @@ final readonly class AdminNotificationCampaignAuthoringService
                 $expected['notificationType'],
                 $scheduledAt
             );
-            if (!$effectiveSchedule->isAfter(now()->addSeconds(30))) {
+            if (! $effectiveSchedule->isAfter(now()->addSeconds(30))) {
                 $effectiveSchedule = null;
             }
             $sameSchedule = $effectiveSchedule === null
@@ -262,7 +261,7 @@ final readonly class AdminNotificationCampaignAuthoringService
                 $image,
                 $expected['imageIdentity']
             ));
-        if (!$samePayload) {
+        if (! $samePayload) {
             throw ValidationException::withMessages([
                 'authoring_request_id' => ["تغيّرت بيانات الإشعار\nأعد فتح النموذج ثم أرسل"],
             ]);
@@ -279,7 +278,7 @@ final readonly class AdminNotificationCampaignAuthoringService
 
         return $storedIdentity !== '' && hash_equals(
             $storedIdentity,
-            hash('sha256', $identityPrefix . '|' . hash_file('sha256', $image->getRealPath()))
+            hash('sha256', $identityPrefix.'|'.hash_file('sha256', $image->getRealPath()))
         );
     }
 }

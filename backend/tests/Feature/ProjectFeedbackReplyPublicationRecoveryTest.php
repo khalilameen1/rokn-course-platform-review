@@ -80,7 +80,7 @@ final class ProjectFeedbackReplyPublicationRecoveryTest extends TestCase
         $injected = false;
         DB::listen(function (QueryExecuted $query) use (&$injected, $submission): void {
             $sql = str_replace(['"', '`'], '', $query->sql);
-            if (!$injected && str_contains($sql, 'select user_id from project_feedback_threads')) {
+            if (! $injected && str_contains($sql, 'select user_id from project_feedback_threads')) {
                 $injected = true;
                 User::query()->whereKey($submission->user_id)->update(['active' => false]);
             }
@@ -116,7 +116,7 @@ final class ProjectFeedbackReplyPublicationRecoveryTest extends TestCase
 
     private function fixture(): array
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill(['name' => 'Report learner', 'email' => Str::uuid().'@test.rokn',
             'password' => bcrypt('test'), 'active' => true, 'role' => 'client'])->save();
         app(AiConsentService::class)->record($user, true);
@@ -145,7 +145,7 @@ final class ProjectFeedbackReplyPublicationRecoveryTest extends TestCase
             'source_id' => $course->id, 'idempotency_key' => 'reply-publication:'.$order->id,
             'metadata' => ['order_id' => $order->id], 'occurred_at' => now()]);
         $order->forceFill(['wallet_transaction_id' => $transaction->id])->save();
-        $enrollment = new CourseEnrollment();
+        $enrollment = new CourseEnrollment;
         $enrollment->forceFill(['tenant_id' => 1, 'user_id' => $user->id, 'course_id' => $course->id,
             'order_id' => $order->id, 'access_plan_id' => $plan->id, 'access_plan_snapshot' => $terms,
             'is_active' => true, 'enrolled_at' => now()])->save();
@@ -155,6 +155,7 @@ final class ProjectFeedbackReplyPublicationRecoveryTest extends TestCase
             'evaluation_snapshot' => ProjectSubmissionEvaluationSnapshot::capture($project, $section, $enrollment, $terms),
             'effort_status' => 'valid', 'review_status' => 'passed', 'review_source' => 'graceful_fallback',
             'submitted_at' => now()->subMinutes(10), 'reviewed_at' => now()->subMinutes(5)]);
+
         return [$submission, $enrollment, $terms];
     }
 }

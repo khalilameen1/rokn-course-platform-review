@@ -14,16 +14,19 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
 /** Promote one newly attached upload only after Bunny finishes processing it. */
-final class ProbeLessonMedia implements ShouldQueue, ShouldBeUniqueUntilProcessing
+final class ProbeLessonMedia implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 12;
+
     public int $timeout = 45;
+
     // Coalesce duplicate dispatches only until a worker owns the job. Once
     // processing begins, a crashed/released attempt must not retain the lock
     // that the scheduled recovery command needs to redeliver stale media.
     public int $uniqueFor = 3600;
+
     public bool $failOnTimeout = true;
 
     /** @var list<string> */
@@ -49,17 +52,17 @@ final class ProbeLessonMedia implements ShouldQueue, ShouldBeUniqueUntilProcessi
 
     public function uniqueId(): string
     {
-        return 'lesson-media-probe:' . $this->lessonId . ':'
-            . $this->expectedVideoGuid;
+        return 'lesson-media-probe:'.$this->lessonId.':'
+            .$this->expectedVideoGuid;
     }
 
     public function handle(MediaReconciliationService $reconciliation): void
     {
         $lesson = Lesson::query()->with('course')->find($this->lessonId);
-        if (!$lesson || !$lesson->usesBunnyVideo() || !$lesson->course) {
+        if (! $lesson || ! $lesson->usesBunnyVideo() || ! $lesson->course) {
             return;
         }
-        if (!hash_equals(
+        if (! hash_equals(
             $this->expectedVideoGuid,
             strtolower(trim((string) $lesson->bunny_video_id))
         )) {
@@ -87,7 +90,7 @@ final class ProbeLessonMedia implements ShouldQueue, ShouldBeUniqueUntilProcessi
             ], true);
         if (
             $playbackStatus === 'failed'
-            || ($playbackStatus === 'ready' && !$hasTransientReadinessIssue)
+            || ($playbackStatus === 'ready' && ! $hasTransientReadinessIssue)
             || $this->attempts() >= $this->tries
         ) {
             return;

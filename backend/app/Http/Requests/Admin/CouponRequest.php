@@ -2,11 +2,11 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\Coupon;
 use App\Support\BusinessClock;
 use App\Support\UnicodeText;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use App\Models\Coupon;
 
 class CouponRequest extends FormRequest
 {
@@ -42,6 +42,7 @@ class CouponRequest extends FormRequest
         $intentCouponId = $this->isMethod('post')
             ? Coupon::withTrashed()->where('authoring_request_id', (string) $this->input('authoring_request_id'))->value('id')
             : null;
+
         return [
             'name_ar' => 'required|string|min:2|max:100',
             'name_en' => 'nullable|string|max:100',
@@ -76,7 +77,7 @@ class CouponRequest extends FormRequest
                     $validator->errors()->add('expiry_date', 'تاريخ الانتهاء يجب أن يكون اليوم أو بعده');
                 }
                 $startsAt = BusinessClock::localInputToUtc($this->input('starts_at'));
-                if ($startsAt && !$startsAt->lessThan($expiryDay->addDay()->startOfDay()->utc())) {
+                if ($startsAt && ! $startsAt->lessThan($expiryDay->addDay()->startOfDay()->utc())) {
                     $validator->errors()->add('starts_at', 'وقت البداية يجب أن يسبق نهاية الكوبون');
                 }
             } catch (\Throwable) {
@@ -94,7 +95,7 @@ class CouponRequest extends FormRequest
             'code' => 'كود الكوبون',
             'balance' => 'نسبة الخصم',
             'expiry_date' => 'تاريخ الانتهاء',
-            
+
         ];
     }
 }

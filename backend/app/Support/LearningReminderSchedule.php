@@ -10,7 +10,9 @@ use Carbon\CarbonInterface;
 final class LearningReminderSchedule
 {
     public const HOURS = [10, 15, 20];
+
     public const DEFAULT_HOUR = 20;
+
     public const DEFAULT_TIMEZONE = 'Africa/Cairo';
 
     public static function hour(mixed $value): int
@@ -21,6 +23,7 @@ final class LearningReminderSchedule
     public static function timezone(mixed $value): string
     {
         $zone = trim((string) $value);
+
         return in_array($zone, \DateTimeZone::listIdentifiers(\DateTimeZone::ALL_WITH_BC), true)
             ? $zone : self::DEFAULT_TIMEZONE;
     }
@@ -29,6 +32,7 @@ final class LearningReminderSchedule
     public static function dueHour(string $timezone, CarbonInterface $clock): ?int
     {
         $hour = (int) $clock->copy()->setTimezone(self::timezone($timezone))->format('G');
+
         return in_array($hour, self::HOURS, true) ? $hour : null;
     }
 }

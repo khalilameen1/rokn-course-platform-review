@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Http\Controllers\Admin\UsersController;
 use App\Models\User;
+use App\Services\StudentAccountStateService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -79,11 +80,11 @@ final class UserDeactivationSecurityTest extends TestCase
         app(UsersController::class)->deactive(
             Request::create('/dashboard/users/'.$user->id.'/deactive', 'POST', [
                 'expected_active' => true,
-                'state_version' => app(\App\Services\StudentAccountStateService::class)
+                'state_version' => app(StudentAccountStateService::class)
                     ->editorVersion($user),
             ]),
             $user,
-            app(\App\Services\StudentAccountStateService::class)
+            app(StudentAccountStateService::class)
         );
 
         $user->refresh();

@@ -133,7 +133,9 @@ final class AdminDesignSettingsAuthoringOwnershipTest extends TestCase
         try {
             app(AdminDesignSettingsAuthoringService::class)->save($this->fields(), [
                 'coin_image_file' => UploadedFile::fake()->image('stale.png'),
-            ], $stale, static function (): never { self::fail('A stale editor cannot complete a receipt.'); });
+            ], $stale, static function (): never {
+                self::fail('A stale editor cannot complete a receipt.');
+            });
             self::fail('Stale identity editors must fail before updating the row.');
         } catch (ValidationException $error) {
             self::assertArrayHasKey('editor_version', $error->errors());

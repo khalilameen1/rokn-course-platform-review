@@ -12,6 +12,7 @@ use Illuminate\Console\Command;
 final class RetryStalledNotificationCampaigns extends Command
 {
     protected $signature = 'notifications:retry-campaigns {--limit=50}';
+
     protected $description = 'Requeue notification campaigns that never completed their durable inbox delivery';
 
     public function handle(NotificationCampaignService $campaigns): int
@@ -85,7 +86,7 @@ final class RetryStalledNotificationCampaigns extends Command
                 NotificationCampaign::query()->whereKey($campaign->id)->update([
                     'status' => NotificationCampaign::STATUS_FAILED,
                     'failed_at' => now(),
-                    'failure_code' => 'recovery_queue_' . substr(hash('sha256', $exception::class), 0, 12),
+                    'failure_code' => 'recovery_queue_'.substr(hash('sha256', $exception::class), 0, 12),
                     'updated_at' => now(),
                 ]);
                 report($exception);
@@ -93,6 +94,7 @@ final class RetryStalledNotificationCampaigns extends Command
         }
 
         $this->info("Queued {$queued} stalled notification campaign(s).");
+
         return self::SUCCESS;
     }
 }

@@ -9,6 +9,7 @@ use App\Models\Lesson;
 final readonly class CourseSectionMediaStage
 {
     private ?string $previousVideo;
+
     private ?string $previousThumbnail;
 
     public function __construct(

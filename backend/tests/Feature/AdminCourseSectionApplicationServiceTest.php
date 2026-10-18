@@ -94,7 +94,9 @@ final class AdminCourseSectionApplicationServiceTest extends TestCase
         foreach ([[$module, 99, 'authoring_version'], [$foreignModule, 1, 'module_id']] as [$target, $version, $field]) {
             try {
                 $writer->store($course, $this->projectEdit($target, $version), null,
-                    static function (): never { self::fail('Invalid writes cannot complete a receipt.'); });
+                    static function (): never {
+                        self::fail('Invalid writes cannot complete a receipt.');
+                    });
                 self::fail('Invalid version or module must be rejected.');
             } catch (ValidationException $error) {
                 self::assertArrayHasKey($field, $error->errors());
@@ -212,6 +214,7 @@ final class AdminCourseSectionApplicationServiceTest extends TestCase
             'last_published_authoring_version' => 0, 'authoring_version' => 1,
         ]);
         $module = CourseModule::query()->create(['course_id' => $course->id, 'title_ar' => 'وحدة', 'order' => 1]);
+
         return [$course, $module];
     }
 
@@ -220,6 +223,7 @@ final class AdminCourseSectionApplicationServiceTest extends TestCase
         $lesson = Lesson::query()->create([
             'list_id' => $course->id, 'title_ar' => 'درس سابق', 'video_source_type' => 'bunny', 'duration_minutes' => 4,
         ]);
+
         return CourseSection::query()->create([
             'course_id' => $course->id, 'module_id' => $module->id, 'title_ar' => 'درس سابق',
             'order' => 1, 'sectionable_type' => Lesson::class, 'sectionable_id' => $lesson->id,

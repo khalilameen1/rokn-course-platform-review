@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Jobs\RecordQueueHeartbeat;
-use App\Models\Setting;
 use App\Models\Package;
+use App\Models\Setting;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
@@ -85,7 +85,7 @@ final class ProductionCapabilityService
         $bunny = [
             'stream' => $this->item(
                 $streamReady,
-                !$bunnyEnabled
+                ! $bunnyEnabled
                     ? 'Bunny متوقف من الإعدادات'
                     : ($streamReady ? 'مفتاح Stream ومعرّف المكتبة موجودان' : 'مفتاح Stream أو معرّف المكتبة ناقص')
             ),
@@ -125,7 +125,7 @@ final class ProductionCapabilityService
         $recoveryState = $this->recoveryEvidence->readiness();
         $recovery = [
             'ready' => (bool) ($recoveryState['ready'] ?? false)
-                && !(bool) ($recoveryState['recovery_mode'] ?? false),
+                && ! (bool) ($recoveryState['recovery_mode'] ?? false),
             'reason' => (bool) ($recoveryState['recovery_mode'] ?? false)
                 ? 'Recovery mode is active; payment and background mutations remain paused'
                 : ((bool) ($recoveryState['ready'] ?? false)
@@ -177,7 +177,7 @@ final class ProductionCapabilityService
         $kashierReady = $configured && $productionModeReady;
         $kashier = $this->item(
             $kashierReady,
-            !$configured
+            ! $configured
                 ? 'بيانات بوابة Kashier المختارة ناقصة'
                 : ($productionModeReady ? "Kashier مضبوط على {$mode}" : 'الإنتاج ما زال يستخدم وضع Kashier التجريبي')
         );
@@ -246,9 +246,9 @@ final class ProductionCapabilityService
             'app_store' => in_array(AppReleasePolicyService::CHANNEL_APP_STORE, $launchChannels, true),
         ];
         $ready = $launchChannels !== []
-            && (!$required['kashier'] || $kashierReady)
-            && (!$required['google_play'] || $googleReady)
-            && (!$required['app_store'] || $appleReady);
+            && (! $required['kashier'] || $kashierReady)
+            && (! $required['google_play'] || $googleReady)
+            && (! $required['app_store'] || $appleReady);
 
         return [
             'ready' => $ready,
@@ -268,13 +268,17 @@ final class ProductionCapabilityService
         if ($encoded !== '') {
             $decoded = base64_decode($encoded, true);
             $json = is_string($decoded) ? json_decode($decoded, true) : null;
-            if (is_array($json)) return $json;
+            if (is_array($json)) {
+                return $json;
+            }
         }
 
         $file = trim((string) $file);
         if ($file !== '' && is_file($file) && is_readable($file)) {
             $json = json_decode((string) file_get_contents($file), true);
-            if (is_array($json)) return $json;
+            if (is_array($json)) {
+                return $json;
+            }
         }
 
         return null;
@@ -285,7 +289,9 @@ final class ProductionCapabilityService
         $encoded = trim((string) $encoded);
         if ($encoded !== '') {
             $decoded = base64_decode($encoded, true);
-            if (is_string($decoded) && $decoded !== '') return $decoded;
+            if (is_string($decoded) && $decoded !== '') {
+                return $decoded;
+            }
         }
 
         $file = trim((string) $file);
@@ -407,7 +413,7 @@ final class ProductionCapabilityService
             'api.social.callback',
             'api.social.complete',
         ] as $routeName) {
-            if (!Route::has($routeName)) {
+            if (! Route::has($routeName)) {
                 return false;
             }
         }
@@ -458,8 +464,8 @@ final class ProductionCapabilityService
         $appLinks['android']['required'] = $requiresAndroid;
         $appLinks['apple']['required'] = $requiresApple;
         $appLinks['ready'] = $launchChannels !== []
-            && (!$requiresAndroid || $androidReady)
-            && (!$requiresApple || $appleReady);
+            && (! $requiresAndroid || $androidReady)
+            && (! $requiresApple || $appleReady);
         $requiredPlatforms = array_values(array_filter([
             $requiresAndroid ? 'Android' : null,
             $requiresApple ? 'Apple' : null,
@@ -494,8 +500,8 @@ final class ProductionCapabilityService
     private function queueCapability(): array
     {
         $driver = strtolower(trim((string) config('queue.default')));
-        $asynchronous = !in_array($driver, ['', 'sync', 'null'], true);
-        if (!$asynchronous) {
+        $asynchronous = ! in_array($driver, ['', 'sync', 'null'], true);
+        if (! $asynchronous) {
             return $this->item(false, 'QUEUE_CONNECTION متزامن ولا يناسب التشغيل الفعلي');
         }
         if (config('app.env') === 'production' && $driver !== 'redis') {
@@ -543,7 +549,7 @@ final class ProductionCapabilityService
 
         $missing = array_keys(array_filter(
             $queueChecks,
-            static fn (array $check): bool => !$check['ready']
+            static fn (array $check): bool => ! $check['ready']
         ));
         $fresh = $missing === [];
 
@@ -599,7 +605,7 @@ final class ProductionCapabilityService
         }
 
         $file = trim((string) config('firebase.credentials.file'));
-        if ($file === '' || !is_readable($file)) {
+        if ($file === '' || ! is_readable($file)) {
             return null;
         }
 
@@ -649,7 +655,7 @@ final class ProductionCapabilityService
         return is_array($parts)
             && strtolower((string) ($parts['scheme'] ?? '')) === 'https'
             && $this->validHostname((string) ($parts['host'] ?? ''))
-            && !isset($parts['user'], $parts['pass'], $parts['query'], $parts['fragment'])
+            && ! isset($parts['user'], $parts['pass'], $parts['query'], $parts['fragment'])
             && rtrim((string) ($parts['path'] ?? ''), '/') === '/api/v1';
     }
 
@@ -669,9 +675,9 @@ final class ProductionCapabilityService
         $hostname = strtolower(trim($hostname));
 
         return $hostname !== ''
-            && !str_contains($hostname, ':')
-            && !str_contains($hostname, '/')
-            && !str_contains($hostname, '@')
+            && ! str_contains($hostname, ':')
+            && ! str_contains($hostname, '/')
+            && ! str_contains($hostname, '@')
             && filter_var($hostname, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) !== false;
     }
 

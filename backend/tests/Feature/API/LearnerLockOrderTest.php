@@ -17,6 +17,7 @@ use Illuminate\Database\Query\Grammars\SQLiteGrammar;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 use Mockery;
 
 /**
@@ -307,7 +308,7 @@ final class LearnerLockOrderTest extends ApiTestCase
         ]);
     }
 
-    private function sample(PlaybackSession $session, int $sequence, int $position): \Illuminate\Testing\TestResponse
+    private function sample(PlaybackSession $session, int $sequence, int $position): TestResponse
     {
         return $this->actingAs($this->user, 'api')->postJson('/api/v1/user/watch-history', [
             'lesson_id' => $session->lesson_id,
@@ -324,7 +325,8 @@ final class LearnerLockOrderTest extends ApiTestCase
     {
         $connection = DB::connection();
         $original = $connection->getQueryGrammar();
-        $connection->setQueryGrammar(new class($connection) extends SQLiteGrammar {
+        $connection->setQueryGrammar(new class($connection) extends SQLiteGrammar
+        {
             protected function compileLock(Builder $query, $value)
             {
                 if (is_string($value)) {
@@ -342,7 +344,7 @@ final class LearnerLockOrderTest extends ApiTestCase
                 && preg_match('/\/\* lock:(update|shared) \*\/\s*$/', $query->sql, $lock)
                 && preg_match('/\sfrom\s+"([a-z_]+)"/', $query->sql, $table)
             ) {
-                $locks[] = $table[1] . ':' . $lock[1];
+                $locks[] = $table[1].':'.$lock[1];
             }
         });
 

@@ -6,9 +6,9 @@ namespace App\Services;
 
 use App\Models\AiInputAttachment;
 use App\Models\Course;
-use App\Models\User;
 use App\Models\CourseChatTurn;
 use App\Models\ProjectFeedbackMessage;
+use App\Models\User;
 use App\Support\DownloadFilename;
 use App\Support\UnicodeText;
 use Illuminate\Http\UploadedFile;
@@ -25,9 +25,7 @@ final class AiInputAttachmentService
     public function __construct(
         private readonly StoredFileDeletionService $storedFiles,
         private readonly StoredFileUploadService $uploads
-    )
-    {
-    }
+    ) {}
 
     /** @return list<string> */
     public function allowedMimeTypes(): array
@@ -52,7 +50,7 @@ final class AiInputAttachmentService
         };
 
         if ($officeMime !== null) {
-            if (!in_array($detected, [
+            if (! in_array($detected, [
                 $officeMime,
                 'application/zip',
                 'application/x-zip-compressed',
@@ -95,7 +93,7 @@ final class AiInputAttachmentService
             throw new UnexpectedValueException('Unsupported AI attachment type.');
         }
         $sha = hash_file('sha256', $file->getRealPath());
-        if (!is_string($sha)) {
+        if (! is_string($sha)) {
             throw new \RuntimeException('Unable to fingerprint AI attachment.');
         }
         $size = (int) $file->getSize();
@@ -110,6 +108,7 @@ final class AiInputAttachmentService
             ->first();
         if ($existing) {
             $this->assertReplay($existing, $course, $purpose, $sha, $size);
+
             return $existing;
         }
         $disk = (string) config('projects.submission_disk', 'local');
@@ -136,6 +135,7 @@ final class AiInputAttachmentService
                 ->lockForUpdate()->first();
             if ($existing) {
                 $this->assertReplay($existing, $course, $purpose, $sha, $size);
+
                 return $existing;
             }
             $staged = AiInputAttachment::query()
@@ -148,6 +148,7 @@ final class AiInputAttachmentService
                 || (int) (clone $staged)->sum('size_bytes') + $size > $maxBytes) {
                 throw new UnexpectedValueException('AI attachment staging limit reached.');
             }
+
             return AiInputAttachment::query()->create([
                 'public_id' => (string) Str::uuid(), 'user_id' => $user->id,
                 'course_id' => $course->id, 'client_upload_id' => $clientUploadId,
@@ -176,6 +177,7 @@ final class AiInputAttachmentService
             if ($updated !== 1) {
                 throw new \RuntimeException('AI attachment reservation was lost.');
             }
+
             return $reservation->fresh();
         } catch (Throwable $exception) {
             AiInputAttachment::query()
@@ -189,18 +191,26 @@ final class AiInputAttachmentService
 
     private function isGenuineOoxml(UploadedFile $file, string $extension): bool
     {
-        if (!class_exists(ZipArchive::class)) return false;
+        if (! class_exists(ZipArchive::class)) {
+            return false;
+        }
         $path = $file->getRealPath();
-        if (!is_string($path) || $path === '' || !is_readable($path)) return false;
+        if (! is_string($path) || $path === '' || ! is_readable($path)) {
+            return false;
+        }
         $signature = file_get_contents($path, false, null, 0, 4);
-        if (!is_string($signature) || !in_array($signature, ["PK\x03\x04", "PK\x05\x06"], true)) {
+        if (! is_string($signature) || ! in_array($signature, ["PK\x03\x04", "PK\x05\x06"], true)) {
             return false;
         }
 
-        $zip = new ZipArchive();
-        if ($zip->open($path, ZipArchive::CHECKCONS) !== true) return false;
+        $zip = new ZipArchive;
+        if ($zip->open($path, ZipArchive::CHECKCONS) !== true) {
+            return false;
+        }
         try {
-            if ($zip->numFiles < 3 || $zip->numFiles > 10000) return false;
+            if ($zip->numFiles < 3 || $zip->numFiles > 10000) {
+                return false;
+            }
             $main = $extension === 'docx' ? 'word/document.xml' : 'ppt/presentation.xml';
             if ($zip->locateName('[Content_Types].xml') === false
                 || $zip->locateName('_rels/.rels') === false
@@ -217,10 +227,14 @@ final class AiInputAttachmentService
                 }
                 $stat = $zip->statIndex($index);
                 $expandedBytes += max(0, (int) ($stat['size'] ?? 0));
-                if ($expandedBytes > 104857600) return false;
+                if ($expandedBytes > 104857600) {
+                    return false;
+                }
             }
             $typesStat = $zip->statName('[Content_Types].xml');
-            if (!is_array($typesStat) || (int) ($typesStat['size'] ?? 0) > 1048576) return false;
+            if (! is_array($typesStat) || (int) ($typesStat['size'] ?? 0) > 1048576) {
+                return false;
+            }
             $types = $zip->getFromName('[Content_Types].xml');
             $marker = $extension === 'docx'
                 ? 'wordprocessingml.document.main+xml'
@@ -283,12 +297,14 @@ final class AiInputAttachmentService
         int $ownerId
     ): Collection {
         $publicIds = array_values(array_unique(array_filter($publicIds)));
-        if ($publicIds === []) return collect();
+        if ($publicIds === []) {
+            return collect();
+        }
 
         return DB::transaction(function () use (
             $user, $course, $publicIds, $purpose, $ownerType, $ownerId
         ): Collection {
-            if (!User::query()->whereKey($user->id)->where('active', true)
+            if (! User::query()->whereKey($user->id)->where('active', true)
                 ->lockForUpdate()->exists()) {
                 throw new UnexpectedValueException('AI attachment owner is unavailable.');
             }
@@ -313,7 +329,7 @@ final class AiInputAttachmentService
                     $attachment->owner_type !== $ownerType
                     || (int) $attachment->owner_id !== $ownerId
                 )) {
-                    if (!$this->ownerIsTerminal($attachment)) {
+                    if (! $this->ownerIsTerminal($attachment)) {
                         throw new UnexpectedValueException('AI attachment ownership conflict.');
                     }
                     $attachment = AiInputAttachment::query()->create([
@@ -328,6 +344,7 @@ final class AiInputAttachmentService
                         'owner_id' => $ownerId,
                     ]);
                     $claimed->push($attachment);
+
                     continue;
                 }
                 $attachment->forceFill([
@@ -336,6 +353,7 @@ final class AiInputAttachmentService
                 ])->save();
                 $claimed->push($attachment);
             }
+
             return $claimed;
         }, 3);
     }
@@ -352,6 +370,7 @@ final class AiInputAttachmentService
                 ->whereIn('status', [ProjectFeedbackMessage::FAILED, ProjectFeedbackMessage::CANCELLED])
                 ->exists();
         }
+
         return false;
     }
 
@@ -372,19 +391,20 @@ final class AiInputAttachmentService
         $maxBytes = max(1024, (int) config('openrouter.attachment_provider_max_bytes', 8388608));
         foreach ($attachments as $attachment) {
             $disk = Storage::disk((string) $attachment->storage_disk);
-            if ((int) $attachment->size_bytes > $maxBytes || !$disk->exists($attachment->storage_path)) {
+            if ((int) $attachment->size_bytes > $maxBytes || ! $disk->exists($attachment->storage_path)) {
                 throw new UnexpectedValueException('AI attachment is unavailable or exceeds the provider limit.');
             }
             $bytes = $disk->get($attachment->storage_path);
-            if (!is_string($bytes) || $bytes === '') {
+            if (! is_string($bytes) || $bytes === '') {
                 throw new UnexpectedValueException('AI attachment is empty or unreadable.');
             }
             $mime = strtolower((string) $attachment->mime_type);
             if (str_starts_with($mime, 'image/')) {
                 $parts[] = [
                     'type' => 'image_url',
-                    'image_url' => ['url' => "data:{$mime};base64," . base64_encode($bytes)],
+                    'image_url' => ['url' => "data:{$mime};base64,".base64_encode($bytes)],
                 ];
+
                 continue;
             }
             if ($mime === 'text/plain') {
@@ -392,8 +412,9 @@ final class AiInputAttachmentService
                 $parts[] = [
                     'type' => 'text',
                     'text' => "FILE {$attachment->original_file_name}\n"
-                        . $plain,
+                        .$plain,
                 ];
+
                 continue;
             }
             if ($mime === 'application/pdf') {
@@ -401,18 +422,20 @@ final class AiInputAttachmentService
                     'type' => 'file',
                     'file' => [
                         'filename' => (string) $attachment->original_file_name,
-                        'file_data' => "data:{$mime};base64," . base64_encode($bytes),
+                        'file_data' => "data:{$mime};base64,".base64_encode($bytes),
                     ],
                 ];
+
                 continue;
             }
             $text = $this->officeTextFromBytes($bytes, $mime, $preserveFullText);
             $text = $this->safeExtractedText($text, $preserveFullText);
             $parts[] = [
                 'type' => 'text',
-                'text' => "FILE {$attachment->original_file_name}\n" . $text,
+                'text' => "FILE {$attachment->original_file_name}\n".$text,
             ];
         }
+
         return $parts;
     }
 
@@ -420,12 +443,17 @@ final class AiInputAttachmentService
     public function reviewInputCharacterCount(UploadedFile $file): int
     {
         $mime = (string) $this->canonicalMime($file);
-        if (str_starts_with($mime, 'image/') || $mime === 'application/pdf') return 0;
+        if (str_starts_with($mime, 'image/') || $mime === 'application/pdf') {
+            return 0;
+        }
         $bytes = file_get_contents($file->getRealPath());
-        if (!is_string($bytes)) throw new UnexpectedValueException('Attachment cannot be read.');
+        if (! is_string($bytes)) {
+            throw new UnexpectedValueException('Attachment cannot be read.');
+        }
         $text = $this->safeExtractedText($mime === 'text/plain'
             ? $bytes : $this->officeTextFromBytes($bytes, $mime, true), true);
         $name = DownloadFilename::safe($file->getClientOriginalName(), 'project-submission', $this->canonicalExtension($mime));
+
         return mb_strlen("FILE {$name}\n".$text);
     }
 
@@ -433,13 +461,18 @@ final class AiInputAttachmentService
     {
         foreach ($attachments as $attachment) {
             $matched = array_values(array_filter($annotations, static function ($annotation) use ($attachment): bool {
-                if (!is_array($annotation)) return false;
+                if (! is_array($annotation)) {
+                    return false;
+                }
                 $hash = strtolower(trim((string) data_get($annotation, 'file.hash', '')));
                 $name = trim((string) data_get($annotation, 'file.name', data_get($annotation, 'file.filename', '')));
+
                 return ($hash !== '' && hash_equals(strtolower((string) $attachment->sha256), $hash))
                     || ($name !== '' && $name === (string) $attachment->original_file_name);
             }));
-            if ($matched === [] && $attachments->count() === 1) $matched = $annotations;
+            if ($matched === [] && $attachments->count() === 1) {
+                $matched = $annotations;
+            }
             $attachment->forceFill([
                 'provider_annotations' => $matched === [] ? null : $matched,
                 'processed_at' => now(),
@@ -450,8 +483,7 @@ final class AiInputAttachmentService
 
     public function providerAnnotations(Collection $attachments): array
     {
-        return $attachments->flatMap(static fn (AiInputAttachment $attachment): array =>
-            is_array($attachment->provider_annotations) ? $attachment->provider_annotations : []
+        return $attachments->flatMap(static fn (AiInputAttachment $attachment): array => is_array($attachment->provider_annotations) ? $attachment->provider_annotations : []
         )->unique(static fn ($annotation): string => hash('sha256', json_encode($annotation) ?: ''))
             ->values()->all();
     }
@@ -460,13 +492,14 @@ final class AiInputAttachmentService
     {
         return (int) $attachments->sum(function (AiInputAttachment $attachment): int {
             $disk = Storage::disk((string) $attachment->storage_disk);
-            if (!$disk->exists((string) $attachment->storage_path)) {
+            if (! $disk->exists((string) $attachment->storage_path)) {
                 throw new UnexpectedValueException('AI attachment is unavailable.');
             }
             $bytes = $disk->get((string) $attachment->storage_path);
-            if (!is_string($bytes) || $bytes === '') {
+            if (! is_string($bytes) || $bytes === '') {
                 throw new UnexpectedValueException('AI attachment is unreadable.');
             }
+
             return $this->estimateSemanticTokens(
                 strtolower((string) $attachment->mime_type),
                 $bytes
@@ -477,13 +510,14 @@ final class AiInputAttachmentService
     public function estimatedUploadedFileTokens(UploadedFile $file): int
     {
         $bytes = file_get_contents($file->getRealPath());
-        if (!is_string($bytes) || $bytes === '') {
+        if (! is_string($bytes) || $bytes === '') {
             throw new UnexpectedValueException('AI attachment is unreadable.');
         }
         $mime = $this->canonicalMime($file);
         if ($mime === null) {
             throw new UnexpectedValueException('Unsupported AI attachment type.');
         }
+
         return $this->estimateSemanticTokens($mime, $bytes);
     }
 
@@ -491,7 +525,7 @@ final class AiInputAttachmentService
     {
         if (str_starts_with($mime, 'image/')) {
             $dimensions = @getimagesizefromstring($bytes);
-            if (!is_array($dimensions)) {
+            if (! is_array($dimensions)) {
                 throw new UnexpectedValueException('AI image dimensions are unreadable.');
             }
             // Claude's published vision cost: about width x height / 750
@@ -502,6 +536,7 @@ final class AiInputAttachmentService
             $width = max(1, (int) $dimensions[0]);
             $height = max(1, (int) $dimensions[1]);
             $scale = min(1, 2576 / max($width, $height));
+
             return min(4784, max(1, (int) ceil(($width * $scale) * ($height * $scale) / 750)));
         }
         if ($mime === 'application/pdf') {
@@ -509,24 +544,32 @@ final class AiInputAttachmentService
             // Compressed PDFs can hide page dictionaries. The byte-derived
             // floor prevents a large scan from masquerading as one page.
             $pages = max(count($matches[0]), (int) ceil(strlen($bytes) / 200000), 1);
+
             return min(60000, 300 + ($pages * 1100));
         }
         if ($mime === 'text/plain') {
             return max(80, (int) ceil(mb_strlen($this->safeExtractedText($bytes)) / 3.2));
         }
         $text = $this->safeExtractedText($this->officeTextFromBytes($bytes, $mime));
+
         return max(100, (int) ceil(mb_strlen($text) / 3.2));
     }
 
     private function officeTextFromBytes(string $bytes, string $mime, bool $preserveFullText = false): string
     {
-        if (!class_exists(ZipArchive::class) || $bytes === '') return '';
+        if (! class_exists(ZipArchive::class) || $bytes === '') {
+            return '';
+        }
         $temporary = tempnam(sys_get_temp_dir(), 'rokn-ai-');
-        if (!is_string($temporary)) return '';
+        if (! is_string($temporary)) {
+            return '';
+        }
         try {
             file_put_contents($temporary, $bytes);
-            $zip = new ZipArchive();
-            if ($zip->open($temporary) !== true) return '';
+            $zip = new ZipArchive;
+            if ($zip->open($temporary) !== true) {
+                return '';
+            }
             $files = $mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
                 ? ['word/document.xml']
                 : array_values(array_filter(
@@ -549,6 +592,7 @@ final class AiInputAttachmentService
                         $zip->close();
                         throw new UnexpectedValueException('The whole document cannot be extracted within the review limit.');
                     }
+
                     continue;
                 }
                 $xml = $zip->getFromName($file);
@@ -558,6 +602,7 @@ final class AiInputAttachmentService
                 }
             }
             $zip->close();
+
             return trim(implode("\n", $chunks));
         } finally {
             @unlink($temporary);
@@ -566,7 +611,7 @@ final class AiInputAttachmentService
 
     private function safeExtractedText(string $bytes, bool $preserveFullText = false): string
     {
-        if ($bytes === '' || !mb_check_encoding($bytes, 'UTF-8')) {
+        if ($bytes === '' || ! mb_check_encoding($bytes, 'UTF-8')) {
             throw new UnexpectedValueException('Attachment text encoding is unsupported.');
         }
         $text = UnicodeText::clean((string) preg_replace(
@@ -576,6 +621,7 @@ final class AiInputAttachmentService
         if ($text === '') {
             throw new UnexpectedValueException('Attachment contains no readable text.');
         }
+
         return $text;
     }
 
@@ -583,7 +629,9 @@ final class AiInputAttachmentService
     {
         for ($index = 0; $index < $zip->numFiles; $index++) {
             $name = $zip->getNameIndex($index);
-            if (is_string($name)) yield $name;
+            if (is_string($name)) {
+                yield $name;
+            }
         }
     }
 
@@ -598,7 +646,7 @@ final class AiInputAttachmentService
             (int) $attachment->course_id !== (int) $course->id
             || $attachment->purpose !== $purpose
             || $attachment->status !== AiInputAttachment::READY
-            || !hash_equals((string) $attachment->sha256, $sha)
+            || ! hash_equals((string) $attachment->sha256, $sha)
             || (int) $attachment->size_bytes !== $size
         ) {
             throw new UnexpectedValueException('AI upload id was reused for different content.');

@@ -1,6 +1,29 @@
 <?php
 
+use App\Http\Controllers\AccountDeletionRequestController;
+use App\Http\Controllers\API\PaymentController;
+use App\Http\Controllers\AppAssociationController;
+use App\Http\Controllers\AppLinkFallbackController;
+use App\Http\Controllers\CourseBrowserPaymentController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\LandingPageController;
+use App\Http\Controllers\PaymentEvidenceController;
+use App\Http\Controllers\PortfolioReportController;
+use App\Http\Controllers\PreviewAppDownloadController;
+use App\Http\Controllers\PublicCertificateController;
+use App\Http\Controllers\PublicPortfolioController;
+use App\Http\Controllers\PublicPortfolioMediaController;
+use App\Http\Controllers\StaticPageController;
+use App\Http\Controllers\WebWalletAuthController;
+use App\Http\Controllers\WebWalletController;
+use App\Http\Middleware\ApplyLocale;
+use App\Http\Middleware\EncryptCookies;
+use App\Http\Middleware\StudentWalletSession;
+use App\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 /*
 |--------------------------------------------------------------------------
@@ -13,115 +36,115 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/.well-known/assetlinks.json', [\App\Http\Controllers\AppAssociationController::class, 'android'])
+Route::get('/.well-known/assetlinks.json', [AppAssociationController::class, 'android'])
     ->name('app-association.android');
-Route::get('/.well-known/apple-app-site-association', [\App\Http\Controllers\AppAssociationController::class, 'apple'])
+Route::get('/.well-known/apple-app-site-association', [AppAssociationController::class, 'apple'])
     ->name('app-association.apple');
-Route::get('/apple-app-site-association', [\App\Http\Controllers\AppAssociationController::class, 'apple'])
+Route::get('/apple-app-site-association', [AppAssociationController::class, 'apple'])
     ->name('app-association.apple.root');
 
-Route::get('/', [\App\Http\Controllers\LandingPageController::class, 'index'])->name('landing');
-Route::get('/course-payment/{checkoutId}', \App\Http\Controllers\CourseBrowserPaymentController::class)
+Route::get('/', [LandingPageController::class, 'index'])->name('landing');
+Route::get('/course-payment/{checkoutId}', CourseBrowserPaymentController::class)
     ->whereUuid('checkoutId')
     ->middleware(['signed', 'throttle:60,1'])
     ->name('course-payment.show');
-Route::get('/downloads/rokn-preview.apk', \App\Http\Controllers\PreviewAppDownloadController::class)
+Route::get('/downloads/rokn-preview.apk', PreviewAppDownloadController::class)
     ->name('app-download.preview');
 // Separate from /wallet, which is an installed-app link. The website uses
 // the same learner and ledger without changing app checkout or staff login.
 Route::prefix('recharge')->name('web-wallet.')
-    ->middleware(\App\Http\Middleware\StudentWalletSession::class)->group(function () {
-        Route::get('/', [\App\Http\Controllers\WebWalletController::class, 'index'])->name('index');
-        Route::get('auth/complete', [\App\Http\Controllers\WebWalletAuthController::class, 'complete'])
+    ->middleware(StudentWalletSession::class)->group(function () {
+        Route::get('/', [WebWalletController::class, 'index'])->name('index');
+        Route::get('auth/complete', [WebWalletAuthController::class, 'complete'])
             ->middleware('throttle:web-wallet-auth-complete')->name('auth.complete');
-        Route::get('auth/{provider}', [\App\Http\Controllers\WebWalletAuthController::class, 'start'])
+        Route::get('auth/{provider}', [WebWalletAuthController::class, 'start'])
             ->whereIn('provider', ['google', 'facebook', 'tiktok'])->middleware('throttle:web-wallet-auth-start')->name('auth.start');
-        Route::post('logout', [\App\Http\Controllers\WebWalletAuthController::class, 'logout'])->name('logout');
-        Route::get('callback', [\App\Http\Controllers\WebWalletController::class, 'callback'])
+        Route::post('logout', [WebWalletAuthController::class, 'logout'])->name('logout');
+        Route::get('callback', [WebWalletController::class, 'callback'])
             ->middleware(['recovery.write', 'throttle:kashier-callback'])->name('callback');
-        Route::middleware(\App\Http\Middleware\StudentWalletSession::class.':required')->group(function () {
-            Route::post('checkout', [\App\Http\Controllers\WebWalletController::class, 'pay'])
+        Route::middleware(StudentWalletSession::class.':required')->group(function () {
+            Route::post('checkout', [WebWalletController::class, 'pay'])
                 ->middleware('throttle:web-wallet-write')->name('pay');
-            Route::get('orders/{orderRef}', [\App\Http\Controllers\WebWalletController::class, 'receipt'])->name('receipt');
-            Route::get('orders/{orderRef}/status', [\App\Http\Controllers\WebWalletController::class, 'status'])
+            Route::get('orders/{orderRef}', [WebWalletController::class, 'receipt'])->name('receipt');
+            Route::get('orders/{orderRef}/status', [WebWalletController::class, 'status'])
                 ->middleware('throttle:web-wallet-read')->name('status');
-            Route::post('orders/{orderRef}/reconcile', [\App\Http\Controllers\WebWalletController::class, 'reconcile'])
+            Route::post('orders/{orderRef}/reconcile', [WebWalletController::class, 'reconcile'])
                 ->middleware(['recovery.write', 'throttle:web-wallet-reconcile'])->name('reconcile');
-            Route::post('orders/{orderRef}/resume', [\App\Http\Controllers\WebWalletController::class, 'resume'])
+            Route::post('orders/{orderRef}/resume', [WebWalletController::class, 'resume'])
                 ->middleware('throttle:web-wallet-write')->name('resume');
-            Route::post('orders/{orderRef}/abandon', [\App\Http\Controllers\WebWalletController::class, 'abandon'])
+            Route::post('orders/{orderRef}/abandon', [WebWalletController::class, 'abandon'])
                 ->middleware(['recovery.write', 'throttle:web-wallet-reconcile'])->name('abandon');
         });
     });
-Route::get('/profile', \App\Http\Controllers\AppLinkFallbackController::class)
+Route::get('/profile', AppLinkFallbackController::class)
     ->name('app-link.profile-fallback');
-Route::get('/wallet', \App\Http\Controllers\AppLinkFallbackController::class)
+Route::get('/wallet', AppLinkFallbackController::class)
     ->name('app-link.wallet-fallback');
-Route::get('/support/{case}', \App\Http\Controllers\AppLinkFallbackController::class)
+Route::get('/support/{case}', AppLinkFallbackController::class)
     ->where('case', '[0-9A-HJKMNP-TV-Z]{26}')
     ->name('app-link.support-fallback');
 foreach (['course', 'courses'] as $coursePrefix) {
-    Route::get("/{$coursePrefix}/{course}", \App\Http\Controllers\AppLinkFallbackController::class)
+    Route::get("/{$coursePrefix}/{course}", AppLinkFallbackController::class)
         ->whereNumber('course');
-    Route::get("/{$coursePrefix}/{course}/watch/{reel?}", \App\Http\Controllers\AppLinkFallbackController::class)
+    Route::get("/{$coursePrefix}/{course}/watch/{reel?}", AppLinkFallbackController::class)
         ->whereNumber('course')
         ->whereNumber('reel');
-    Route::get("/{$coursePrefix}/{course}/lesson/{lesson}", \App\Http\Controllers\AppLinkFallbackController::class)
+    Route::get("/{$coursePrefix}/{course}/lesson/{lesson}", AppLinkFallbackController::class)
         ->whereNumber('course')
         ->whereNumber('lesson');
 }
-Route::get('/about', [\App\Http\Controllers\StaticPageController::class, 'about'])->name('about');
-Route::get('/contact', [\App\Http\Controllers\StaticPageController::class, 'contact'])->name('contact');
-Route::get('/privacy-policy', [\App\Http\Controllers\StaticPageController::class, 'privacy'])->name('privacy');
-Route::get('/terms', [\App\Http\Controllers\StaticPageController::class, 'terms'])->name('terms');
-Route::get('/returns-policy', [\App\Http\Controllers\StaticPageController::class, 'returnsPolicy'])->name('returns-policy');
-Route::get('/account-deletion', [\App\Http\Controllers\AccountDeletionRequestController::class, 'show'])
+Route::get('/about', [StaticPageController::class, 'about'])->name('about');
+Route::get('/contact', [StaticPageController::class, 'contact'])->name('contact');
+Route::get('/privacy-policy', [StaticPageController::class, 'privacy'])->name('privacy');
+Route::get('/terms', [StaticPageController::class, 'terms'])->name('terms');
+Route::get('/returns-policy', [StaticPageController::class, 'returnsPolicy'])->name('returns-policy');
+Route::get('/account-deletion', [AccountDeletionRequestController::class, 'show'])
     ->name('account-deletion.show');
-Route::post('/account-deletion', [\App\Http\Controllers\AccountDeletionRequestController::class, 'store'])
+Route::post('/account-deletion', [AccountDeletionRequestController::class, 'store'])
     ->middleware('throttle:5,1')
     ->name('account-deletion.store');
 
-Route::get('/payment-evidence/{order}', [\App\Http\Controllers\PaymentEvidenceController::class, 'show'])
+Route::get('/payment-evidence/{order}', [PaymentEvidenceController::class, 'show'])
     ->whereNumber('order')
     ->middleware(['signed', 'throttle:60,1'])
     ->name('payment.evidence');
 
-Route::get('/c/{publicId}', [\App\Http\Controllers\PublicCertificateController::class, 'show'])
+Route::get('/c/{publicId}', [PublicCertificateController::class, 'show'])
     ->whereUuid('publicId')
     ->middleware('throttle:60,1')
     ->name('certificate.public');
-Route::get('/c/{publicId}/artifact', [\App\Http\Controllers\PublicCertificateController::class, 'artifact'])
+Route::get('/c/{publicId}/artifact', [PublicCertificateController::class, 'artifact'])
     ->whereUuid('publicId')
     ->middleware('throttle:60,1')
     ->name('certificate.artifact');
-Route::get('/c/{publicId}/download', [\App\Http\Controllers\PublicCertificateController::class, 'download'])
+Route::get('/c/{publicId}/download', [PublicCertificateController::class, 'download'])
     ->whereUuid('publicId')
     ->middleware('throttle:30,1')
     ->name('certificate.download');
-Route::get('/@{slug}/media/{mediaId}', [\App\Http\Controllers\PublicPortfolioMediaController::class, 'portfolio'])
+Route::get('/@{slug}/media/{mediaId}', [PublicPortfolioMediaController::class, 'portfolio'])
     ->where('slug', '[a-z0-9-]+')
     ->whereUuid('mediaId')
     ->middleware('throttle:240,1')
     // Cookie-free so the approved-media redirect can be cached publicly.
     ->withoutMiddleware([
-        \App\Http\Middleware\EncryptCookies::class,
-        \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-        \Illuminate\Session\Middleware\StartSession::class,
-        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-        \App\Http\Middleware\VerifyCsrfToken::class,
-        \App\Http\Middleware\ApplyLocale::class,
+        EncryptCookies::class,
+        AddQueuedCookiesToResponse::class,
+        StartSession::class,
+        ShareErrorsFromSession::class,
+        VerifyCsrfToken::class,
+        ApplyLocale::class,
     ])
     ->name('portfolio.media');
-Route::get('/@{slug}/p/{projectId}', [\App\Http\Controllers\PublicPortfolioController::class, 'project'])
+Route::get('/@{slug}/p/{projectId}', [PublicPortfolioController::class, 'project'])
     ->where('slug', '[a-z0-9-]+')
     ->whereUuid('projectId')
     ->middleware('throttle:60,1')
     ->name('portfolio.project');
-Route::get('/@{slug}', [\App\Http\Controllers\PublicPortfolioController::class, 'show'])
+Route::get('/@{slug}', [PublicPortfolioController::class, 'show'])
     ->where('slug', '[a-z0-9-]+')
     ->middleware('throttle:60,1')
     ->name('portfolio.public');
-Route::post('/@{slug}/report', [\App\Http\Controllers\PortfolioReportController::class, 'store'])
+Route::post('/@{slug}/report', [PortfolioReportController::class, 'store'])
     ->where('slug', '[a-z0-9-]+')
     ->middleware('throttle:5,1')
     ->name('portfolio.report');
@@ -179,7 +202,7 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
         ->whereNumber('user')->middleware(['admin.only', 'admin.audit'])->name('portfolio-reviews.decide');
     Route::get('feedback', 'FeedbackController@index')->middleware('admin.only')->name('feedback.index');
     Route::get('feedback/{feedback}', 'FeedbackController@show')->middleware('admin.only')->name('feedback.show');
-    Route::post('feedback/{feedback}/portfolio-sharing', [\App\Http\Controllers\PortfolioReportController::class, 'moderate'])
+    Route::post('feedback/{feedback}/portfolio-sharing', [PortfolioReportController::class, 'moderate'])
         ->middleware('admin.only')->name('feedback.portfolio-sharing');
     Route::patch('feedback/{feedback}', 'FeedbackController@update')->middleware('admin.only')->name('feedback.update');
     Route::post('feedback/{feedback}/messages', 'FeedbackController@message')->middleware(['admin.only', 'admin.audit'])->name('feedback.message');
@@ -273,10 +296,9 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::post('course-codes/bulk-action', 'CourseCodeController@bulkAction')->middleware(['admin.only', 'throttle:admin-bulk'])->name('course-codes.bulk-action');
     Route::resource('course-codes', 'CourseCodeController')->middleware('admin.only');
 
-
     Route::name('admin_data')->get('admin_data', 'SettingsController@adminData');
     Route::name('update_admin_data')->post('update_admin_data', 'SettingsController@updateAdminData');
-    
+
     // Teacher routes
     Route::resource('teachers', 'TeacherController')->except(['destroy']);
     Route::resource('teachers', 'TeacherController')->only(['destroy'])->middleware('admin.only');
@@ -330,11 +352,11 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::name('users.deactive')->patch('users/{user}/status', 'UsersController@deactive')->middleware('admin.only');
     Route::name('users.reset-device')->post('users/{user}/reset-device', 'UsersController@resetDevice')->middleware('admin.only');
 
-    /* ====== Student Progress =======*/
+    /* ====== Student Progress ======= */
     Route::name('student-progress.index')->get('student-progress', 'StudentProgressController@index')->middleware('admin.only');
     Route::name('student-progress.show')->get('student-progress/{user}', 'StudentProgressController@show')->middleware('admin.only');
 
-    /* ====== Project Submissions =======*/
+    /* ====== Project Submissions ======= */
     Route::get('project-submissions', 'ProjectSubmissionController@index')->name('project-submissions.index');
     Route::get('project-submissions/{projectSubmission}', 'ProjectSubmissionController@show')->name('project-submissions.show');
     Route::get('project-submissions/{projectSubmission}/download', 'ProjectSubmissionController@download')->name('project-submissions.download');
@@ -342,14 +364,14 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::post('project-submissions/{projectSubmission}/pass', 'ProjectSubmissionController@pass')->name('project-submissions.pass');
     Route::post('project-submissions/{projectSubmission}/reject', 'ProjectSubmissionController@reject')->name('project-submissions.reject');
 
-    /* ====== Orders =======*/
+    /* ====== Orders ======= */
     Route::get('orders/export', 'OrdersController@export')
         ->middleware(['admin.only', 'throttle:admin-bulk'])->name('orders.export');
     Route::resource('orders', 'OrdersController', ['only' => ['index', 'show']])->middleware('admin.only');
     Route::post('orders/{order}/financial-resolution', 'OrdersController@resolveFinancialReview')->middleware('admin.only')->name('orders.resolve-financial-review');
     Route::post('orders/{order}/course-compensation', 'OrdersController@compensateCourse')->middleware('admin.only')->name('orders.compensate-course');
     Route::post('orders/{order}/settlement', 'OrdersController@recordSettlement')->middleware('admin.only')->name('orders.record-settlement');
-    /* ====== Payment Reconciliation Review =======*/
+    /* ====== Payment Reconciliation Review ======= */
     Route::get('payment-reconciliation/findings', 'PaymentReconciliationFindingController@index')
         ->middleware('admin.only')->name('payment-reconciliation-findings.index');
     Route::patch('payment-reconciliation/findings/{paymentReconciliationFinding}/resolve', 'PaymentReconciliationFindingController@resolve')
@@ -373,7 +395,7 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::post('operating-costs-exchange-rate', 'OperatingCostPoolController@updateExchangeRate')
         ->middleware('admin.only')->name('operating-costs.exchange-rate');
 
-    /* ====== Settings =======*/
+    /* ====== Settings ======= */
     Route::get('/settings', 'SettingsController@index')->middleware('admin.only')->name('settings');
     Route::post('/settings', 'SettingsController@update')->middleware('admin.only')->name('settings.update');
     Route::post('/settings/test-bunny', 'SettingsController@testBunnyConnection')->middleware('admin.only')->name('settings.test-bunny');
@@ -381,12 +403,12 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
         ->middleware('admin.only')->name('settings.bunny-cleanup.approve');
     Route::post('/settings/bunny-cleanup/approve-batch', 'SettingsController@approveBunnyCleanupBatch')
         ->middleware(['admin.only', 'throttle:admin-bulk'])->name('settings.bunny-cleanup.approve-batch');
-    /* ====== About =======*/
+    /* ====== About ======= */
     Route::name('privacy')->get('privacy', 'AboutsController@privacy')->middleware('admin.only');
     Route::name('policy')->get('policy', 'AboutsController@policy')->middleware('admin.only');
     Route::name('about')->get('about', 'AboutsController@about')->middleware('admin.only');
     Route::name('abouts.update')->patch('abouts/edit', 'AboutsController@update')->middleware('admin.only');
-    /* ====== Send Notification =======*/
+    /* ====== Send Notification ======= */
     Route::resource('notifications', 'NotificationsController', ['only' => ['index', 'create']])->middleware('admin.only');
     Route::post('notifications', 'NotificationsController@store')
         ->middleware(['admin.only', 'throttle:admin-bulk'])
@@ -412,7 +434,7 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
 // an administrator, so public password registration must never be routable.
 Auth::routes(['register' => false, 'verify' => false]);
 
-Route::get('/home', [\App\Http\Controllers\HomeController::class, 'index'])->name('home');
+Route::get('/home', [HomeController::class, 'index'])->name('home');
 
 /*
 |--------------------------------------------------------------------------
@@ -422,11 +444,10 @@ Route::get('/home', [\App\Http\Controllers\HomeController::class, 'index'])->nam
 | and we can render an HTML result page for the mobile WebView.
 | The webhook route is excluded from CSRF in VerifyCsrfToken.php.
 */
-Route::get('/payment/callback', [\App\Http\Controllers\API\PaymentController::class, 'callback'])
+Route::get('/payment/callback', [PaymentController::class, 'callback'])
     ->middleware(['recovery.write', 'throttle:kashier-callback'])
     ->name('payment.callback');
 
-Route::post('/payment/webhook', [\App\Http\Controllers\API\PaymentController::class, 'webhook'])
+Route::post('/payment/webhook', [PaymentController::class, 'webhook'])
     ->middleware(['recovery.write', 'throttle:kashier-webhook'])
     ->name('payment.webhook');
-

@@ -12,7 +12,7 @@ final class AiFailurePolicyTest extends TestCase
 {
     public function test_unknown_provider_outcome_is_never_offered_as_a_blind_retry(): void
     {
-        $failure = (new AiFailurePolicy())->describe('chat_provider_outcome_unknown');
+        $failure = (new AiFailurePolicy)->describe('chat_provider_outcome_unknown');
 
         self::assertSame('unknown_outcome', $failure['category']);
         self::assertFalse($failure['can_retry']);
@@ -21,7 +21,7 @@ final class AiFailurePolicyTest extends TestCase
 
     public function test_provider_statuses_have_stable_public_classification(): void
     {
-        $policy = new AiFailurePolicy();
+        $policy = new AiFailurePolicy;
 
         self::assertSame(
             'ai_rate_limited',
@@ -35,7 +35,7 @@ final class AiFailurePolicyTest extends TestCase
 
     public function test_broken_request_identity_or_context_is_not_retried(): void
     {
-        $policy = new AiFailurePolicy();
+        $policy = new AiFailurePolicy;
 
         self::assertFalse($policy->describe('chat_usage_identity_mismatch')['can_retry']);
         self::assertFalse($policy->describe('project_context_missing')['can_retry']);
@@ -43,7 +43,7 @@ final class AiFailurePolicyTest extends TestCase
 
     public function test_missing_report_input_is_not_described_as_a_transient_connection_error(): void
     {
-        $failure = (new AiFailurePolicy())->describe('report_input_missing');
+        $failure = (new AiFailurePolicy)->describe('report_input_missing');
 
         self::assertSame('attachment', $failure['category']);
         self::assertFalse($failure['can_retry']);

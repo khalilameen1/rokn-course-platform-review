@@ -18,7 +18,7 @@ final class ModeratorDashboardFinancialIsolationTest extends TestCase
 
     public function test_moderator_dashboard_does_not_resolve_or_expose_financial_reports(): void
     {
-        $moderator = new User();
+        $moderator = new User;
         $moderator->forceFill([
             'name_ar' => 'محرر المحتوى',
             'email' => 'moderator-financial-isolation@example.test',

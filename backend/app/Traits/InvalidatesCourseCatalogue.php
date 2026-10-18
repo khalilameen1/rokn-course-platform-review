@@ -13,7 +13,7 @@ trait InvalidatesCourseCatalogue
         $touchCatalogue = static function ($model): void {
             if (
                 method_exists($model, 'shouldInvalidateCourseCatalogue')
-                && !$model->shouldInvalidateCourseCatalogue()
+                && ! $model->shouldInvalidateCourseCatalogue()
             ) {
                 return;
             }

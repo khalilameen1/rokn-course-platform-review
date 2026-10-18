@@ -15,7 +15,9 @@ final readonly class EngagementTaskReadService
 
     public function next(User $user, int $creditRoom): ?CoinEarningMethod
     {
-        if ($creditRoom <= 0) return null;
+        if ($creditRoom <= 0) {
+            return null;
+        }
         $methods = CoinEarningMethod::query()->learnerTask()
             ->where('coins_amount', '<=', $creditRoom)
             ->withCount('userEarnings')->orderBy('sort_order')->orderBy('id')->get();
@@ -30,10 +32,11 @@ final readonly class EngagementTaskReadService
 
         return $methods->first(function (CoinEarningMethod $method) use ($earned, $claimed, $consumed): bool {
             $key = $this->tombstones->rewardKeyForMethod($method);
+
             return $method->hasUsableDestination()
                 && ($method->total_claim_limit === null || (int) $method->user_earnings_count < (int) $method->total_claim_limit)
-                && ($key === null || !in_array($key, $consumed, true))
-                && !$earned->has((int) $method->id) && !$claimed->has((int) $method->id);
+                && ($key === null || ! in_array($key, $consumed, true))
+                && ! $earned->has((int) $method->id) && ! $claimed->has((int) $method->id);
         });
     }
 }

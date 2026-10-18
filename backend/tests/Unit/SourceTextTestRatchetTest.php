@@ -57,7 +57,7 @@ final class SourceTextTestRatchetTest extends TestCase
         $offenders = [];
         $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/tests'));
         foreach ($files as $file) {
-            if (!$file->isFile() || $file->getExtension() !== 'php') {
+            if (! $file->isFile() || $file->getExtension() !== 'php') {
                 continue;
             }
             $relative = 'tests/'.str_replace('\\', '/', substr($file->getPathname(), strlen($root.'/tests') + 1));

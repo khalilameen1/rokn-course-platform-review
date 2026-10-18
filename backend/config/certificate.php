@@ -91,9 +91,9 @@ return [
 
         // RTL editorial statement: the learner is the visual centre.
         'name' => [
-            'x'     => 0.90,
-            'y'     => 0.385,
-            'size'  => 48,
+            'x' => 0.90,
+            'y' => 0.385,
+            'size' => 48,
             'min_size' => 28,
             'max_width' => 0.60,
             'align' => 'right',
@@ -102,9 +102,9 @@ return [
 
         // Course title closes the central statement, close to its wording.
         'course' => [
-            'x'     => 0.90,
-            'y'     => 0.560,
-            'size'  => 30,
+            'x' => 0.90,
+            'y' => 0.560,
+            'size' => 30,
             'min_size' => 18,
             'max_width' => 0.60,
             'align' => 'right',
@@ -113,19 +113,19 @@ return [
 
         // Certificate ID belongs to the dedicated verification rail.
         'cert_id' => [
-            'x'     => 0.125,
-            'y'     => 0.510,
+            'x' => 0.125,
+            'y' => 0.510,
             // A UUID is the externally verifiable credential identifier.
-            'size'  => 9,
+            'size' => 9,
             'align' => 'center',
             'color' => '#314056',
         ],
 
         // Immutable wording and course title read as one intentional sentence.
         'achievement' => [
-            'x'     => 0.90,
-            'y'     => 0.495,
-            'size'  => 17,
+            'x' => 0.90,
+            'y' => 0.495,
+            'size' => 17,
             'min_size' => 13,
             'max_width' => 0.60,
             'align' => 'right',
@@ -134,17 +134,17 @@ return [
 
         // Date aligns with the signature and verification group without rules.
         'date' => [
-            'x'     => 0.90,
-            'y'     => 0.815,
-            'size'  => 14,
+            'x' => 0.90,
+            'y' => 0.815,
+            'size' => 14,
             'align' => 'right',
             'color' => '#09172C',
         ],
 
         // QR stands on its own; no decorative container competes with it.
         'qr_code' => [
-            'x'    => 0.125,
-            'y'    => 0.345,
+            'x' => 0.125,
+            'y' => 0.345,
             'size' => 128,
         ],
 

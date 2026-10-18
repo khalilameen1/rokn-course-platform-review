@@ -6,16 +6,18 @@ namespace Tests\Feature\API;
 
 use App\Models\PortfolioDeletedUpload;
 use App\Models\User;
-use App\Services\BunnyService;
 use App\Services\BunnyDeliveryService;
 use App\Services\BunnyMediaRegistry;
+use App\Services\BunnyService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Testing\TestResponse;
 use Mockery;
+use Mockery\MockInterface;
 
 final class PortfolioMediaReplayAfterDeletionTest extends ApiTestCase
 {
-    private \Mockery\MockInterface $mediaRegistry;
+    private MockInterface $mediaRegistry;
 
     protected function setUp(): void
     {
@@ -83,7 +85,7 @@ final class PortfolioMediaReplayAfterDeletionTest extends ApiTestCase
         $file = UploadedFile::fake()->image('work.jpg', 10, 10)->size(2);
         $oldId = $this->append($file)->assertOk()->json('data.id');
         $this->deleteJson('/api/v1/portfolio/1/media/'.$oldId)->assertOk();
-        $other = new User();
+        $other = new User;
         $other->forceFill([
             'name' => 'Other learner', 'email' => 'media-other@rokn.test',
             'phone' => '01000000002', 'password' => bcrypt('password123'), 'active' => true,
@@ -157,8 +159,7 @@ final class PortfolioMediaReplayAfterDeletionTest extends ApiTestCase
         UploadedFile $file,
         string $requestId = '33333333-3333-4333-8333-333333333333',
         int $itemId = 1
-    ): \Illuminate\Testing\TestResponse
-    {
+    ): TestResponse {
         return $this->post('/api/v1/portfolio/'.$itemId.'/media', [
             'client_request_id' => $requestId,
             'file' => $file,
@@ -166,7 +167,7 @@ final class PortfolioMediaReplayAfterDeletionTest extends ApiTestCase
         ]);
     }
 
-    private function fakeBunny(): \Mockery\MockInterface
+    private function fakeBunny(): MockInterface
     {
         $this->actingAs($this->user, 'api');
         $delivery = Mockery::mock(BunnyDeliveryService::class);

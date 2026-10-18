@@ -19,6 +19,7 @@ use Illuminate\Support\Str;
 final class ResetAdminMfa extends Command
 {
     protected $signature = 'admin:mfa-reset {email : Email of the admin or moderator account} {--force : Skip the confirmation prompt}';
+
     protected $description = 'Clear a dashboard account\'s authenticator and recovery codes so it must enrol again';
 
     public function handle(AdminMfaResetService $resets): int
@@ -28,13 +29,13 @@ final class ResetAdminMfa extends Command
             ->whereRaw('LOWER(email) = ?', [$email])
             ->whereIn('role', ['admin', 'moderator'])
             ->first();
-        if (!$user) {
+        if (! $user) {
             $this->error('No admin or moderator account uses that email.');
 
             return self::FAILURE;
         }
 
-        if (!$this->option('force') && !$this->confirm(
+        if (! $this->option('force') && ! $this->confirm(
             "Reset MFA for {$user->email} ({$user->role})? They must enrol a new authenticator at next login.",
             false
         )) {

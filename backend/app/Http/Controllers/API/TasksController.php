@@ -7,8 +7,8 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\API\ContactRequest;
 use App\Models\Contact;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -34,6 +34,7 @@ class TasksController extends Controller
             ->first();
         if ($existing) {
             abort_unless(hash_equals((string) $existing->request_fingerprint, $fingerprint), 409);
+
             return $this->contactReceipt($payload['client_request_id'], true);
         }
 
@@ -46,10 +47,11 @@ class TasksController extends Controller
             $existing = Contact::query()
                 ->where('client_request_id', $payload['client_request_id'])
                 ->first();
-            if (!$existing) {
+            if (! $existing) {
                 throw $exception;
             }
             abort_unless(hash_equals((string) $existing->request_fingerprint, $fingerprint), 409);
+
             return $this->contactReceipt($payload['client_request_id'], true);
         }
 

@@ -36,7 +36,7 @@ final class PlaybackCapabilityService
     /** @return array<string, bool|int|string> */
     public function normalize(?array $capabilities): array
     {
-        if (!$capabilities) {
+        if (! $capabilities) {
             return [];
         }
 
@@ -146,7 +146,7 @@ final class PlaybackCapabilityService
     /** @param array<string, bool|int|string> $target */
     private function copyString(array &$target, array $source, string $key, int $length): void
     {
-        if (!isset($source[$key]) || !is_scalar($source[$key])) {
+        if (! isset($source[$key]) || ! is_scalar($source[$key])) {
             return;
         }
 

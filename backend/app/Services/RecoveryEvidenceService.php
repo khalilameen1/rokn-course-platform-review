@@ -59,7 +59,7 @@ final class RecoveryEvidenceService
                 );
         }
 
-        $ready = !in_array(false, $checks, true);
+        $ready = ! in_array(false, $checks, true);
 
         return [
             'ready' => $ready,
@@ -78,26 +78,38 @@ final class RecoveryEvidenceService
     public function readSigned(string $path): ?array
     {
         try {
-            if ($path === '') return null;
+            if ($path === '') {
+                return null;
+            }
             $disk = trim((string) config('operations.recovery_evidence_disk'));
             if ($disk !== '') {
-                if (!is_array(config("filesystems.disks.{$disk}"))) return null;
+                if (! is_array(config("filesystems.disks.{$disk}"))) {
+                    return null;
+                }
                 $storage = Storage::disk($disk);
-                if (!$storage->exists($path)) return null;
+                if (! $storage->exists($path)) {
+                    return null;
+                }
                 $contents = $storage->get($path);
             } else {
-                if (!is_file($path) || !is_readable($path)) return null;
+                if (! is_file($path) || ! is_readable($path)) {
+                    return null;
+                }
                 $contents = (string) file_get_contents($path);
             }
             $payload = json_decode($contents, true, 64, JSON_THROW_ON_ERROR);
-            if (!is_array($payload)) return null;
+            if (! is_array($payload)) {
+                return null;
+            }
             $signature = (string) ($payload['signature'] ?? '');
             unset($payload['signature']);
+
             return $signature !== '' && hash_equals($this->sign($payload), $signature)
                 ? $payload
                 : null;
         } catch (Throwable $exception) {
             report($exception);
+
             return null;
         }
     }
@@ -109,6 +121,7 @@ final class RecoveryEvidenceService
         if (strlen($key) < 32) {
             throw new RuntimeException('RECOVERY_EVIDENCE_SIGNING_KEY must contain at least 32 characters.');
         }
+
         return hash_hmac('sha256', json_encode($this->canonical($payload), JSON_THROW_ON_ERROR), $key);
     }
 
@@ -116,27 +129,30 @@ final class RecoveryEvidenceService
     public function write(string $path, array $payload): void
     {
         $disk = trim((string) config('operations.recovery_evidence_disk'));
-        if ($path === '') throw new RuntimeException('Recovery evidence path is required.');
+        if ($path === '') {
+            throw new RuntimeException('Recovery evidence path is required.');
+        }
         $payload['signature'] = $this->sign($payload);
         $encoded = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES).PHP_EOL;
         if ($disk !== '') {
-            if (!is_array(config("filesystems.disks.{$disk}"))) {
+            if (! is_array(config("filesystems.disks.{$disk}"))) {
                 throw new RuntimeException('Recovery evidence disk is not configured.');
             }
-            if (!Storage::disk($disk)->put(
+            if (! Storage::disk($disk)->put(
                 $path,
                 $encoded,
                 StorageWriteOptions::forDisk($disk, 'private')
             )) {
                 throw new RuntimeException('Could not write recovery evidence.');
             }
+
             return;
         }
-        if (!str_starts_with($path, DIRECTORY_SEPARATOR) && !preg_match('/^[A-Za-z]:[\\\\\/]/', $path)) {
+        if (! str_starts_with($path, DIRECTORY_SEPARATOR) && ! preg_match('/^[A-Za-z]:[\\\\\/]/', $path)) {
             throw new RuntimeException('Recovery evidence path must be absolute without a configured disk.');
         }
         $directory = dirname($path);
-        if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) {
+        if (! is_dir($directory) && ! mkdir($directory, 0700, true) && ! is_dir($directory)) {
             throw new RuntimeException('Could not create recovery evidence directory.');
         }
         $temporary = $path.'.tmp.'.bin2hex(random_bytes(6));
@@ -149,18 +165,21 @@ final class RecoveryEvidenceService
                 throw new RuntimeException('Could not write recovery evidence.');
             }
             @chmod($temporary, 0600);
-            if (!rename($temporary, $path)) {
+            if (! rename($temporary, $path)) {
                 throw new RuntimeException('Could not publish recovery evidence atomically.');
             }
             @chmod($path, 0600);
         } finally {
-            if (is_file($temporary)) @unlink($temporary);
+            if (is_file($temporary)) {
+                @unlink($temporary);
+            }
         }
     }
 
     private function recent(mixed $value, Carbon $oldest): bool
     {
         $date = $this->date($value);
+
         return $date !== null
             && $date->gte($oldest)
             && $date->lte(now()->addMinutes(5));
@@ -177,10 +196,17 @@ final class RecoveryEvidenceService
 
     private function canonical(mixed $value): mixed
     {
-        if (!is_array($value)) return $value;
-        if (array_is_list($value)) return array_map(fn ($item) => $this->canonical($item), $value);
+        if (! is_array($value)) {
+            return $value;
+        }
+        if (array_is_list($value)) {
+            return array_map(fn ($item) => $this->canonical($item), $value);
+        }
         ksort($value);
-        foreach ($value as $key => $item) $value[$key] = $this->canonical($item);
+        foreach ($value as $key => $item) {
+            $value[$key] = $this->canonical($item);
+        }
+
         return $value;
     }
 }

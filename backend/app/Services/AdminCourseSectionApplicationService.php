@@ -10,6 +10,7 @@ use App\Models\CourseSection;
 use App\Models\Lesson;
 use App\Models\User;
 use Closure;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -24,8 +25,7 @@ final readonly class AdminCourseSectionApplicationService
         private CourseSectionMediaService $media,
         private CourseAuthoringDeletionService $deletion,
         private AdminCourseOutlinePresenter $outline
-    ) {
-    }
+    ) {}
 
     /** @param Closure(Course,CourseSection,array<string,mixed>):void $completeIntent @return array<string,mixed> */
     public function store(Course $course, CourseSectionEdit $edit, ?User $actor, Closure $completeIntent): array
@@ -62,11 +62,15 @@ final readonly class AdminCourseSectionApplicationService
             // From here on the durable owner/receipt committed. Never retire its
             // media as failed staging if a post-commit diagnostic is unavailable.
             $stage = null;
-            if ($lesson !== null) $this->media->probe($lesson);
+            if ($lesson !== null) {
+                $this->media->probe($lesson);
+            }
 
             return $payload;
         } catch (Throwable $error) {
-            if ($stage !== null) $this->media->rollback($stage, 'section_create_rollback');
+            if ($stage !== null) {
+                $this->media->rollback($stage, 'section_create_rollback');
+            }
             throw $error;
         }
     }
@@ -111,11 +115,15 @@ final readonly class AdminCourseSectionApplicationService
                 return [$payload, $probe ? $sectionable : null];
             });
             $stage = null;
-            if ($lesson !== null) $this->media->probe($lesson);
+            if ($lesson !== null) {
+                $this->media->probe($lesson);
+            }
 
             return $payload;
         } catch (Throwable $error) {
-            if ($stage !== null) $this->media->rollback($stage, 'section_update_rollback');
+            if ($stage !== null) {
+                $this->media->rollback($stage, 'section_update_rollback');
+            }
             throw $error;
         }
     }
@@ -162,7 +170,7 @@ final readonly class AdminCourseSectionApplicationService
 
     public function assertDraft(Course $course): void
     {
-        if (!$course->is_coming_soon) {
+        if (! $course->is_coming_soon) {
             throw ValidationException::withMessages([
                 'course' => ['حوّل الكورس إلى مسودة قبل تغيير بنية المحتوى أو الفيديو ثم أعد نشره بعد الفحص'],
             ]);
@@ -172,7 +180,7 @@ final readonly class AdminCourseSectionApplicationService
     public function assertBelongsToCourse(Course $course, CourseSection $section): void
     {
         if ((int) $section->course_id !== (int) $course->id) {
-            throw (new \Illuminate\Database\Eloquent\ModelNotFoundException())->setModel(CourseSection::class, [$section->id]);
+            throw (new ModelNotFoundException)->setModel(CourseSection::class, [$section->id]);
         }
     }
 

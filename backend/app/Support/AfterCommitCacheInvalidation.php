@@ -12,7 +12,7 @@ use Throwable;
 final class AfterCommitCacheInvalidation
 {
     /** @param Closure():mixed $invalidate
-     *  @param null|Closure(Throwable):mixed $onFailure Optional operational reporting.
+     * @param  null|Closure(Throwable):mixed  $onFailure  Optional operational reporting.
      */
     public static function run(Closure $invalidate, ?Closure $onFailure = null): void
     {

@@ -22,9 +22,9 @@ final class CertificatePdfService
     public function download(Certificate $certificate): Response
     {
         if (
-            !$certificate->isActiveCredential()
-            || !$certificate->hasCompleteCredentialSnapshot()
-            || !$certificate->hasStoredArtifact()
+            ! $certificate->isActiveCredential()
+            || ! $certificate->hasCompleteCredentialSnapshot()
+            || ! $certificate->hasStoredArtifact()
         ) {
             throw new \RuntimeException('Certificate is not available for download.');
         }
@@ -36,15 +36,15 @@ final class CertificatePdfService
         }
 
         $image = @getimagesizefromstring($bytes);
-        if (!is_array($image) || (int) $image[0] < 1 || (int) $image[1] < 1) {
+        if (! is_array($image) || (int) $image[0] < 1 || (int) $image[1] < 1) {
             throw new \RuntimeException('Certificate artifact is not a supported image.');
         }
 
         $temporaryDirectory = (string) config('pdf.tempDir', storage_path('app/temp'));
         if (
-            !is_dir($temporaryDirectory)
-            && !mkdir($temporaryDirectory, 0750, true)
-            && !is_dir($temporaryDirectory)
+            ! is_dir($temporaryDirectory)
+            && ! mkdir($temporaryDirectory, 0750, true)
+            && ! is_dir($temporaryDirectory)
         ) {
             throw new \RuntimeException('Unable to create the PDF temporary directory.');
         }
@@ -69,7 +69,7 @@ final class CertificatePdfService
         $pdf->SetAuthor('Rokn');
         $pdf->SetCreator('Rokn');
         $pdf->SetTitle(UnicodeText::clean(
-            'شهادة ' . (string) $certificate->course_name,
+            'شهادة '.(string) $certificate->course_name,
             false
         ));
         $pdf->SetSubject('شهادة من رُكن');
@@ -79,7 +79,7 @@ final class CertificatePdfService
             IMAGETYPE_WEBP => 'image/webp',
             default => 'image/png',
         };
-        $source = 'data:' . $mime . ';base64,' . base64_encode($bytes);
+        $source = 'data:'.$mime.';base64,'.base64_encode($bytes);
         $pdf->WriteHTML(sprintf(
             '<style>@page{margin:0}html,body{margin:0;padding:0}img{display:block;width:%1$.4Fmm;height:%2$.4Fmm}</style><img src="%3$s" alt="">',
             $pageWidth,
@@ -89,7 +89,7 @@ final class CertificatePdfService
 
         $contents = $pdf->Output('', Destination::STRING_RETURN);
         $filename = DownloadFilename::safe(
-            'شهادة رُكن ' . (string) $certificate->holder_name,
+            'شهادة رُكن '.(string) $certificate->holder_name,
             'rokn-certificate',
             'pdf'
         );

@@ -80,7 +80,7 @@ final class StorePurchaseProviderEvidenceTest extends TestCase
     private function verify(ProductPurchaseV2 $receipt): VerifiedStorePurchase
     {
         return (new ReflectionMethod(LiveStorePurchaseProviderGateway::class, 'verifiedGooglePurchase'))
-            ->invoke(new LiveStorePurchaseProviderGateway(), $receipt, 'rokn.coins.600', 'test-token', 'bound-account');
+            ->invoke(new LiveStorePurchaseProviderGateway, $receipt, 'rokn.coins.600', 'test-token', 'bound-account');
     }
 
     private function assertRejected(string $code, ProductPurchaseV2 $receipt): void

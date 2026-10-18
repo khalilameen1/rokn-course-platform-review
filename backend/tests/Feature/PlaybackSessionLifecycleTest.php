@@ -33,7 +33,7 @@ final class PlaybackSessionLifecycleTest extends TestCase
     {
         $user = $this->user(41);
         $session = $this->playbackSession($user, 91);
-        $service = new PlaybackSessionService(new PlaybackCapabilityService());
+        $service = new PlaybackSessionService(new PlaybackCapabilityService);
 
         $started = $service->accept($user, 91, [
             'playback_session_id' => $session->id,
@@ -112,7 +112,7 @@ final class PlaybackSessionLifecycleTest extends TestCase
             'connection_type' => 'cellular',
             'playback_reason' => 'adaptive_hls_cellular',
         ]);
-        $metrics = new PlaybackMetricsService();
+        $metrics = new PlaybackMetricsService;
 
         self::assertSame(1, $metrics->finalizeStaleSessions(10));
         $session->refresh();
@@ -144,7 +144,7 @@ final class PlaybackSessionLifecycleTest extends TestCase
         $session = $this->playbackSession($user, 81, [
             'started_at' => now()->subHours(13),
         ]);
-        $service = new PlaybackSessionService(new PlaybackCapabilityService());
+        $service = new PlaybackSessionService(new PlaybackCapabilityService);
 
         $expired = $service->accept($user, 81, [
             'playback_session_id' => $session->id,
@@ -173,7 +173,7 @@ final class PlaybackSessionLifecycleTest extends TestCase
 
     private function user(int $id): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill(['id' => $id]);
         $user->exists = true;
 

@@ -25,8 +25,9 @@ final class ReconcileMedia extends Command
 
     public function handle(MediaReconciliationService $reconciler): int
     {
-        if (!$this->schemaIsReady()) {
+        if (! $this->schemaIsReady()) {
             $this->error('Media control-plane tables or integrity columns are missing. Run migrations first.');
+
             return self::FAILURE;
         }
 
@@ -37,15 +38,17 @@ final class ReconcileMedia extends Command
         $acquired = $this->acquire($lock);
         if ($acquired === null) {
             $this->error('The distributed cache lock is unavailable; reconciliation did not start.');
+
             return self::FAILURE;
         }
-        if (!$acquired) {
+        if (! $acquired) {
             $this->warn('Another media reconciliation is already running.');
+
             return self::SUCCESS;
         }
 
         $dryRun = (bool) $this->option('dry-run');
-        $fetchManifest = !(bool) $this->option('skip-manifest-fetch')
+        $fetchManifest = ! (bool) $this->option('skip-manifest-fetch')
             && (bool) config('operations.media_reconcile_fetch_manifest', true);
         $batch = $this->option('batch') !== null
             ? (int) $this->option('batch')
@@ -68,6 +71,7 @@ final class ReconcileMedia extends Command
                 ]);
                 if ($courseId === false) {
                     $this->error('The --course option must be a positive integer.');
+
                     return self::INVALID;
                 }
                 $query->whereKey($courseId);
@@ -110,7 +114,7 @@ final class ReconcileMedia extends Command
                 foreach ($courses as $course) {
                     $result = $reconciler->reconcileCourse(
                         $course,
-                        !$dryRun,
+                        ! $dryRun,
                         $fetchManifest
                     );
                     $summary['courses']++;
@@ -166,6 +170,7 @@ final class ReconcileMedia extends Command
                 'error_code' => 'media_reconcile_failed',
             ]);
             $this->error('Media reconciliation failed. Check the application log using the request time above.');
+
             return self::FAILURE;
         } finally {
             try {
@@ -182,12 +187,12 @@ final class ReconcileMedia extends Command
             'courses', 'lessons', 'lesson_media_states', 'photos',
             'course_modules', 'course_sections',
         ] as $table) {
-            if (!Schema::hasTable($table)) {
+            if (! Schema::hasTable($table)) {
                 return false;
             }
         }
         foreach (['id', 'is_coming_soon'] as $column) {
-            if (!Schema::hasColumn('courses', $column)) {
+            if (! Schema::hasColumn('courses', $column)) {
                 return false;
             }
         }
@@ -196,7 +201,7 @@ final class ReconcileMedia extends Command
             'integrity_status', 'integrity_issues', 'last_reconciled_at',
             'quarantined_at', 'probe_generation',
         ] as $column) {
-            if (!Schema::hasColumn('lesson_media_states', $column)) {
+            if (! Schema::hasColumn('lesson_media_states', $column)) {
                 return false;
             }
         }
@@ -204,7 +209,7 @@ final class ReconcileMedia extends Command
             'list_id', 'video_source_type', 'bunny_video_id',
             'thumbnail_path', 'duration_minutes',
         ] as $column) {
-            if (!Schema::hasColumn('lessons', $column)) {
+            if (! Schema::hasColumn('lessons', $column)) {
                 return false;
             }
         }
@@ -218,6 +223,7 @@ final class ReconcileMedia extends Command
             return $lock->get();
         } catch (Throwable $exception) {
             report($exception);
+
             return null;
         }
     }

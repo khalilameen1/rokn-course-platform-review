@@ -9,10 +9,10 @@ use App\Jobs\ProbeLessonMedia;
 use App\Models\Course;
 use App\Models\CourseModule;
 use App\Models\Lesson;
-use App\Services\BunnyService;
-use App\Services\BunnyDeliveryService;
 use App\Services\BunnyConfiguration;
+use App\Services\BunnyDeliveryService;
 use App\Services\BunnyMediaRegistry;
+use App\Services\BunnyService;
 use App\Services\MediaHealthService;
 use App\Services\MediaReconciliationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -132,13 +132,12 @@ final class BunnyVideoStatusContractTest extends TestCase
             'HTTP_X_BUNNYSTREAM_SIGNATURE' => hash_hmac('sha256', $body, 'test-webhook-secret'),
         ], $body);
 
-        $response = (new BunnyStreamWebhookController())($request);
+        $response = (new BunnyStreamWebhookController)($request);
 
         self::assertSame(202, $response->getStatusCode());
         self::assertSame('processing', $state->fresh()->status);
         self::assertSame(['status' => 2], $state->fresh()->manifest);
-        Bus::assertDispatched(ProbeLessonMedia::class, fn (ProbeLessonMedia $job): bool =>
-            $job->lessonId === (int) $lesson->id && $job->expectedVideoGuid === $lesson->bunny_video_id
+        Bus::assertDispatched(ProbeLessonMedia::class, fn (ProbeLessonMedia $job): bool => $job->lessonId === (int) $lesson->id && $job->expectedVideoGuid === $lesson->bunny_video_id
         );
         Http::assertNothingSent();
     }
@@ -193,7 +192,7 @@ final class BunnyVideoStatusContractTest extends TestCase
 
     private function lesson(): Lesson
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'Bunny status contract',

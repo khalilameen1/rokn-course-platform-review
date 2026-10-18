@@ -9,10 +9,15 @@ use Illuminate\Database\Eloquent\Model;
 class WalletTransaction extends Model
 {
     public const DIRECTION_CREDIT = 'credit';
+
     public const DIRECTION_DEBIT = 'debit';
+
     public const BUCKET_PAID = 'paid';
+
     public const BUCKET_REWARD = 'reward';
+
     public const BUCKET_MIXED = 'mixed';
+
     public const BUCKET_LEGACY_REWARD = 'legacy_reward';
 
     protected $fillable = [

@@ -4,19 +4,18 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Support\StudentNotificationIntent;
-
-use App\Support\StorageWriteOptions;
-use App\Support\UnicodeText;
-
 use App\Models\Certificate;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
-use Illuminate\Support\Facades\Storage;
+use App\Support\StorageWriteOptions;
+use App\Support\StudentNotificationIntent;
+use App\Support\UnicodeText;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class CertificateService
@@ -30,8 +29,7 @@ class CertificateService
         private readonly CertificateArtworkRenderer $artwork,
         private readonly LegacyCertificateArtworkRenderer $legacyArtwork,
         private readonly StudentNotificationService $notifications
-    ) {
-    }
+    ) {}
 
     /**
      * Generate (or retrieve existing) certificate for a user + course.
@@ -41,8 +39,7 @@ class CertificateService
         Course $course,
         ?string $requestedHolderName = null,
         bool $renderArtifact = true
-    ): ?Certificate
-    {
+    ): ?Certificate {
         $certificate = Certificate::where('user_id', $user->id)
             ->where('course_id', $course->id)
             ->first();
@@ -58,7 +55,7 @@ class CertificateService
         // revocation state and the hold checked here before any recovery.
         if ($certificate) {
             if (
-                !$certificate->isActiveCredential()
+                ! $certificate->isActiveCredential()
                 || ($latestEnrollment && $this->holds
                     ->enrollmentHasActiveHold($latestEnrollment, ['course']))
             ) {
@@ -73,18 +70,18 @@ class CertificateService
         // Creating a credential is an explicit learner action because this
         // text becomes an immutable identity snapshot. Recovery of its
         // pending row remains automatic and uses its stored snapshot.
-        if (!$certificate && UnicodeText::graphemeLength($requestedHolderName) < 2) {
+        if (! $certificate && UnicodeText::graphemeLength($requestedHolderName) < 2) {
             return null;
         }
 
         // Eligibility creates a credential; it does not expire one already
         // issued. A pending or lost artifact can therefore be rebuilt from its
         // immutable row even if progress tables are later archived.
-        if (!$certificate && !$this->eligibility->for($user, $course)['available']) {
+        if (! $certificate && ! $this->eligibility->for($user, $course)['available']) {
             return null;
         }
 
-        if (!$certificate) {
+        if (! $certificate) {
             // Create the DB record first so the public credential ID is stable
             // across retries. Lock the course before taking its editorial
             // snapshot: a moderator may move it to draft or change the
@@ -107,7 +104,7 @@ class CertificateService
                         ->whereKey($user->id)
                         ->lockForUpdate()
                         ->first();
-                    if (!$lockedUser) {
+                    if (! $lockedUser) {
                         return null;
                     }
 
@@ -116,8 +113,8 @@ class CertificateService
                         ->sharedLock()
                         ->first();
                     if (
-                        !$lockedCourse
-                        || !$this->eligibility->for($lockedUser, $lockedCourse)['available']
+                        ! $lockedCourse
+                        || ! $this->eligibility->for($lockedUser, $lockedCourse)['available']
                     ) {
                         return null;
                     }
@@ -137,12 +134,12 @@ class CertificateService
                         return null;
                     }
                     $createAttributes = [
-                        'public_id'    => $publicId,
-                        'user_id'      => $lockedUser->id,
-                        'course_id'    => $lockedCourse->id,
-                        'image_path'   => 'pending',
+                        'public_id' => $publicId,
+                        'user_id' => $lockedUser->id,
+                        'course_id' => $lockedCourse->id,
+                        'image_path' => 'pending',
                         'generated_at' => now(),
-                        'status'       => 'active',
+                        'status' => 'active',
                     ];
                     $createAttributes['holder_name'] = $requestedHolderName;
                     $createAttributes['course_name'] = $courseName;
@@ -155,23 +152,23 @@ class CertificateService
                         ->first()
                         ?: Certificate::create($createAttributes);
                 }, 3);
-                if (!$certificate) {
+                if (! $certificate) {
                     return null;
                 }
-            } catch (\Illuminate\Database\QueryException $e) {
+            } catch (QueryException $e) {
                 $certificate = Certificate::where('user_id', $user->id)
                     ->where('course_id', $course->id)
                     ->first();
-                if (!$certificate) {
+                if (! $certificate) {
                     throw $e;
                 }
-                if (!$certificate->isActiveCredential()) {
+                if (! $certificate->isActiveCredential()) {
                     return null;
                 }
             }
         }
 
-        if (!$certificate->hasCompleteCredentialSnapshot()) {
+        if (! $certificate->hasCompleteCredentialSnapshot()) {
             // A request creates the immutable identity/editorial snapshot in
             // one transaction. Recovery never invents missing claims from
             // mutable profile, course or configuration state.
@@ -179,6 +176,7 @@ class CertificateService
         }
         if ($certificate->hasStoredArtifact()) {
             $certificate->forceFill(['artifact_checked_at' => now()])->save();
+
             return $certificate;
         }
 
@@ -187,7 +185,7 @@ class CertificateService
         // must not hold an app request open or turn a healthy issue action into
         // a client timeout. The recovery job calls this method with the default
         // and owns the generation lease below.
-        if (!$renderArtifact) {
+        if (! $renderArtifact) {
             return $certificate->fresh();
         }
 
@@ -203,9 +201,9 @@ class CertificateService
         ): ?Certificate {
             $locked = Certificate::query()->lockForUpdate()->find($certificate->id);
             if (
-                !$locked
-                || !$locked->isActiveCredential()
-                || !User::query()->whereKey($locked->user_id)->exists()
+                ! $locked
+                || ! $locked->isActiveCredential()
+                || ! User::query()->whereKey($locked->user_id)->exists()
             ) {
                 return null;
             }
@@ -218,9 +216,10 @@ class CertificateService
             $locked->forceFill([
                 'generation_lease_id' => $leaseId,
             ])->save();
+
             return $locked->fresh();
         }, 3);
-        if (!$certificate) {
+        if (! $certificate) {
             return null;
         }
 
@@ -233,13 +232,14 @@ class CertificateService
             $leaseId
         );
 
-        if (!$filePath) {
+        if (! $filePath) {
             // Keep the pending row as the durable recovery marker. The queued
             // recovery worker or an authenticated recovery request can safely retry.
             Certificate::query()
                 ->whereKey($certificate->id)
                 ->where('generation_lease_id', $leaseId)
                 ->update(['generation_lease_id' => null]);
+
             return null;
         }
 
@@ -264,6 +264,7 @@ class CertificateService
             ->update($updateAttributes);
         if ($committed !== 1) {
             $this->deleteCertificateArtifact($filePath);
+
             return null;
         }
         $certificate->refresh();
@@ -286,7 +287,7 @@ class CertificateService
                 link: 'rokn://profile/certificates',
                 notifiableType: Course::class,
                 notifiableId: (int) $course->id,
-                deliveryKey: 'certificate-ready:' . $certificate->id,
+                deliveryKey: 'certificate-ready:'.$certificate->id,
                 templateVariables: ['course' => (string) ($course->name_ar ?: $course->name_en)]
             )
         );
@@ -297,8 +298,7 @@ class CertificateService
     private function verificationLevel(
         User $user,
         Course $course
-    ): string
-    {
+    ): string {
         // A course may contain several graduation projects. The certificate
         // label describes the strongest verified evidence in that course, not
         // whichever project happened to be returned first by an arbitrary query.
@@ -330,11 +330,12 @@ class CertificateService
         Certificate $certificate,
         \DateTimeInterface $generatedAt,
         string $generationLeaseId
-    ): ?string
-    {
+    ): ?string {
         try {
             $destination = $this->qrDestinations->for($certificate);
-            if ($destination === null) return null;
+            if ($destination === null) {
+                return null;
+            }
 
             // Dispatch from immutable issuance metadata, never today's course settings.
             $version = trim((string) $certificate->certificate_design_version);
@@ -343,13 +344,15 @@ class CertificateService
                 '' => $this->legacyArtwork->render($certificate, $generatedAt, $destination),
                 default => throw new \RuntimeException('Unsupported certificate design version.'),
             };
-            if ($encoded === null || $encoded === '') return null;
+            if ($encoded === null || $encoded === '') {
+                return null;
+            }
 
             // ----- Save -----
             // Public certificate images must not be enumerable by numeric user/course IDs.
-            $filename = 'certificate_' . $certificate->public_id
-                . '_' . str_replace('-', '', $generationLeaseId) . '.png';
-            $storagePath = 'certificates/' . $filename;
+            $filename = 'certificate_'.$certificate->public_id
+                .'_'.str_replace('-', '', $generationLeaseId).'.png';
+            $storagePath = 'certificates/'.$filename;
             $disk = (string) config('certificate.disk', 'public');
             app(StoredFileDeletionService::class)
                 ->trackPotentialOrphan($disk, $storagePath, 60);
@@ -359,13 +362,14 @@ class CertificateService
                 StorageWriteOptions::forDisk($disk, 'private')
             );
 
-            if (!$stored) {
+            if (! $stored) {
                 throw new \RuntimeException('Certificate artifact could not be stored.');
             }
 
             return $storagePath;
         } catch (\Throwable $e) {
             report($e);
+
             return null;
         }
     }
@@ -402,5 +406,4 @@ class CertificateService
 
         return '';
     }
-
 }

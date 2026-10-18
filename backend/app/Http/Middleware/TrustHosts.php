@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\Middleware\TrustHosts as Middleware;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Exception\SuspiciousOperationException;
 
 class TrustHosts extends Middleware
@@ -46,7 +46,7 @@ class TrustHosts extends Middleware
         }
 
         return array_map(
-            static fn (string $host): string => '^' . preg_quote($host) . '$',
+            static fn (string $host): string => '^'.preg_quote($host).'$',
             array_values(array_unique($configured))
         );
     }

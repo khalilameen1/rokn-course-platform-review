@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Services\BunnyDeliveryService;
 use App\Support\BusinessClock;
 use App\Support\PublicDiskUrl;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class SavedLessonResource extends JsonResource
@@ -12,7 +13,7 @@ class SavedLessonResource extends JsonResource
     /**
      * Transform the resource into an array.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  Request  $request
      * @return array
      */
     public function toArray($request)
@@ -32,8 +33,8 @@ class SavedLessonResource extends JsonResource
         $image ??= asset('images/default-folder.png');
 
         return [
-            'id' => (int)$this->id,
-            'title' => (string)$this->title,
+            'id' => (int) $this->id,
+            'title' => (string) $this->title,
             // Keep the legacy minutes field truthful when Bunny has already
             // measured the asset. Older APKs read minutes while newer ones
             // prefer seconds; returning 0 beside a verified duration made the
@@ -42,8 +43,8 @@ class SavedLessonResource extends JsonResource
                 ? (int) ceil($durationSeconds / 60)
                 : max(0, (int) $this->duration_minutes),
             'duration_seconds' => $durationSeconds,
-            'description' => (string)$this->description,
-            'is_opened' => (bool)$this->is_opened,
+            'description' => (string) $this->description,
+            'is_opened' => (bool) $this->is_opened,
             'image' => $image,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
@@ -60,9 +61,9 @@ class SavedLessonResource extends JsonResource
                 ])->values();
             }),
             'course' => $this->course ? [
-                'id' => (int)$this->course->id,
-                'title' => (string)$this->course->title,
-                'image' => $this->course->image ? (string)$this->course->image : null,
+                'id' => (int) $this->course->id,
+                'title' => (string) $this->course->title,
+                'image' => $this->course->image ? (string) $this->course->image : null,
             ] : null,
         ];
     }
@@ -70,8 +71,12 @@ class SavedLessonResource extends JsonResource
     private function publicLessonImage(mixed $value): ?string
     {
         $value = trim((string) $value);
-        if ($value === '') return null;
-        if (str_starts_with(strtolower($value), 'https://')) return $value;
+        if ($value === '') {
+            return null;
+        }
+        if (str_starts_with(strtolower($value), 'https://')) {
+            return $value;
+        }
         if (str_starts_with(ltrim($value, '/'), 'storage/')) {
             return PublicDiskUrl::from($value);
         }

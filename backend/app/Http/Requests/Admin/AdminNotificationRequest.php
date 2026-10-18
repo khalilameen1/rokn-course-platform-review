@@ -13,6 +13,7 @@ class AdminNotificationRequest extends FormRequest
     private function isWelcomeOffer(): bool
     {
         $notification = $this->route('admin_notification');
+
         return ($notification?->system_key ?? $this->input('system_key')) === 'guest_registration_prompt';
     }
 
@@ -24,6 +25,7 @@ class AdminNotificationRequest extends FormRequest
             $this->merge(AdminNotification::presentationOverrides('guest_registration_prompt'));
         }
     }
+
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -42,7 +44,7 @@ class AdminNotificationRequest extends FormRequest
     public function rules()
     {
         $notification = $this->route('admin_notification');
-        if (!$notification && $this->isMethod('post')) {
+        if (! $notification && $this->isMethod('post')) {
             $notification = AdminNotification::query()
                 ->where('authoring_request_id', (string) $this->input('authoring_request_id'))
                 ->first();
@@ -123,19 +125,21 @@ class AdminNotificationRequest extends FormRequest
                 );
             }
 
-            if (!$this->boolean('is_active')) {
+            if (! $this->boolean('is_active')) {
                 return;
             }
 
             // The app owns the login action; it must not need a deep link or
             // pass through the generic content destination pairing validator.
-            if ($this->isWelcomeOffer()) return;
+            if ($this->isWelcomeOffer()) {
+                return;
+            }
 
             $hasLink = RoknAppLink::normalize($this->input('link')) !== null;
             $hasArabicAction = trim((string) $this->input('action_label_ar')) !== '';
-            if ($hasLink && !$hasArabicAction) {
+            if ($hasLink && ! $hasArabicAction) {
                 $validator->errors()->add('action_label_ar', 'اكتب نص الزر الذي سيفتح الوجهة');
-            } elseif (!$hasLink && $hasArabicAction) {
+            } elseif (! $hasLink && $hasArabicAction) {
                 $validator->errors()->add('link', 'اختر وجهة للزر أو احذف نصه');
             }
         });

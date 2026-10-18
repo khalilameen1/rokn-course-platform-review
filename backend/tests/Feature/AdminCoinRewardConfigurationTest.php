@@ -8,10 +8,12 @@ use App\Http\Controllers\Admin\CoinEarningMethodController;
 use App\Models\CoinEarningMethod;
 use App\Models\RewardRule;
 use App\Models\Setting;
+use App\Models\User;
+use App\Services\WalletQueryService;
+use App\Support\RewardConfigurationVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use App\Support\RewardConfigurationVersion;
 use Tests\TestCase;
 
 final class AdminCoinRewardConfigurationTest extends TestCase
@@ -22,8 +24,8 @@ final class AdminCoinRewardConfigurationTest extends TestCase
     {
         $setting = Setting::query()->firstOrCreate([]);
         $setting->forceFill(['how_to_use_coins_ar' => 'نص النسخة السابقة'])->save();
-        $user = \App\Models\User::query()->forceCreate(['name' => 'Rewards test', 'email' => 'rewards-help@example.test', 'role' => 'client', 'active' => true, 'wallet_coins' => 0, 'wallet_purchased_coins' => 0, 'wallet_reward_coins' => 0]);
-        $wallet = app(\App\Services\WalletQueryService::class);
+        $user = User::query()->forceCreate(['name' => 'Rewards test', 'email' => 'rewards-help@example.test', 'role' => 'client', 'active' => true, 'wallet_coins' => 0, 'wallet_purchased_coins' => 0, 'wallet_reward_coins' => 0]);
+        $wallet = app(WalletQueryService::class);
         $wallet->summary($user);
         $this->controller()->updateSettings($this->settingsRequest($setting->fresh(), ['rewards_help_ar' => 'خصمك يظهر قبل الدفع']));
         self::assertSame('خصمك يظهر قبل الدفع', $setting->fresh()->rewards_help_ar);
@@ -318,5 +320,4 @@ final class AdminCoinRewardConfigurationTest extends TestCase
             'editor_version' => RewardConfigurationVersion::method($method),
         ], $overrides));
     }
-
 }

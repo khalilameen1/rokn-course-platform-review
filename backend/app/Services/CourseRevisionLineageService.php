@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\CourseAuthoringRevision;
+use App\Models\CourseModule;
 use App\Models\CoursePdf;
 use App\Models\CourseSection;
 use App\Models\Lesson;
@@ -44,7 +45,9 @@ final class CourseRevisionLineageService
             ->where('course_authoring_revision_id', $revision->id)
             ->update(['survives_publish' => false, 'carries_learner_state' => false]);
         foreach ([CourseSection::class => $sectionMap] + $contentMaps as $entityType => $entityMap) {
-            if ($entityMap === []) continue;
+            if ($entityMap === []) {
+                continue;
+            }
             $priorRoots = DB::table('course_authoring_revision_entities')
                 ->where('entity_type', $entityType)
                 ->where('carries_learner_state', true)
@@ -67,12 +70,14 @@ final class CourseRevisionLineageService
                     ]);
             }
         }
-        foreach ([\App\Models\CourseModule::class => 'course_modules', CoursePdf::class => 'course_pdfs'] as $entityType => $table) {
+        foreach ([CourseModule::class => 'course_modules', CoursePdf::class => 'course_pdfs'] as $entityType => $table) {
             $currentIds = DB::table($table)
                 ->where('course_id', $revision->canonical_course_id)
                 ->when($entityType === CoursePdf::class, fn ($query) => $query->whereNull('deleted_at'))
                 ->pluck('id');
-            if ($currentIds->isEmpty()) continue;
+            if ($currentIds->isEmpty()) {
+                continue;
+            }
             DB::table('course_authoring_revision_entities')
                 ->where('course_authoring_revision_id', $revision->id)
                 ->where('entity_type', $entityType)
@@ -102,7 +107,9 @@ final class CourseRevisionLineageService
             ->unique()
             ->values()
             ->all();
-        if ($sourceLessonIds === []) return;
+        if ($sourceLessonIds === []) {
+            return;
+        }
 
         DB::table('course_codes')->where('course_id', $revision->canonical_course_id)
             ->where('type', 'lesson')
@@ -126,14 +133,17 @@ final class CourseRevisionLineageService
                 $sourceSet = array_fill_keys($sourceLessonIds, true);
                 foreach ($codes as $code) {
                     $ids = json_decode((string) $code->lesson_ids, true);
-                    if (!is_array($ids)) continue;
+                    if (! is_array($ids)) {
+                        continue;
+                    }
                     $mapped = [];
                     foreach ($ids as $id) {
                         $sourceId = (int) $id;
-                        if (!isset($sourceSet[$sourceId])) {
+                        if (! isset($sourceSet[$sourceId])) {
                             // Do not rewrite an unrelated legacy pointer here;
                             // this publish owns only the source graph above.
                             $mapped[] = $sourceId;
+
                             continue;
                         }
                         if (isset($lessonMap[$sourceId])) {
@@ -177,11 +187,15 @@ final class CourseRevisionLineageService
         foreach ($sectionRows as $row) {
             $source = $sources->get((int) $row->source_entity_id);
             $target = $targets->get((int) $row->revision_entity_id);
-            if (!$source || !$target || $source->sectionable_type !== $target->sectionable_type) continue;
+            if (! $source || ! $target || $source->sectionable_type !== $target->sectionable_type) {
+                continue;
+            }
             $contentTarget = $candidateContentMaps->get($source->sectionable_type, [])[
                 (int) $source->sectionable_id
             ] ?? null;
-            if (!$contentTarget || (int) $contentTarget !== (int) $target->sectionable_id) continue;
+            if (! $contentTarget || (int) $contentTarget !== (int) $target->sectionable_id) {
+                continue;
+            }
 
             $sectionMap[(int) $source->id] = (int) $target->id;
             $survivingContentMaps[$source->sectionable_type][(int) $source->sectionable_id]

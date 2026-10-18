@@ -89,7 +89,9 @@ final class AiUsageResponsibilityBoundaryTest extends TestCase
         $beforeEvent = $event->fresh()->getAttributes();
         $beforeUsage = $usage->fresh()->getAttributes();
         InternalSignal::creating(static function (InternalSignal $signal): void {
-            if ($signal->type === 'ai_usage.settled') throw new \RuntimeException('signal write failed');
+            if ($signal->type === 'ai_usage.settled') {
+                throw new \RuntimeException('signal write failed');
+            }
         });
         try {
             app(AiUsageSettlementService::class)->settle($event, $this->providerResult());
@@ -218,6 +220,7 @@ final class AiUsageResponsibilityBoundaryTest extends TestCase
             'user_id' => $user->id, 'course_id' => $course->id, 'feature' => 'course_chat',
             'model' => 'test/model', 'status' => 'reserved', 'reserved_tokens' => 100,
             'reserved_cost_usd' => '0.020000', 'reservation_expires_at' => now()->addHour()]);
+
         return [$enrollment, $usage, $event];
     }
 }

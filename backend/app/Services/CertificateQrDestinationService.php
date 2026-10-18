@@ -14,14 +14,13 @@ final class CertificateQrDestinationService
         private readonly CertificateTextTemplateService $templates,
         private readonly PortfolioShareIdentityService $portfolioShares,
         private readonly PortfolioReviewReadService $reviews
-    ) {
-    }
+    ) {}
 
     /** @return array{url:string,title:string,hint:string,type:string}|null */
     public function for(Certificate $certificate): ?array
     {
         if ($certificate->certificate_design_version !== null) {
-            if (!$certificate->hasCompleteCredentialSnapshot()) {
+            if (! $certificate->hasCompleteCredentialSnapshot()) {
                 return null;
             }
 
@@ -36,7 +35,7 @@ final class CertificateQrDestinationService
             $user = $certificate->relationLoaded('user')
                 ? $certificate->user
                 : User::query()->find($certificate->user_id);
-            if (!$user) {
+            if (! $user) {
                 return null;
             }
 

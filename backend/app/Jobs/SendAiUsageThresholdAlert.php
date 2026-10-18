@@ -18,8 +18,11 @@ final class SendAiUsageThresholdAlert implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 30;
+
     public bool $failOnTimeout = true;
+
     public array $backoff = [15, 60, 180];
 
     public function __construct(
@@ -43,17 +46,17 @@ final class SendAiUsageThresholdAlert implements ShouldQueue
         $label = $labels[$this->metric] ?? $this->metric;
         $body = $this->metric === 'unanswered_provider_requests'
             ? "تكررت نتائج OpenRouter غير المؤكدة لحساب واحد\n"
-                . "الاشتراك: {$this->period}\n"
-                . "الطلبات داخل النافذة: {$this->actual}\n"
-                . "حد الحماية: {$this->threshold}\n"
-                . "توقف Rokn AI مؤقتًا لهذا الاشتراك فقط\n"
-                . "سيعود تلقائيًا بعد مدة التهدئة"
+                ."الاشتراك: {$this->period}\n"
+                ."الطلبات داخل النافذة: {$this->actual}\n"
+                ."حد الحماية: {$this->threshold}\n"
+                ."توقف Rokn AI مؤقتًا لهذا الاشتراك فقط\n"
+                .'سيعود تلقائيًا بعد مدة التهدئة'
             : "تجاوز استخدام ركن حد التنبيه\n"
-                . "المؤشر: {$label}\n"
-                . "الفترة: {$this->period}\n"
-                . "الحالي: {$this->actual}\n"
-                . "حد التنبيه: {$this->threshold}\n"
-                . "لم تتوقف الخدمة تلقائيًا\nراجع تقرير التكلفة والطلاب الأعلى استهلاكًا";
+                ."المؤشر: {$label}\n"
+                ."الفترة: {$this->period}\n"
+                ."الحالي: {$this->actual}\n"
+                ."حد التنبيه: {$this->threshold}\n"
+                ."لم تتوقف الخدمة تلقائيًا\nراجع تقرير التكلفة والطلاب الأعلى استهلاكًا";
 
         Log::warning('AI platform usage crossed an operations threshold.', [
             'metric' => $this->metric,
@@ -77,7 +80,7 @@ final class SendAiUsageThresholdAlert implements ShouldQueue
                     $this->period,
                     (string) $this->threshold,
                     (string) $email,
-                ])) . '@rokn.app';
+                ])).'@rokn.app';
                 Mail::raw(
                     $body,
                     static function ($message) use ($email, $messageId): void {

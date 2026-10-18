@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Path;
-use App\Services\AdminPathReadService;
-use App\Services\AdminPathAuthoringService;
 use App\Services\AdminAuthoringCreateIntentService;
+use App\Services\AdminPathAuthoringService;
+use App\Services\AdminPathReadService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
 
 class PathController extends Controller
@@ -15,23 +16,22 @@ class PathController extends Controller
     public function __construct(
         private readonly AdminPathReadService $read,
         private readonly AdminPathAuthoringService $authoring
-    ) {
-    }
+    ) {}
 
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function index(Request $request)
     {
         $paths = Path::query();
 
-        if ($request->has('search') && !empty($request->search)) {
+        if ($request->has('search') && ! empty($request->search)) {
             $search = $request->search;
-            $paths->where(function($query) use ($search) {
+            $paths->where(function ($query) use ($search) {
                 $query->where('title_ar', 'LIKE', "%{$search}%")
-                      ->orWhere('title_en', 'LIKE', "%{$search}%");
+                    ->orWhere('title_en', 'LIKE', "%{$search}%");
             });
         }
 
@@ -43,7 +43,7 @@ class PathController extends Controller
     /**
      * Show the form for creating a new resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function create()
     {
@@ -53,8 +53,7 @@ class PathController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function store(Request $request, AdminAuthoringCreateIntentService $createIntents)
     {
@@ -83,7 +82,7 @@ class PathController extends Controller
      * Show the form for editing the specified resource.
      *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function edit($id)
     {
@@ -93,9 +92,8 @@ class PathController extends Controller
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function update(Request $request, $id)
     {
@@ -122,16 +120,15 @@ class PathController extends Controller
      * Remove the specified resource from storage.
      *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function destroy($id)
     {
-        if (!$this->authoring->deleteIfUnused((int) $id)) {
+        if (! $this->authoring->deleteIfUnused((int) $id)) {
             return redirect()->route('admin.paths.index')
                 ->with('error', 'انقل الكورسات إلى مسار آخر قبل حذف هذا المسار');
         }
 
         return redirect()->route('admin.paths.index')->with('success', 'تم حذف المسار بنجاح');
     }
-
 }

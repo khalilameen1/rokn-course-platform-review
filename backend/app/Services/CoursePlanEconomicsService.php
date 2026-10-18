@@ -32,18 +32,18 @@ final class CoursePlanEconomicsService
         $safety = (float) config('course_plans.ai_cost_safety_multiplier', 0);
         $delivery = $terms['delivery_cost_usd'] ?? null;
         $problems = [];
-        if (!config('course_plans.economics_configured') || !is_finite($netCoinValue) || $netCoinValue <= 0) {
+        if (! config('course_plans.economics_configured') || ! is_finite($netCoinValue) || $netCoinValue <= 0) {
             $problems[] = 'صافي قيمة العملة المدفوعة غير معتمد';
         }
-        if (!is_numeric($delivery) || !is_finite((float) $delivery) || (float) $delivery < 0) {
+        if (! is_numeric($delivery) || ! is_finite((float) $delivery) || (float) $delivery < 0) {
             $problems[] = 'تكلفة تقديم الاشتراك غير محددة';
         }
-        if (!is_finite($safety) || $safety < 1 || !is_finite($margin) || $margin < 0 || $margin >= 1
+        if (! is_finite($safety) || $safety < 1 || ! is_finite($margin) || $margin < 0 || $margin >= 1
             || $promotionPercent < 0 || $promotionPercent >= 100) {
             $problems[] = 'إعدادات الهامش أو الاحتياطي أو الخصم غير صالحة للتسعير';
         }
         $providerBudget = 0.0;
-        if (!empty($terms['chat_enabled'])) {
+        if (! empty($terms['chat_enabled'])) {
             $providerBudget += max(0, (float) ($terms['ai_budget_usd'] ?? 0));
         }
         if (in_array($terms['project_feedback_level'] ?? '', ['report', 'enhanced'], true)) {
@@ -64,7 +64,9 @@ final class CoursePlanEconomicsService
             'required_price_coins' => null,
             'meets_floor' => false,
         ];
-        if ($problems !== []) return $result;
+        if ($problems !== []) {
+            return $result;
+        }
 
         $cost = (float) $delivery + $providerBudget * $safety;
         // Round UP, and require enough purchased revenue after full promotion.
@@ -82,15 +84,16 @@ final class CoursePlanEconomicsService
     public function assertCommercialFloor(array $terms, string $code, ?int $promotionPercent = null): void
     {
         $quote = $this->evaluate($terms, $promotionPercent);
-        if (!$quote['configured']) {
+        if (! $quote['configured']) {
             if (config('course_plans.enforce_commercial_floor') && (int) ($terms['price_coins'] ?? 0) > 0) {
                 throw ValidationException::withMessages([
                     "access_plans.{$code}.delivery_cost_usd" => $quote['problems'],
                 ]);
             }
+
             return;
         }
-        if (!$quote['meets_floor']) {
+        if (! $quote['meets_floor']) {
             throw ValidationException::withMessages([
                 "access_plans.{$code}.price_coins" => [
                     "السعر لا يقل عن {$quote['required_price_coins']} والحد المدفوع لا يقل عن {$quote['required_paid_coins']} عملة لتغطية التكلفة والهامش بعد الخصم",

@@ -19,12 +19,11 @@ final class AdminTeacherAuthoringService
     public function __construct(
         private readonly StoredFileUploadService $uploads,
         private readonly StoredFileDeletionService $cleanup
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, mixed> $payload Validated profile and authorized credential fields only.
-     * @param Closure(User):void $completeIntent Runs with the profile write in one transaction.
+     * @param  array<string, mixed>  $payload  Validated profile and authorized credential fields only.
+     * @param  Closure(User):void  $completeIntent  Runs with the profile write in one transaction.
      */
     public function create(array $payload, bool $active, string $requestId, ?UploadedFile $image, Closure $completeIntent): User
     {
@@ -35,8 +34,8 @@ final class AdminTeacherAuthoringService
             return DB::transaction(function () use ($payload, $active, $requestId, $imagePath, $completeIntent): User {
                 $teacher = User::withTrashed()->where('authoring_request_id', $requestId)
                     ->lockForUpdate()->first();
-                if (!$teacher) {
-                    $teacher = new User();
+                if (! $teacher) {
+                    $teacher = new User;
                     $teacher->fill($this->withHashedPassword($payload));
                     // Guarded role and request identity are assigned by the command,
                     // not mass-assigned from a form. Persist the profile in one insert.
@@ -52,7 +51,9 @@ final class AdminTeacherAuthoringService
                 return $teacher;
             }, 3);
         } catch (\Throwable $exception) {
-            if ($imagePath) $this->cleanup->deleteOrQueue('public', $imagePath);
+            if ($imagePath) {
+                $this->cleanup->deleteOrQueue('public', $imagePath);
+            }
             throw $exception;
         }
     }
@@ -66,12 +67,12 @@ final class AdminTeacherAuthoringService
             DB::transaction(function () use ($teacherId, $payload, $active, $editorVersion, $imagePath): void {
                 $teacher = User::query()->whereKey($teacherId)->where('role', 'teacher')
                     ->lockForUpdate()->firstOrFail();
-                if (!hash_equals(TeacherEditorVersion::for($teacher), $editorVersion)) {
+                if (! hash_equals(TeacherEditorVersion::for($teacher), $editorVersion)) {
                     throw ValidationException::withMessages([
                         'editor_version' => "عدّل شخص آخر بيانات المحاضر\nأعد تحميل الصفحة قبل الحفظ",
                     ]);
                 }
-                if ($teacher->active && !$active) {
+                if ($teacher->active && ! $active) {
                     $this->assertCanDeactivate($teacher);
                 }
                 $teacher->update($payload);
@@ -84,7 +85,9 @@ final class AdminTeacherAuthoringService
                 }
             }, 3);
         } catch (\Throwable $exception) {
-            if ($imagePath) $this->cleanup->deleteOrQueue('public', $imagePath);
+            if ($imagePath) {
+                $this->cleanup->deleteOrQueue('public', $imagePath);
+            }
             throw $exception;
         }
     }
@@ -94,7 +97,9 @@ final class AdminTeacherAuthoringService
     {
         return DB::transaction(function () use ($teacherId): bool {
             $teacher = User::query()->where('role', 'teacher')->whereKey($teacherId)->lockForUpdate()->firstOrFail();
-            if ($teacher->teachingCourses()->exists()) return false;
+            if ($teacher->teachingCourses()->exists()) {
+                return false;
+            }
             $teacher->delete();
 
             return true;
@@ -110,8 +115,10 @@ final class AdminTeacherAuthoringService
                     'expected_active' => "تغيّرت حالة المحاضر بالفعل\nأعد تحميل الصفحة",
                 ]);
             }
-            if ($teacher->active) $this->assertCanDeactivate($teacher);
-            $teacher->forceFill(['active' => !$teacher->active])->save();
+            if ($teacher->active) {
+                $this->assertCanDeactivate($teacher);
+            }
+            $teacher->forceFill(['active' => ! $teacher->active])->save();
 
             return $teacher;
         }, 3);
@@ -119,9 +126,13 @@ final class AdminTeacherAuthoringService
 
     private function stageImage(?UploadedFile $image, ?string $identity = null): ?string
     {
-        if ($image === null) return null;
+        if ($image === null) {
+            return null;
+        }
         $path = $this->uploads->storeTrackedUpload($image, 'users', 'public', 60, $identity);
-        if ($path === '') throw new \RuntimeException('Teacher image storage failed');
+        if ($path === '') {
+            throw new \RuntimeException('Teacher image storage failed');
+        }
 
         return $path;
     }
@@ -152,14 +163,14 @@ final class AdminTeacherAuthoringService
                 ->where('users.id', '<>', $teacher->id)
                 ->where('users.active', true)
                 ->exists();
-            if (!$hasOtherActiveTeacher && (int) $course->teacher_id !== (int) $teacher->id) {
+            if (! $hasOtherActiveTeacher && (int) $course->teacher_id !== (int) $teacher->id) {
                 $hasOtherActiveTeacher = User::query()
                     ->whereKey($course->teacher_id)
                     ->whereIn('role', ['teacher', 'admin'])
                     ->where('active', true)
                     ->exists();
             }
-            if (!$hasOtherActiveTeacher) {
+            if (! $hasOtherActiveTeacher) {
                 throw ValidationException::withMessages([
                     'active' => "اربط الكورس «{$course->name_ar}» بمحاضر نشط آخر قبل تعطيل هذا المحاضر",
                 ]);

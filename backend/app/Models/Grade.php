@@ -6,21 +6,21 @@ use App\Support\RoknLocale;
 use App\Traits\InvalidatesCourseCatalogue;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Grade extends Model
 {
-    use HasFactory, SoftDeletes, InvalidatesCourseCatalogue;
+    use HasFactory, InvalidatesCourseCatalogue, SoftDeletes;
 
     protected $fillable = [
-        'type', 'name_ar', 'name_en', 'description_ar', 'description_en', 'country'
+        'type', 'name_ar', 'name_en', 'description_ar', 'description_en', 'country',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
-        'deleted_at' => 'datetime'
+        'deleted_at' => 'datetime',
     ];
 
     // Computed attributes for backward compatibility
@@ -58,6 +58,7 @@ class Grade extends Model
         if (preg_match('/(\d+)/', $this->name, $matches)) {
             return (int) $matches[1];
         }
+
         return 1; // Default level
     }
 

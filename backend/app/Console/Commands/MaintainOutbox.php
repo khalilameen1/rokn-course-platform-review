@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 final class MaintainOutbox extends Command
 {
     protected $signature = 'outbox:maintain {--dispatch=500} {--prune=0}';
+
     protected $description = 'Recover stale outbox claims, dispatch due events and prune terminal rows.';
 
     public function handle(): int

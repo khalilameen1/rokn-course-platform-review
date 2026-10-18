@@ -112,7 +112,7 @@ class HomeEndpointTest extends ApiTestCase
     {
         $response = $this->postJson('/api/v1/app/check-version', [
             'platform' => 'android',
-            'version' => '1.0.0'
+            'version' => '1.0.0',
         ]);
         $this->assertNotEquals(404, $response->status());
     }

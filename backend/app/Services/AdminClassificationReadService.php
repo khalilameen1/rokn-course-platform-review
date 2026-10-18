@@ -84,5 +84,4 @@ final class AdminClassificationReadService
             CourseAuthoringRevision::query()->select('revision_course_id')
         );
     }
-
 }

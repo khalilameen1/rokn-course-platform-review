@@ -118,11 +118,11 @@ final class AdminCourseCertificatePreviewTest extends TestCase
     public function test_unified_editor_preserves_each_saved_key_and_only_defaults_a_missing_key(): void
     {
         foreach (['completion', 'knowledge', 'applied', 'skills', 'projects', null] as $key) {
-            $course = new Course();
+            $course = new Course;
             $course->forceFill(['id' => 37, 'certificate_text_template_key' => $key]);
             $html = view('admin.courses.partials.certificate-text-template', [
                 'course' => $course,
-                'errors' => new ViewErrorBag(),
+                'errors' => new ViewErrorBag,
             ])->render();
 
             self::assertStringContainsString(
@@ -155,7 +155,7 @@ final class AdminCourseCertificatePreviewTest extends TestCase
         $this->asModerator();
         $beforeUserCount = User::query()->count();
         $snapshot = app(CertificateIssuanceSnapshotService::class)->forPreview($course);
-        $sample = new Certificate();
+        $sample = new Certificate;
         $sample->forceFill(array_merge($snapshot, [
             'public_id' => '00000000-0000-0000-0000-000000000000',
             'course_id' => $course->id,
@@ -194,7 +194,7 @@ final class AdminCourseCertificatePreviewTest extends TestCase
 
     private function user(string $role): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'name_ar' => 'مستخدم المعاينة',
             'email' => $role.'-certificate-preview@example.test',
@@ -207,13 +207,13 @@ final class AdminCourseCertificatePreviewTest extends TestCase
 
     private function course(string $name, string $key, bool $draft = false): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => $name,
             'price' => 500,
             'is_coming_soon' => $draft,
-            'is_catalog_visible' => !$draft,
+            'is_catalog_visible' => ! $draft,
             'authoring_version' => 4,
             'last_published_authoring_version' => $draft ? null : 4,
             'published_at' => $draft ? null : now(),

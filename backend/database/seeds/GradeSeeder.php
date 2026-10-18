@@ -16,7 +16,7 @@ class GradeSeeder extends Seeder
                 'name_en' => 'Grade 1',
                 'description_ar' => 'First grade of preparatory education',
                 'description_en' => 'First grade of preparatory education',
-                'country' => 'egypt'
+                'country' => 'egypt',
             ],
             [
                 'type' => 'preparatory',
@@ -24,7 +24,7 @@ class GradeSeeder extends Seeder
                 'name_en' => 'Grade 2',
                 'description_ar' => 'Second grade of preparatory education',
                 'description_en' => 'Second grade of preparatory education',
-                'country' => 'egypt'
+                'country' => 'egypt',
             ],
             [
                 'type' => 'preparatory',
@@ -32,7 +32,7 @@ class GradeSeeder extends Seeder
                 'name_en' => 'Grade 3',
                 'description_ar' => 'Third grade of preparatory education',
                 'description_en' => 'Third grade of preparatory education',
-                'country' => 'egypt'
+                'country' => 'egypt',
             ],
             [
                 'type' => 'secondary',
@@ -40,7 +40,7 @@ class GradeSeeder extends Seeder
                 'name_en' => 'Secondary 1',
                 'description_ar' => 'First grade of secondary education',
                 'description_en' => 'First grade of secondary education',
-                'country' => 'egypt'
+                'country' => 'egypt',
             ],
             [
                 'type' => 'secondary',
@@ -48,7 +48,7 @@ class GradeSeeder extends Seeder
                 'name_en' => 'Secondary 2',
                 'description_ar' => 'Second grade of secondary education',
                 'description_en' => 'Second grade of secondary education',
-                'country' => 'egypt'
+                'country' => 'egypt',
             ],
             [
                 'type' => 'secondary',
@@ -56,7 +56,7 @@ class GradeSeeder extends Seeder
                 'name_en' => 'Secondary 3',
                 'description_ar' => 'Third grade of secondary education',
                 'description_en' => 'Third grade of secondary education',
-                'country' => 'egypt'
+                'country' => 'egypt',
             ],
         ];
 

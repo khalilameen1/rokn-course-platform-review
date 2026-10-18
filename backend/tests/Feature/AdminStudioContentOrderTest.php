@@ -118,7 +118,7 @@ final class AdminStudioContentOrderTest extends TestCase
     {
         Http::preventStrayRequests();
         Queue::fake();
-        $moderator = new User();
+        $moderator = new User;
         $moderator->forceFill(['name_ar' => 'محرر المحتوى', 'email' => 'content-order@example.test',
             'role' => 'moderator', 'active' => true])->save();
         $this->withoutMiddleware(RequireAdminMfa::class);

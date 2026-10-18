@@ -17,8 +17,7 @@ class ContactsController extends Controller
     public function __construct(
         private readonly AdminContactWorkflowService $workflow,
         private readonly ContactAccountLookupService $accountsByEmail
-    ) {
-    }
+    ) {}
 
     public function index()
     {
@@ -38,7 +37,7 @@ class ContactsController extends Controller
     public function show(Contact $contact)
     {
         $contact->load(['resolver', 'resolvedUser']);
-        $deletionUser = $contact->isAccountDeletionRequest() && !$contact->isResolved()
+        $deletionUser = $contact->isAccountDeletionRequest() && ! $contact->isResolved()
             ? $this->accountsByEmail->forEmail($contact->email)
             : null;
         $editorVersion = ContactEditorVersion::for($contact);

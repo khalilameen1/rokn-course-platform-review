@@ -13,6 +13,7 @@ use App\Models\Lesson;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\CourseAccessPlanService;
+use App\Services\CoursePlanAuthoringService;
 use App\Services\CoursePublishingService;
 use App\Services\CourseStagedAuthoringService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -156,7 +157,7 @@ final class ActivateWatchOnlyBasicCommandTest extends TestCase
             'course_id' => $course->id, 'module_id' => $module->id, 'title_ar' => 'مقطع', 'section_type' => 'lesson',
             'sectionable_type' => Lesson::class, 'sectionable_id' => $lesson->id, 'order' => 1,
         ]);
-        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($course);
+        app(CoursePlanAuthoringService::class)->createDefaults($course);
         $course->accessPlans()->where('code', 'basic')->update([
             'projects_enabled' => true, 'certificate_enabled' => true,
             'minimum_paid_coins' => 100,
@@ -168,6 +169,7 @@ final class ActivateWatchOnlyBasicCommandTest extends TestCase
         // silently resynchronize higher plans, prices or sort positions.
         $course->accessPlans()->where('code', 'guided')->update(['name_ar' => 'Plus خاص', 'chat_message_limit' => 41, 'sort_order' => 41]);
         $course->accessPlans()->where('code', 'mentor')->update(['name_ar' => 'Pro خاص', 'chat_message_limit' => 121, 'sort_order' => 51]);
+
         return $course->fresh();
     }
 
@@ -196,6 +198,7 @@ final class ActivateWatchOnlyBasicCommandTest extends TestCase
             'access_plan_id' => $plan->id, 'access_plan_order_id' => $order->id, 'access_plan_snapshot' => $snapshot,
             'enrolled_at' => now(), 'is_active' => true, 'access_granted_at' => now(),
         ]);
+
         return [$order, $enrollment];
     }
 

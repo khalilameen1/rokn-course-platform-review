@@ -6,6 +6,4 @@ namespace App\Exceptions;
 
 use RuntimeException;
 
-final class TransientWebhookDeliveryException extends RuntimeException
-{
-}
+final class TransientWebhookDeliveryException extends RuntimeException {}

@@ -29,9 +29,9 @@ final readonly class CoursePlanDefinitionService
     }
 
     /**
-     * @param array<string,mixed> $row
-     * @param array<string,mixed> $tier
-     * @param array<string,mixed> $template
+     * @param  array<string,mixed>  $row
+     * @param  array<string,mixed>  $tier
+     * @param  array<string,mixed>  $template
      * @return array<string,mixed>
      */
     public function applyAiPolicy(array $row, array $tier, array $template): array
@@ -40,13 +40,13 @@ final readonly class CoursePlanDefinitionService
             && (int) ($row['minimum_paid_coins'] ?? 0) > 0;
         $chatLimit = max(0, (int) ($tier['chat_message_limit'] ?? 0));
         $chat = $paid
-            && !empty($tier['chat_enabled'])
+            && ! empty($tier['chat_enabled'])
             && $chatLimit > 0
             && (int) ($template['chat_token_budget'] ?? 0) >= (int) ($template['max_output_tokens'] ?? 0)
             && (float) ($template['ai_budget_usd'] ?? 0) > 0
             && (float) ($template['request_reserve_usd'] ?? 0) > 0;
         $feedback = $paid ? (string) ($tier['project_feedback_level'] ?? 'pass_only') : 'pass_only';
-        if (!in_array($feedback, ['pass_only', 'report', 'enhanced'], true)) {
+        if (! in_array($feedback, ['pass_only', 'report', 'enhanced'], true)) {
             $feedback = 'pass_only';
         }
         $followupLimit = max(0, (int) ($tier['project_followup_message_limit'] ?? 0));
@@ -69,7 +69,7 @@ final readonly class CoursePlanDefinitionService
         $row['chat_enabled'] = $chat;
         $row['chat_message_limit'] = $chat ? $chatLimit : 0;
         $row['chat_token_budget'] = $chat ? (int) $template['chat_token_budget'] : 0;
-        $row['chat_attachments_enabled'] = $chat && !empty($tier['chat_attachments_enabled']);
+        $row['chat_attachments_enabled'] = $chat && ! empty($tier['chat_attachments_enabled']);
         $row['chat_attachment_max_files'] = $row['chat_attachments_enabled']
             ? (int) $template['chat_attachment_max_files'] : 0;
         $row['ai_budget_usd'] = $chat ? $template['ai_budget_usd'] : 0;
@@ -95,11 +95,11 @@ final readonly class CoursePlanDefinitionService
         $row['project_followup_reserve_usd'] = $enhanced
             ? $template['project_followup_reserve_usd'] : 0;
         $row['project_followup_attachments_enabled'] = $enhanced
-            && !empty($template['project_followup_attachments_enabled']);
+            && ! empty($template['project_followup_attachments_enabled']);
         $row['project_followup_attachment_max_files'] = $row['project_followup_attachments_enabled']
             ? (int) $template['project_followup_attachment_max_files'] : 0;
         $row['project_output_enabled'] = $enhanced
-            && !empty($template['project_output_enabled']);
+            && ! empty($template['project_output_enabled']);
 
         return $row;
     }
@@ -128,6 +128,7 @@ final readonly class CoursePlanDefinitionService
             $base + $this->costToCoins($mentorCost, $round),
             $guidedPrice + 1000
         );
+
         return [
             [
                 'code' => 'basic',

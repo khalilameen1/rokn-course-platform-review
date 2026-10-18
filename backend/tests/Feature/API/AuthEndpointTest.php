@@ -4,10 +4,23 @@ declare(strict_types=1);
 
 namespace Tests\Feature\API;
 
+use App\Models\ApiToken;
+use App\Models\CoinEarningMethod;
+use App\Models\DeletedSocialRewardTombstone;
+use App\Models\Setting;
+use App\Models\SocialAccount;
+use App\Models\SocialOAuthAttempt;
+use App\Models\User;
+use App\Models\UserDeviceToken;
+use App\Services\DeviceLoginService;
+use App\Services\SocialOAuthAttemptService;
+use App\Services\WelcomeRewardService;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -38,7 +51,7 @@ class AuthEndpointTest extends ApiTestCase
         ]);
         $expectedAuthorizationApiUrl = rtrim(
             (string) (config('social_auth.public_api_url')
-                ?: rtrim((string) config('app.url'), '/') . '/api/v1'),
+                ?: rtrim((string) config('app.url'), '/').'/api/v1'),
             '/'
         );
 
@@ -165,7 +178,7 @@ class AuthEndpointTest extends ApiTestCase
 
     public function test_expired_social_completion_code_is_rejected_without_creating_a_user(): void
     {
-        $before = \App\Models\User::query()->count();
+        $before = User::query()->count();
 
         $this->postJson('/api/v1/social-auth/complete', [
             'code' => str_repeat('x', 64),
@@ -174,7 +187,7 @@ class AuthEndpointTest extends ApiTestCase
         ])->assertStatus(410)
             ->assertJsonPath('code', 'social_login_expired');
 
-        $this->assertSame($before, \App\Models\User::query()->count());
+        $this->assertSame($before, User::query()->count());
     }
 
     public function test_browser_social_providers_cannot_bypass_the_pkce_attempt(): void
@@ -201,7 +214,6 @@ class AuthEndpointTest extends ApiTestCase
         }
     }
 
-
     public function test_social_start_persists_a_hashed_cross_container_attempt(): void
     {
         config()->set([
@@ -214,8 +226,8 @@ class AuthEndpointTest extends ApiTestCase
 
         $response = $this->get(
             '/api/v1/social-auth/google/start?return_to=rokn%3A%2F%2Fauth'
-            . '&code_challenge=' . $challenge
-            . '&code_challenge_method=S256'
+            .'&code_challenge='.$challenge
+            .'&code_challenge_method=S256'
         )->assertRedirect();
 
         parse_str((string) parse_url((string) $response->headers->get('Location'), PHP_URL_QUERY), $query);
@@ -302,7 +314,7 @@ class AuthEndpointTest extends ApiTestCase
             'token' => hash('sha256', $secondToken),
         ]);
         self::assertNotNull(
-            \App\Models\ApiToken::query()
+            ApiToken::query()
                 ->find(hash('sha256', $secondToken))
                 ?->revoked_at
         );
@@ -335,7 +347,7 @@ class AuthEndpointTest extends ApiTestCase
 
         $this->app['auth']->forgetGuards();
         $this->withToken($plainToken)
-            ->deleteJson('/api/v1/user/sessions/' . $sessionId)
+            ->deleteJson('/api/v1/user/sessions/'.$sessionId)
             ->assertOk()
             ->assertJsonPath('status', 200)
             ->assertJsonPath('success', true)
@@ -361,7 +373,7 @@ class AuthEndpointTest extends ApiTestCase
             'platform' => 'android',
             'device_class' => 'phone',
         ]);
-        $currentSessionId = (string) \App\Models\ApiToken::query()
+        $currentSessionId = (string) ApiToken::query()
             ->where('token', hash('sha256', $currentToken))
             ->value('session_id');
 
@@ -382,25 +394,25 @@ class AuthEndpointTest extends ApiTestCase
 
     public function test_valid_installation_login_retires_legacy_unowned_sessions_under_multiple_device_policy(): void
     {
-        Schema::table('settings', function (\Illuminate\Database\Schema\Blueprint $table): void {
+        Schema::table('settings', function (Blueprint $table): void {
             $table->string('device_login_policy')->nullable();
         });
-        \App\Models\Setting::query()->firstOrCreate([])->forceFill([
-            'device_login_policy' => \App\Services\DeviceLoginService::POLICY_MULTIPLE,
+        Setting::query()->firstOrCreate([])->forceFill([
+            'device_login_policy' => DeviceLoginService::POLICY_MULTIPLE,
         ])->save();
         $currentDeviceId = (string) Str::uuid();
         $otherDeviceId = (string) Str::uuid();
         $legacyToken = $this->user->generateApiToken();
         $sameDeviceToken = $this->user->generateApiToken(session: ['device_id' => $currentDeviceId]);
         $otherDeviceToken = $this->user->generateApiToken(session: ['device_id' => $otherDeviceId]);
-        \App\Models\UserDeviceToken::query()->create([
+        UserDeviceToken::query()->create([
             'user_id' => $this->user->id,
             'device_token' => 'legacy-unowned-push',
             'device_type' => 'android',
             'device_os' => 'android',
             'device_id' => null,
         ]);
-        \App\Models\UserDeviceToken::query()->create([
+        UserDeviceToken::query()->create([
             'user_id' => $this->user->id,
             'device_token' => 'other-device-push',
             'device_type' => 'android',
@@ -408,14 +420,14 @@ class AuthEndpointTest extends ApiTestCase
             'device_id' => $otherDeviceId,
         ]);
 
-        $devices = app(\App\Services\DeviceLoginService::class);
+        $devices = app(DeviceLoginService::class);
         $access = $devices->checkDeviceAccess($this->user, $currentDeviceId);
         self::assertSame('allow_multiple', $access['action']);
         $devices->applyDeviceAction($this->user, $access['action'], $currentDeviceId);
 
-        self::assertNotNull(\App\Models\ApiToken::query()->find(hash('sha256', $legacyToken))?->revoked_at);
-        self::assertNotNull(\App\Models\ApiToken::query()->find(hash('sha256', $sameDeviceToken))?->revoked_at);
-        self::assertNull(\App\Models\ApiToken::query()->find(hash('sha256', $otherDeviceToken))?->revoked_at);
+        self::assertNotNull(ApiToken::query()->find(hash('sha256', $legacyToken))?->revoked_at);
+        self::assertNotNull(ApiToken::query()->find(hash('sha256', $sameDeviceToken))?->revoked_at);
+        self::assertNull(ApiToken::query()->find(hash('sha256', $otherDeviceToken))?->revoked_at);
         $this->assertDatabaseMissing('user_device_tokens', ['device_token' => 'legacy-unowned-push']);
         $this->assertDatabaseHas('user_device_tokens', ['device_token' => 'other-device-push']);
     }
@@ -424,18 +436,18 @@ class AuthEndpointTest extends ApiTestCase
     {
         $currentToken = $this->user->generateApiToken();
         $otherToken = $this->user->generateApiToken();
-        $otherSessionId = (string) \App\Models\ApiToken::query()
+        $otherSessionId = (string) ApiToken::query()
             ->where('token', hash('sha256', $otherToken))
             ->value('session_id');
 
         $this->withToken($currentToken)
-            ->deleteJson('/api/v1/user/sessions/' . $otherSessionId)
+            ->deleteJson('/api/v1/user/sessions/'.$otherSessionId)
             ->assertOk()
             ->assertJsonPath('data.already_revoked', false);
 
         $this->app['auth']->forgetGuards();
         $this->withToken($currentToken)
-            ->deleteJson('/api/v1/user/sessions/' . $otherSessionId)
+            ->deleteJson('/api/v1/user/sessions/'.$otherSessionId)
             ->assertOk()
             ->assertJsonPath('data.already_revoked', true)
             ->assertJsonPath('data.signed_out', false);
@@ -445,7 +457,7 @@ class AuthEndpointTest extends ApiTestCase
     {
         $plainToken = $this->user->generateApiToken();
 
-        $this->getJson('/api/v1/user/profile?api_token=' . urlencode($plainToken))
+        $this->getJson('/api/v1/user/profile?api_token='.urlencode($plainToken))
             ->assertUnauthorized();
 
         $this->app['auth']->forgetGuards();
@@ -456,7 +468,7 @@ class AuthEndpointTest extends ApiTestCase
 
         $this->app['auth']->forgetGuards();
         $this->withHeaders([
-            'Authorization' => 'Basic ' . base64_encode('mobile:' . $plainToken),
+            'Authorization' => 'Basic '.base64_encode('mobile:'.$plainToken),
         ])->getJson('/api/v1/user/profile')->assertUnauthorized();
     }
 
@@ -475,7 +487,7 @@ class AuthEndpointTest extends ApiTestCase
 
     public function test_stale_completion_owner_cannot_run_session_writes_after_reclaim(): void
     {
-        $attempts = app(\App\Services\SocialOAuthAttemptService::class);
+        $attempts = app(SocialOAuthAttemptService::class);
         $completionCode = str_repeat('q', 64);
         $attempt = $attempts->begin(
             str_repeat('s', 64),
@@ -486,12 +498,12 @@ class AuthEndpointTest extends ApiTestCase
         $attempts->issueCompletion(
             $attempt,
             $completionCode,
-            \Illuminate\Support\Facades\Crypt::encryptString('provider-token')
+            Crypt::encryptString('provider-token')
         );
 
         $firstClaim = $attempts->claimCompletion($completionCode);
         self::assertNotNull($firstClaim);
-        \App\Models\SocialOAuthAttempt::query()
+        SocialOAuthAttempt::query()
             ->whereKey($attempt->id)
             ->update(['completion_processing_at' => now()->subMinutes(3)]);
         $secondClaim = $attempts->claimCompletion($completionCode);
@@ -504,6 +516,7 @@ class AuthEndpointTest extends ApiTestCase
             (string) $firstClaim->completion_claim_id,
             function () use (&$firstRan): string {
                 $firstRan = true;
+
                 return 'stale';
             }
         );
@@ -525,14 +538,14 @@ class AuthEndpointTest extends ApiTestCase
         $currentToken = $this->user->generateApiToken(session: ['device_id' => $currentDeviceId]);
         $otherToken = $this->user->generateApiToken(session: ['device_id' => $otherDeviceId]);
         $otherTokenAgain = $this->user->generateApiToken(session: ['device_id' => $otherDeviceId]);
-        \App\Models\UserDeviceToken::query()->create([
+        UserDeviceToken::query()->create([
             'user_id' => $this->user->id,
             'device_token' => 'shared-device-push-token',
             'device_type' => 'android',
             'device_os' => 'android',
             'device_id' => $otherDeviceId,
         ]);
-        $otherSessionId = (string) \App\Models\ApiToken::query()
+        $otherSessionId = (string) ApiToken::query()
             ->where('token', hash('sha256', $otherToken))
             ->value('session_id');
 
@@ -542,13 +555,13 @@ class AuthEndpointTest extends ApiTestCase
             ->assertOk();
 
         self::assertNotNull(
-            \App\Models\ApiToken::query()->find(hash('sha256', $otherToken))?->revoked_at
+            ApiToken::query()->find(hash('sha256', $otherToken))?->revoked_at
         );
         self::assertNotNull(
-            \App\Models\ApiToken::query()->find(hash('sha256', $otherTokenAgain))?->revoked_at
+            ApiToken::query()->find(hash('sha256', $otherTokenAgain))?->revoked_at
         );
         self::assertNull(
-            \App\Models\ApiToken::query()->find(hash('sha256', $currentToken))?->revoked_at
+            ApiToken::query()->find(hash('sha256', $currentToken))?->revoked_at
         );
         $this->assertDatabaseMissing('user_device_tokens', [
             'user_id' => $this->user->id,
@@ -615,7 +628,7 @@ class AuthEndpointTest extends ApiTestCase
     {
         $plainToken = $this->user->generateApiToken();
         $storedToken = hash('sha256', $plainToken);
-        \App\Models\ApiToken::query()
+        ApiToken::query()
             ->where('token', $storedToken)
             ->update(['expired_at' => now()->addDays(2)]);
 
@@ -627,7 +640,7 @@ class AuthEndpointTest extends ApiTestCase
             ->assertUnauthorized();
 
         $this->assertDatabaseHas('api_tokens', ['token' => $storedToken]);
-        self::assertNotNull(\App\Models\ApiToken::query()->find($storedToken)?->revoked_at);
+        self::assertNotNull(ApiToken::query()->find($storedToken)?->revoked_at);
     }
 
     public function test_soft_deleted_account_token_is_rejected_and_deleted(): void
@@ -642,14 +655,14 @@ class AuthEndpointTest extends ApiTestCase
             ->assertUnauthorized();
 
         $this->assertDatabaseHas('api_tokens', ['token' => $storedToken]);
-        self::assertNotNull(\App\Models\ApiToken::query()->find($storedToken)?->revoked_at);
+        self::assertNotNull(ApiToken::query()->find($storedToken)?->revoked_at);
     }
 
     public function test_logout_does_not_delete_other_installations_push_tokens(): void
     {
         $apiToken = $this->user->generateApiToken();
         foreach (['phone-a-fcm-token', 'phone-b-fcm-token'] as $deviceToken) {
-            \App\Models\UserDeviceToken::query()->create([
+            UserDeviceToken::query()->create([
                 'user_id' => $this->user->id,
                 'device_token' => $deviceToken,
                 'device_type' => 'android',
@@ -673,7 +686,7 @@ class AuthEndpointTest extends ApiTestCase
     {
         $apiToken = $this->user->generateApiToken();
         foreach (['phone-a-fcm-token', 'phone-b-fcm-token'] as $deviceToken) {
-            \App\Models\UserDeviceToken::query()->create([
+            UserDeviceToken::query()->create([
                 'user_id' => $this->user->id,
                 'device_token' => $deviceToken,
                 'device_type' => 'android',
@@ -701,10 +714,10 @@ class AuthEndpointTest extends ApiTestCase
         $deviceId = (string) Str::uuid();
         $oldToken = $this->user->generateApiToken();
         $replacementToken = $this->user->generateApiToken();
-        \App\Models\ApiToken::query()
+        ApiToken::query()
             ->whereIn('token', [hash('sha256', $oldToken), hash('sha256', $replacementToken)])
             ->update(['device_id' => $deviceId]);
-        \App\Models\UserDeviceToken::query()->create([
+        UserDeviceToken::query()->create([
             'user_id' => $this->user->id,
             'device_token' => 'same-phone-current-push-token',
             'device_type' => 'android',
@@ -779,7 +792,7 @@ class AuthEndpointTest extends ApiTestCase
             'social_provider' => 'facebook',
             'social_id' => 'facebook-owner-1',
         ])->save();
-        \App\Models\SocialAccount::query()->create([
+        SocialAccount::query()->create([
             'user_id' => $this->user->id,
             'provider' => 'facebook',
             'provider_user_id' => 'facebook-owner-1',
@@ -791,7 +804,7 @@ class AuthEndpointTest extends ApiTestCase
         $this->withToken($reauthToken)->postJson('/api/v1/delete-account')
             ->assertOk();
 
-        $deleted = \App\Models\User::withTrashed()->findOrFail($this->user->id);
+        $deleted = User::withTrashed()->findOrFail($this->user->id);
         $this->assertFalse((bool) $deleted->active);
         $this->assertNotNull($deleted->deleted_at);
     }
@@ -802,13 +815,13 @@ class AuthEndpointTest extends ApiTestCase
             'social_provider' => 'facebook',
             'social_id' => 'facebook-owner-2',
         ])->save();
-        \App\Models\SocialAccount::query()->create([
+        SocialAccount::query()->create([
             'user_id' => $this->user->id,
             'provider' => 'google',
             'provider_user_id' => 'google-owner-2',
             'last_verified_at' => now(),
         ]);
-        \App\Models\SocialAccount::query()->create([
+        SocialAccount::query()->create([
             'user_id' => $this->user->id,
             'provider' => 'facebook',
             'provider_user_id' => 'facebook-owner-2',
@@ -821,7 +834,7 @@ class AuthEndpointTest extends ApiTestCase
             ->assertForbidden()
             ->assertJsonPath('code', 'social_reauthentication_required');
 
-        \App\Models\SocialAccount::query()
+        SocialAccount::query()
             ->where('user_id', $this->user->id)
             ->where('provider', 'facebook')
             ->where('provider_user_id', 'facebook-owner-2')
@@ -830,7 +843,7 @@ class AuthEndpointTest extends ApiTestCase
             'facebook',
             'facebook-owner-2'
         );
-        \App\Models\ApiToken::query()
+        ApiToken::query()
             ->where('token', hash('sha256', $staleReauthenticationToken))
             ->update(['issued_at' => now()->subMinutes(11)]);
 
@@ -852,7 +865,7 @@ class AuthEndpointTest extends ApiTestCase
             ['facebook', 'facebook-linked-owner'],
             ['google', 'google-linked-owner'],
         ] as [$provider, $providerUserId]) {
-            \App\Models\SocialAccount::query()->create([
+            SocialAccount::query()->create([
                 'user_id' => $this->user->id,
                 'provider' => $provider,
                 'provider_user_id' => $providerUserId,
@@ -884,17 +897,17 @@ class AuthEndpointTest extends ApiTestCase
             'social_id' => $providerId,
             'email_verified_at' => now(),
         ])->save();
-        \App\Models\SocialAccount::query()->create([
+        SocialAccount::query()->create([
             'user_id' => $this->user->id,
             'provider' => 'facebook',
             'provider_user_id' => $providerId,
             'last_verified_at' => now(),
         ]);
 
-        $registerId = (int) \App\Models\CoinEarningMethod::query()
+        $registerId = (int) CoinEarningMethod::query()
             ->where('action_key', 'register')
             ->value('id');
-        $instagramId = (int) \Illuminate\Support\Facades\DB::table('coin_earning_methods')->insertGetId([
+        $instagramId = (int) DB::table('coin_earning_methods')->insertGetId([
             'action_key' => 'instagram',
             'coins_amount' => 75,
             'is_repeatable' => false,
@@ -903,7 +916,7 @@ class AuthEndpointTest extends ApiTestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        $anonymousMethodId = (int) \Illuminate\Support\Facades\DB::table('coin_earning_methods')->insertGetId([
+        $anonymousMethodId = (int) DB::table('coin_earning_methods')->insertGetId([
             'action_key' => null,
             'coins_amount' => 40,
             'is_repeatable' => false,
@@ -924,11 +937,11 @@ class AuthEndpointTest extends ApiTestCase
         $this->withToken($reauthToken)->postJson('/api/v1/delete-account')->assertOk();
 
         $this->assertDatabaseCount('deleted_social_reward_tombstones', 2);
-        $tombstone = \App\Models\DeletedSocialRewardTombstone::query()
+        $tombstone = DeletedSocialRewardTombstone::query()
             ->where('provider', 'facebook')
             ->sole();
         $this->assertSame([
-            'method:' . $anonymousMethodId,
+            'method:'.$anonymousMethodId,
             'task:instagram',
             'welcome_bonus',
         ], $tombstone->consumed_reward_keys);
@@ -937,7 +950,7 @@ class AuthEndpointTest extends ApiTestCase
             'identity_hmac' => $providerId,
         ]);
 
-        $replacement = \App\Models\User::query()->forceCreate([
+        $replacement = User::query()->forceCreate([
             'name' => 'Same learner, new account row',
             'email' => 'replacement@rokn.test',
             'password' => bcrypt('irrelevant'),
@@ -948,14 +961,14 @@ class AuthEndpointTest extends ApiTestCase
             'wallet_coins' => 0,
             'wallet_reward_coins' => 0,
         ]);
-        \App\Models\SocialAccount::query()->create([
+        SocialAccount::query()->create([
             'user_id' => $replacement->id,
             'provider' => 'facebook',
             'provider_user_id' => $providerId,
             'last_verified_at' => now(),
         ]);
 
-        $this->assertSame(0, app(\App\Services\WelcomeRewardService::class)->grant($replacement));
+        $this->assertSame(0, app(WelcomeRewardService::class)->grant($replacement));
         $this->assertDatabaseMissing('wallet_transactions', [
             'user_id' => $replacement->id,
             'category' => 'welcome_bonus',
@@ -978,7 +991,7 @@ class AuthEndpointTest extends ApiTestCase
             ->postJson('/api/v1/claim-coins', ['method_id' => $anonymousMethodId])
             ->assertNotFound();
 
-        $crossProviderReplacement = \App\Models\User::query()->forceCreate([
+        $crossProviderReplacement = User::query()->forceCreate([
             'name' => 'Same email via another provider',
             'email' => $originalEmail,
             'password' => bcrypt('irrelevant'),
@@ -990,7 +1003,7 @@ class AuthEndpointTest extends ApiTestCase
             'wallet_coins' => 0,
             'wallet_reward_coins' => 0,
         ]);
-        \App\Models\SocialAccount::query()->create([
+        SocialAccount::query()->create([
             'user_id' => $crossProviderReplacement->id,
             'provider' => 'google',
             'provider_user_id' => 'new-google-provider-id',
@@ -999,7 +1012,7 @@ class AuthEndpointTest extends ApiTestCase
 
         $this->assertSame(
             0,
-            app(\App\Services\WelcomeRewardService::class)->grant($crossProviderReplacement)
+            app(WelcomeRewardService::class)->grant($crossProviderReplacement)
         );
         $this->assertDatabaseMissing('wallet_transactions', [
             'user_id' => $crossProviderReplacement->id,

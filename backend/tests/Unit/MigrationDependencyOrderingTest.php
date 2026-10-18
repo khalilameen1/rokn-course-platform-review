@@ -11,7 +11,7 @@ final class MigrationDependencyOrderingTest extends TestCase
 {
     public function test_forward_foreign_keys_are_explicitly_guarded(): void
     {
-        $files = glob(dirname(__DIR__, 2) . '/database/migrations/*.php') ?: [];
+        $files = glob(dirname(__DIR__, 2).'/database/migrations/*.php') ?: [];
         sort($files, SORT_STRING);
 
         /** @var array<string, string> $createdBy */
@@ -36,8 +36,9 @@ final class MigrationDependencyOrderingTest extends TestCase
         $violations = [];
         foreach ($upBodies as $file => $body) {
             foreach ($this->foreignTargets($body) as $target) {
-                if (!isset($createdBy[$target])) {
-                    $violations[] = basename($file) . " references missing table {$target}";
+                if (! isset($createdBy[$target])) {
+                    $violations[] = basename($file)." references missing table {$target}";
+
                     continue;
                 }
 
@@ -45,10 +46,10 @@ final class MigrationDependencyOrderingTest extends TestCase
                     continue;
                 }
 
-                $guard = '/Schema::hasTable\(\s*[\'\"]' . preg_quote($target, '/') . '[\'\"]\s*\)/';
-                if (!preg_match($guard, $body)) {
+                $guard = '/Schema::hasTable\(\s*[\'\"]'.preg_quote($target, '/').'[\'\"]\s*\)/';
+                if (! preg_match($guard, $body)) {
                     $violations[] = basename($file)
-                        . " references {$target} before {$createdBy[$target]} without a compatibility guard";
+                        ." references {$target} before {$createdBy[$target]} without a compatibility guard";
                 }
             }
         }

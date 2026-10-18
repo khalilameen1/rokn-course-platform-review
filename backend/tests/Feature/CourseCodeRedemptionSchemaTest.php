@@ -26,22 +26,24 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Tests\Support\ProductionCourseCodeSchema;
 use Tests\TestCase;
 
 /** Production migrations and real commits, with the retired-column SQLite bridge below. */
 final class CourseCodeRedemptionSchemaTest extends TestCase
 {
     private Course $course;
+
     private CourseCode $code;
+
     private User $student;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->artisan('migrate:fresh')->assertExitCode(0);
-        \Tests\Support\ProductionCourseCodeSchema::applySqliteBridge();
+        ProductionCourseCodeSchema::applySqliteBridge();
         Bus::fake();
         Http::preventStrayRequests();
         $this->student = $this->student('original');
@@ -190,7 +192,7 @@ final class CourseCodeRedemptionSchemaTest extends TestCase
     private function student(string $suffix): User
     {
         return User::query()->forceCreate([
-            'name' => 'Grant ' . $suffix, 'email' => $suffix . '-grant@example.test',
+            'name' => 'Grant '.$suffix, 'email' => $suffix.'-grant@example.test',
             'role' => 'client', 'active' => true, 'email_verified_at' => now(),
         ]);
     }

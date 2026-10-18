@@ -22,8 +22,7 @@ final readonly class AdminHomeReadService
         private AiUsageReportService $aiUsage,
         private ProviderInvoiceReportService $invoices,
         private AdminContentInventoryReadService $inventory
-    ) {
-    }
+    ) {}
 
     /** @return array<string,mixed> */
     public function read(ReportPeriod $period): array

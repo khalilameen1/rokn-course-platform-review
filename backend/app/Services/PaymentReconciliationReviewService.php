@@ -14,7 +14,7 @@ final class PaymentReconciliationReviewService
 {
     public function transition(int $id, string $targetState, string $note, string $editorVersion, int $actorId): void
     {
-        if (!in_array($targetState, [
+        if (! in_array($targetState, [
             PaymentReconciliationFinding::STATE_OPEN, PaymentReconciliationFinding::STATE_RESOLVED,
             PaymentReconciliationFinding::STATE_IGNORED,
         ], true)) {
@@ -29,12 +29,12 @@ final class PaymentReconciliationReviewService
             $allowedStates = $targetState === PaymentReconciliationFinding::STATE_OPEN
                 ? [PaymentReconciliationFinding::STATE_RESOLVED, PaymentReconciliationFinding::STATE_IGNORED]
                 : [PaymentReconciliationFinding::STATE_OPEN];
-            if (!in_array($finding->state, $allowedStates, true)) {
+            if (! in_array($finding->state, $allowedStates, true)) {
                 throw ValidationException::withMessages([
                     'finding' => 'تغيرت حالة نتيجة التسوية بالفعل. حدّث الصفحة قبل تسجيل قرار جديد.',
                 ]);
             }
-            if (!hash_equals(PaymentFindingEditorVersion::for($finding), $editorVersion)) {
+            if (! hash_equals(PaymentFindingEditorVersion::for($finding), $editorVersion)) {
                 throw ValidationException::withMessages([
                     'finding' => 'وصل دليل دفع أحدث منذ فتح الصفحة. راجعه قبل تسجيل القرار.',
                 ]);

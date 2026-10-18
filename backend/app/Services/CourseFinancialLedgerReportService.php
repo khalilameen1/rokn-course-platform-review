@@ -21,7 +21,7 @@ final class CourseFinancialLedgerReportService
     ];
 
     /**
-     * @param Collection<int, Order> $orders
+     * @param  Collection<int, Order>  $orders
      * @return Collection<int, array{total_coins:int,paid_coins:int,reward_coins:int,complete:bool}>
      */
     public function allocationsForOrders(Collection $orders): Collection
@@ -55,7 +55,7 @@ final class CourseFinancialLedgerReportService
             $transactions,
             $duplicateTransactionIds
         ): array {
-            if (!in_array($order->payment_method, [
+            if (! in_array($order->payment_method, [
                 Order::PAYMENT_METHOD_WALLET,
                 Order::PAYMENT_METHOD_WALLET_COINS,
             ], true)) {
@@ -71,9 +71,9 @@ final class CourseFinancialLedgerReportService
             $hasAmbiguousLink = $order->wallet_transaction_id !== null
                 && $duplicateTransactionIds->has((int) $order->wallet_transaction_id);
             if (
-                !$transaction
+                ! $transaction
                 || $hasAmbiguousLink
-                || !$this->belongsToOrder($transaction, $order)
+                || ! $this->belongsToOrder($transaction, $order)
             ) {
                 $hasCoinClaim = $order->wallet_transaction_id !== null
                     || (int) $order->total_coins > 0
@@ -84,7 +84,7 @@ final class CourseFinancialLedgerReportService
                     'total_coins' => 0,
                     'paid_coins' => 0,
                     'reward_coins' => 0,
-                    'complete' => !$hasCoinClaim,
+                    'complete' => ! $hasCoinClaim,
                 ]];
             }
 
@@ -116,7 +116,7 @@ final class CourseFinancialLedgerReportService
     }
 
     /**
-     * @param Collection<int, int>|null $courseIds
+     * @param  Collection<int, int>|null  $courseIds
      * @return Collection<int, array{total_buy_count:int,current_period_buy_count:int,total_coins:int,paid_coins:int,reward_coins:int,incomplete_orders:int}>
      */
     public function courseSummaries(
@@ -130,14 +130,14 @@ final class CourseFinancialLedgerReportService
         // to more than one live order stays unattributed, as in
         // allocationsForOrders(). Per-order screens keep using that method.
         $linked = '(wallet_ledger.id IS NOT NULL AND NOT EXISTS ('
-            . 'SELECT 1 FROM orders AS sibling_orders'
-            . ' WHERE sibling_orders.wallet_transaction_id = orders.wallet_transaction_id'
-            . ' AND sibling_orders.id <> orders.id'
-            . ' AND sibling_orders.deleted_at IS NULL))';
+            .'SELECT 1 FROM orders AS sibling_orders'
+            .' WHERE sibling_orders.wallet_transaction_id = orders.wallet_transaction_id'
+            .' AND sibling_orders.id <> orders.id'
+            .' AND sibling_orders.deleted_at IS NULL))';
         $coinClaim = '(orders.wallet_transaction_id IS NOT NULL'
-            . ' OR COALESCE(orders.total_coins, 0) > 0'
-            . ' OR COALESCE(orders.paid_coins, 0) > 0'
-            . ' OR COALESCE(orders.reward_coins, 0) > 0)';
+            .' OR COALESCE(orders.total_coins, 0) > 0'
+            .' OR COALESCE(orders.paid_coins, 0) > 0'
+            .' OR COALESCE(orders.reward_coins, 0) > 0)';
         $countsPeriod = $periodStart !== null && $periodEnd !== null;
         $periodBindings = $countsPeriod
             ? [$this->databaseInstant($periodStart), $this->databaseInstant($periodEnd)]
@@ -176,7 +176,7 @@ final class CourseFinancialLedgerReportService
             ->selectRaw(
                 $countsPeriod
                     ? 'SUM(CASE WHEN orders.approved_at >= ? AND orders.approved_at < ? THEN 1 ELSE 0 END)'
-                        . ' AS current_period_buy_count'
+                        .' AS current_period_buy_count'
                     : '0 AS current_period_buy_count',
                 $periodBindings
             )

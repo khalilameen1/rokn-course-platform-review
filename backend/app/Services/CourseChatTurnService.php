@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\AiInputAttachment;
 use App\Models\AiUsageEvent;
 use App\Models\CourseChatTurn;
-use App\Models\AiInputAttachment;
 use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\CursorPaginator;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use UnexpectedValueException;
@@ -59,7 +60,7 @@ final class CourseChatTurnService
             $fingerprint,
             $attachmentIds
         ): CourseChatTurn {
-            if (!User::query()->whereKey($userId)->where('active', true)->lockForUpdate()->exists()) {
+            if (! User::query()->whereKey($userId)->where('active', true)->lockForUpdate()->exists()) {
                 throw new AuthorizationException('The learner account is no longer active.');
             }
             $existing = CourseChatTurn::query()
@@ -68,7 +69,7 @@ final class CourseChatTurnService
                 ->lockForUpdate()
                 ->first();
             if ($existing) {
-                if (!hash_equals((string) $existing->request_fingerprint, $fingerprint)) {
+                if (! hash_equals((string) $existing->request_fingerprint, $fingerprint)) {
                     throw new UnexpectedValueException('Course chat request identity conflict.');
                 }
 
@@ -94,7 +95,7 @@ final class CourseChatTurnService
                     'expires_at' => now()->addDays(max(7, (int) config('openrouter.chat_history_days', 90))),
                 ]
             );
-            if (!hash_equals((string) $turn->request_fingerprint, $fingerprint)) {
+            if (! hash_equals((string) $turn->request_fingerprint, $fingerprint)) {
                 throw new UnexpectedValueException('Course chat request identity conflict.');
             }
 
@@ -116,7 +117,7 @@ final class CourseChatTurnService
             ->whereKey($excludeTurnId)
             ->value('created_at');
         $sessionStartedAt = $currentTurnCreatedAt
-            ? \Illuminate\Support\Carbon::parse($currentTurnCreatedAt)->subMinutes(max(
+            ? Carbon::parse($currentTurnCreatedAt)->subMinutes(max(
                 15,
                 (int) config('openrouter.chat_context_session_minutes', 120)
             ))
@@ -152,7 +153,7 @@ final class CourseChatTurnService
                 [
                     'role' => 'user',
                     'content' => ($lessonId !== null && (int) $turn->lesson_id !== $lessonId
-                        ? "من مقطع سابق في الكورس\n" : '') . $question,
+                        ? "من مقطع سابق في الكورس\n" : '').$question,
                 ],
                 ['role' => 'assistant', 'content' => $answer],
             ]);
@@ -167,7 +168,7 @@ final class CourseChatTurnService
 
     public function markStreaming(?CourseChatTurn $turn): bool
     {
-        if (!$turn) {
+        if (! $turn) {
             return false;
         }
 
@@ -192,7 +193,7 @@ final class CourseChatTurnService
 
     public function complete(?CourseChatTurn $turn, string $answer, ?AiUsageEvent $usage = null): bool
     {
-        if (!$turn) {
+        if (! $turn) {
             return false;
         }
 
@@ -201,22 +202,24 @@ final class CourseChatTurnService
             if ($accepted === '') {
                 return false;
             }
-            if (!User::query()->whereKey($turn->user_id)->where('active', true)
-                ->lockForUpdate()->exists()) return false;
+            if (! User::query()->whereKey($turn->user_id)->where('active', true)
+                ->lockForUpdate()->exists()) {
+                return false;
+            }
             $locked = CourseChatTurn::query()->lockForUpdate()->find($turn->id);
-            if (!$locked) {
+            if (! $locked) {
                 return false;
             }
             if ($locked->status === CourseChatTurn::COMPLETED) {
                 return $accepted !== '' && hash_equals((string) $locked->answer, $accepted);
             }
-            if (!in_array($locked->status, [
+            if (! in_array($locked->status, [
                 CourseChatTurn::QUEUED,
                 CourseChatTurn::STREAMING,
             ], true)) {
                 return false;
             }
-            if (!$usage) {
+            if (! $usage) {
                 $usage = AiUsageEvent::query()
                     ->where('request_id', $locked->client_request_id)
                     ->where('user_id', $locked->user_id)
@@ -236,7 +239,7 @@ final class CourseChatTurnService
 
     public function fail(?CourseChatTurn $turn, string $code): void
     {
-        if (!$turn || !$this->transition($turn, CourseChatTurn::FAILED, $code, now())) {
+        if (! $turn || ! $this->transition($turn, CourseChatTurn::FAILED, $code, now())) {
             return;
         }
 
@@ -244,11 +247,11 @@ final class CourseChatTurnService
             ?: 'chat_terminal_failure';
         try {
             $firstReport = Cache::add(
-                'telemetry:course-chat-terminal:' . hash('sha256', (string) $turn->client_request_id),
+                'telemetry:course-chat-terminal:'.hash('sha256', (string) $turn->client_request_id),
                 true,
                 now()->addDay()
             );
-            if (!$firstReport) {
+            if (! $firstReport) {
                 return;
             }
             Log::error('Course chat turn entered terminal failure.', [
@@ -257,7 +260,7 @@ final class CourseChatTurnService
                 'request_id' => (string) $turn->client_request_id,
                 'error_code' => $safeCode,
             ]);
-            report(new \RuntimeException('course_chat_terminal_failure:' . $safeCode));
+            report(new \RuntimeException('course_chat_terminal_failure:'.$safeCode));
         } catch (\Throwable $reportingFailure) {
             // Observability must never change the learner-facing turn outcome.
         }
@@ -272,15 +275,15 @@ final class CourseChatTurnService
     public function reconcileTerminalUsage(?CourseChatTurn $turn): ?CourseChatTurn
     {
         if (
-            !$turn
-            || !in_array($turn->status, [CourseChatTurn::QUEUED, CourseChatTurn::STREAMING], true)
+            ! $turn
+            || ! in_array($turn->status, [CourseChatTurn::QUEUED, CourseChatTurn::STREAMING], true)
         ) {
             return $turn;
         }
 
         DB::transaction(function () use ($turn): void {
             $locked = CourseChatTurn::query()->lockForUpdate()->find($turn->id);
-            if (!$locked || !in_array($locked->status, [
+            if (! $locked || ! in_array($locked->status, [
                 CourseChatTurn::QUEUED,
                 CourseChatTurn::STREAMING,
             ], true)) {
@@ -294,7 +297,7 @@ final class CourseChatTurnService
                 ->where('feature', 'course_chat')
                 ->lockForUpdate()
                 ->first();
-            if (!$usage || $usage->status === 'reserved') {
+            if (! $usage || $usage->status === 'reserved') {
                 return;
             }
 
@@ -320,7 +323,6 @@ final class CourseChatTurnService
                 'completed_at' => now(),
             ])->save();
 
-            return;
         }, 3);
 
         return CourseChatTurn::query()->find($turn->id);
@@ -344,13 +346,13 @@ final class CourseChatTurnService
                 ->where('enrollment_id', $turn->enrollment_id)
                 ->where('feature', 'course_chat')
                 ->first();
-            if (!$usage || ($usage->status === 'reserved' && $this->paidCalls->landedResult($usage) === null)) {
+            if (! $usage || ($usage->status === 'reserved' && $this->paidCalls->landedResult($usage) === null)) {
                 return $turn;
             }
         }
 
         $turn = $this->reconcileTerminalUsage($turn);
-        if (!$turn || !in_array($turn->status, [
+        if (! $turn || ! in_array($turn->status, [
             CourseChatTurn::QUEUED,
             CourseChatTurn::STREAMING,
         ], true)) {
@@ -384,7 +386,7 @@ final class CourseChatTurnService
     /** Close a queued request that never reached the worker. */
     public function failBeforeDispatch(?CourseChatTurn $turn, string $code): bool
     {
-        if (!$turn) {
+        if (! $turn) {
             return false;
         }
 
@@ -478,8 +480,8 @@ final class CourseChatTurnService
             $cutoff = $turn?->status === CourseChatTurn::QUEUED
                 ? $queuedCutoff
                 : $streamingCutoff;
-            if (!$turn
-                || !in_array($turn->status, [CourseChatTurn::QUEUED, CourseChatTurn::STREAMING], true)
+            if (! $turn
+                || ! in_array($turn->status, [CourseChatTurn::QUEUED, CourseChatTurn::STREAMING], true)
                 || $turn->updated_at->isAfter($cutoff)) {
                 return 0;
             }
@@ -570,9 +572,10 @@ final class CourseChatTurnService
         ?string $code,
         mixed $completedAt
     ): bool {
-        if (!$turn) {
+        if (! $turn) {
             return false;
         }
+
         return CourseChatTurn::query()
             ->whereKey($turn->id)
             ->whereIn('status', [CourseChatTurn::QUEUED, CourseChatTurn::STREAMING])
@@ -592,7 +595,7 @@ final class CourseChatTurnService
                 ->where('client_request_id', $clientRequestId)
                 ->lockForUpdate()
                 ->first();
-            if (!$turn) {
+            if (! $turn) {
                 return 'not_found';
             }
             if ($turn->status === CourseChatTurn::CANCELLED) {
@@ -640,5 +643,4 @@ final class CourseChatTurnService
             return 'cancelled';
         }, 3);
     }
-
 }

@@ -56,6 +56,7 @@ final class LearningReminderPreferenceTest extends TestCase
             'is_active' => true, 'enrolled_at' => now()->subDays(2),
             'access_granted_at' => now()->subDays(2),
         ]);
+
         return $user;
     }
 

@@ -2,21 +2,30 @@
 
 namespace App\Http\Resources;
 
-use Illuminate\Http\Resources\Json\JsonResource;
-use App\Support\RoknLocale;
+use App\Models\CourseSection;
+use App\Models\Lesson;
 use App\Services\BunnyDeliveryService;
-use App\Services\LessonMediaDeliveryService;
 use App\Services\CourseAccessPlanService;
 use App\Services\CourseSectionSequenceService;
+use App\Services\LessonMediaDeliveryService;
+use App\Support\RoknLocale;
 use App\Support\RoknPublicUrl;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Collection;
 
 class BaseCourseResource extends JsonResource
 {
     private ?string $entitlementAccessType = null;
+
     private ?bool $entitlementChatAvailable = null;
+
     private ?bool $entitlementCertificateIncluded = null;
+
     private ?bool $entitlementCertificateAvailable = null;
+
     private ?bool $entitlementLearningStarted = null;
+
     private bool $includeAccessPlans = false;
 
     public function withAccessPlans(): static
@@ -37,8 +46,7 @@ class BaseCourseResource extends JsonResource
         bool $certificateIncluded = false,
         bool $certificateAvailable = false,
         bool $learningStarted = false
-    ): static
-    {
+    ): static {
         $this->entitlementAccessType = $accessType;
         $this->entitlementChatAvailable = $chatAvailable;
         $this->entitlementCertificateIncluded = $certificateIncluded;
@@ -52,7 +60,7 @@ class BaseCourseResource extends JsonResource
      * Transform the resource into an array.
      * Base course resource with general data (excluding sensitive links/URLs)
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  Request  $request
      * @return array
      */
     public function toArray($request)
@@ -84,8 +92,7 @@ class BaseCourseResource extends JsonResource
         $previewReelsCount = array_key_exists('preview_reels_count', $attributes)
             ? (int) $attributes['preview_reels_count']
             : ($loadedSections !== null
-                ? $loadedSections->filter(fn ($section) =>
-                    $section->getSectionType() === 'lesson'
+                ? $loadedSections->filter(fn ($section) => $section->getSectionType() === 'lesson'
                     && $section->relationLoaded('sectionable')
                     && (bool) ($section->sectionable?->is_opened ?? false)
                     && $section->sectionable->hasReadyMediaState()
@@ -102,7 +109,7 @@ class BaseCourseResource extends JsonResource
         $displayStudentsCount = $activeStudentsCount;
         $durationMinutes = max(0, (int) ($attributes['duration_minutes_computed'] ?? 0));
         $videoCount = $loadedSections !== null
-            ? $loadedSections->where('sectionable_type', \App\Models\Lesson::class)->count()
+            ? $loadedSections->where('sectionable_type', Lesson::class)->count()
             : (array_key_exists('video_reels_count', $attributes)
                 ? max(0, (int) $attributes['video_reels_count'])
                 : 0);
@@ -111,7 +118,7 @@ class BaseCourseResource extends JsonResource
             && (bool) $this->is_catalog_visible;
 
         return [
-            'id' => (int)$this->id,
+            'id' => (int) $this->id,
             // A loaded course map names one immutable published graph. Mobile
             // uses this token to replace a stale back-stack map after publish.
             'published_revision' => max(0, (int) (
@@ -141,7 +148,7 @@ class BaseCourseResource extends JsonResource
                 $this->entitlementLearningStarted
             ),
             'title' => (string) $this->title,
-            'description' => $this->description ,
+            'description' => $this->description,
             'image' => $this->catalogue_image,
             'price' => $price,
             // Course prices are virtual Rokn credits, never a cash or crypto amount.
@@ -162,8 +169,8 @@ class BaseCourseResource extends JsonResource
                         ->values();
                 }
             ),
-            'is_main_course' => (bool)$this->is_main_course,
-            'is_coming_soon' => (bool)$this->is_coming_soon,
+            'is_main_course' => (bool) $this->is_main_course,
+            'is_coming_soon' => (bool) $this->is_coming_soon,
             'home_sort_order' => (int) ($this->home_sort_order ?? 100),
             'catalog_badge' => [
                 'label' => (string) (RoknLocale::isArabic()
@@ -178,7 +185,7 @@ class BaseCourseResource extends JsonResource
             'path_id' => $this->path_id,
             'path_title' => $this->coursePath ? $this->coursePath->title : null,
             'ratings' => CourseRatingResource::collection($this->whenLoaded('ratings')),
-            'tags' => $this->classifications->map(function($classification) {
+            'tags' => $this->classifications->map(function ($classification) {
                 return [
                     'id' => $classification->id,
                     'name_ar' => $classification->name_ar,
@@ -187,7 +194,7 @@ class BaseCourseResource extends JsonResource
                     'home_order' => (int) ($classification->home_order ?? 100),
                 ];
             }),
-            'teachers' => $this->publicTeachers()->map(function($teacher) {
+            'teachers' => $this->publicTeachers()->map(function ($teacher) {
                 return [
                     'id' => $teacher->id,
                     'name' => $teacher->name,
@@ -199,11 +206,11 @@ class BaseCourseResource extends JsonResource
 
             // The module graph is the only public course map. Paid reel
             // content remains absent; explicit previews keep playable data.
-            'modules' => $this->whenLoaded('modules', function() use ($coursePublished) {
+            'modules' => $this->whenLoaded('modules', function () use ($coursePublished) {
                 return $this->modules->sortBy([
                     ['order', 'asc'],
                     ['id', 'asc'],
-                ])->values()->map(function($module) use ($coursePublished) {
+                ])->values()->map(function ($module) use ($coursePublished) {
                     return [
                         'id' => $module->id,
                         'title' => $module->title,
@@ -213,7 +220,7 @@ class BaseCourseResource extends JsonResource
                             ['id', 'asc'],
                         ])->values()->map(
                             fn ($section) => $this->publicSectionPayload($section, $coursePublished)
-                        )
+                        ),
                     ];
                 });
             }),
@@ -229,20 +236,20 @@ class BaseCourseResource extends JsonResource
                     ?? $catalogueChatAvailable,
             ],
 
-            'created_at' => (string)$this->created_at,
-            'updated_at' => (string)$this->updated_at,
+            'created_at' => (string) $this->created_at,
+            'updated_at' => (string) $this->updated_at,
         ];
     }
 
     /**
      * Get basic section content without sensitive data
      *
-     * @param \App\Models\CourseSection $section
+     * @param  CourseSection  $section
      * @return array
      */
     protected function getBasicSectionContent($section)
     {
-        if (!$section->sectionable) {
+        if (! $section->sectionable) {
             return null;
         }
 
@@ -299,7 +306,7 @@ class BaseCourseResource extends JsonResource
             'order' => $section->order,
             'module_id' => $section->module_id,
             'is_preview' => $isPreview,
-            'is_locked' => !$isPreview,
+            'is_locked' => ! $isPreview,
             'lock_reason' => $isPreview ? null : 'course_purchase_required',
         ];
         if ($isPreview) {
@@ -309,7 +316,7 @@ class BaseCourseResource extends JsonResource
         return $data;
     }
 
-    protected function lessonDurationSeconds(\App\Models\Lesson $lesson): int
+    protected function lessonDurationSeconds(Lesson $lesson): int
     {
         return max(0, (int) (
             $lesson->relationLoaded('mediaState')
@@ -318,7 +325,7 @@ class BaseCourseResource extends JsonResource
         ));
     }
 
-    private function publicTeachers(): \Illuminate\Support\Collection
+    private function publicTeachers(): Collection
     {
         $teachers = $this->relationLoaded('teachers')
             ? $this->teachers->filter(fn ($teacher) => (bool) $teacher->active)
@@ -334,4 +341,3 @@ class BaseCourseResource extends JsonResource
             : collect();
     }
 }
-

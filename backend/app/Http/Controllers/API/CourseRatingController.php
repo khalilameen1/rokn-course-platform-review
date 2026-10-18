@@ -20,8 +20,7 @@ final class CourseRatingController extends Controller
     public function __construct(
         private readonly ApiResponseService $responses,
         private readonly CourseRatingEligibilityService $eligibility
-    ) {
-    }
+    ) {}
 
     public function store(CourseRatingRequest $request, int|string $courseId): JsonResponse
     {
@@ -48,7 +47,7 @@ final class CourseRatingController extends Controller
             $lockedCourse = Course::query()->whereKey($course->id)
                 ->lockForUpdate()->firstOrFail();
             $eligibility = $this->eligibility->for($lockedUser, $lockedCourse);
-            if (!$eligibility['can_rate']) {
+            if (! $eligibility['can_rate']) {
                 return [
                     'conflict' => false,
                     'denied' => $eligibility['reason'],
@@ -63,7 +62,7 @@ final class CourseRatingController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$rating) {
+            if (! $rating) {
                 if ($expectedVersion !== 0) {
                     return ['conflict' => true, 'denied' => null, 'rating' => null];
                 }
@@ -73,7 +72,7 @@ final class CourseRatingController extends Controller
                 // a query-builder insert followed by an unchanged save emits
                 // no creation event and leaves the first rating invisible in
                 // cached course cards.
-                $rating = new CourseRating();
+                $rating = new CourseRating;
                 $rating->forceFill([
                     'user_id' => $user->id,
                     'course_id' => $course->id,
@@ -86,13 +85,13 @@ final class CourseRatingController extends Controller
                 return ['conflict' => false, 'denied' => null, 'rating' => $rating];
             }
 
-            $sameValue = !$rating->trashed()
+            $sameValue = ! $rating->trashed()
                 && (int) $rating->rating === $nextRating
                 && ($rating->comment !== null ? (string) $rating->comment : null) === $nextComment;
             if ((int) $rating->version !== $expectedVersion) {
                 // A transport retry after a committed response is success,
                 // while a genuinely different edit from another device is a conflict.
-                return ['conflict' => !$sameValue, 'denied' => null, 'rating' => $rating];
+                return ['conflict' => ! $sameValue, 'denied' => null, 'rating' => $rating];
             }
 
             if ($sameValue) {
@@ -155,7 +154,7 @@ final class CourseRatingController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$rating || $rating->trashed()) {
+            if (! $rating || $rating->trashed()) {
                 return ['conflict' => false, 'rating' => $rating];
             }
             if ((int) $rating->version !== $expectedVersion) {
@@ -196,8 +195,8 @@ final class CourseRatingController extends Controller
         $count = (int) ($aggregate?->ratings_count ?? 0);
 
         return [
-            'rating' => $rating && !$rating->trashed() ? (int) $rating->rating : null,
-            'comment' => $rating && !$rating->trashed() ? $rating->comment : null,
+            'rating' => $rating && ! $rating->trashed() ? (int) $rating->rating : null,
+            'comment' => $rating && ! $rating->trashed() ? $rating->comment : null,
             'version' => $version ?? (int) ($rating?->version ?? 0),
             'average_rating' => $count > 0
                 ? round((float) $aggregate->average_rating, 1)

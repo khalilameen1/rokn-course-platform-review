@@ -32,7 +32,7 @@ final class MigrateBunnySecrets extends Command
             return self::FAILURE;
         }
 
-        if (!$this->schemaIsReady()) {
+        if (! $this->schemaIsReady()) {
             $this->error('The settings secret columns are unavailable. Run database migrations first.');
 
             return self::FAILURE;
@@ -53,7 +53,7 @@ final class MigrateBunnySecrets extends Command
             return self::FAILURE;
         }
 
-        if (!$this->option('apply')) {
+        if (! $this->option('apply')) {
             $this->info('Dry-run complete. No values were changed. Re-run with --apply after backing up the database and APP_KEY.');
             $this->rotationGuidance();
 
@@ -93,7 +93,7 @@ final class MigrateBunnySecrets extends Command
                     foreach ($legacyValues as [$encryptedColumn, $legacy]) {
                         $decrypted = (string) $setting->getAttribute($encryptedColumn);
                         $ciphertext = (string) $setting->getRawOriginal($encryptedColumn);
-                        if (!hash_equals($legacy, $decrypted) || hash_equals($legacy, $ciphertext)) {
+                        if (! hash_equals($legacy, $decrypted) || hash_equals($legacy, $ciphertext)) {
                             throw new RuntimeException('Encrypted Bunny credential verification failed.');
                         }
                     }
@@ -135,7 +135,7 @@ final class MigrateBunnySecrets extends Command
     }
 
     /**
-     * @param iterable<int, Setting> $settings
+     * @param  iterable<int, Setting>  $settings
      * @return array{migrate: int, clear: int, conflict: int, conflict_ids: list<int>}
      */
     private function inspect(iterable $settings): array
@@ -155,7 +155,7 @@ final class MigrateBunnySecrets extends Command
                     $encrypted = null;
                 }
 
-                if ($encrypted === null || ($encrypted !== '' && !hash_equals($legacy, $encrypted))) {
+                if ($encrypted === null || ($encrypted !== '' && ! hash_equals($legacy, $encrypted))) {
                     $result['conflict']++;
                     $result['conflict_ids'][] = (int) $setting->getKey();
                 } elseif ($encrypted === '') {

@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
-use App\Support\NotificationAudience;
-use App\Support\NotificationCampaignIntent;
 use App\Models\Course;
 use App\Models\Lesson;
+use App\Support\NotificationAudience;
+use App\Support\NotificationCampaignIntent;
 use App\Support\RoknAppLink;
 use Illuminate\Support\Str;
 
@@ -13,14 +13,10 @@ final class CourseContentNotificationService
 {
     /**
      * Send notification for a new course lesson.
-     *
-     * @param Lesson $lesson
-     * @param Course $course
-     * @return bool
      */
     public static function notifyNewCourseLesson(Lesson $lesson, Course $course): bool
     {
-        if (!self::courseCanReceiveContentNotifications($course)) {
+        if (! self::courseCanReceiveContentNotifications($course)) {
             return false;
         }
 
@@ -32,8 +28,8 @@ final class CourseContentNotificationService
         ], [
             'title_ar' => 'مقطع جديد',
             'title_en' => 'New lesson available',
-            'message_ar' => $lesson->title . "\n" . $courseNameAr,
-            'message_en' => $lesson->title . "\n" . $courseNameEn,
+            'message_ar' => $lesson->title."\n".$courseNameAr,
+            'message_en' => $lesson->title."\n".$courseNameEn,
             'action_label_ar' => 'شاهد الآن',
             'action_label_en' => 'Watch now',
         ]);
@@ -45,7 +41,7 @@ final class CourseContentNotificationService
 
         return app(NotificationCampaignService::class)->queue(new NotificationCampaignIntent(
             notificationType: 'new_course_lesson',
-            deliveryKey: 'lesson-published:' . $lesson->id,
+            deliveryKey: 'lesson-published:'.$lesson->id,
             audience: new NotificationAudience(
                 selector: NotificationAudience::ENROLLED,
                 courseId: (int) $course->id
@@ -65,16 +61,12 @@ final class CourseContentNotificationService
 
     /**
      * Send notification for course update.
-     *
-     * @param Course $course
-     * @return bool
      */
     public static function notifyCourseUpdate(
         Course $course,
         ?string $deliveryKey = null
-    ): bool
-    {
-        if (!self::courseCanReceiveContentNotifications($course)) {
+    ): bool {
+        if (! self::courseCanReceiveContentNotifications($course)) {
             return false;
         }
 
@@ -118,8 +110,8 @@ final class CourseContentNotificationService
 
     public static function notifyNewCourse(Course $course, string $deliveryKey): bool
     {
-        if (!self::courseCanReceiveContentNotifications($course)
-            || !$course->is_catalog_visible) {
+        if (! self::courseCanReceiveContentNotifications($course)
+            || ! $course->is_catalog_visible) {
             return false;
         }
         $courseNameAr = (string) ($course->name_ar ?: $course->name_en ?: 'كورس ركن');
@@ -132,7 +124,9 @@ final class CourseContentNotificationService
             'action_label_ar' => 'افتح الكورس',
             'action_label_en' => 'View course',
         ]);
-        if ($copy === null) return false;
+        if ($copy === null) {
+            return false;
+        }
 
         return app(NotificationCampaignService::class)->queue(new NotificationCampaignIntent(
             notificationType: 'new_course',
@@ -167,11 +161,10 @@ final class CourseContentNotificationService
         }
 
         $current = $course->fresh();
-        if (!$current) {
+        if (! $current) {
             return false;
         }
 
         return (bool) data_get(app(CoursePublishingService::class)->audit($current), 'ready');
     }
 }
-

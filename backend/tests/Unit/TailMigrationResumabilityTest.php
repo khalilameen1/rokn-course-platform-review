@@ -12,14 +12,14 @@ final class TailMigrationResumabilityTest extends TestCase
     {
         $backend = dirname(__DIR__, 2);
         $manifest = json_decode(
-            (string) file_get_contents($backend . '/database/migration-baseline-manifest.json'),
+            (string) file_get_contents($backend.'/database/migration-baseline-manifest.json'),
             true,
             flags: JSON_THROW_ON_ERROR
         );
         $tailStartsAt = (string) $manifest['tailStartsAt'];
         $violations = [];
 
-        foreach (glob($backend . '/database/migrations/*.php') ?: [] as $file) {
+        foreach (glob($backend.'/database/migrations/*.php') ?: [] as $file) {
             $name = pathinfo($file, PATHINFO_FILENAME);
             $timestamp = substr($name, 0, 17);
             if (strcmp($timestamp, $tailStartsAt) < 0) {
@@ -34,19 +34,19 @@ final class TailMigrationResumabilityTest extends TestCase
                 $created
             );
             foreach ($created[1] as $table) {
-                $guard = '/Schema::hasTable\(\s*[\'\"]' . preg_quote($table, '/') . '[\'\"]\s*\)/';
+                $guard = '/Schema::hasTable\(\s*[\'\"]'.preg_quote($table, '/').'[\'\"]\s*\)/';
                 if (preg_match($guard, $up) !== 1) {
-                    $violations[] = basename($file) . " creates {$table} without a resume guard";
+                    $violations[] = basename($file)." creates {$table} without a resume guard";
                 }
             }
 
             $ddlOperations = preg_match_all('/Schema::(?:table|create|rename|drop)\s*\(/', $up);
             if ($ddlOperations > 1 && preg_match('/\$withinTransaction\s*=\s*false/', $code) !== 1) {
-                $violations[] = basename($file) . ' contains multi-step DDL without an explicit non-transactional contract';
+                $violations[] = basename($file).' contains multi-step DDL without an explicit non-transactional contract';
             }
 
             if (preg_match('/->insert\s*\(/', $up) === 1) {
-                $violations[] = basename($file) . ' contains a non-idempotent seed insert';
+                $violations[] = basename($file).' contains a non-idempotent seed insert';
             }
         }
 
@@ -57,14 +57,14 @@ final class TailMigrationResumabilityTest extends TestCase
     {
         $backend = dirname(__DIR__, 2);
         $manifest = json_decode(
-            (string) file_get_contents($backend . '/database/migration-baseline-manifest.json'),
+            (string) file_get_contents($backend.'/database/migration-baseline-manifest.json'),
             true,
             flags: JSON_THROW_ON_ERROR
         );
         $tailStartsAt = (string) $manifest['tailStartsAt'];
         $violations = [];
 
-        foreach (glob($backend . '/database/migrations/*.php') ?: [] as $file) {
+        foreach (glob($backend.'/database/migrations/*.php') ?: [] as $file) {
             $name = pathinfo($file, PATHINFO_FILENAME);
             if (strcmp(substr($name, 0, 17), $tailStartsAt) < 0) {
                 continue;
@@ -72,13 +72,13 @@ final class TailMigrationResumabilityTest extends TestCase
 
             $code = $this->withoutComments((string) file_get_contents($file));
             if (preg_match('/^use\s+App\\\\/m', $code) === 1) {
-                $violations[] = basename($file) . ' imports mutable application code';
+                $violations[] = basename($file).' imports mutable application code';
             }
             if (preg_match('/\bapp\s*\(\s*[A-Za-z_\\\\]+::class\s*\)/', $code) === 1) {
-                $violations[] = basename($file) . ' resolves a mutable application service';
+                $violations[] = basename($file).' resolves a mutable application service';
             }
             if (preg_match('/^use\s+Illuminate\\\\Database\\\\Eloquent\\\\/m', $code) === 1) {
-                $violations[] = basename($file) . ' boots through Eloquent instead of the schema/query layer';
+                $violations[] = basename($file).' boots through Eloquent instead of the schema/query layer';
             }
         }
 
@@ -89,14 +89,14 @@ final class TailMigrationResumabilityTest extends TestCase
     {
         $backend = dirname(__DIR__, 2);
         $manifest = json_decode(
-            (string) file_get_contents($backend . '/database/migration-baseline-manifest.json'),
+            (string) file_get_contents($backend.'/database/migration-baseline-manifest.json'),
             true,
             flags: JSON_THROW_ON_ERROR
         );
         $tailStartsAt = (string) $manifest['tailStartsAt'];
         $groups = [];
 
-        foreach (glob($backend . '/database/migrations/*.php') ?: [] as $file) {
+        foreach (glob($backend.'/database/migrations/*.php') ?: [] as $file) {
             $name = pathinfo($file, PATHINFO_FILENAME);
             $timestamp = substr($name, 0, 17);
             if (strcmp($timestamp, $tailStartsAt) < 0) {
@@ -122,8 +122,8 @@ final class TailMigrationResumabilityTest extends TestCase
                         if ($candidate['name'] === $owner['name']) {
                             continue;
                         }
-                        if (preg_match('/[\'\"]' . preg_quote($table, '/') . '[\'\"]/', $candidate['code']) === 1) {
-                            $violations[] = $candidate['name'] . " depends on {$table} created by same-timestamp " . $owner['name'];
+                        if (preg_match('/[\'\"]'.preg_quote($table, '/').'[\'\"]/', $candidate['code']) === 1) {
+                            $violations[] = $candidate['name']." depends on {$table} created by same-timestamp ".$owner['name'];
                         }
                     }
                 }

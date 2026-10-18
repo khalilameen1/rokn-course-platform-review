@@ -21,8 +21,7 @@ final readonly class CourseCompletionService
         private CourseRevisionLearnerReadService $revisionReads,
         private CourseRevisionResolver $revisions,
         private CourseSectionAccessService $sectionAccess
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{success:bool,status:int,message:string,data:mixed,code?:string}
@@ -67,7 +66,7 @@ final readonly class CourseCompletionService
     private function alreadyCompletedWithoutWrites(User $user, int $courseId, int $sectionId): ?array
     {
         $course = Course::query()->whereKey($courseId)->first();
-        if (!$course || !$course->isPublishedForLearning()) {
+        if (! $course || ! $course->isPublishedForLearning()) {
             return null;
         }
         $sectionId = $this->currentSectionId($sectionId);
@@ -75,11 +74,11 @@ final readonly class CourseCompletionService
             (int) $user->id,
             $sectionId
         );
-        if (!$existingProgress || !$existingProgress->is_completed) {
+        if (! $existingProgress || ! $existingProgress->is_completed) {
             return null;
         }
         [$section] = $this->completableSection($user, $course, $sectionId);
-        if (!$section) {
+        if (! $section) {
             return null;
         }
 
@@ -100,7 +99,7 @@ final readonly class CourseCompletionService
     private function completeWithinCourseLock(User $user, Course $course, int $sectionId): array
     {
         $courseId = (int) $course->id;
-        if (!$course->isPublishedForLearning()) {
+        if (! $course->isPublishedForLearning()) {
             return $this->failure(404, 'Course is not available for learning');
         }
         // A durable phone command retains the section it originally viewed.
@@ -108,7 +107,7 @@ final readonly class CourseCompletionService
         // lock as completion; current membership/evidence/access still decide.
         $sectionId = $this->currentSectionId($sectionId);
         [$section, $failure] = $this->completableSection($user, $course, $sectionId);
-        if (!$section) {
+        if (! $section) {
             return $failure;
         }
 
@@ -138,7 +137,7 @@ final readonly class CourseCompletionService
 
         if ($section->getSectionType() === 'lesson') {
             $lesson = Lesson::with('courseSection')->find($section->sectionable_id);
-            if (!$lesson) {
+            if (! $lesson) {
                 return $this->failure(
                     409,
                     'Open this lesson and try again',
@@ -147,7 +146,7 @@ final readonly class CourseCompletionService
             }
 
             $evidence = $this->learningEvidence->evidenceFor($user, $lesson);
-            if (!$evidence['eligible_for_completion']) {
+            if (! $evidence['eligible_for_completion']) {
                 return $this->failure(
                     409,
                     'Continue this lesson before moving to the next step',
@@ -212,7 +211,7 @@ final readonly class CourseCompletionService
                 ->where('course_section_id', $section->id)
                 ->lockForUpdate()
                 ->firstOrFail();
-            if (!$progress->is_completed) {
+            if (! $progress->is_completed) {
                 $progress->forceFill([
                     'is_completed' => true,
                     'completed_at' => $progress->completed_at ?? now(),
@@ -264,16 +263,16 @@ final readonly class CourseCompletionService
             ->where('course_id', $courseId)
             ->first();
 
-        if (!$section) {
+        if (! $section) {
             return [null, $this->failure(404, 'Section not found in this course')];
         }
-        if (!in_array($section->getSectionType(), ['lesson', 'project'], true)) {
+        if (! in_array($section->getSectionType(), ['lesson', 'project'], true)) {
             return [null, $this->failure(404, 'Section is not part of the learning sequence')];
         }
-        if (!$this->courseAccess->hasCourseAccess($user, $course)) {
+        if (! $this->courseAccess->hasCourseAccess($user, $course)) {
             return [null, $this->failure(403, 'You are not authorized to access this course')];
         }
-        if ($section->getSectionType() === 'project' && !$this->sectionAccess->projectsEnabledForUser((int) $user->id, $courseId)) {
+        if ($section->getSectionType() === 'project' && ! $this->sectionAccess->projectsEnabledForUser((int) $user->id, $courseId)) {
             return [null, $this->failure(403, 'Projects are not included in this subscription', 'projects_not_included')];
         }
 
@@ -281,7 +280,7 @@ final readonly class CourseCompletionService
     }
 
     /**
-     * @param array<string, mixed> $courseProgress
+     * @param  array<string, mixed>  $courseProgress
      * @return array{success:true,status:200,message:string,data:mixed}
      */
     private function alreadyCompletedResult(

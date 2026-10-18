@@ -13,7 +13,7 @@ final class RequireAiConsent
     public function handle(Request $request, Closure $next)
     {
         $user = auth('api')->user();
-        if (!$user || !app(AiConsentService::class)->accepted((int) $user->id)) {
+        if (! $user || ! app(AiConsentService::class)->accepted((int) $user->id)) {
             return response()->json([
                 'success' => false,
                 'status' => 403,
@@ -22,6 +22,7 @@ final class RequireAiConsent
                 'data' => ['consent_version' => AiConsentService::VERSION],
             ], 403);
         }
+
         return $next($request);
     }
 }

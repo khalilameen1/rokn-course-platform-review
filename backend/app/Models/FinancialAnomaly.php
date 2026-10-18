@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Model;
 final class FinancialAnomaly extends Model
 {
     public const STATUS_OPEN = 'open';
+
     public const STATUS_RESOLVED = 'resolved';
+
     public const TYPE_PAID_FLOOR_SHORTFALL = 'paid_floor_shortfall';
 
     protected $fillable = [
@@ -26,8 +28,23 @@ final class FinancialAnomaly extends Model
         'resolved_at' => 'datetime',
     ];
 
-    public function user() { return $this->belongsTo(User::class); }
-    public function course() { return $this->belongsTo(Course::class); }
-    public function enrollment() { return $this->belongsTo(CourseEnrollment::class); }
-    public function order() { return $this->belongsTo(Order::class); }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function course()
+    {
+        return $this->belongsTo(Course::class);
+    }
+
+    public function enrollment()
+    {
+        return $this->belongsTo(CourseEnrollment::class);
+    }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
 }

@@ -17,16 +17,19 @@ final class PortfolioMediaMutationService
     public function __construct(
         private BunnyMediaRegistry $mediaRegistry,
         private PortfolioMediaReadinessService $readiness
-    ) {
-    }
+    ) {}
 
     public function deleteItem(User $user, int $itemId): bool
     {
         return DB::transaction(function () use ($user, $itemId): bool {
             $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->first();
-            if (!$lockedUser) return false;
+            if (! $lockedUser) {
+                return false;
+            }
             $item = $lockedUser->portfolioItems()->lockForUpdate()->find($itemId);
-            if (!$item) return false;
+            if (! $item) {
+                return false;
+            }
 
             $item->forceFill(['is_public' => false, 'deletion_started_at' => now()])->save();
             foreach ($item->mediaFiles()->lockForUpdate()->get() as $media) {
@@ -47,11 +50,17 @@ final class PortfolioMediaMutationService
     {
         return DB::transaction(function () use ($user, $itemId, $mediaId): bool {
             $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->first();
-            if (!$lockedUser) return false;
+            if (! $lockedUser) {
+                return false;
+            }
             $item = $lockedUser->portfolioItems()->lockForUpdate()->find($itemId);
-            if (!$item || $item->deletion_started_at) return false;
+            if (! $item || $item->deletion_started_at) {
+                return false;
+            }
             $media = $item->mediaFiles()->lockForUpdate()->find($mediaId);
-            if (!$media) return false;
+            if (! $media) {
+                return false;
+            }
 
             if (Str::isUuid((string) $media->client_request_id)) {
                 PortfolioDeletedUpload::query()->firstOrCreate([
@@ -68,7 +77,7 @@ final class PortfolioMediaMutationService
             if ((int) $item->cover_media_id === (int) $media->id) {
                 $item->forceFill(['cover_media_id' => null]);
             }
-            if (!$item->mediaFiles()->exists()) {
+            if (! $item->mediaFiles()->exists()) {
                 $item->forceFill(['is_public' => false]);
             }
             if ($item->isDirty()) {
@@ -85,8 +94,8 @@ final class PortfolioMediaMutationService
             ->available()
             ->with(['mediaFiles' => fn ($media) => $media->orderBy('id')])
             ->find($itemId);
-        if (!$item) {
-            throw (new ModelNotFoundException())->setModel(PortfolioItem::class, [$itemId]);
+        if (! $item) {
+            throw (new ModelNotFoundException)->setModel(PortfolioItem::class, [$itemId]);
         }
         if ($item->mediaFiles->isEmpty()) {
             throw new PortfolioOperationException(PortfolioOperationException::INCOMPLETE_ITEM);
@@ -100,19 +109,19 @@ final class PortfolioMediaMutationService
 
         return DB::transaction(function () use ($user, $itemId, $mediaFingerprint): PortfolioItem {
             $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->first();
-            if (!$lockedUser) {
-                throw (new ModelNotFoundException())->setModel(User::class, [$user->id]);
+            if (! $lockedUser) {
+                throw (new ModelNotFoundException)->setModel(User::class, [$user->id]);
             }
             $item = $lockedUser->portfolioItems()->lockForUpdate()->find($itemId);
-            if (!$item || $item->deletion_started_at) {
-                throw (new ModelNotFoundException())->setModel(PortfolioItem::class, [$itemId]);
+            if (! $item || $item->deletion_started_at) {
+                throw (new ModelNotFoundException)->setModel(PortfolioItem::class, [$itemId]);
             }
             $media = $item->mediaFiles()->orderBy('id')->lockForUpdate()->get();
             $uploadedCount = $media->count();
             if ($uploadedCount < 1) {
                 throw new PortfolioOperationException(PortfolioOperationException::INCOMPLETE_ITEM);
             }
-            if (!hash_equals($mediaFingerprint, $this->mediaFingerprint($media))) {
+            if (! hash_equals($mediaFingerprint, $this->mediaFingerprint($media))) {
                 throw new PortfolioOperationException(PortfolioOperationException::MEDIA_NOT_READY);
             }
             $item->forceFill(['expected_media_count' => $uploadedCount, 'is_public' => true])->save();
@@ -139,13 +148,14 @@ final class PortfolioMediaMutationService
     private function queueCleanup($media, string $reason): void
     {
         if ($media->file_type === 'video' && $media->file_path) {
-            if (!$this->mediaRegistry->queueVideoCleanup($media->file_path, null, $reason, 1, false)) {
+            if (! $this->mediaRegistry->queueVideoCleanup($media->file_path, null, $reason, 1, false)) {
                 throw new \RuntimeException('Unable to persist portfolio video cleanup.');
             }
+
             return;
         }
         if ($media->file_type === 'image' && $media->file_path
-            && !$this->mediaRegistry->queueStorageCleanup($media->file_path, $reason)) {
+            && ! $this->mediaRegistry->queueStorageCleanup($media->file_path, $reason)) {
             throw new \RuntimeException('Unable to persist portfolio image cleanup.');
         }
     }

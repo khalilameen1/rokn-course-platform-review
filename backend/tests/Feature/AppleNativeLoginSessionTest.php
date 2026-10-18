@@ -16,8 +16,8 @@ use Tests\TestCase;
 
 final class AppleNativeLoginSessionTest extends TestCase
 {
-    use RefreshDatabase;
     use AppleIdentityFixture;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -54,8 +54,7 @@ final class AppleNativeLoginSessionTest extends TestCase
         self::assertSame(1, User::query()->count());
         self::assertSame(1, SocialAccount::query()->count());
         self::assertSame($walletCount, DB::table('wallet_transactions')->count());
-        self::assertCount(1, Http::recorded(fn ($request) =>
-            $request->url() === 'https://appleid.apple.com/auth/token'));
+        self::assertCount(1, Http::recorded(fn ($request) => $request->url() === 'https://appleid.apple.com/auth/token'));
     }
 
     public function test_old_signed_identity_cannot_use_caller_supplied_browser_context_to_skip_freshness(): void
@@ -80,8 +79,7 @@ final class AppleNativeLoginSessionTest extends TestCase
         $this->postJson('/api/v1/social-login', $payload)->assertStatus(422)
             ->assertJsonPath('code', 'social_identity_verification_failed');
         self::assertSame(0, User::query()->count());
-        self::assertCount(0, Http::recorded(fn ($request) =>
-            $request->url() === 'https://appleid.apple.com/auth/token'));
+        self::assertCount(0, Http::recorded(fn ($request) => $request->url() === 'https://appleid.apple.com/auth/token'));
     }
 
     private function nativePayload(?int $issuedAt = null): array
@@ -91,6 +89,7 @@ final class AppleNativeLoginSessionTest extends TestCase
         Http::fake(['https://appleid.apple.com/auth/token' => Http::response([
             'id_token' => $token, 'refresh_token' => 'native-refresh-fixture',
         ])]);
+
         return [
             'provider' => 'apple', 'token' => $token, 'nonce' => $nonce,
             'authorization_code' => 'native-auth-code', 'provider_name' => 'طالب رُكن',

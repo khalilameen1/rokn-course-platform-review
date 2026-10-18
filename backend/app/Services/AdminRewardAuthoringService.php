@@ -17,9 +17,7 @@ use Illuminate\Validation\ValidationException;
 /** Owns reward configuration writes, locked admission and commercial invariants. */
 final class AdminRewardAuthoringService
 {
-    public function __construct(private readonly CoursePlanEconomicsService $economics)
-    {
-    }
+    public function __construct(private readonly CoursePlanEconomicsService $economics) {}
 
     /** @param array<string, mixed> $validated Validated settings fields, without editor metadata. */
     public function updateSettings(array $validated, string $editorVersion): void
@@ -27,14 +25,14 @@ final class AdminRewardAuthoringService
         DB::transaction(function () use ($validated, $editorVersion): void {
             AdminSingletonLock::acquire('settings');
             $setting = Setting::query()->lockForUpdate()->first();
-            if (!$setting) {
-                if (!hash_equals(RewardConfigurationVersion::settings(null), $editorVersion)) {
+            if (! $setting) {
+                if (! hash_equals(RewardConfigurationVersion::settings(null), $editorVersion)) {
                     throw ValidationException::withMessages([
                         'editor_version' => "تغيّرت قواعد العملات منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
                     ]);
                 }
                 $setting = Setting::query()->create([]);
-            } elseif (!hash_equals(RewardConfigurationVersion::settings($setting), $editorVersion)) {
+            } elseif (! hash_equals(RewardConfigurationVersion::settings($setting), $editorVersion)) {
                 throw ValidationException::withMessages([
                     'editor_version' => "تغيّرت قواعد العملات منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
                 ]);
@@ -76,8 +74,8 @@ final class AdminRewardAuthoringService
     }
 
     /**
-     * @param array<string, mixed> $payload Validated, normalized editor values.
-     * @param Closure(CoinEarningMethod):void $completeIntent Runs inside the same transaction.
+     * @param  array<string, mixed>  $payload  Validated, normalized editor values.
+     * @param  Closure(CoinEarningMethod):void  $completeIntent  Runs inside the same transaction.
      */
     public function createMethod(array $payload, Closure $completeIntent): CoinEarningMethod
     {
@@ -93,8 +91,8 @@ final class AdminRewardAuthoringService
     }
 
     /**
-     * @param array<string, mixed> $payload Validated, normalized editor values.
-     * @param Closure(RewardRule):void $completeIntent Runs inside the same transaction.
+     * @param  array<string, mixed>  $payload  Validated, normalized editor values.
+     * @param  Closure(RewardRule):void  $completeIntent  Runs inside the same transaction.
      */
     public function createRule(array $payload, Closure $completeIntent): RewardRule
     {
@@ -120,7 +118,7 @@ final class AdminRewardAuthoringService
                     ->whereKey($coinEarningMethod->id)
                     ->lockForUpdate()
                     ->firstOrFail();
-                if (!hash_equals(RewardConfigurationVersion::method($locked), $editorVersion)) {
+                if (! hash_equals(RewardConfigurationVersion::method($locked), $editorVersion)) {
                     throw ValidationException::withMessages([
                         'editor_version' => "تغيّرت المهمة منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
                     ]);
@@ -143,7 +141,7 @@ final class AdminRewardAuthoringService
                 ->whereKey($coinEarningMethod->id)
                 ->lockForUpdate()
                 ->firstOrFail();
-            if (!hash_equals(RewardConfigurationVersion::method($locked), $editorVersion)) {
+            if (! hash_equals(RewardConfigurationVersion::method($locked), $editorVersion)) {
                 throw ValidationException::withMessages([
                     'editor_version' => "تغيّرت المهمة منذ فتح الصفحة\nأعد تحميلها قبل الحذف",
                 ]);
@@ -160,7 +158,7 @@ final class AdminRewardAuthoringService
             $settings = $this->lockedSettings();
             $locked = RewardRule::query()->whereKey($rewardRule->id)
                 ->lockForUpdate()->firstOrFail();
-            if (!hash_equals(
+            if (! hash_equals(
                 RewardConfigurationVersion::rule($locked),
                 $editorVersion
             )) {
@@ -178,7 +176,7 @@ final class AdminRewardAuthoringService
         DB::transaction(function () use ($rewardRule, $editorVersion): void {
             $locked = RewardRule::query()->whereKey($rewardRule->id)
                 ->lockForUpdate()->firstOrFail();
-            if (!hash_equals(
+            if (! hash_equals(
                 RewardConfigurationVersion::rule($locked),
                 $editorVersion
             )) {
@@ -192,15 +190,15 @@ final class AdminRewardAuthoringService
 
     private function ensureUsableDestination(array $payload, ?CoinEarningMethod $existing = null): void
     {
-        $method = $existing ? clone $existing : new CoinEarningMethod();
+        $method = $existing ? clone $existing : new CoinEarningMethod;
         $method->forceFill($payload);
         // A broken or retired destination must never prevent an administrator
         // from stopping the task. Destination readiness matters only while the
         // task is exposed to learners.
-        if (!$method->is_active) {
+        if (! $method->is_active) {
             return;
         }
-        if (!$method->hasUsableDestination()) {
+        if (! $method->hasUsableDestination()) {
             throw ValidationException::withMessages([
                 'action_url' => [
                     'أضف رابط HTTPS موثوقًا أو أضف رابط الحساب المطابق من إعدادات التطبيق',
@@ -211,10 +209,14 @@ final class AdminRewardAuthoringService
 
     private function ensureExecutableRewardRule(array $payload, ?Setting $settings): void
     {
-        if (!(bool) ($payload['is_active'] ?? false)) return;
+        if (! (bool) ($payload['is_active'] ?? false)) {
+            return;
+        }
 
         $amount = max(0, (int) ($payload['coins_amount'] ?? 0));
-        if ($amount === 0) return;
+        if ($amount === 0) {
+            return;
+        }
 
         $event = (string) ($payload['event_key'] ?? '');
         $rollingCap = array_key_exists('rolling_30_day_cap', $payload)
@@ -245,7 +247,9 @@ final class AdminRewardAuthoringService
         $disabledByEventCap = $event === 'study_session'
             ? $rollingCap === 0 || $dailyCap === 0
             : $event !== 'welcome_bonus' && $rollingCap === 0;
-        if ($disabledByEventCap) return;
+        if ($disabledByEventCap) {
+            return;
+        }
 
         $promised = $amount;
         if ($event === 'welcome_bonus') {
@@ -262,7 +266,9 @@ final class AdminRewardAuthoringService
 
     private function ensureExecutableCoinMethod(array $payload, ?Setting $settings): void
     {
-        if (!(bool) ($payload['is_active'] ?? false)) return;
+        if (! (bool) ($payload['is_active'] ?? false)) {
+            return;
+        }
 
         $amount = max(0, (int) ($payload['coins_amount'] ?? 0));
         $balanceCap = max(0, (int) ($settings?->reward_balance_cap ?? 1200));
@@ -296,17 +302,23 @@ final class AdminRewardAuthoringService
         iterable $methods
     ): void {
         $balanceCap = max(0, (int) $settings->reward_balance_cap);
-        if ($balanceCap === 0) return;
+        if ($balanceCap === 0) {
+            return;
+        }
 
         foreach ($rules as $rule) {
             $payload = $rule->toArray();
             $amount = max(0, (int) ($payload['coins_amount'] ?? 0));
-            if ($amount === 0 || $this->rewardIsDisabledByEventCap($payload)) continue;
+            if ($amount === 0 || $this->rewardIsDisabledByEventCap($payload)) {
+                continue;
+            }
 
             $promised = $amount + ((string) $rule->event_key === 'welcome_bonus'
                 ? max(0, (int) $settings->recommended_provider_bonus_coins)
                 : 0);
-            if ($promised <= $balanceCap) continue;
+            if ($promised <= $balanceCap) {
+                continue;
+            }
 
             $field = (string) $rule->event_key === 'welcome_bonus' && $amount <= $balanceCap
                 ? 'recommended_provider_bonus_coins'

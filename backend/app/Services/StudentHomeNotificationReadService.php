@@ -16,8 +16,7 @@ final readonly class StudentHomeNotificationReadService
         private CourseCatalogueQueryService $catalogue,
         private CourseEntitlementService $entitlements,
         private StudentNotificationPresentationService $presentation,
-    ) {
-    }
+    ) {}
 
     public function constrainCandidates(Builder $query): Builder
     {
@@ -46,12 +45,14 @@ final readonly class StudentHomeNotificationReadService
         $cards = [];
         foreach ($notifications as $notification) {
             $course = $notification->notifiable;
-            if (!$course instanceof Course || !$course->isAvailableForNewPurchase()
+            if (! $course instanceof Course || ! $course->isAvailableForNewPurchase()
                 || ($entitlements[$course->id]['has_learning_access'] ?? false)) {
                 continue;
             }
             $card = $this->presentation->homeCourse($course);
-            if ($card !== null) $cards[(int) $notification->id] = $card;
+            if ($card !== null) {
+                $cards[(int) $notification->id] = $card;
+            }
         }
 
         return $cards;

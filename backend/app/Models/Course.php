@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\ArabicSearchNormalizer;
+use App\Support\PublicDiskUrl;
 use App\Traits\HasPhoto;
 use App\Traits\InvalidatesCourseCatalogue;
 use App\Traits\ResolvesLocalizedAttributes;
@@ -9,11 +11,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-
 class Course extends Model
 {
     //
-    use HasPhoto, HasFactory, ResolvesLocalizedAttributes, InvalidatesCourseCatalogue, SoftDeletes;
+    use HasFactory, HasPhoto, InvalidatesCourseCatalogue, ResolvesLocalizedAttributes, SoftDeletes;
 
     protected $fillable = [
         'name_ar', 'name_en', 'description_ar', 'description_en', 'image', 'grade_id', 'teacher_id', 'store_id',
@@ -27,9 +28,11 @@ class Course extends Model
         'attachment_prompt_enabled', 'attachment_prompt_at_seconds', 'attachment_prompt_frequency', 'attachment_prompt_title',
         'attachment_prompt_body', 'attachment_prompt_button_text',
         'level_id', 'awards_badge', 'badge_track', 'certificate_text_template_key',
-        'created_at', 'updated_at', 'path_id'
+        'created_at', 'updated_at', 'path_id',
     ];
+
     protected $photoModel = 'App\Models\Photo';
+
     protected $casts = [
         'is_main_course' => 'boolean',
         'is_coming_soon' => 'boolean',
@@ -49,14 +52,14 @@ class Course extends Model
     protected static function booted(): void
     {
         static::saving(function (Course $course): void {
-            if (!$course->isDirty([
+            if (! $course->isDirty([
                 'name_ar', 'name_en', 'description_ar', 'description_en',
                 'search_keywords_ar', 'search_keywords_en',
             ])) {
                 return;
             }
 
-            $normalizer = app(\App\Services\ArabicSearchNormalizer::class);
+            $normalizer = app(ArabicSearchNormalizer::class);
             $course->search_title_normalized = $normalizer->normalize(implode(' ', array_filter([
                 $course->name_ar,
                 $course->name_en,
@@ -78,7 +81,7 @@ class Course extends Model
         $preview = trim((string) $this->photo?->preview_path);
 
         return $preview !== ''
-            ? \App\Support\PublicDiskUrl::from($preview)
+            ? PublicDiskUrl::from($preview)
             : $this->image;
     }
 
@@ -92,30 +95,34 @@ class Course extends Model
     }
 
     // Computed attributes for backward compatibility
-    public function getTitleAttribute() {
+    public function getTitleAttribute()
+    {
         // Check if we're accessing the raw attribute (to avoid infinite loop)
-        if (!array_key_exists('name_ar', $this->attributes) && !array_key_exists('name_en', $this->attributes)) {
+        if (! array_key_exists('name_ar', $this->attributes) && ! array_key_exists('name_en', $this->attributes)) {
             return null;
         }
 
         return $this->localizedValue('name_ar', 'name_en');
     }
 
-    public function getDescriptionAttribute() {
+    public function getDescriptionAttribute()
+    {
         // Check if we're accessing the raw attribute (to avoid infinite loop)
-        if (!array_key_exists('description_ar', $this->attributes) && !array_key_exists('description_en', $this->attributes)) {
+        if (! array_key_exists('description_ar', $this->attributes) && ! array_key_exists('description_en', $this->attributes)) {
             return null;
         }
 
         return $this->localizedValue('description_ar', 'description_en');
     }
 
-    public function setTitleAttribute($value) {
+    public function setTitleAttribute($value)
+    {
         $this->attributes['name_ar'] = $value;
         $this->attributes['name_en'] = $value;
     }
 
-    public function setDescriptionAttribute($value) {
+    public function setDescriptionAttribute($value)
+    {
         $this->attributes['description_ar'] = $value;
         $this->attributes['description_en'] = $value;
     }
@@ -133,20 +140,24 @@ class Course extends Model
         return $this->hasMany(CourseModule::class)->orderBy('order');
     }
 
-    public function lessons(){
-        return $this->hasMany('App\Models\Lesson','list_id','id');
+    public function lessons()
+    {
+        return $this->hasMany('App\Models\Lesson', 'list_id', 'id');
     }
 
-    public function grade(){
+    public function grade()
+    {
         return $this->belongsTo(Grade::class);
     }
 
-    public function level(){
+    public function level()
+    {
         return $this->belongsTo(Level::class);
     }
 
-    public function socialGroups(){
-        return $this->hasMany(SocialGroup::class,'list_id');
+    public function socialGroups()
+    {
+        return $this->hasMany(SocialGroup::class, 'list_id');
     }
 
     /**
@@ -284,6 +295,7 @@ class Course extends Model
             ? $this->ratings->count()
             : $this->ratings()->count();
     }
+
     /**
      * Get the teachers associated with this course.
      */
@@ -294,8 +306,8 @@ class Course extends Model
                     // dedicated teacher role existed. Keep them visible while
                     // every newly created instructor uses the least-privilege
                     // teacher role.
-                    ->whereIn('users.role', ['teacher', 'admin'])
-                    ->withTimestamps();
+            ->whereIn('users.role', ['teacher', 'admin'])
+            ->withTimestamps();
     }
 
     /**

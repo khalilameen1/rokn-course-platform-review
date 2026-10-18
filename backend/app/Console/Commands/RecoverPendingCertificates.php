@@ -15,11 +15,12 @@ use Throwable;
 final class RecoverPendingCertificates extends Command
 {
     protected $signature = 'certificates:recover-pending {--limit=100}';
+
     protected $description = 'Recover certificate artifacts left pending by interrupted workers';
 
     public function handle(): int
     {
-        if (!Schema::hasColumns('certificates', [
+        if (! Schema::hasColumns('certificates', [
             'recovery_attempts',
             'recovery_next_attempt_at',
             'recovery_failed_at',
@@ -80,6 +81,7 @@ final class RecoverPendingCertificates extends Command
         }
 
         $this->info("Queued {$queued} pending certificate recovery job(s).");
+
         return self::SUCCESS;
     }
 }

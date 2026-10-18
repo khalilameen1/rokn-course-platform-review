@@ -9,13 +9,13 @@ use App\Models\CourseAuthoringRevision;
 use App\Models\Lesson;
 use App\Models\Project;
 use App\Services\CourseCompletionService;
-use App\Services\CourseSectionAccessService;
-use App\Services\CoursePublishingService;
 use App\Services\CoursePlanPublicationService;
+use App\Services\CoursePublishingService;
 use App\Services\CourseRevisionGraphService;
-use App\Services\CourseRevisionLineageService;
 use App\Services\CourseRevisionLearnerReadService;
+use App\Services\CourseRevisionLineageService;
 use App\Services\CourseRevisionResolver;
+use App\Services\CourseSectionAccessService;
 use App\Services\CourseStagedAuthoringService;
 use App\Services\SavedLibraryService;
 use Illuminate\Database\Events\QueryExecuted;
@@ -117,7 +117,7 @@ final class CourseRevisionResolverTest extends TestCase
 
     private function course(string $name): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1, 'name_ar' => $name, 'is_coming_soon' => true,
             'is_main_course' => false, 'authoring_version' => 1,

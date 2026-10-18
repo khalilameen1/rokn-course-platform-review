@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Model;
 final class InternalSignal extends Model
 {
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_PROCESSING = 'processing';
+
     public const STATUS_HANDLED = 'handled';
 
     protected $fillable = [

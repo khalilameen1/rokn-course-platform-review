@@ -18,11 +18,16 @@ final class AiUsageReportServiceTest extends TestCase
     {
         parent::setUp();
         Schema::create('ai_usage_events', function (Blueprint $table): void {
-            $table->id(); $table->unsignedBigInteger('course_id')->nullable();
+            $table->id();
+            $table->unsignedBigInteger('course_id')->nullable();
             $table->unsignedBigInteger('user_id')->nullable();
-            $table->string('feature'); $table->string('status'); $table->integer('total_tokens')->default(0);
-            $table->decimal('cost_usd', 12, 6)->nullable(); $table->decimal('cost_egp', 12, 6)->nullable();
-            $table->json('metadata')->nullable(); $table->timestamps();
+            $table->string('feature');
+            $table->string('status');
+            $table->integer('total_tokens')->default(0);
+            $table->decimal('cost_usd', 12, 6)->nullable();
+            $table->decimal('cost_egp', 12, 6)->nullable();
+            $table->json('metadata')->nullable();
+            $table->timestamps();
         });
     }
 

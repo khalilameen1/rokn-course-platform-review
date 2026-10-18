@@ -1,8 +1,7 @@
 <?php
 
 $s3Disk = static function (string $environmentPrefix = '', string $root = ''): array {
-    $value = static fn (string $name, mixed $default = null): mixed =>
-        env($environmentPrefix.$name, $default);
+    $value = static fn (string $name, mixed $default = null): mixed => env($environmentPrefix.$name, $default);
 
     return [
         'driver' => 's3',
@@ -49,7 +48,7 @@ $feedbackDisk = strtolower(trim((string) env('FEEDBACK_STORAGE_DRIVER', 'local')
         'driver' => 'local',
         'root' => env(
             'FEEDBACK_STORAGE_PATH',
-            rtrim((string) env('SHARED_STORAGE_PATH', storage_path('app')), '/\\') . DIRECTORY_SEPARATOR . 'feedback'
+            rtrim((string) env('SHARED_STORAGE_PATH', storage_path('app')), '/\\').DIRECTORY_SEPARATOR.'feedback'
         ),
         'visibility' => 'private',
         'shared' => filter_var(env('FEEDBACK_SHARED_STORAGE', false), FILTER_VALIDATE_BOOL),
@@ -121,7 +120,7 @@ return [
             'driver' => 'local',
             'root' => env(
                 'MODULE_ATTACHMENT_STORAGE_PATH',
-                rtrim((string) env('SHARED_STORAGE_PATH', storage_path('app')), '/\\') . DIRECTORY_SEPARATOR . 'module-attachments'
+                rtrim((string) env('SHARED_STORAGE_PATH', storage_path('app')), '/\\').DIRECTORY_SEPARATOR.'module-attachments'
             ),
             'visibility' => 'private',
         ],
@@ -130,7 +129,7 @@ return [
             'driver' => 'local',
             'root' => env(
                 'COURSE_PDF_STORAGE_PATH',
-                rtrim((string) env('SHARED_STORAGE_PATH', storage_path('app')), '/\\') . DIRECTORY_SEPARATOR . 'course-pdfs'
+                rtrim((string) env('SHARED_STORAGE_PATH', storage_path('app')), '/\\').DIRECTORY_SEPARATOR.'course-pdfs'
             ),
             'visibility' => 'private',
         ],

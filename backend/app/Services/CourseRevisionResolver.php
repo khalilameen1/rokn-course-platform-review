@@ -54,7 +54,9 @@ final class CourseRevisionResolver
             ->where('revision_course_id', $draft->id)
             ->where('status', CourseAuthoringRevision::DRAFT)
             ->value('id');
-        if (!$revisionId) return null;
+        if (! $revisionId) {
+            return null;
+        }
 
         $explicit = DB::table('course_authoring_revision_entities')
             ->where('course_authoring_revision_id', $revisionId)
@@ -86,15 +88,21 @@ final class CourseRevisionResolver
         ?string $playbackSessionId
     ): ?array {
         $playbackSessionId = trim((string) $playbackSessionId);
-        if ($playbackSessionId === '') return null;
+        if ($playbackSessionId === '') {
+            return null;
+        }
 
         $archiveCourse = $lesson->relationLoaded('course')
             ? $lesson->course
             : $lesson->course()->first();
-        if (!$archiveCourse) return null;
+        if (! $archiveCourse) {
+            return null;
+        }
 
         $revision = $this->activeArchiveForCourse($archiveCourse);
-        if (!$revision || !$revision->published_at) return null;
+        if (! $revision || ! $revision->published_at) {
+            return null;
+        }
 
         $session = PlaybackSession::query()
             ->whereKey($playbackSessionId)
@@ -104,7 +112,9 @@ final class CourseRevisionResolver
             ->where('started_at', '>=', now()->subHours(12))
             ->where('started_at', '<=', $revision->published_at)
             ->first();
-        if (!$session) return null;
+        if (! $session) {
+            return null;
+        }
 
         $mappings = DB::table('course_authoring_revision_entities')
             ->where('course_authoring_revision_id', $revision->id)
@@ -114,11 +124,11 @@ final class CourseRevisionResolver
                 (int) ($lesson->courseSection?->id ?? 0),
             ]))
             ->get()
-            ->keyBy(fn ($row): string => $row->entity_type . ':' . $row->source_entity_id);
+            ->keyBy(fn ($row): string => $row->entity_type.':'.$row->source_entity_id);
 
-        $currentLessonId = $mappings->get(Lesson::class . ':' . $lesson->id)?->revision_entity_id;
+        $currentLessonId = $mappings->get(Lesson::class.':'.$lesson->id)?->revision_entity_id;
         $oldSectionId = (int) ($lesson->courseSection?->id ?? 0);
-        $currentSectionId = $mappings->get(CourseSection::class . ':' . $oldSectionId)?->revision_entity_id;
+        $currentSectionId = $mappings->get(CourseSection::class.':'.$oldSectionId)?->revision_entity_id;
         $currentLesson = $currentLessonId
             ? Lesson::query()->with(['courseSection', 'mediaState'])->find($currentLessonId)
             : null;
@@ -160,7 +170,7 @@ final class CourseRevisionResolver
     }
 
     /**
-     * @param iterable<int> $currentIds
+     * @param  iterable<int>  $currentIds
      * @return array<int,list<int>>
      */
     public function equivalentEntityMap(string $entityType, iterable $currentIds): array
@@ -168,8 +178,12 @@ final class CourseRevisionResolver
         $currentIds = collect($currentIds)->map(fn ($id): int => (int) $id)
             ->filter()->unique()->values()->all();
         $aliases = array_fill_keys($currentIds, []);
-        foreach ($currentIds as $id) $aliases[$id] = [$id];
-        if ($currentIds === []) return $aliases;
+        foreach ($currentIds as $id) {
+            $aliases[$id] = [$id];
+        }
+        if ($currentIds === []) {
+            return $aliases;
+        }
         $rootsByCurrent = DB::table('course_authoring_revision_entities as entities')
             ->join('course_authoring_revisions as revisions', 'revisions.id', '=', 'entities.course_authoring_revision_id')
             ->where('entities.entity_type', $entityType)
@@ -178,7 +192,9 @@ final class CourseRevisionResolver
             ->whereIn('entities.revision_entity_id', $currentIds)
             ->pluck('entities.learner_root_entity_id', 'entities.revision_entity_id')
             ->mapWithKeys(fn ($root, $current): array => [(int) $current => (int) $root]);
-        if ($rootsByCurrent->isEmpty()) return $aliases;
+        if ($rootsByCurrent->isEmpty()) {
+            return $aliases;
+        }
         $currentByRoot = $rootsByCurrent->flip();
         DB::table('course_authoring_revision_entities as entities')
             ->join('course_authoring_revisions as revisions', 'revisions.id', '=', 'entities.course_authoring_revision_id')
@@ -189,7 +205,9 @@ final class CourseRevisionResolver
             ->get(['entities.learner_root_entity_id', 'entities.source_entity_id', 'entities.revision_entity_id'])
             ->each(function ($row) use (&$aliases, $currentByRoot): void {
                 $current = (int) $currentByRoot->get((int) $row->learner_root_entity_id);
-                if (!$current) return;
+                if (! $current) {
+                    return;
+                }
                 $aliases[$current][] = (int) $row->source_entity_id;
                 $aliases[$current][] = (int) $row->revision_entity_id;
             });
@@ -213,7 +231,9 @@ final class CourseRevisionResolver
                 ->where('revisions.status', CourseAuthoringRevision::ARCHIVED)
                 ->orderByDesc('revisions.id')
                 ->value('entities.revision_entity_id');
-            if (!$next || isset($visited[(int) $next])) break;
+            if (! $next || isset($visited[(int) $next])) {
+                break;
+            }
             $current = (int) $next;
             $visited[$current] = true;
         }
@@ -227,7 +247,9 @@ final class CourseRevisionResolver
         $origins = collect($historicalIds)->map(fn ($id): int => (int) $id)
             ->filter()->unique()->values()->all();
         $resolved = array_combine($origins, $origins) ?: [];
-        if ($origins === []) return $resolved;
+        if ($origins === []) {
+            return $resolved;
+        }
         $rows = DB::table('course_authoring_revision_entities as entities')
             ->join('course_authoring_revisions as revisions', 'revisions.id', '=', 'entities.course_authoring_revision_id')
             ->where('entities.entity_type', $entityType)
@@ -241,10 +263,16 @@ final class CourseRevisionResolver
         $rootByInput = [];
         foreach ($rows as $row) {
             $root = (int) $row->learner_root_entity_id;
-            if (in_array((int) $row->source_entity_id, $origins, true)) $rootByInput[(int) $row->source_entity_id] = $root;
-            if (in_array((int) $row->revision_entity_id, $origins, true)) $rootByInput[(int) $row->revision_entity_id] = $root;
+            if (in_array((int) $row->source_entity_id, $origins, true)) {
+                $rootByInput[(int) $row->source_entity_id] = $root;
+            }
+            if (in_array((int) $row->revision_entity_id, $origins, true)) {
+                $rootByInput[(int) $row->revision_entity_id] = $root;
+            }
         }
-        if ($rootByInput === []) return $resolved;
+        if ($rootByInput === []) {
+            return $resolved;
+        }
         $latestByRoot = DB::table('course_authoring_revision_entities as entities')
             ->join('course_authoring_revisions as revisions', 'revisions.id', '=', 'entities.course_authoring_revision_id')
             ->where('entities.entity_type', $entityType)
@@ -261,5 +289,4 @@ final class CourseRevisionResolver
 
         return $resolved;
     }
-
 }

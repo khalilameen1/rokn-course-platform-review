@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\Visitor;
 use App\Support\BusinessClock;
 use App\Support\PrivacyFingerprint;
 use Closure;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use App\Models\Visitor;
-use Jenssegers\Agent\Agent;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Jenssegers\Agent\Agent;
 use Throwable;
 
 final class WebsiteVisitorCount
@@ -19,9 +21,8 @@ final class WebsiteVisitorCount
     /**
      * Handle an incoming request.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
-     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
+     * @param  Closure(Request): (Response|RedirectResponse)  $next
+     * @return Response|RedirectResponse
      */
     public function handle(Request $request, Closure $next): mixed
     {
@@ -39,23 +40,20 @@ final class WebsiteVisitorCount
 
     /**
      * Record visitor information
-     *
-     * @param Request $request
-     * @return void
      */
     private function recordVisitor(Request $request): void
     {
         try {
             $businessDay = BusinessClock::now()->format('Y-m-d');
             [$dayStart, $dayEnd] = BusinessClock::localDayRangeUtc($businessDay);
-            $agent = new Agent();
+            $agent = new Agent;
             $ip = $request->ip();
-            if (!$ip) {
+            if (! $ip) {
                 return;
             }
 
             $visitorKey = PrivacyFingerprint::make($ip);
-            if (!$visitorKey) {
+            if (! $visitorKey) {
                 return;
             }
             $cacheKey = sprintf(
@@ -63,7 +61,7 @@ final class WebsiteVisitorCount
                 $businessDay,
                 $visitorKey
             );
-            if (!Cache::add($cacheKey, true, $dayEnd)) {
+            if (! Cache::add($cacheKey, true, $dayEnd)) {
                 return;
             }
 
@@ -77,14 +75,14 @@ final class WebsiteVisitorCount
                 ->where('visited_at', '<', $dayEnd)
                 ->first();
 
-            if (!$existingVisitor) {
+            if (! $existingVisitor) {
                 Visitor::create([
                     // HMAC keeps daily uniqueness and aggregate reporting
                     // without storing a recoverable IP or a fingerprinting UA.
                     'ip_address' => $visitorKey,
                     'user_agent' => null,
-                    'browser' => $browser . ' ' . $agent->version($browser),
-                    'operating_system' => $os . ' ' . $agent->version($os),
+                    'browser' => $browser.' '.$agent->version($browser),
+                    'operating_system' => $os.' '.$agent->version($os),
                     'device_type' => $deviceType,
                     'visited_at' => now(),
                 ]);

@@ -22,13 +22,14 @@ use Tests\TestCase;
 final class CoursePlanHistoryBoundaryTest extends TestCase
 {
     private ReportPeriod $period;
+
     private Course $course;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->period = ReportPeriod::fromKey('7d', CarbonImmutable::parse('2026-09-25T12:00:00Z'));
-        $this->course = (new Course())->forceFill(['id' => 10]);
+        $this->course = (new Course)->forceFill(['id' => 10]);
         // No live plan, enrollment, settings or provider-cost tables are present.
         Schema::create('orders', function (Blueprint $table): void {
             $table->id();
@@ -52,7 +53,7 @@ final class CoursePlanHistoryBoundaryTest extends TestCase
         });
         foreach ([CourseCommercialReportService::class, CourseCostReportService::class, CourseAccessPlanService::class] as $service) {
             $this->app->bind($service, static function () use ($service): never {
-                throw new \LogicException('History must not resolve ' . $service);
+                throw new \LogicException('History must not resolve '.$service);
             });
         }
     }
@@ -106,7 +107,7 @@ final class CoursePlanHistoryBoundaryTest extends TestCase
 
     public function test_a_purchase_without_a_contract_does_not_create_known_tier_growth(): void
     {
-        $order = (new Order())->forceFill(['id' => 1, 'user_id' => 1, 'access_plan_snapshot' => null]);
+        $order = (new Order)->forceFill(['id' => 1, 'user_id' => 1, 'access_plan_snapshot' => null]);
         $history = app(CoursePlanHistoryReportService::class)->forPeriod(
             $this->course, $this->period, collect([$order]), collect(),
             collect([1 => ['total_coins' => 20, 'paid_coins' => 0, 'reward_coins' => 20, 'complete' => true]]),

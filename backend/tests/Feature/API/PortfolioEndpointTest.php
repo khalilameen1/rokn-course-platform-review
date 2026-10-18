@@ -6,9 +6,10 @@ namespace Tests\Feature\API;
 
 use App\Models\BunnyVideoCleanupCandidate;
 use App\Models\User;
-use App\Services\BunnyService;
 use App\Services\BunnyDeliveryService;
 use App\Services\BunnyMediaRegistry;
+use App\Services\BunnyService;
+use App\Services\PortfolioReviewReadService;
 use App\Support\RoknPublicUrl;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -216,7 +217,7 @@ class PortfolioEndpointTest extends ApiTestCase
 
     public function test_portfolio_mutations_never_cross_account_ownership(): void
     {
-        $other = new User();
+        $other = new User;
         $other->name = 'Other Learner';
         $other->phone = '01000000002';
         $other->email = 'other-portfolio@rokn.test';
@@ -462,7 +463,7 @@ class PortfolioEndpointTest extends ApiTestCase
         $this->app->instance(BunnyService::class, $bunny);
 
         $owner = $this->user->fresh();
-        $snapshot = app(\App\Services\PortfolioReviewReadService::class)->snapshot($owner);
+        $snapshot = app(PortfolioReviewReadService::class)->snapshot($owner);
         $owner->forceFill(['portfolio_sharing_status' => 'approved', 'portfolio_approved_hash' => $snapshot['hash']])->save();
         $deliveryUrl = RoknPublicUrl::portfolioMedia($slug, $mediaPublicId).'?'.http_build_query([
             'revision' => $snapshot['revision'], 'snapshot' => $snapshot['hash'],

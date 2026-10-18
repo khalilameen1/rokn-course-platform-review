@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
 use App\Data\NotificationAuthoringInput;
-use App\Services\AdminAuthoringCreateIntentService;
+use App\Http\Controllers\Controller;
 use App\Models\NotificationCampaign;
+use App\Models\User;
+use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminNotificationCampaignAuthoringService;
 use App\Services\AdminNotificationCampaignReadService;
-use App\Models\User;
 use App\Services\NotificationCampaignService;
 use App\Support\RoknAppLink;
 use Illuminate\Http\JsonResponse;
@@ -96,7 +96,7 @@ final class NotificationsController extends Controller
             'course_id' => ['nullable', 'required_unless:audience,all', 'integer', 'exists:courses,id'],
             'notification_kind' => ['nullable', 'string', 'in:marketing,service'],
         ]);
-        $courseId = !empty($validated['course_id']) ? (int) $validated['course_id'] : null;
+        $courseId = ! empty($validated['course_id']) ? (int) $validated['course_id'] : null;
 
         return response()->json([
             'recipients' => $notifications->previewRecipientCount(
@@ -125,7 +125,7 @@ final class NotificationsController extends Controller
         $student = User::query()->students()
             ->where('email', strtolower(trim($validated['test_email'])))
             ->first();
-        if (!$student) {
+        if (! $student) {
             throw ValidationException::withMessages([
                 'test_email' => ['لا يوجد حساب طالب بهذا البريد'],
             ]);
@@ -135,14 +135,13 @@ final class NotificationsController extends Controller
         $validated['send_at'] = null;
         $validated['authoring_request_id'] = (string) Str::uuid();
         $validated['title_ar'] = Str::limit('تجربة: '.trim($validated['title_ar']), 80, '');
-        if (!empty($validated['title_en'])) {
+        if (! empty($validated['title_en'])) {
             $validated['title_en'] = Str::limit('[Test] '.trim($validated['title_en']), 80, '');
         }
 
         $notifications->author(
             NotificationAuthoringInput::fromValidated((int) ($request->user()?->getAuthIdentifier() ?? 0), $validated),
-            static function (?NotificationCampaign $campaign): void {
-            }
+            static function (?NotificationCampaign $campaign): void {}
         );
         $message = 'أُرسلت نسخة تجريبية إلى '.$student->email;
 
@@ -160,7 +159,7 @@ final class NotificationsController extends Controller
         NotificationCampaign $notificationCampaign,
         NotificationCampaignService $campaigns
     ): RedirectResponse {
-        if (!$campaigns->cancel($notificationCampaign)) {
+        if (! $campaigns->cancel($notificationCampaign)) {
             return redirect()
                 ->route('admin.notifications.index')
                 ->with('warning', "بدأ إرسال هذه الحملة أو انتهى\nلا يمكن إلغاؤها الآن");
@@ -175,7 +174,7 @@ final class NotificationsController extends Controller
         NotificationCampaign $notificationCampaign,
         NotificationCampaignService $campaigns
     ): RedirectResponse {
-        if (!$campaigns->retry($notificationCampaign)) {
+        if (! $campaigns->retry($notificationCampaign)) {
             return redirect()
                 ->route('admin.notifications.index')
                 ->with('warning', 'هذه الحملة ليست متوقفة الآن');

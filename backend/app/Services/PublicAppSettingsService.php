@@ -6,14 +6,15 @@ namespace App\Services;
 
 use App\Models\DesignSetting;
 use App\Models\Setting;
-use Illuminate\Support\Facades\Cache;
 use App\Support\AfterCommitCacheInvalidation;
 use App\Support\RoknLocale;
+use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 final class PublicAppSettingsService
 {
     private const CACHE_KEY_PREFIX = 'public-app-settings:v5:';
+
     private const CACHE_GENERATION_KEY = 'public-app-settings:generation';
 
     private const SOCIAL_HOSTS = [
@@ -24,9 +25,7 @@ final class PublicAppSettingsService
         'telegram' => ['t.me', 'telegram.me'],
     ];
 
-    public function __construct(private readonly AppReleaseChannelService $releases)
-    {
-    }
+    public function __construct(private readonly AppReleaseChannelService $releases) {}
 
     /** @return array<string, mixed> */
     public function snapshot(?string $locale = null): array
@@ -36,7 +35,7 @@ final class PublicAppSettingsService
             ?? RoknLocale::ARABIC;
 
         $load = function () use ($locale): array {
-            $general = Setting::query()->first() ?? new Setting();
+            $general = Setting::query()->first() ?? new Setting;
             $design = DesignSetting::getDefaultSettings();
             $socialWhatsApp = $this->whatsAppUrl($design->whatsapp_url);
             $supportWhatsApp = $this->whatsAppUrl(
@@ -157,6 +156,7 @@ final class PublicAppSettingsService
             // Retire the pre-generation keys left by older deployments.
             $arabic = Cache::forget(self::CACHE_KEY_PREFIX.'ar');
             $english = Cache::forget(self::CACHE_KEY_PREFIX.'en');
+
             return $arabic || $english;
         };
         AfterCommitCacheInvalidation::run($forget, static fn (Throwable $exception) => report($exception));
@@ -178,7 +178,7 @@ final class PublicAppSettingsService
         if (is_array($parts)) {
             if (
                 strtolower((string) ($parts['scheme'] ?? '')) !== 'https'
-                || !in_array(strtolower((string) ($parts['host'] ?? '')), ['wa.me', 'www.wa.me'], true)
+                || ! in_array(strtolower((string) ($parts['host'] ?? '')), ['wa.me', 'www.wa.me'], true)
                 || isset($parts['user'])
                 || isset($parts['pass'])
             ) {
@@ -198,7 +198,7 @@ final class PublicAppSettingsService
     {
         $url = trim((string) $value);
         $parts = $url !== '' ? parse_url($url) : false;
-        if (!is_array($parts) || strtolower((string) ($parts['scheme'] ?? '')) !== 'https') {
+        if (! is_array($parts) || strtolower((string) ($parts['scheme'] ?? '')) !== 'https') {
             return null;
         }
         $host = preg_replace('/^www\./', '', strtolower((string) ($parts['host'] ?? ''))) ?? '';
@@ -240,7 +240,7 @@ final class PublicAppSettingsService
         $url = trim((string) $value);
         $parts = $url !== '' ? parse_url($url) : false;
         if (
-            !is_array($parts)
+            ! is_array($parts)
             || strtolower((string) ($parts['scheme'] ?? '')) !== 'https'
             || isset($parts['user'])
             || isset($parts['pass'])
@@ -259,7 +259,7 @@ final class PublicAppSettingsService
                     break;
                 }
             }
-            if (!$trusted) {
+            if (! $trusted) {
                 return null;
             }
         }
@@ -270,7 +270,7 @@ final class PublicAppSettingsService
     private function publicMediaUrl(mixed $value): ?string
     {
         $raw = trim((string) $value);
-        if (str_starts_with($raw, '/') && !str_starts_with($raw, '//')) {
+        if (str_starts_with($raw, '/') && ! str_starts_with($raw, '//')) {
             $raw = rtrim((string) config('app.url'), '/').'/'.ltrim($raw, '/');
         }
         $url = $this->allowedHttpsUrl($raw);
@@ -290,6 +290,7 @@ final class PublicAppSettingsService
     private function publicPhone(mixed $value): ?string
     {
         $phone = trim((string) $value);
+
         return preg_match('/^\+?[0-9][0-9\s().-]{6,24}$/', $phone) === 1 ? $phone : null;
     }
 }

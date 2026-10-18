@@ -6,8 +6,8 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\AppVersion;
-use App\Services\AppReleasePolicyService;
 use App\Services\ApiResponseService;
+use App\Services\AppReleasePolicyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -18,8 +18,7 @@ final class AppVersionController extends Controller
     public function __construct(
         private readonly ApiResponseService $responses,
         private readonly AppReleasePolicyService $releasePolicy,
-    ) {
-    }
+    ) {}
 
     public function checkVersion(Request $request): JsonResponse
     {
@@ -75,36 +74,33 @@ final class AppVersionController extends Controller
     }
 
     /**
-     * @param Collection<int, AppVersion> $versions
-     * @param array{compatible: bool, client_version: int, missing_capabilities: list<string>} $clientCompatibility
+     * @param  Collection<int, AppVersion>  $versions
+     * @param  array{compatible: bool, client_version: int, missing_capabilities: list<string>}  $clientCompatibility
      */
     private function androidResponse(
         Collection $versions,
         int $currentCode,
         array $clientCompatibility,
-    ): JsonResponse
-    {
+    ): JsonResponse {
         /** @var AppVersion|null $latest */
         $latest = $versions
             ->filter(fn (AppVersion $version): bool => $version->version_code !== null)
             ->sortByDesc(fn (AppVersion $version): int => (int) $version->version_code)
             ->first();
 
-        if (!$latest) {
+        if (! $latest) {
             return $this->noUpdateResponse($clientCompatibility);
         }
 
         $updateRequired = (int) $latest->version_code > $currentCode;
-        $forceUpdate = $updateRequired && (!$clientCompatibility['compatible'] || $versions->contains(
-            fn (AppVersion $version): bool =>
-                $version->version_code !== null
+        $forceUpdate = $updateRequired && (! $clientCompatibility['compatible'] || $versions->contains(
+            fn (AppVersion $version): bool => $version->version_code !== null
                 && (int) $version->version_code > $currentCode
                 && $version->is_force_update,
         ));
 
         $minimumSupportedCode = $versions
-            ->filter(fn (AppVersion $version): bool =>
-                $version->version_code !== null && $version->is_force_update
+            ->filter(fn (AppVersion $version): bool => $version->version_code !== null && $version->is_force_update
             )
             ->max(fn (AppVersion $version): int => (int) $version->version_code);
 
@@ -119,8 +115,8 @@ final class AppVersionController extends Controller
     }
 
     /**
-     * @param Collection<int, AppVersion> $versions
-     * @param array{compatible: bool, client_version: int, missing_capabilities: list<string>} $clientCompatibility
+     * @param  Collection<int, AppVersion>  $versions
+     * @param  array{compatible: bool, client_version: int, missing_capabilities: list<string>}  $clientCompatibility
      */
     private function iosResponse(
         Collection $versions,
@@ -145,9 +141,8 @@ final class AppVersionController extends Controller
 
         if ($currentBuild !== null && $latest->build_number !== null) {
             $updateRequired = (int) $latest->build_number > $currentBuild;
-            $forceUpdate = $updateRequired && (!$clientCompatibility['compatible'] || $versions->contains(
-                fn (AppVersion $version): bool =>
-                    $version->build_number !== null
+            $forceUpdate = $updateRequired && (! $clientCompatibility['compatible'] || $versions->contains(
+                fn (AppVersion $version): bool => $version->build_number !== null
                     && (int) $version->build_number > $currentBuild
                     && $version->is_force_update,
             ));
@@ -155,16 +150,14 @@ final class AppVersionController extends Controller
             // Backwards compatibility for clients released before build_number
             // was added to the request contract.
             $updateRequired = version_compare((string) $latest->version_name, $currentVersion, '>');
-            $forceUpdate = $updateRequired && (!$clientCompatibility['compatible'] || $versions->contains(
-                fn (AppVersion $version): bool =>
-                    version_compare((string) $version->version_name, $currentVersion, '>')
+            $forceUpdate = $updateRequired && (! $clientCompatibility['compatible'] || $versions->contains(
+                fn (AppVersion $version): bool => version_compare((string) $version->version_name, $currentVersion, '>')
                     && $version->is_force_update,
             ));
         }
 
         $minimumSupportedBuild = $versions
-            ->filter(fn (AppVersion $version): bool =>
-                $version->build_number !== null && $version->is_force_update
+            ->filter(fn (AppVersion $version): bool => $version->build_number !== null && $version->is_force_update
             )
             ->max(fn (AppVersion $version): int => (int) $version->build_number);
 
@@ -231,7 +224,7 @@ final class AppVersionController extends Controller
     }
 
     /**
-     * @param array{compatible: bool, client_version: int, missing_capabilities: list<string>} $clientCompatibility
+     * @param  array{compatible: bool, client_version: int, missing_capabilities: list<string>}  $clientCompatibility
      * @return array{current_version: int, minimum_supported_version: int, client_version: int, compatible: bool, missing_capabilities: list<string>, canonical_base: string, legacy_base: string, capabilities: list<string>}
      */
     private function apiContract(array $clientCompatibility): array
@@ -251,7 +244,7 @@ final class AppVersionController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $validated
+     * @param  array<string, mixed>  $validated
      * @return array{compatible: bool, client_version: int, missing_capabilities: list<string>}
      */
     private function clientCompatibility(array $validated): array

@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use App\Services\PortfolioModerationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-use App\Services\PortfolioModerationService;
 
 class PortfolioMedia extends Model
 {
@@ -39,15 +39,21 @@ class PortfolioMedia extends Model
     protected static function booted(): void
     {
         static::creating(function (PortfolioMedia $media): void {
-            if (!$media->public_id) $media->public_id = (string) Str::uuid();
+            if (! $media->public_id) {
+                $media->public_id = (string) Str::uuid();
+            }
         });
         $invalidate = static function (PortfolioMedia $media): void {
             $item = $media->portfolioItem()->first();
-            if ($item?->is_public) PortfolioModerationService::invalidate((int) $item->user_id);
+            if ($item?->is_public) {
+                PortfolioModerationService::invalidate((int) $item->user_id);
+            }
         };
         $preserve = static function (PortfolioMedia $media): void {
             $userId = PortfolioItem::query()->whereKey($media->portfolio_item_id)->value('user_id');
-            if ($userId) PortfolioModerationService::preserveLegacyPublication((int) $userId);
+            if ($userId) {
+                PortfolioModerationService::preserveLegacyPublication((int) $userId);
+            }
         };
         static::saving($preserve);
         static::deleting($preserve);
@@ -55,7 +61,9 @@ class PortfolioMedia extends Model
             if ($media->wasRecentlyCreated || $media->wasChanged([
                 'public_id', 'file_path', 'file_type', 'content_sha256', 'caption',
                 'width', 'height', 'duration_seconds', 'sort_order', 'deletion_lease_id',
-            ])) $invalidate($media);
+            ])) {
+                $invalidate($media);
+            }
         });
         static::deleted($invalidate);
     }

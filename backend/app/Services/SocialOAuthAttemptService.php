@@ -63,7 +63,7 @@ final class SocialOAuthAttemptService
                 ->lockForUpdate()
                 ->first();
 
-            if (!$attempt || !hash_equals((string) $attempt->provider, $provider)) {
+            if (! $attempt || ! hash_equals((string) $attempt->provider, $provider)) {
                 return null;
             }
 
@@ -144,7 +144,7 @@ final class SocialOAuthAttemptService
                 ->whereNull('completion_hash')
                 ->where('state_expires_at', '>', now())
                 ->exists();
-            if (!$stillProcessing || microtime(true) >= $deadline) {
+            if (! $stillProcessing || microtime(true) >= $deadline) {
                 return null;
             }
 
@@ -170,7 +170,9 @@ final class SocialOAuthAttemptService
                 ->lockForUpdate()
                 ->first();
 
-            if (!$attempt) return null;
+            if (! $attempt) {
+                return null;
+            }
 
             $attempt->forceFill(['completion_consumed_at' => now()])->save();
 
@@ -192,7 +194,9 @@ final class SocialOAuthAttemptService
                 ->lockForUpdate()
                 ->first();
 
-            if (!$attempt) return null;
+            if (! $attempt) {
+                return null;
+            }
 
             $attempt->forceFill([
                 'completion_processing_at' => now(),
@@ -206,7 +210,7 @@ final class SocialOAuthAttemptService
     public function releaseCompletion(SocialOAuthAttempt $attempt): void
     {
         $claimId = trim((string) $attempt->completion_claim_id);
-        if (!$attempt->completion_processing_at || $claimId === '') {
+        if (! $attempt->completion_processing_at || $claimId === '') {
             return;
         }
 
@@ -231,7 +235,7 @@ final class SocialOAuthAttemptService
         Closure $callback
     ): mixed {
         $claimId = trim($claimId);
-        if ($attemptId <= 0 || !Str::isUuid($claimId)) {
+        if ($attemptId <= 0 || ! Str::isUuid($claimId)) {
             return null;
         }
 
@@ -244,7 +248,7 @@ final class SocialOAuthAttemptService
                 ->lockForUpdate()
                 ->first();
 
-            if (!$attempt) {
+            if (! $attempt) {
                 return null;
             }
 
@@ -257,14 +261,15 @@ final class SocialOAuthAttemptService
     public function finalizeCompletion(
         SocialOAuthAttempt $attempt,
         ?string $encryptedSessionResponse = null
-    ): bool
-    {
+    ): bool {
         return DB::transaction(function () use ($attempt, $encryptedSessionResponse): bool {
             $locked = SocialOAuthAttempt::query()->lockForUpdate()->find($attempt->id);
-            if (!$locked || $locked->completion_consumed_at) return false;
+            if (! $locked || $locked->completion_consumed_at) {
+                return false;
+            }
             if (
                 trim((string) $attempt->completion_claim_id) === ''
-                || !hash_equals(
+                || ! hash_equals(
                     (string) $locked->completion_claim_id,
                     (string) $attempt->completion_claim_id
                 )

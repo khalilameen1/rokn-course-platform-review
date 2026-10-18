@@ -6,12 +6,13 @@ use App\Models\AdminAuditLog;
 use App\Models\Course;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Support\AdminAuditChangeRecorder;
+use App\Support\DatabaseCapabilities;
 use App\Support\PrivacyFingerprint;
 use Closure;
 use Illuminate\Http\Request;
-use App\Support\DatabaseCapabilities;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
 
 final class AuditAdminMutation
 {
@@ -26,8 +27,7 @@ final class AuditAdminMutation
 
     public function __construct(
         private readonly AdminAuthoringCreateIntentService $createIntents
-    ) {
-    }
+    ) {}
 
     public function handle(Request $request, Closure $next)
     {
@@ -36,9 +36,10 @@ final class AuditAdminMutation
 
         $request->attributes->remove(AdminAuthoringCreateIntentService::CLAIM_ATTRIBUTE);
         $createIntent = $this->createIntents->claim($request);
-        if ($createIntent instanceof \Symfony\Component\HttpFoundation\Response) {
+        if ($createIntent instanceof Response) {
             $createIntent->headers->set('X-Request-ID', $requestId);
             $this->consumeDraftReceipt($request, $createIntent);
+
             return $createIntent;
         }
         if (is_array($createIntent)) {
@@ -61,7 +62,7 @@ final class AuditAdminMutation
         $response->headers->set('X-Request-ID', $requestId);
         $this->createIntents->settleFromResponse($request, $response, $createIntent);
 
-        if (!in_array(strtoupper($request->method()), self::MUTATING_METHODS, true)) {
+        if (! in_array(strtoupper($request->method()), self::MUTATING_METHODS, true)) {
             return $response;
         }
 
@@ -69,7 +70,7 @@ final class AuditAdminMutation
         $draftConsumed = $this->consumeDraftReceipt($request, $response);
 
         try {
-            if (!DatabaseCapabilities::hasTable('admin_audit_logs') || !$request->user()) {
+            if (! DatabaseCapabilities::hasTable('admin_audit_logs') || ! $request->user()) {
                 return $response;
             }
 
@@ -82,6 +83,7 @@ final class AuditAdminMutation
                     if (is_object($value) && method_exists($value, 'getKey')) {
                         return (string) $value->getKey();
                     }
+
                     return is_scalar($value) ? (string) $value : get_debug_type($value);
                 })
                 ->all();
@@ -146,15 +148,17 @@ final class AuditAdminMutation
 
     private function consumeDraftReceipt(
         Request $request,
-        \Symfony\Component\HttpFoundation\Response $response
+        Response $response
     ): bool {
         $draftReceipt = trim((string) $request->input('authoring_draft_receipt'));
         $consumed = Str::isUuid($draftReceipt)
             && $response->getStatusCode() >= 200
             && $response->getStatusCode() < 400
-            && !$request->session()->has('errors')
-            && !$request->session()->has('error');
-        if (!$consumed) return false;
+            && ! $request->session()->has('errors')
+            && ! $request->session()->has('error');
+        if (! $consumed) {
+            return false;
+        }
 
         $receipts = (array) $request->session()->get('admin_authoring_draft_receipts', []);
         $cutoff = now()->subDays(7)->getTimestamp();
@@ -182,7 +186,7 @@ final class AuditAdminMutation
         } catch (\Throwable $exception) {
             report($exception);
         }
+
         return true;
     }
-
 }

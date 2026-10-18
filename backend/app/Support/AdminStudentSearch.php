@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -22,7 +23,7 @@ final class AdminStudentSearch
     /** Portable across MySQL, PostgreSQL and SQLite (backslash is not). */
     private const ESCAPE = '!';
 
-    /** @param Builder<\App\Models\User> $users */
+    /** @param Builder<User> $users */
     public static function apply(Builder $users, string $search): void
     {
         $search = trim($search);
@@ -33,6 +34,7 @@ final class AdminStudentSearch
         if (preg_match('/^(UID\s*:\s*|#\s*)([1-9][0-9]*)$/iD', $search, $identity) === 1) {
             $id = filter_var($identity[2], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             $id === false ? $users->whereRaw('1 = 0') : $users->whereKey($id);
+
             return;
         }
 
@@ -42,6 +44,7 @@ final class AdminStudentSearch
                 $match->where('email', $email);
                 self::whereLike($match, 'email', self::escape($email).'%', 'or');
             });
+
             return;
         }
 
@@ -61,6 +64,7 @@ final class AdminStudentSearch
                     $match->orWhere('id', $id);
                 }
             });
+
             return;
         }
 
@@ -81,7 +85,7 @@ final class AdminStudentSearch
         );
     }
 
-    /** @param Builder<\App\Models\User> $query */
+    /** @param Builder<User> $query */
     private static function whereLike(Builder $query, string $column, string $pattern, string $boolean): void
     {
         $wrapped = $query->getQuery()->getGrammar()->wrap($column);

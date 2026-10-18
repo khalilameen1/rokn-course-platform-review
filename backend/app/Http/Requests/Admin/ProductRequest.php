@@ -26,7 +26,7 @@ class ProductRequest extends FormRequest
         return [
             'name_ar' => 'required|string|min:3|max:50',
             'name_en' => 'required|string|min:3|max:50',
-            'image' => ($this->method() === 'POST' ? 'required|image' : '')
+            'image' => ($this->method() === 'POST' ? 'required|image' : ''),
         ];
     }
 
@@ -38,7 +38,7 @@ class ProductRequest extends FormRequest
         return [
             'name_ar' => 'أسم المنتج ',
             'name_en' => 'أسم المنتج باللإنجليزية',
-            'image' => 'صوره المنتج'
+            'image' => 'صوره المنتج',
         ];
     }
 }

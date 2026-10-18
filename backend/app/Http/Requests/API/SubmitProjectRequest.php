@@ -16,7 +16,7 @@ final class SubmitProjectRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        if (!$this->filled('client_submission_id') && $this->hasHeader('Idempotency-Key')) {
+        if (! $this->filled('client_submission_id') && $this->hasHeader('Idempotency-Key')) {
             $this->merge(['client_submission_id' => $this->header('Idempotency-Key')]);
         }
     }

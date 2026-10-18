@@ -2,40 +2,58 @@
 
 namespace App\Http\Resources;
 
-use App\Services\BunnyDeliveryService;
-use App\Services\LessonMediaDeliveryService;
+use App\Models\CourseEnrollment;
 use App\Models\CourseRating;
-use Illuminate\Support\Collection;
-use App\Services\CourseAttachmentService;
-use App\Services\CourseSectionAccessService;
+use App\Models\CourseSection;
+use App\Models\User;
+use App\Services\BunnyDeliveryService;
 use App\Services\CourseAccessPlanService;
-use App\Services\ProjectSubmissionPresenter;
+use App\Services\CourseAttachmentService;
 use App\Services\CourseRatingEligibilityService;
 use App\Services\CourseRevisionLearnerReadService;
-use App\Models\CourseEnrollment;
-use App\Models\User;
+use App\Services\CourseSectionAccessService;
+use App\Services\CourseSectionSequenceService;
+use App\Services\LessonMediaDeliveryService;
+use App\Services\ProjectSubmissionFilePolicy;
+use App\Services\ProjectSubmissionPresenter;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class CourseResource extends BaseCourseResource
 {
     private ?BunnyDeliveryService $delivery = null;
+
     private ?LessonMediaDeliveryService $lessonDelivery = null;
+
     private array $fullSectionContentCache = [];
+
     private array $sectionLockCache = [];
+
     private Collection $sectionAccessStates;
+
     private Collection $projectSubmissions;
+
     private string $projectFeedbackLevel = 'pass_only';
+
     private array $projectFeedbackContract = [
         'project_report_enabled' => false,
         'project_thread_reply_enabled' => false,
         'project_message_limit' => 0,
         'project_token_budget' => 0,
     ];
+
     private bool $projectReplyRiskAllowed = false;
+
     private Collection $resolvedCompletedSectionIds;
+
     private array $resolvedEntitlement;
+
     private ?CourseEnrollment $resolvedEnrollment;
+
     private User $resourceUser;
+
     private ?User $dashboardPreviewUser = null;
+
     private bool $projectsEnabled = true;
 
     /** Reuse the access/progress work already performed by the details query. */
@@ -60,7 +78,7 @@ class CourseResource extends BaseCourseResource
      * starts with no learner progress and never creates an enrollment or
      * changes the course publication state.
      *
-     * @param array<string, mixed> $planContract
+     * @param  array<string, mixed>  $planContract
      */
     public function withDashboardPreviewContext(User $actor, array $planContract): static
     {
@@ -80,7 +98,7 @@ class CourseResource extends BaseCourseResource
      * Transform the resource into an array.
      * Full course resource with sensitive data and section lock status for authorized users
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  Request  $request
      * @return array
      */
     public function toArray($request)
@@ -94,7 +112,7 @@ class CourseResource extends BaseCourseResource
         $learnerStateUser = $this->dashboardPreviewUser ? null : $user;
         $this->projectsEnabled = (bool) ($this->resolvedEntitlement['projects_available'] ?? true);
         $sections = $this->relationLoaded('modules')
-            ? app(\App\Services\CourseSectionSequenceService::class)
+            ? app(CourseSectionSequenceService::class)
                 ->fromModules($this->modules)
             : collect();
         $completedSectionIds = $this->resolvedCompletedSectionIds;
@@ -169,7 +187,7 @@ class CourseResource extends BaseCourseResource
 
         $promptFrequency = (string) ($this->attachment_prompt_frequency
             ?: config('course_attachments.prompt.default_frequency', 'once_per_course'));
-        if (!array_key_exists(
+        if (! array_key_exists(
             $promptFrequency,
             (array) config('course_attachments.prompt.frequencies', [])
         )) {
@@ -210,7 +228,7 @@ class CourseResource extends BaseCourseResource
             'enrolled_at' => $enrollment->enrolled_at,
             'expires_at' => $enrollment->expires_at,
             'is_active' => $enrollment->isActive(),
-            'access_granted_at' => $enrollment->access_granted_at
+            'access_granted_at' => $enrollment->access_granted_at,
         ] : null;
 
         // One logical rating survives soft deletion so restoring it cannot
@@ -225,9 +243,9 @@ class CourseResource extends BaseCourseResource
                 ->for($user, $this->resource, $hasCourseAccess, $userRating !== null);
         }
 
-        $baseData['user_rating'] = $userRating && !$userRating->trashed() ? [
+        $baseData['user_rating'] = $userRating && ! $userRating->trashed() ? [
             'id' => $userRating->id,
-            'rating' => (int)$userRating->rating,
+            'rating' => (int) $userRating->rating,
             'comment' => $userRating->comment,
             'version' => (int) $userRating->version,
             'created_at' => $userRating->created_at,
@@ -248,25 +266,25 @@ class CourseResource extends BaseCourseResource
         $baseData['projects_available'] = $hasCourseAccess && $this->projectsEnabled;
 
         // Override modules with full content and lock status for sections
-        $baseData['modules'] = $this->whenLoaded('modules', function() {
+        $baseData['modules'] = $this->whenLoaded('modules', function () {
             $orderedModules = $this->modules->sortBy([
                 ['order', 'asc'],
                 ['id', 'asc'],
             ])->values();
 
-            return $orderedModules->map(function($module) {
+            return $orderedModules->map(function ($module) {
                 $moduleSections = $module->sections
                     ? $module->sections->sortBy('order')->values()
                     : collect();
-                $moduleSections = app(\App\Services\CourseSectionSequenceService::class)
+                $moduleSections = app(CourseSectionSequenceService::class)
                     ->forProjectsPolicy($moduleSections, $this->projectsEnabled);
                 $firstSection = $moduleSections->first();
                 $firstMediaUnavailable = $firstSection
                     && $firstSection->getSectionType() === 'lesson'
-                    && !($firstSection->sectionable?->hasReadyMediaState() ?? false);
-                $moduleIsLocked = !$firstSection || $firstMediaUnavailable || (
+                    && ! ($firstSection->sectionable?->hasReadyMediaState() ?? false);
+                $moduleIsLocked = ! $firstSection || $firstMediaUnavailable || (
                     $this->isSectionLockedFromState($firstSection)
-                    && !(
+                    && ! (
                         $firstSection->getSectionType() === 'lesson'
                         && (bool) ($firstSection->sectionable?->is_opened ?? false)
                         && $firstSection->sectionable->hasReadyMediaState()
@@ -298,7 +316,7 @@ class CourseResource extends BaseCourseResource
             && (bool) ($section->sectionable?->is_opened ?? false)
             && $section->sectionable->hasReadyMediaState();
         $mediaUnavailable = $section->getSectionType() === 'lesson'
-            && !($section->sectionable?->hasReadyMediaState() ?? false);
+            && ! ($section->sectionable?->hasReadyMediaState() ?? false);
         $isLocked = $isLocked || $mediaUnavailable;
         $data = [
             'id' => $section->id,
@@ -319,7 +337,7 @@ class CourseResource extends BaseCourseResource
 
         // Never serialize playable URLs, project requirements or
         // external links for a gated step. Explicit previews remain playable.
-        if (!$isLocked || $isPreview) {
+        if (! $isLocked || $isPreview) {
             $data['content'] = $this->getFullSectionContent($section);
         }
 
@@ -341,7 +359,7 @@ class CourseResource extends BaseCourseResource
     /**
      * Get full section content including sensitive data
      *
-     * @param \App\Models\CourseSection $section
+     * @param  CourseSection  $section
      * @return array
      */
     protected function getFullSectionContent($section)
@@ -351,7 +369,7 @@ class CourseResource extends BaseCourseResource
             return $this->fullSectionContentCache[$sectionId];
         }
 
-        if (!$section->sectionable) {
+        if (! $section->sectionable) {
             return null;
         }
 
@@ -393,45 +411,44 @@ class CourseResource extends BaseCourseResource
                     : null;
                 break;
 
-                case 'project':
-                    $projectSubmissionMimeTypes = app(
-                        \App\Services\ProjectSubmissionFilePolicy::class
-                    )->allowedMimeTypes($section->sectionable);
-                    $content['requirements_text'] = $section->sectionable->requirements_text ?? null;
-                    $content['is_graduation_project'] = $section->sectionable->is_graduation_project ?? false;
-                    $content['submission_text_enabled'] = (bool) $section->sectionable->submission_text_enabled;
-                    $content['submission_files_enabled'] = $projectSubmissionMimeTypes !== [];
-                    $content['submission_max_files'] = \App\Services\ProjectSubmissionFilePolicy::maximumFiles($section->sectionable);
-                    $content['submission_max_file_bytes'] = \App\Services\ProjectSubmissionFilePolicy::maximumFileBytes();
-                    $content['submission_allowed_mime_types'] = $projectSubmissionMimeTypes;
-                    $submission = $this->projectSubmissions->get((int) $section->sectionable->id);
-                    $submissionPayload = $submission
-                        ? app(ProjectSubmissionPresenter::class)->present($submission, false)
-                        : null;
-                    $content['latest_submission'] = $submissionPayload;
-                    $content['project_feedback'] = [
-                        'level' => $this->projectFeedbackLevel,
-                        'output_enabled' => (bool) (
-                            $this->projectFeedbackContract['project_output_enabled'] ?? false
-                        ),
-                        'report_enabled' => (bool) (
-                            $this->projectFeedbackContract['project_report_enabled'] ?? false
-                        ) && $this->projectFeedbackLevel !== 'pass_only',
-                        'reply_enabled' => (bool) (
-                            $this->projectFeedbackContract['project_thread_reply_enabled'] ?? false
-                        ) && $this->projectReplyRiskAllowed,
-                        'message_limit' => max(0, (int) (
-                            $this->projectFeedbackContract['project_message_limit'] ?? 0
-                        )),
-                        'token_budget' => max(0, (int) (
-                            $this->projectFeedbackContract['project_token_budget'] ?? 0
-                        )),
-                    ];
-               break;
+            case 'project':
+                $projectSubmissionMimeTypes = app(
+                    ProjectSubmissionFilePolicy::class
+                )->allowedMimeTypes($section->sectionable);
+                $content['requirements_text'] = $section->sectionable->requirements_text ?? null;
+                $content['is_graduation_project'] = $section->sectionable->is_graduation_project ?? false;
+                $content['submission_text_enabled'] = (bool) $section->sectionable->submission_text_enabled;
+                $content['submission_files_enabled'] = $projectSubmissionMimeTypes !== [];
+                $content['submission_max_files'] = ProjectSubmissionFilePolicy::maximumFiles($section->sectionable);
+                $content['submission_max_file_bytes'] = ProjectSubmissionFilePolicy::maximumFileBytes();
+                $content['submission_allowed_mime_types'] = $projectSubmissionMimeTypes;
+                $submission = $this->projectSubmissions->get((int) $section->sectionable->id);
+                $submissionPayload = $submission
+                    ? app(ProjectSubmissionPresenter::class)->present($submission, false)
+                    : null;
+                $content['latest_submission'] = $submissionPayload;
+                $content['project_feedback'] = [
+                    'level' => $this->projectFeedbackLevel,
+                    'output_enabled' => (bool) (
+                        $this->projectFeedbackContract['project_output_enabled'] ?? false
+                    ),
+                    'report_enabled' => (bool) (
+                        $this->projectFeedbackContract['project_report_enabled'] ?? false
+                    ) && $this->projectFeedbackLevel !== 'pass_only',
+                    'reply_enabled' => (bool) (
+                        $this->projectFeedbackContract['project_thread_reply_enabled'] ?? false
+                    ) && $this->projectReplyRiskAllowed,
+                    'message_limit' => max(0, (int) (
+                        $this->projectFeedbackContract['project_message_limit'] ?? 0
+                    )),
+                    'token_budget' => max(0, (int) (
+                        $this->projectFeedbackContract['project_token_budget'] ?? 0
+                    )),
+                ];
+                break;
 
         }
 
         return $this->fullSectionContentCache[$sectionId] = $content;
     }
-
 }

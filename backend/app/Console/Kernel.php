@@ -22,7 +22,6 @@ class Kernel extends ConsoleKernel
     /**
      * Define the application's command schedule.
      *
-     * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
      * @return void
      */
     protected function schedule(Schedule $schedule)
@@ -138,7 +137,7 @@ class Kernel extends ConsoleKernel
             ->everyThirtyMinutes()
             ->withoutOverlapping(180)
             ->onOneServer();
-        $schedule->job(new PurgeExpiredApiTokens())
+        $schedule->job(new PurgeExpiredApiTokens)
             ->dailyAt('01:00')
             ->onOneServer();
         // Reminders open for a whole local hour. Five batches every five

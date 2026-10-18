@@ -20,6 +20,5 @@ final readonly class StudentNotificationIntent
         public ?string $deliveryKey = null,
         public array $templateVariables = [],
         public ?string $imageUrl = null
-    ) {
-    }
+    ) {}
 }

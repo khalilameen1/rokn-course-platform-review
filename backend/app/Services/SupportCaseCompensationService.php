@@ -16,8 +16,7 @@ final class SupportCaseCompensationService
     public function __construct(
         private readonly OrderLifecycleService $orders,
         private readonly SupportCaseService $cases
-    ) {
-    }
+    ) {}
 
     /**
      * Coins that can still be credited for a verified service failure.
@@ -29,19 +28,19 @@ final class SupportCaseCompensationService
     public function remainingCompensableCoins(?Order $order): int
     {
         if (
-            !$order
-            || !$order->course_id
+            ! $order
+            || ! $order->course_id
             || $order->package_id
             || $order->payment_method !== Order::PAYMENT_METHOD_WALLET_COINS
             || $order->status !== Order::STATUS_APPROVED
             || $order->financial_status !== Order::FINANCIAL_SETTLED
-            || !$order->wallet_transaction_id
+            || ! $order->wallet_transaction_id
         ) {
             return 0;
         }
         $debit = WalletTransaction::query()->find($order->wallet_transaction_id);
         if (
-            !$debit
+            ! $debit
             || $debit->direction !== WalletTransaction::DIRECTION_DEBIT
             || (int) $debit->user_id !== (int) $order->user_id
             || (int) $debit->amount !== (int) $order->total_coins

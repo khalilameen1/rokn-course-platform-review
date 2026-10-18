@@ -20,12 +20,12 @@ final class StudentWalletSession
             return redirect()->away($origin.($request->isMethod('GET') ? $request->getRequestUri() : '/recharge'), 303);
         }
         $user = $request->user('student');
-        if ($user && (!$user->active || $user->trashed() || strtolower((string) $user->role) !== 'client')) {
+        if ($user && (! $user->active || $user->trashed() || strtolower((string) $user->role) !== 'client')) {
             Auth::guard('student')->logout();
             $user = null;
         }
 
-        $response = !$user && $access === 'required'
+        $response = ! $user && $access === 'required'
             ? ($request->expectsJson()
                 ? response()->json(['message' => 'سجّل الدخول للمتابعة'], 401)
                 : redirect()->route('web-wallet.index')->with('error', 'سجّل الدخول للمتابعة'))

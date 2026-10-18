@@ -18,16 +18,19 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
-final class CleanupDeletedAccountPortfolioMedia implements ShouldQueue, ShouldBeUnique
+final class CleanupDeletedAccountPortfolioMedia implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 12;
+
     public int $timeout = 60;
+
     // Covers the complete retry/backoff horizon. A short uniqueness TTL let
     // the periodic recovery command enqueue a second remote-deletion chain
     // while the first one was still backing off.
     public int $uniqueFor = 21600;
+
     public bool $failOnTimeout = true;
 
     /** @var array<int> */
@@ -40,7 +43,7 @@ final class CleanupDeletedAccountPortfolioMedia implements ShouldQueue, ShouldBe
 
     public function uniqueId(): string
     {
-        return 'deleted-account-portfolio:' . $this->userId;
+        return 'deleted-account-portfolio:'.$this->userId;
     }
 
     public function handle(BunnyService $bunny, StoredFileReferenceService $references): void
@@ -58,7 +61,7 @@ final class CleanupDeletedAccountPortfolioMedia implements ShouldQueue, ShouldBe
             ->orderBy('id')
             ->get()
             ->each(function (PortfolioMedia $media) use ($bunny, $references): void {
-                if (!$this->deleteRemoteMedia($bunny, $references, $media)) {
+                if (! $this->deleteRemoteMedia($bunny, $references, $media)) {
                     throw new RuntimeException('Bunny portfolio media cleanup is temporarily unavailable.');
                 }
 
@@ -66,7 +69,7 @@ final class CleanupDeletedAccountPortfolioMedia implements ShouldQueue, ShouldBe
                 // reference disappear. A changed row is retained for the next pass.
                 DB::transaction(function () use ($media): void {
                     $current = PortfolioMedia::query()->lockForUpdate()->find($media->id);
-                    if (!$current) {
+                    if (! $current) {
                         return;
                     }
 
@@ -87,7 +90,7 @@ final class CleanupDeletedAccountPortfolioMedia implements ShouldQueue, ShouldBe
         $remainingMedia = PortfolioMedia::query()
             ->whereIn('portfolio_item_id', $itemIds)
             ->exists();
-        if (!$remainingMedia) {
+        if (! $remainingMedia) {
             PortfolioItem::query()
                 ->where('user_id', $this->userId)
                 ->whereIn('id', $itemIds)
@@ -107,8 +110,7 @@ final class CleanupDeletedAccountPortfolioMedia implements ShouldQueue, ShouldBe
         BunnyService $bunny,
         StoredFileReferenceService $references,
         PortfolioMedia $media
-    ): bool
-    {
+    ): bool {
         $path = trim((string) $media->file_path);
         if ($path === '') {
             return true;
@@ -124,13 +126,14 @@ final class CleanupDeletedAccountPortfolioMedia implements ShouldQueue, ShouldBe
         }
 
         if (
-            !$references->isBunnyStoragePathReferencedElsewhere($path, (int) $media->id)
-            && !$bunny->deleteFileFromStorage($path)
+            ! $references->isBunnyStoragePathReferencedElsewhere($path, (int) $media->id)
+            && ! $bunny->deleteFileFromStorage($path)
         ) {
             return false;
         }
 
         $thumbnail = trim((string) $media->thumbnail_path);
+
         return $thumbnail === ''
             || $thumbnail === $path
             || $references->isBunnyStoragePathReferencedElsewhere($thumbnail, (int) $media->id)

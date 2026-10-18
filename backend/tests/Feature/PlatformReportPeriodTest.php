@@ -335,7 +335,9 @@ final class PlatformReportPeriodTest extends TestCase
     {
         $resolved = [];
         foreach ([AiUsageReportService::class, ProviderInvoiceReportService::class] as $class) {
-            $this->app->resolving($class, static function () use (&$resolved, $class): void { $resolved[] = $class; });
+            $this->app->resolving($class, static function () use (&$resolved, $class): void {
+                $resolved[] = $class;
+            });
         }
         $this->actingAs($this->user('moderator'), 'web')->get(route('admin.dashboard', ['period' => '7d']))
             ->assertOk()->assertViewIs('admin.home.moderator')->assertViewMissing('ai')->assertViewMissing('invoiceReport');

@@ -18,7 +18,9 @@ final class CoursePathSelectionService
         $this->requireTransaction();
         $revision = CourseAuthoringRevision::query()->where('revision_course_id', $draft->id)
             ->where('status', CourseAuthoringRevision::DRAFT)->first();
-        if (!$revision) return;
+        if (! $revision) {
+            return;
+        }
 
         $identity = [
             'course_authoring_revision_id' => $revision->id,
@@ -50,14 +52,21 @@ final class CoursePathSelectionService
         $livePath = (int) ($canonical->path_id ?? 0);
         $draftPath = (int) ($draft->path_id ?? 0);
 
-        if (!$snapshot) {
-            if ($livePath !== $draftPath) $this->conflict();
+        if (! $snapshot) {
+            if ($livePath !== $draftPath) {
+                $this->conflict();
+            }
+
             return $draftPath ?: null;
         }
 
         $basePath = (int) $snapshot->source_entity_id;
-        if ($draftPath === $basePath) return $livePath ?: null;
-        if ($livePath !== $basePath && $livePath !== $draftPath) $this->conflict();
+        if ($draftPath === $basePath) {
+            return $livePath ?: null;
+        }
+        if ($livePath !== $basePath && $livePath !== $draftPath) {
+            $this->conflict();
+        }
 
         return $draftPath ?: null;
     }

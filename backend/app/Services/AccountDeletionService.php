@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\User;
 use App\Models\AccountFileDeletion;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
@@ -22,8 +22,7 @@ final class AccountDeletionService
         private readonly SocialIdentityGuardService $identityGuards,
         private readonly AppleService $apple,
         private readonly CourseCatalogueRevisionService $catalogueRevisions
-    ) {
-    }
+    ) {}
 
     /**
      * Remove account identity while retaining the relational shell required by
@@ -164,14 +163,14 @@ final class AccountDeletionService
                 DB::table('verification_codes')->where('phone', $originalPhone)->delete();
             }
 
-            $suffix = $userId . '-' . Str::lower(Str::random(12));
+            $suffix = $userId.'-'.Str::lower(Str::random(12));
             $anonymized = [
                 'name' => 'حساب محذوف',
                 'name_ar' => null,
                 'name_en' => null,
-                'email' => 'deleted-' . $suffix . '@deleted.rokn.local',
+                'email' => 'deleted-'.$suffix.'@deleted.rokn.local',
                 'email_verified_at' => null,
-                'phone' => 'deleted-' . $suffix,
+                'phone' => 'deleted-'.$suffix,
                 'phone_verified_at' => null,
                 'password' => Hash::make(Str::random(64)),
                 'social_provider' => null,

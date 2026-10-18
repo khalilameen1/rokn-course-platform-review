@@ -17,8 +17,7 @@ final readonly class VerifiedSocialIdentity
         public string $name,
         public ?string $picture,
         public array $appleGrant
-    ) {
-    }
+    ) {}
 
     /**
      * Consume only SocialAuthProviderRegistry::verifyIdentity output.

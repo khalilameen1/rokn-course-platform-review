@@ -13,7 +13,9 @@ class DeviceLoginService
     public const MAX_ACTIVE_SESSIONS = 25;
 
     public const POLICY_MULTIPLE = 'multiple_devices';
+
     public const POLICY_SINGLE = 'single_device';
+
     public const POLICY_SINGLE_PERMANENT = 'single_device_permanent';
 
     /**
@@ -26,8 +28,6 @@ class DeviceLoginService
     /**
      * Check if user can login from the given device based on device login policy
      *
-     * @param User $user
-     * @param string|null $deviceId
      * @return array ['allowed' => bool, 'message' => string, 'action' => string]
      */
     public function checkDeviceAccess(User $user, ?string $deviceId): array
@@ -71,6 +71,7 @@ class DeviceLoginService
             $rawPolicy = Setting::query()->value('device_login_policy');
         } catch (Throwable $exception) {
             report($exception);
+
             return self::SAFE_FALLBACK_POLICY;
         }
 
@@ -92,10 +93,6 @@ class DeviceLoginService
 
     /**
      * Handle multiple devices policy - always allow
-     *
-     * @param User $user
-     * @param string $deviceId
-     * @return array
      */
     private function handleMultipleDevices(User $user, string $deviceId): array
     {
@@ -103,16 +100,12 @@ class DeviceLoginService
             'allowed' => true,
             'message' => 'تم تسجيل الدخول بنجاح',
             'action' => 'allow_multiple',
-            'device_id' => $deviceId
+            'device_id' => $deviceId,
         ];
     }
 
     /**
      * Handle single device policy - allow but logout other devices
-     *
-     * @param User $user
-     * @param string $deviceId
-     * @return array
      */
     private function handleSingleDevice(User $user, string $deviceId): array
     {
@@ -137,16 +130,12 @@ class DeviceLoginService
             // Reissuing a bearer on the same phone must still retire any
             // historical bearer that predates the device lock.
             'action' => 'logout_others',
-            'device_id' => $deviceId
+            'device_id' => $deviceId,
         ];
     }
 
     /**
      * Handle single device permanent policy - lock to first device
-     *
-     * @param User $user
-     * @param string $deviceId
-     * @return array
      */
     private function handleSingleDevicePermanent(User $user, string $deviceId): array
     {
@@ -156,7 +145,7 @@ class DeviceLoginService
                 'allowed' => true,
                 'message' => 'تم تسجيل الدخول بنجاح. تم ربط حسابك بهذا الجهاز.',
                 'action' => 'logout_others',
-                'device_id' => $deviceId
+                'device_id' => $deviceId,
             ];
         }
 
@@ -166,7 +155,7 @@ class DeviceLoginService
                 'allowed' => true,
                 'message' => 'تم تسجيل الدخول بنجاح',
                 'action' => 'logout_others',
-                'device_id' => $deviceId
+                'device_id' => $deviceId,
             ];
         }
 
@@ -181,11 +170,6 @@ class DeviceLoginService
 
     /**
      * Apply device action after successful authentication
-     *
-     * @param User $user
-     * @param string $action
-     * @param string $deviceId
-     * @return void
      */
     public function applyDeviceAction(User $user, string $action, string $deviceId): void
     {

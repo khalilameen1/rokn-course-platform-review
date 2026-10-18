@@ -16,8 +16,8 @@ use Illuminate\Validation\ValidationException;
 final class AdminOperatingCostAuthoringService
 {
     /**
-     * @param array<string, mixed> $data Validated invoice fields, with normalized is_final.
-     * @param callable(OperatingCostPool):void $complete Completes the create receipt in the same transaction.
+     * @param  array<string, mixed>  $data  Validated invoice fields, with normalized is_final.
+     * @param  callable(OperatingCostPool):void  $complete  Completes the create receipt in the same transaction.
      */
     public function create(array $data, int $actorId, callable $complete): OperatingCostPool
     {
@@ -54,8 +54,8 @@ final class AdminOperatingCostAuthoringService
     {
         DB::transaction(function () use ($rate, $editorVersion): void {
             AdminSingletonLock::acquire('settings');
-            $setting = Setting::query()->lockForUpdate()->first() ?? new Setting();
-            if (!hash_equals(OperatingCostEditorVersion::exchangeRate($setting), $editorVersion)) {
+            $setting = Setting::query()->lockForUpdate()->first() ?? new Setting;
+            if (! hash_equals(OperatingCostEditorVersion::exchangeRate($setting), $editorVersion)) {
                 throw ValidationException::withMessages([
                     'editor_version' => "تغيّر سعر التحويل منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
                 ]);
@@ -68,7 +68,7 @@ final class AdminOperatingCostAuthoringService
 
     private function assertCurrentVersion(OperatingCostPool $pool, string $version, string $operation): void
     {
-        if (!hash_equals(OperatingCostEditorVersion::for($pool), $version)) {
+        if (! hash_equals(OperatingCostEditorVersion::for($pool), $version)) {
             throw ValidationException::withMessages([
                 'editor_version' => "تغيّرت فاتورة التشغيل منذ فتح الصفحة\nأعد تحميلها قبل {$operation}",
             ]);

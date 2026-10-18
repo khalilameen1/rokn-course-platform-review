@@ -12,7 +12,7 @@ final class PauseDuringRecovery
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (!(bool) config('operations.disaster_recovery_mode', false)) {
+        if (! (bool) config('operations.disaster_recovery_mode', false)) {
             return $next($request);
         }
 

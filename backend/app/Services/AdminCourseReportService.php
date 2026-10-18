@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Course;
 use App\Models\AiUsageEvent;
+use App\Models\Course;
 use App\Models\Order;
 use App\Support\CsvCell;
 use App\Support\ReportPeriod;
@@ -18,8 +18,7 @@ final readonly class AdminCourseReportService
         private CourseCommercialReportService $commercialReports,
         private CourseFinancialLedgerReportService $financialLedger,
         private CourseRevisionResolver $revisionResolver
-    ) {
-    }
+    ) {}
 
     /** @return array{course:Course, headings:list<string>, rows:list<list<mixed>>} */
     public function csv(Course $course, ?ReportPeriod $period = null): array
@@ -117,7 +116,7 @@ final readonly class AdminCourseReportService
                 'paid_coins' => $sum('paid_coins'),
                 'reward_coins' => $sum('reward_coins'),
                 'incomplete_orders' => $orders->filter(
-                    fn (Order $order): bool => !(bool) data_get(
+                    fn (Order $order): bool => ! (bool) data_get(
                         $allocations->get((int) $order->id),
                         'complete',
                         false

@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Console\Commands\ProductionPreflight;
+use App\Models\Lesson;
+use App\Services\AppReleasePolicyService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
+use Tests\Support\AppleClientSigningFixture;
 use Tests\TestCase;
 
 class ProductionPreflightTest extends TestCase
@@ -38,7 +41,7 @@ class ProductionPreflightTest extends TestCase
         $failures = $method->invoke(app(ProductionPreflight::class));
 
         self::assertSame(
-            !extension_loaded('curl'),
+            ! extension_loaded('curl'),
             in_array('PHP cURL is required for bounded AI streaming.', $failures, true)
         );
     }
@@ -307,13 +310,13 @@ class ProductionPreflightTest extends TestCase
             'app_links.android_sha256_fingerprints' => [$fingerprint],
             'app_links.apple_app_ids' => [],
         ]);
-        $liveIdentity = app(\App\Services\AppReleasePolicyService::class)->publicContractIdentity();
+        $liveIdentity = app(AppReleasePolicyService::class)->publicContractIdentity();
         $statement = $this->get('/.well-known/assetlinks.json')->assertOk()->json();
 
         config(['app_links.apple_app_ids' => ['VMHVLW746S.com.rokn']]);
         self::assertNotSame(
             $liveIdentity,
-            app(\App\Services\AppReleasePolicyService::class)->publicContractIdentity()
+            app(AppReleasePolicyService::class)->publicContractIdentity()
         );
         Http::fakeSequence()->push($statement, 200, ['X-Rokn-App-Identity' => $liveIdentity]);
         $response = Http::get('https://rokn.test/.well-known/assetlinks.json');
@@ -331,7 +334,7 @@ class ProductionPreflightTest extends TestCase
         $statement = $this->get('/.well-known/assetlinks.json')->assertOk()->json();
         $method = new \ReflectionMethod(ProductionPreflight::class, 'validAndroidAssociation');
         $metadata = [
-            'X-Rokn-App-Identity' => app(\App\Services\AppReleasePolicyService::class)->publicContractIdentity(),
+            'X-Rokn-App-Identity' => app(AppReleasePolicyService::class)->publicContractIdentity(),
         ];
 
         $mismatches = ['package', 'certificate', 'missing_relation', 'wrong_relation', 'namespace'];
@@ -413,12 +416,12 @@ class ProductionPreflightTest extends TestCase
             file_put_contents($credentials, json_encode([
                 'project_id' => 'rokn-production',
                 'client_email' => 'firebase-admin@rokn-production.iam.gserviceaccount.com',
-                'private_key' => "-----BEGIN"." PRIVATE KEY-----\nfixture\n-----END"." PRIVATE KEY-----\n",
+                'private_key' => '-----BEGIN'." PRIVATE KEY-----\nfixture\n-----END"." PRIVATE KEY-----\n",
             ], JSON_THROW_ON_ERROR));
             config([
                 'app.env' => 'production',
                 'app.debug' => false,
-                'app.key' => 'base64:' . base64_encode(random_bytes(32)),
+                'app.key' => 'base64:'.base64_encode(random_bytes(32)),
                 'app.url' => 'https://api.rokn.academy',
                 'app.app_domain' => 'rokn.academy',
                 'public_links.base_url' => 'https://rokn.academy',
@@ -469,7 +472,7 @@ class ProductionPreflightTest extends TestCase
                 'services.apple.team_id' => 'APPLE-TEST-TEAM',
                 'services.apple.key_id' => 'APPLE-TEST-KEY',
                 'services.apple.key_file' => null,
-                'services.apple.private_key_base64' => \Tests\Support\AppleClientSigningFixture::base64(),
+                'services.apple.private_key_base64' => AppleClientSigningFixture::base64(),
                 'openrouter.api_key' => 'configured',
                 'openrouter.default_model' => 'configured',
                 'openrouter.project_model' => 'configured',
@@ -519,7 +522,7 @@ class ProductionPreflightTest extends TestCase
                 'firebase.credentials.base64' => base64_encode(json_encode([
                     'project_id' => 'rokn-production',
                     'client_email' => 'firebase-admin@rokn-production.iam.gserviceaccount.com',
-                    'private_key' => "-----BEGIN"." PRIVATE KEY-----\nfixture\n-----END"." PRIVATE KEY-----\n",
+                    'private_key' => '-----BEGIN'." PRIVATE KEY-----\nfixture\n-----END"." PRIVATE KEY-----\n",
                 ], JSON_THROW_ON_ERROR)),
             ]);
             self::assertSame(0, Artisan::call('rokn:preflight', ['--configuration-only' => true]));
@@ -642,14 +645,16 @@ class ProductionPreflightTest extends TestCase
         });
         try {
             $path = 'lessons/thumbnails/retained.jpg';
-            foreach ([1, 2, 3, 4] as $id) DB::table('lessons')->insert(['id' => $id, 'thumbnail_path' => $path]);
+            foreach ([1, 2, 3, 4] as $id) {
+                DB::table('lessons')->insert(['id' => $id, 'thumbnail_path' => $path]);
+            }
             foreach ([1, 2, 3] as $id) {
                 DB::table('course_authoring_revisions')->insert([
                     'id' => $id, 'status' => $id === 3 ? 'draft' : 'archived',
                     'published_authoring_version' => $id === 3 ? null : $id,
                 ]);
                 DB::table('course_authoring_revision_entities')->insert([
-                    'course_authoring_revision_id' => $id, 'entity_type' => \App\Models\Lesson::class,
+                    'course_authoring_revision_id' => $id, 'entity_type' => Lesson::class,
                     'source_entity_id' => $id, 'revision_entity_id' => $id + 1,
                     'learner_root_entity_id' => $id === 3 ? null : 1,
                     'carries_learner_state' => $id !== 3,

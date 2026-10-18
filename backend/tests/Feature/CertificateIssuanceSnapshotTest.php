@@ -18,10 +18,10 @@ use App\Models\PortfolioMedia;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
+use App\Services\BunnyDeliveryService;
 use App\Services\CertificateIssuanceSnapshotService;
 use App\Services\CertificateQrDestinationService;
 use App\Services\CertificateTextTemplateService;
-use App\Services\BunnyDeliveryService;
 use App\Services\PortfolioModerationService;
 use App\Services\PortfolioReviewReadService;
 use App\Support\RoknPublicUrl;
@@ -283,7 +283,7 @@ final class CertificateIssuanceSnapshotTest extends TestCase
 
     public function test_new_credential_with_missing_qr_snapshot_does_not_invent_a_target_on_recovery(): void
     {
-        $certificate = new Certificate();
+        $certificate = new Certificate;
         $certificate->forceFill([
             'public_id' => (string) Str::uuid(),
             'certificate_design_version' => 'editorial_v1',

@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Services\AiConsentService;
 use App\Services\ProjectSubmissionFilePolicy;
 use App\Services\ProjectSubmissionService;
+use Aws\Command;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -42,11 +43,12 @@ final class ProjectUploadFailureResponseTest extends ApiTestCase
                 // The real HTTP route must forward the same bounded policy all
                 // the way through orchestration and file storage.
                 self::assertArrayHasKey('before_upload', $options);
-                $command = new \Aws\Command('PutObject');
+                $command = new Command('PutObject');
                 $options['before_upload']($command);
                 self::assertSame(0, $command['@retries']);
                 self::assertLessThanOrEqual(6.0, $command['@http']['timeout']);
                 self::assertLessThanOrEqual(2.0, $command['@http']['connect_timeout']);
+
                 return true;
             })
             ->andThrow(UnableToWriteFile::atLocation('project-submission', 'storage timeout'));

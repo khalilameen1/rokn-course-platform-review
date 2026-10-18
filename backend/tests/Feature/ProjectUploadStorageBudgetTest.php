@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use Aws\CommandInterface;
-use Aws\MockHandler;
-use Aws\Result;
 use App\Services\StoredFileDeletionService;
 use App\Services\StoredFileUploadService;
 use App\Support\UploadBudget;
+use Aws\CommandInterface;
+use Aws\MockHandler;
+use Aws\Result;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\UploadedFile;
@@ -65,6 +65,7 @@ final class ProjectUploadStorageBudgetTest extends TestCase
             ->once()
             ->andReturnUsing(function (string $directory, UploadedFile $upload, string $name) use (&$storedPath): string {
                 $storedPath = $directory.'/'.$name;
+
                 return $storedPath;
             });
         $disk->shouldReceive('size')
@@ -182,7 +183,9 @@ final class ProjectUploadStorageBudgetTest extends TestCase
             throw new \LogicException('Storage must not read ambient HTTP state.');
         });
         $elapsed = 0.0;
-        $clock = static function () use (&$elapsed): float { return $elapsed; };
+        $clock = static function () use (&$elapsed): float {
+            return $elapsed;
+        };
         $expired = UploadBudget::start(5, $clock);
         $independent = UploadBudget::start(16, $clock);
         $elapsed = 6.0;

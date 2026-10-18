@@ -19,8 +19,8 @@ final class ArabicPdfService
      * as an attachment. Keeping this wrapper application-owned avoids the
      * abandoned LaravelPdf package while retaining mPDF's Arabic shaping.
      *
-     * @param array<string, mixed> $data
-     * @param array{author?:string,creator?:string,subject?:string,keywords?:string} $metadata
+     * @param  array<string, mixed>  $data
+     * @param  array{author?:string,creator?:string,subject?:string,keywords?:string}  $metadata
      */
     public function downloadView(
         string $view,
@@ -29,12 +29,12 @@ final class ArabicPdfService
         array $metadata = []
     ): Response {
         $temporaryDirectory = (string) config('pdf.tempDir', storage_path('app/temp'));
-        if (!is_dir($temporaryDirectory) && !mkdir($temporaryDirectory, 0750, true) && !is_dir($temporaryDirectory)) {
+        if (! is_dir($temporaryDirectory) && ! mkdir($temporaryDirectory, 0750, true) && ! is_dir($temporaryDirectory)) {
             throw new \RuntimeException('Unable to create the PDF temporary directory.');
         }
 
-        $defaultConfig = (new ConfigVariables())->getDefaults();
-        $defaultFonts = (new FontVariables())->getDefaults();
+        $defaultConfig = (new ConfigVariables)->getDefaults();
+        $defaultFonts = (new FontVariables)->getDefaults();
         $fontDirectory = rtrim((string) config('pdf.font_path', resource_path('fonts')), '/\\');
 
         $pdf = new Mpdf([

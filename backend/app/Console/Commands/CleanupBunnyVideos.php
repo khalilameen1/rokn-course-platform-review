@@ -9,6 +9,7 @@ use App\Services\BunnyService;
 use App\Services\StoredFileReferenceService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 final class CleanupBunnyVideos extends Command
@@ -33,7 +34,7 @@ final class CleanupBunnyVideos extends Command
         foreach ($ids as $id) {
             $candidate = DB::transaction(function () use ($id): ?BunnyVideoCleanupCandidate {
                 $locked = BunnyVideoCleanupCandidate::query()->lockForUpdate()->find($id);
-                if (!$locked || $locked->remote_deleted_at || $locked->eligible_after->isFuture()) {
+                if (! $locked || $locked->remote_deleted_at || $locked->eligible_after->isFuture()) {
                     return null;
                 }
 
@@ -48,7 +49,7 @@ final class CleanupBunnyVideos extends Command
                 return $locked->fresh();
             });
 
-            if (!$candidate) {
+            if (! $candidate) {
                 continue;
             }
 
@@ -63,11 +64,12 @@ final class CleanupBunnyVideos extends Command
                     'last_error' => 'Cleanup blocked: video is still referenced by live content.',
                 ])->save();
                 $failed++;
+
                 continue;
             }
 
             try {
-                if (!$bunny->deleteVideo($candidate->video_guid)) {
+                if (! $bunny->deleteVideo($candidate->video_guid)) {
                     throw new \RuntimeException('Bunny Stream did not confirm deletion.');
                 }
 
@@ -98,7 +100,7 @@ final class CleanupBunnyVideos extends Command
 
         // Retain recent authoring history for support, but do not grow the
         // idempotency ledger forever after its remote candidate is settled.
-        if (\Illuminate\Support\Facades\Schema::hasTable('bunny_direct_uploads')) {
+        if (Schema::hasTable('bunny_direct_uploads')) {
             DB::table('bunny_direct_uploads')
                 ->where('expires_at', '<', now())
                 ->whereIn('status', ['pending', 'allocating'])
@@ -108,7 +110,7 @@ final class CleanupBunnyVideos extends Command
                 ->whereIn('status', ['attached', 'failed'])
                 ->delete();
         }
-        if (\Illuminate\Support\Facades\Schema::hasTable('portfolio_video_uploads')) {
+        if (Schema::hasTable('portfolio_video_uploads')) {
             DB::table('portfolio_video_uploads')
                 ->where('expires_at', '<', now())
                 ->whereIn('status', ['pending', 'allocating'])

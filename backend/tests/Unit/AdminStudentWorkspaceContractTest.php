@@ -40,8 +40,8 @@ final class AdminStudentWorkspaceContractTest extends TestCase
         $purchases = $this->source('resources/views/admin/users/partials/show/purchases.blade.php');
         $learning = $this->source('resources/views/admin/users/partials/show/learning-and-projects.blade.php');
 
-        self::assertStringContainsString("partials.show.learning-and-projects", $show);
-        self::assertStringContainsString("partials.show.purchases", $show);
+        self::assertStringContainsString('partials.show.learning-and-projects', $show);
+        self::assertStringContainsString('partials.show.purchases', $show);
         self::assertStringContainsString('projects_page', $this->source('app/Services/AdminStudentReadService.php'));
         self::assertStringContainsString('admin.project-submissions.show', $learning);
         self::assertStringContainsString('admin.student-progress.show', $learning);

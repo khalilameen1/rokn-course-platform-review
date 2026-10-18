@@ -22,7 +22,7 @@ final class ProjectReportRetryContractTest extends TestCase
         self::assertIsString($presenter);
         self::assertIsString($retryService);
         self::assertStringContainsString(
-            "project-submissions/{submission}/report/retry",
+            'project-submissions/{submission}/report/retry',
             $routes
         );
         self::assertStringContainsString("'throttle:3,1'", $routes);

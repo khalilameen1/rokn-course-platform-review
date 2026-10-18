@@ -30,6 +30,7 @@ final class WelcomeRewardOfferService
         // an amount above the reward-wallet ceiling would promise coins that
         // the canonical ledger must reject in full.
         $cap = max(0, (int) ($settings?->reward_balance_cap ?? 1200));
+
         return $amount > 0 && $amount <= $cap ? $amount : 0;
     }
 }

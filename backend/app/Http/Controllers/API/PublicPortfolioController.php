@@ -28,7 +28,7 @@ final class PublicPortfolioController extends Controller
             $paginated ? (int) ($validated['page'] ?? 1) : null,
             $paginated ? (int) ($validated['per_page'] ?? 24) : null
         );
-        if (!$portfolio) {
+        if (! $portfolio) {
             return $responses->error('المعرض غير متاح', 404);
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class SocialGroupResource extends JsonResource
@@ -9,7 +10,8 @@ class SocialGroupResource extends JsonResource
     /**
      * Transform the resource into an array.
      *'title', 'type','description','image', 'created_at','updated_at'
-     * @param  \Illuminate\Http\Request  $request
+     *
+     * @param  Request  $request
      * @return array
      */
     public function toArray($request)

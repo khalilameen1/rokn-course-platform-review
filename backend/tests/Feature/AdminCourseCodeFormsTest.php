@@ -14,6 +14,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Tests\Support\ProductionCourseCodeSchema;
 use Tests\TestCase;
 
 final class AdminCourseCodeFormsTest extends TestCase
@@ -24,7 +25,7 @@ final class AdminCourseCodeFormsTest extends TestCase
         self::assertSame('testing', app()->environment());
         self::assertSame(':memory:', DB::connection()->getDatabaseName());
         $this->artisan('migrate:fresh')->assertExitCode(0);
-        \Tests\Support\ProductionCourseCodeSchema::applySqliteBridge();
+        ProductionCourseCodeSchema::applySqliteBridge();
         Http::preventStrayRequests();
         $this->withoutMiddleware(RequireAdminMfa::class);
         $this->actingAs(User::query()->forceCreate([
@@ -89,7 +90,7 @@ final class AdminCourseCodeFormsTest extends TestCase
 
     private function document(string $html): DOMXPath
     {
-        $document = new DOMDocument();
+        $document = new DOMDocument;
         $previous = libxml_use_internal_errors(true);
         try {
             $document->loadHTML('<?xml encoding="UTF-8">'.$html);
@@ -97,6 +98,7 @@ final class AdminCourseCodeFormsTest extends TestCase
             libxml_clear_errors();
             libxml_use_internal_errors($previous);
         }
+
         return new DOMXPath($document);
     }
 }

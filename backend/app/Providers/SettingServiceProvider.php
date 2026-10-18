@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Setting;
+use Illuminate\Foundation\AliasLoader;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\ServiceProvider;
 use Throwable;
@@ -17,9 +18,9 @@ class SettingServiceProvider extends ServiceProvider
     public function register()
     {
         $this->app->bind('settings', function ($app) {
-            return new Setting();
+            return new Setting;
         });
-        $loader = \Illuminate\Foundation\AliasLoader::getInstance();
+        $loader = AliasLoader::getInstance();
         $loader->alias('Setting', Setting::class);
     }
 

@@ -9,14 +9,14 @@ use App\Models\CourseAccessPlan;
 use App\Models\Lesson;
 use App\Models\LessonMediaState;
 use App\Models\Project;
+use App\Support\CourseAttachmentExternalUrl;
 use Illuminate\Support\Facades\Storage;
 
 class CoursePublishingService
 {
     public function __construct(
         private readonly CertificateTextTemplateService $certificateTemplates
-    ) {
-    }
+    ) {}
 
     /**
      * A coming-soon card may be announced before the course content exists,
@@ -33,9 +33,9 @@ class CoursePublishingService
         if (trim((string) ($course->description_ar ?: $course->description_en)) === '') {
             $issues[] = 'أضف وصفًا مختصرًا للكورس.';
         }
-        if (!$course->photo && empty($course->getRawOriginal('image'))) {
+        if (! $course->photo && empty($course->getRawOriginal('image'))) {
             $issues[] = 'أضف غلافًا للكورس.';
-        } elseif ($course->photo && !$this->storedFileExists('public', (string) $course->photo->path)) {
+        } elseif ($course->photo && ! $this->storedFileExists('public', (string) $course->photo->path)) {
             $issues[] = 'غلاف الكورس غير موجود في التخزين.';
         }
         $assignedTeachers = $course->teachers->isNotEmpty()
@@ -43,10 +43,9 @@ class CoursePublishingService
             : collect([$course->teacher])->filter();
         if ($assignedTeachers->isEmpty()) {
             $issues[] = 'اربط الكورس بمدرب واحد على الأقل.';
-        } elseif (!$assignedTeachers->contains(fn ($teacher) => (bool) $teacher->active)) {
+        } elseif (! $assignedTeachers->contains(fn ($teacher) => (bool) $teacher->active)) {
             $issues[] = 'فعّل محاضرًا واحدًا على الأقل قبل نشر الكورس.';
-        } elseif (!$assignedTeachers->contains(fn ($teacher) =>
-            (bool) $teacher->active
+        } elseif (! $assignedTeachers->contains(fn ($teacher) => (bool) $teacher->active
             && trim((string) (
                 $teacher->name_ar ?: $teacher->name_en ?: $teacher->getRawOriginal('name')
             )) !== ''
@@ -95,9 +94,9 @@ class CoursePublishingService
         if (trim((string) ($course->description_ar ?: $course->description_en)) === '') {
             $issues[] = 'أضف وصفًا مختصرًا يوضح نتيجة الكورس.';
         }
-        if (!$course->photo && empty($course->getRawOriginal('image'))) {
+        if (! $course->photo && empty($course->getRawOriginal('image'))) {
             $issues[] = 'أضف غلافًا للكورس.';
-        } elseif ($course->photo && !$this->storedFileExists('public', (string) $course->photo->path)) {
+        } elseif ($course->photo && ! $this->storedFileExists('public', (string) $course->photo->path)) {
             $issues[] = 'غلاف الكورس غير موجود في التخزين.';
         }
         $assignedTeachers = $course->teachers->isNotEmpty()
@@ -105,16 +104,16 @@ class CoursePublishingService
             : collect([$course->teacher])->filter();
         if ($assignedTeachers->isEmpty()) {
             $issues[] = 'اربط الكورس بمدرب واحد على الأقل.';
-        } elseif (!$assignedTeachers->contains(fn ($teacher) => (bool) $teacher->active)) {
+        } elseif (! $assignedTeachers->contains(fn ($teacher) => (bool) $teacher->active)) {
             $issues[] = 'فعّل محاضرًا واحدًا على الأقل قبل نشر الكورس.';
         } else {
             $activeTeachers = $assignedTeachers->filter(fn ($teacher) => (bool) $teacher->active);
-            if (!$activeTeachers->contains(fn ($teacher) => trim((string) (
+            if (! $activeTeachers->contains(fn ($teacher) => trim((string) (
                 $teacher->name_ar ?: $teacher->name_en ?: $teacher->getRawOriginal('name')
             )) !== '')) {
                 $issues[] = 'أكمل اسم محاضر واحد على الأقل قبل النشر.';
             }
-            if (!$activeTeachers->contains(fn ($teacher) => trim((string) (
+            if (! $activeTeachers->contains(fn ($teacher) => trim((string) (
                 $teacher->bio_ar ?: $teacher->bio_en ?: $teacher->getRawOriginal('bio')
             )) !== '')) {
                 $warnings[] = 'أضف نبذة قصيرة عن المحاضر لتكتمل صفحة الكورس.';
@@ -152,12 +151,13 @@ class CoursePublishingService
         ));
         foreach ($course->activePdfs as $pdf) {
             if ($pdf->isExternal()) {
-                if (\App\Support\CourseAttachmentExternalUrl::normalize((string) $pdf->external_url) === null) {
+                if (CourseAttachmentExternalUrl::normalize((string) $pdf->external_url) === null) {
                     $issues[] = "رابط المرفق «{$pdf->title}» غير صالح";
                 }
+
                 continue;
             }
-            if (!$this->storedFileExists((string) $pdf->storage_disk, (string) $pdf->file_path)) {
+            if (! $this->storedFileExists((string) $pdf->storage_disk, (string) $pdf->file_path)) {
                 $issues[] = "ملف «{$pdf->title}» غير موجود في التخزين";
             }
         }
@@ -184,7 +184,7 @@ class CoursePublishingService
 
                 $type = $section->getSectionType();
                 $contentId = (int) $section->sectionable_id;
-                $contentKey = $type . ':' . $contentId;
+                $contentKey = $type.':'.$contentId;
                 if ($contentId < 1 || $section->sectionable === null) {
                     $issues[] = 'توجد خطوة غير مرتبطة بمحتواها؛ احذفها أو أعد إضافتها.';
                 } elseif (isset($contentIds[$contentKey])) {
@@ -195,9 +195,9 @@ class CoursePublishingService
         }
 
         foreach ($course->modules->sortBy('order')->values() as $index => $module) {
-            $moduleLabel = trim((string) ($module->title_ar ?: $module->title_en)) ?: 'الوحدة ' . ($index + 1);
+            $moduleLabel = trim((string) ($module->title_ar ?: $module->title_en)) ?: 'الوحدة '.($index + 1);
             if (trim((string) ($module->title_ar ?: $module->title_en)) === '') {
-                $issues[] = 'أضف عنوانًا للوحدة ' . ($index + 1);
+                $issues[] = 'أضف عنوانًا للوحدة '.($index + 1);
             }
             $sections = $module->sections->sortBy('order')->values();
             $reels = $sections->filter(fn ($section) => $section->getSectionType() === 'lesson');
@@ -214,7 +214,7 @@ class CoursePublishingService
                     $issues[] = "{$moduleLabel}: يوجد جزء بلا عنوان";
                 }
 
-                if (!in_array($section->getSectionType(), ['lesson', 'project'], true)) {
+                if (! in_array($section->getSectionType(), ['lesson', 'project'], true)) {
                     $issues[] = "{$moduleLabel}: المحتوى «{$sectionTitle}» ليس مقطعًا أو مشروع عبور";
                 }
 
@@ -227,16 +227,16 @@ class CoursePublishingService
                     $issues[] = "{$moduleLabel}: أضف عنوانًا للمقطع";
                     $reelTitle = 'بلا عنوان';
                 }
-                if (!$lesson instanceof Lesson || !$this->lessonHasPlayableVideo($lesson)) {
+                if (! $lesson instanceof Lesson || ! $this->lessonHasPlayableVideo($lesson)) {
                     $issues[] = "{$moduleLabel}: المقطع «{$reelTitle}» لا يحتوي على فيديو صالح";
                 }
                 if ($lesson instanceof Lesson) {
                     $mediaState = $lesson->mediaState;
-                    if (!$mediaState || !$mediaState->last_reconciled_at) {
+                    if (! $mediaState || ! $mediaState->last_reconciled_at) {
                         $issues[] = "{$moduleLabel}: افحص تشغيل الفيديو «{$reelTitle}» فعليًا قبل النشر";
                     } elseif (
                         $mediaState->status !== 'ready'
-                        || !hash_equals(
+                        || ! hash_equals(
                             strtolower(trim((string) $lesson->bunny_video_id)),
                             strtolower(trim((string) $mediaState->provider_media_id))
                         )
@@ -259,8 +259,9 @@ class CoursePublishingService
             foreach ($projects as $projectSection) {
                 $project = $projectSection->sectionable;
                 $projectTitle = trim((string) ($projectSection->title_ar ?: $projectSection->title_en)) ?: 'مشروع بلا عنوان';
-                if (!$project instanceof Project) {
+                if (! $project instanceof Project) {
                     $issues[] = "{$moduleLabel}: المشروع «{$projectTitle}» غير مرتبط بمحتواه";
+
                     continue;
                 }
                 if (trim((string) ($project->requirements_text_ar ?: $project->requirements_text_en)) === '') {
@@ -281,7 +282,7 @@ class CoursePublishingService
         if ($course->attachment_prompt_enabled && $attachmentsCount > 0) {
             $promptFrequency = (string) ($course->attachment_prompt_frequency
                 ?: config('course_attachments.prompt.default_frequency', 'once_per_course'));
-            if (!array_key_exists(
+            if (! array_key_exists(
                 $promptFrequency,
                 (array) config('course_attachments.prompt.frequencies', [])
             )) {
@@ -307,7 +308,7 @@ class CoursePublishingService
             }
         }
 
-        if ($course->awards_badge && !in_array($course->badge_track, ['professional', 'freelance'], true)) {
+        if ($course->awards_badge && ! in_array($course->badge_track, ['professional', 'freelance'], true)) {
             $issues[] = 'الشارات متاحة فقط للمسار المهني أو الفريلانس؛ صحح سياسة الشارة.';
         }
 
@@ -324,7 +325,7 @@ class CoursePublishingService
             $lastModule = $course->modules->sortBy('order')->last();
             $lastSection = $lastModule?->sections->sortBy('order')->last();
             $graduationProject = $lastSection?->sectionable;
-            if (!$graduationProject instanceof Project || !$graduationProject->is_graduation_project) {
+            if (! $graduationProject instanceof Project || ! $graduationProject->is_graduation_project) {
                 $issues[] = 'مشروع التخرج - إن اخترته - يجب أن يكون آخر جزء في آخر وحدة.';
             }
         }
@@ -353,7 +354,9 @@ class CoursePublishingService
 
     private function storedFileExists(string $disk, string $path): bool
     {
-        if ($disk === '' || $path === '') return false;
+        if ($disk === '' || $path === '') {
+            return false;
+        }
         try {
             return Storage::disk($disk)->exists($path);
         } catch (\Throwable) {
@@ -368,14 +371,16 @@ class CoursePublishingService
         $missing = array_diff(CourseAccessPlan::CODES, $plans->keys()->all());
         if ($missing !== [] || $plans->count() !== count(CourseAccessPlan::CODES)) {
             $issues[] = 'أكمل فئات الكورس الثلاث قبل النشر.';
+
             return;
         }
 
         $previousPrice = null;
         foreach (CourseAccessPlan::CODES as $code) {
             $plan = $plans->get($code);
-            if (!$plan?->is_active) {
+            if (! $plan?->is_active) {
                 $issues[] = 'فعّل فئات الكورس الثلاث قبل النشر.';
+
                 continue;
             }
             if (trim((string) $plan->name_ar) === '') {
@@ -402,11 +407,14 @@ class CoursePublishingService
             }
 
             $economics = app(CoursePlanEconomicsService::class)->evaluate($plan->getAttributes());
-            if ($price > 0 && !$economics['configured']) {
+            if ($price > 0 && ! $economics['configured']) {
                 $message = "الفئة «{$plan->name_ar}» لم يكتمل اعتماد تكلفتها وصافي قيمة العملات";
-                if (config('course_plans.enforce_commercial_floor')) $issues[] = $message;
-                else $warnings[] = $message;
-            } elseif ($price > 0 && !$economics['meets_floor']) {
+                if (config('course_plans.enforce_commercial_floor')) {
+                    $issues[] = $message;
+                } else {
+                    $warnings[] = $message;
+                }
+            } elseif ($price > 0 && ! $economics['meets_floor']) {
                 // The economics panel is administrator-only, so the blocker
                 // itself carries the minimum the same evaluation requires.
                 $fixes = [];
@@ -434,7 +442,7 @@ class CoursePublishingService
      * The dashboard can render the same audit without matching Arabic copy in
      * every Blade view.
      *
-     * @param array<int, string> $issues
+     * @param  array<int, string>  $issues
      * @return list<array{message:string,area:string}>
      */
     private function describeIssues(array $issues): array

@@ -6,6 +6,7 @@ namespace Tests\Feature\API;
 
 use App\Models\Course;
 use App\Models\Lesson;
+use App\Models\StudentNotification;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -79,7 +80,7 @@ class NotificationEndpointTest extends ApiTestCase
             'is_read' => true,
         ]);
 
-        $readAt = \App\Models\StudentNotification::query()->findOrFail(1)->read_at;
+        $readAt = StudentNotification::query()->findOrFail(1)->read_at;
         $this->travel(5)->minutes();
         $this->actingAs($this->user, 'api')
             ->postJson('/api/v1/notifications/1/mark-read')

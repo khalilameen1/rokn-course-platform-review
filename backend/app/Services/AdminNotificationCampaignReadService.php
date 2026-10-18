@@ -8,6 +8,7 @@ use App\Models\Course;
 use App\Models\NotificationCampaign;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 final class AdminNotificationCampaignReadService
 {
@@ -27,7 +28,7 @@ final class AdminNotificationCampaignReadService
             ->paginate(30);
     }
 
-    /** @return array{courses:\Illuminate\Support\Collection,targetStudent:?User} */
+    /** @return array{courses:Collection,targetStudent:?User} */
     public function authoringContext(?int $targetUserId, ?string $courseSearch = null): array
     {
         $courseSearch = trim((string) $courseSearch);

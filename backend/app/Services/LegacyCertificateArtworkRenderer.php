@@ -23,19 +23,20 @@ final class LegacyCertificateArtworkRenderer
     public function render(Certificate $certificate, \DateTimeInterface $generatedAt, array $qrDestination): ?string
     {
         try {
-            $cfg       = config('certificate');
+            $cfg = config('certificate');
             $positions = $cfg['text_positions'];
-            $fontPath  = $cfg['font_regular'];
+            $fontPath = $cfg['font_regular'];
 
             $templatePath = $cfg['template_path'];
-            if (!file_exists($templatePath)) {
+            if (! file_exists($templatePath)) {
                 report(new \RuntimeException("Certificate template not found at: {$templatePath}"));
+
                 return null;
             }
 
             // Load the template
-            $img    = Image::make($templatePath);
-            $width  = $img->width();
+            $img = Image::make($templatePath);
+            $width = $img->width();
             $height = $img->height();
 
             // ----- 1. Student name -----
@@ -48,7 +49,7 @@ final class LegacyCertificateArtworkRenderer
             $pos = $positions['name'];
             $pos['size'] = $this->fittedFontSize($studentName, $fontPath, $pos, $width);
             $placement = $this->horizontalTextPlacement($studentName, $fontPath, $pos, $width);
-            $img->text($studentName, $placement['x'], (int)($height * $pos['y']), function ($font) use ($fontPath, $pos, $placement) {
+            $img->text($studentName, $placement['x'], (int) ($height * $pos['y']), function ($font) use ($fontPath, $pos, $placement) {
                 $font->file($fontPath);
                 $font->size($pos['size']);
                 $font->color($pos['color']);
@@ -98,7 +99,7 @@ final class LegacyCertificateArtworkRenderer
             $pos = $positions['course'];
             $pos['size'] = $this->fittedFontSize($courseName, $fontPath, $pos, $width);
             $placement = $this->horizontalTextPlacement($courseName, $fontPath, $pos, $width);
-            $img->text($courseName, $placement['x'], (int)($height * $pos['y']), function ($font) use ($fontPath, $pos, $placement) {
+            $img->text($courseName, $placement['x'], (int) ($height * $pos['y']), function ($font) use ($fontPath, $pos, $placement) {
                 $font->file($fontPath);
                 $font->size($pos['size']);
                 $font->color($pos['color']);
@@ -111,7 +112,7 @@ final class LegacyCertificateArtworkRenderer
             // database sequence IDs are implementation details, not credentials.
             $certIdText = (string) $certificate->public_id;
             $pos = $positions['cert_id'];
-            $img->text($certIdText, (int)($width * $pos['x']), (int)($height * $pos['y']), function ($font) use ($fontPath, $pos) {
+            $img->text($certIdText, (int) ($width * $pos['x']), (int) ($height * $pos['y']), function ($font) use ($fontPath, $pos) {
                 $font->file($fontPath);
                 $font->size($pos['size']);
                 $font->color($pos['color']);
@@ -130,7 +131,7 @@ final class LegacyCertificateArtworkRenderer
             $dateText = $this->shapeIfArabic($dateText);
             $pos = $positions['date'];
             $placement = $this->horizontalTextPlacement($dateText, $fontPath, $pos, $width);
-            $img->text($dateText, $placement['x'], (int)($height * $pos['y']), function ($font) use ($fontPath, $pos, $placement) {
+            $img->text($dateText, $placement['x'], (int) ($height * $pos['y']), function ($font) use ($fontPath, $pos, $placement) {
                 $font->file($fontPath);
                 $font->size($pos['size']);
                 $font->color($pos['color']);
@@ -150,20 +151,21 @@ final class LegacyCertificateArtworkRenderer
                 $width,
                 $height
             );
-            $qrSize     = $positions['qr_code']['size'];
-            $qrPng      = $this->generateQrCode($qrDestination['url'], $qrSize);
-            if (!$qrPng) {
+            $qrSize = $positions['qr_code']['size'];
+            $qrPng = $this->generateQrCode($qrDestination['url'], $qrSize);
+            if (! $qrPng) {
                 throw new \RuntimeException('Certificate QR code could not be generated.');
             }
             $qrImage = Image::make($qrPng);
             // Position the QR so its centre aligns with the configured point
-            $qrX = (int)($width  * $positions['qr_code']['x']) - (int)($qrImage->width()  / 2);
-            $qrY = (int)($height * $positions['qr_code']['y']) - (int)($qrImage->height() / 2);
+            $qrX = (int) ($width * $positions['qr_code']['x']) - (int) ($qrImage->width() / 2);
+            $qrY = (int) ($height * $positions['qr_code']['y']) - (int) ($qrImage->height() / 2);
             $img->insert($qrImage, 'top-left', max(0, $qrX), max(0, $qrY));
 
             return (string) $img->encode('png', 95);
         } catch (\Throwable $exception) {
             report($exception);
+
             return null;
         }
     }
@@ -172,7 +174,7 @@ final class LegacyCertificateArtworkRenderer
      * Keep personal names and course titles on one deliberate line without
      * letting unusually long values break the certificate composition.
      *
-     * @param array{size:int,min_size?:int,max_width?:float} $position
+     * @param  array{size:int,min_size?:int,max_width?:float}  $position
      */
     private function fittedFontSize(
         string $text,
@@ -185,13 +187,15 @@ final class LegacyCertificateArtworkRenderer
         $available = (int) round(
             $canvasWidth * max(0.1, min(1.0, (float) ($position['max_width'] ?? 1.0)))
         );
-        if (!function_exists('imagettfbbox') || !is_file($fontPath)) {
+        if (! function_exists('imagettfbbox') || ! is_file($fontPath)) {
             return $preferred;
         }
 
         for ($size = $preferred; $size > $minimum; $size--) {
             $bounds = $this->gdTextBounds($text, $fontPath, $size);
-            if ($bounds !== null && $bounds['width'] <= $available) return $size;
+            if ($bounds !== null && $bounds['width'] <= $available) {
+                return $size;
+            }
         }
 
         return $minimum;
@@ -204,7 +208,7 @@ final class LegacyCertificateArtworkRenderer
      * then ask Intervention to draw left-aligned. This keeps the visual box,
      * not the logical string, inside the main editorial field.
      *
-     * @param array{x:float,size:int,align?:string} $position
+     * @param  array{x:float,size:int,align?:string}  $position
      * @return array{x:int,align:string,left:int,right:int}
      */
     private function horizontalTextPlacement(
@@ -233,18 +237,22 @@ final class LegacyCertificateArtworkRenderer
     /** @return array{width:int,min_x:int,max_x:int}|null */
     private function gdTextBounds(string $text, string $fontPath, int $pixelSize): ?array
     {
-        if (!function_exists('imagettfbbox') || !is_file($fontPath)) return null;
+        if (! function_exists('imagettfbbox') || ! is_file($fontPath)) {
+            return null;
+        }
 
         // Intervention Image v2 converts configured pixel sizes to GD points.
         $pointSize = (int) ceil(max(1, $pixelSize) * 0.75);
         $encoded = preg_replace('/&(#(?:x[a-fA-F0-9]+|[0-9]+);)/', '&#38;\\1', $text);
         $encoded = mb_encode_numericentity(
             (string) $encoded,
-            [0x0080, 0xffff, 0, 0xffff],
+            [0x0080, 0xFFFF, 0, 0xFFFF],
             'UTF-8'
         );
         $box = imagettfbbox($pointSize, 0, $fontPath, $encoded);
-        if (!is_array($box)) return null;
+        if (! is_array($box)) {
+            return null;
+        }
 
         $minX = (int) min($box[0], $box[2], $box[4], $box[6]);
         $maxX = (int) max($box[0], $box[2], $box[4], $box[6]);
@@ -323,12 +331,13 @@ final class LegacyCertificateArtworkRenderer
                 backgroundColor: new Color(255, 255, 255),
             );
 
-            $writer = new PngWriter();
+            $writer = new PngWriter;
             $result = $writer->write($qrCode);
 
             return $result->getString();
         } catch (\Exception $e) {
             report($e);
+
             return null;
         }
     }
@@ -344,15 +353,15 @@ final class LegacyCertificateArtworkRenderer
     private function shapeIfArabic(string $text): string
     {
         $text = UnicodeText::clean($text, false);
-        if (!preg_match('/\p{Arabic}/u', $text)) {
+        if (! preg_match('/\p{Arabic}/u', $text)) {
             return $text;
         }
 
-        $arabic   = new Arabic();
+        $arabic = new Arabic;
         $positions = $arabic->arIdentify($text);
 
         for ($i = count($positions) - 1; $i >= 0; $i -= 2) {
-            $start  = $positions[$i - 1];
+            $start = $positions[$i - 1];
             $length = $positions[$i] - $start;
             $substr = substr($text, $start, $length);
             // ArPHP defaults to wrapping after 50 characters, which silently
@@ -363,7 +372,7 @@ final class LegacyCertificateArtworkRenderer
                 $substr,
                 max(1, mb_strlen($substr, 'UTF-8') + 1)
             );
-            $text   = substr_replace($text, $shaped, $start, $length);
+            $text = substr_replace($text, $shaped, $start, $length);
         }
 
         return $text;

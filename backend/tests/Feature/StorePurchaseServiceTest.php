@@ -173,7 +173,7 @@ final class StorePurchaseServiceTest extends TestCase
             static fn (string $provider, string $product, string $token): VerifiedStorePurchase => new VerifiedStorePurchase(
                 provider: StorePurchase::PROVIDER_GOOGLE,
                 productId: 'rokn.coins.600',
-                externalTransactionId: 'GPA.TEST-' . $token,
+                externalTransactionId: 'GPA.TEST-'.$token,
                 environment: 'test',
                 currency: 'EGP',
                 grossAmount: 120,
@@ -567,7 +567,7 @@ final class StorePurchaseServiceTest extends TestCase
             'name_ar' => 'مستخدم متجر',
             'name_en' => 'Store Buyer',
             'email' => $email,
-            'phone' => '01' . random_int(100000000, 999999999),
+            'phone' => '01'.random_int(100000000, 999999999),
             'role' => $role,
             'active' => true,
             'wallet_coins' => 0,

@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
+use App\Models\Order;
 use App\Support\CourseAccessPlanSnapshot;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -15,7 +16,6 @@ use Illuminate\Validation\ValidationException;
 /** Reads available offers and immutable purchased terms without authoring writes. */
 final readonly class CourseAccessPlanService
 {
-
     /** @return Collection<int, CourseAccessPlan> */
     public function publicPlans(Course $course, bool $lockForUpdate = false): Collection
     {
@@ -35,8 +35,7 @@ final readonly class CourseAccessPlanService
         Course $course,
         string $code,
         bool $lockForUpdate = false
-    ): CourseAccessPlan
-    {
+    ): CourseAccessPlan {
         $plans = $this->publicPlans($course, $lockForUpdate);
         if ($plans->isEmpty()) {
             throw ValidationException::withMessages([
@@ -52,22 +51,25 @@ final readonly class CourseAccessPlanService
         }
 
         $plan = $plans->firstWhere('code', $normalized);
-        if (!$plan) {
+        if (! $plan) {
             throw ValidationException::withMessages([
                 'access_plan_code' => ['هذه الخطة لم تعد متاحة. حدّث الصفحة واختر مرة أخرى.'],
             ]);
         }
 
         $this->assertPurchasableEconomics($plan);
+
         return $plan;
     }
 
     /** Guard new sales only; never re-price or revoke an existing receipt. */
     public function assertPurchasableEconomics(CourseAccessPlan $plan): void
     {
-        if (!config('course_plans.enforce_commercial_floor') || (int) $plan->price_coins <= 0) return;
+        if (! config('course_plans.enforce_commercial_floor') || (int) $plan->price_coins <= 0) {
+            return;
+        }
         $economics = app(CoursePlanEconomicsService::class)->evaluate($plan->getAttributes());
-        if (!$economics['configured'] || !$economics['meets_floor']) {
+        if (! $economics['configured'] || ! $economics['meets_floor']) {
             // Public callers must not receive internal provider costs or net
             // settlement rates from an administrator validation message.
             throw ValidationException::withMessages([
@@ -78,7 +80,7 @@ final readonly class CourseAccessPlanService
 
     public function planForEnrollment(CourseEnrollment $enrollment): ?CourseAccessPlan
     {
-        if (!$enrollment->access_plan_id) {
+        if (! $enrollment->access_plan_id) {
             return null;
         }
 
@@ -129,7 +131,7 @@ final readonly class CourseAccessPlanService
         $snapshot = is_array($enrollment->access_plan_snapshot)
             ? $enrollment->access_plan_snapshot
             : null;
-        if (!$snapshot || !$enrollment->access_plan_id) {
+        if (! $snapshot || ! $enrollment->access_plan_id) {
             return null;
         }
 
@@ -152,10 +154,11 @@ final readonly class CourseAccessPlanService
     /** Code access is watch-only until a paid plan captures project access. */
     public function projectsEnabledForEnrollment(CourseEnrollment $enrollment): bool
     {
-        if (!$enrollment->access_plan_id) {
-            return $enrollment->order?->payment_method !== \App\Models\Order::PAYMENT_METHOD_COURSE_CODE;
+        if (! $enrollment->access_plan_id) {
+            return $enrollment->order?->payment_method !== Order::PAYMENT_METHOD_COURSE_CODE;
         }
         $terms = $this->termsForEnrollment($enrollment);
+
         return $terms !== null && (bool) ($terms['projects_enabled'] ?? true);
     }
 
@@ -195,7 +198,7 @@ final readonly class CourseAccessPlanService
     public function publicPayloadFromTerms(array $terms): array
     {
         $feedback = (string) ($terms['project_feedback_level'] ?? 'pass_only');
-        if (!in_array($feedback, CourseAccessPlan::PROJECT_FEEDBACK_LEVELS, true)) {
+        if (! in_array($feedback, CourseAccessPlan::PROJECT_FEEDBACK_LEVELS, true)) {
             $feedback = CourseAccessPlan::FEEDBACK_PASS_ONLY;
         }
 
@@ -233,7 +236,7 @@ final readonly class CourseAccessPlanService
         $projectAttachmentsEnabled = $threadEnabled
             && (bool) ($terms['project_followup_attachments_enabled'] ?? false)
             && max(0, (int) ($terms['project_followup_attachment_max_files'] ?? 0)) > 0;
-        $effectiveFeedback = !$reportEnabled
+        $effectiveFeedback = ! $reportEnabled
             ? CourseAccessPlan::FEEDBACK_PASS_ONLY
             : ($threadEnabled
                 ? CourseAccessPlan::FEEDBACK_ENHANCED

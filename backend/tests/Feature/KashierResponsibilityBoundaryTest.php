@@ -47,7 +47,9 @@ final class KashierResponsibilityBoundaryTest extends TestCase
             'package_coins' => 500,
         ]);
         $queries = [];
-        DB::listen(static function ($query) use (&$queries): void { $queries[] = $query->sql; });
+        DB::listen(static function ($query) use (&$queries): void {
+            $queries[] = $query->sql;
+        });
 
         $evidence = app(KashierGatewayEvidenceService::class);
         $payload = ['paymentStatus' => 'CAPTURED', 'amount' => 150, 'currency' => 'EGP'];
@@ -143,7 +145,9 @@ final class KashierResponsibilityBoundaryTest extends TestCase
             'amount' => 150, 'currency' => 'EGP',
         ]])]);
         $queries = [];
-        DB::listen(static function ($query) use (&$queries): void { $queries[] = $query->sql; });
+        DB::listen(static function ($query) use (&$queries): void {
+            $queries[] = $query->sql;
+        });
 
         $provider = app(KashierProviderOrderService::class);
         [$transactionId, $payload] = $provider->captureEvidence($reference, null, ['callback' => true]);

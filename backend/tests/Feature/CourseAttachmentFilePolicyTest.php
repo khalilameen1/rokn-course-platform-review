@@ -49,7 +49,9 @@ final class CourseAttachmentFilePolicyTest extends TestCase
 
     public function test_zip_assets_and_office_documents_keep_distinct_types(): void
     {
-        if (!class_exists(\ZipArchive::class)) self::markTestSkipped('ZIP extension unavailable on this host');
+        if (! class_exists(\ZipArchive::class)) {
+            self::markTestSkipped('ZIP extension unavailable on this host');
+        }
         $policy = app(CourseMediaFilePolicy::class);
         foreach ([
             'docx' => ['word/document.xml', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
@@ -76,7 +78,7 @@ final class CourseAttachmentFilePolicyTest extends TestCase
         $path = tempnam(sys_get_temp_dir(), 'rokn-course-office-');
         self::assertIsString($path);
         $this->beforeApplicationDestroyed(static fn () => unlink($path));
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         self::assertTrue($zip->open($path, \ZipArchive::OVERWRITE) === true);
         $zip->addFromString('[Content_Types].xml', '<Types/>');
         $zip->addFromString($mainPart, '<document/>');

@@ -16,6 +16,7 @@ use App\Services\GoogleService;
 use App\Services\SocialLoginAction;
 use App\Services\SocialOAuthAttemptService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -79,7 +80,7 @@ final class SocialLoginActionOwnershipTest extends TestCase
     {
         $this->mock(GoogleService::class)->shouldNotReceive('verify');
         $result = app(SocialLoginAction::class)->login(
-            SocialLoginCredentials::native('google', 'unverified-credential'), new ClientDeviceContext()
+            SocialLoginCredentials::native('google', 'unverified-credential'), new ClientDeviceContext
         );
         self::assertFalse($result->isSuccessful());
         self::assertSame('social_browser_attempt_required', $result->code);
@@ -90,7 +91,7 @@ final class SocialLoginActionOwnershipTest extends TestCase
     public function test_browser_credentials_cannot_be_built_from_an_unclaimed_model(): void
     {
         $this->expectException(\LogicException::class);
-        SocialLoginCredentials::fromClaimedAttempt(new SocialOAuthAttempt(), 'unused');
+        SocialLoginCredentials::fromClaimedAttempt(new SocialOAuthAttempt, 'unused');
     }
 
     public function test_reclaimed_attempt_cannot_issue_a_session_or_post_login_rewards(): void
@@ -117,7 +118,7 @@ final class SocialLoginActionOwnershipTest extends TestCase
     ): void {
         [$attempt] = $this->claimedAttempt();
         $error = $outage
-            ? new \Illuminate\Http\Client\ConnectionException('offline')
+            ? new ConnectionException('offline')
             : new \RuntimeException('invalid identity signature');
         $this->mock(GoogleService::class)->shouldReceive('verify')->once()->andThrow($error);
         $result = app(SocialLoginAction::class)->login(
@@ -180,6 +181,7 @@ final class SocialLoginActionOwnershipTest extends TestCase
         $code = Str::random(64);
         $attempt = $attempts->begin(Str::random(64), 'google', 'rokn://auth', Str::random(43), 'nonce-fixture');
         $attempts->issueCompletion($attempt, $code, Crypt::encryptString('fixture-credential'));
+
         return [$attempts->claimCompletion($code), $code];
     }
 }

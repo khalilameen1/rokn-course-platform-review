@@ -8,6 +8,7 @@ use App\Models\CoinEarningMethod;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 final class WelcomeRewardService
 {
@@ -16,13 +17,11 @@ final class WelcomeRewardService
         private readonly AcquisitionRewardTombstoneService $tombstones,
         private readonly WalletService $wallet,
         private readonly StudentNotificationService $notifications
-    ) {
-    }
+    ) {}
 
     /**
      * Grant the one-time welcome reward, audit and inbox receipt atomically.
      *
-     * @param User $user
      * @return int Number of coins credited during this call.
      */
     public function grant(User $user, ?string $verifiedProvider = null): int
@@ -49,7 +48,7 @@ final class WelcomeRewardService
                 return 0;
             }
 
-            $idempotencyKey = 'registration-bonus:' . $user->id;
+            $idempotencyKey = 'registration-bonus:'.$user->id;
 
             return DB::transaction(function () use (
                 $user,
@@ -75,11 +74,11 @@ final class WelcomeRewardService
 
                 // Preserve bonuses issued by the legacy system even when they
                 // predate the wallet ledger. Never add a second welcome credit.
-                if ($alreadyClaimed && !$alreadyCredited) {
+                if ($alreadyClaimed && ! $alreadyCredited) {
                     return 0;
                 }
 
-                if (!$alreadyCredited) {
+                if (! $alreadyCredited) {
                     $credit = $this->wallet->creditRewardWithinConfiguredCap(
                         $lockedUser->id,
                         $coinsAmount,
@@ -88,7 +87,7 @@ final class WelcomeRewardService
                         $method,
                         ['action_key' => 'register']
                     );
-                    if (!$credit) {
+                    if (! $credit) {
                         return 0;
                     }
                     $coinsAmount = (int) $credit->amount;
@@ -117,10 +116,11 @@ final class WelcomeRewardService
             if (app()->environment('testing')) {
                 throw $e;
             }
-            \Illuminate\Support\Facades\Log::error('Failed to grant registration bonus', [
+            Log::error('Failed to grant registration bonus', [
                 'user_id' => $user->id,
                 'exception' => $e::class,
             ]);
+
             return 0;
         }
     }

@@ -159,7 +159,7 @@ class ProfileEndpointTest extends ApiTestCase
         $response = $this->actingAs($this->user, 'api')->postJson('/api/v1/user/profile', [
             'name' => 'Rokn Learner',
             'job_title' => 'Product Designer',
-            'portfolio_slug' => 'rokn-learner-' . $this->user->id,
+            'portfolio_slug' => 'rokn-learner-'.$this->user->id,
             'portfolio_headline' => 'Product Designer',
         ]);
         $serverOwnedSlug = (string) $response->json('data.portfolio_slug');

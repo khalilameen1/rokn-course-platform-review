@@ -32,18 +32,24 @@ final class CourseStagedAuthoringService
             ->where('revision_course_id', $course->id)
             ->where('status', CourseAuthoringRevision::DRAFT)
             ->first();
-        if ($owned) return $course;
+        if ($owned) {
+            return $course;
+        }
 
         // A never-published course is already an isolated draft; cloning it
         // would add identity without protecting any learner-facing state.
-        if ($this->isNeverPublishedDraft($course)) return $course;
+        if ($this->isNeverPublishedDraft($course)) {
+            return $course;
+        }
 
         return DB::transaction(function () use ($course): Course {
             $canonical = Course::query()->whereKey($course->id)->lockForUpdate()->firstOrFail();
             $active = CourseAuthoringRevision::query()
                 ->where('active_slot', CourseAuthoringRevision::draftSlot((int) $canonical->id))
                 ->lockForUpdate()->first();
-            if ($active) return Course::query()->findOrFail($active->revision_course_id);
+            if ($active) {
+                return Course::query()->findOrFail($active->revision_course_id);
+            }
 
             [$draft, $entityMappings] = $this->graphs->cloneWithinTransaction($canonical);
             $revision = CourseAuthoringRevision::query()->create([
@@ -78,7 +84,9 @@ final class CourseStagedAuthoringService
             ->where('revision_course_id', $draft->id)
             ->where('status', CourseAuthoringRevision::DRAFT)
             ->first();
-        if (!$revision) return;
+        if (! $revision) {
+            return;
+        }
 
         $entities = DB::table('course_authoring_revision_entities')
             ->where('course_authoring_revision_id', $revision->id);
@@ -116,7 +124,9 @@ final class CourseStagedAuthoringService
             ->where('revision_course_id', $draft->id)
             ->where('status', CourseAuthoringRevision::DRAFT)
             ->first(['id', 'canonical_course_id', 'revision_course_id']);
-        if (!$revision) return;
+        if (! $revision) {
+            return;
+        }
 
         DB::table('course_authoring_revision_entities')->insertOrIgnore([
             'course_authoring_revision_id' => $revision->id,
@@ -133,8 +143,7 @@ final class CourseStagedAuthoringService
         bool $catalogVisible,
         bool $grantChatAttachments = false,
         bool $grantProjectAttachments = false
-    ): array
-    {
+    ): array {
         $revisionIdentity = CourseAuthoringRevision::query()
             ->where('revision_course_id', $draft->id)
             ->where('status', CourseAuthoringRevision::DRAFT)
@@ -157,7 +166,7 @@ final class CourseStagedAuthoringService
                 ->lockForUpdate()->firstOrFail();
             if (
                 $revision->status !== CourseAuthoringRevision::DRAFT
-                || !hash_equals(CourseAuthoringRevision::draftSlot((int) $canonical->id), (string) $revision->active_slot)
+                || ! hash_equals(CourseAuthoringRevision::draftSlot((int) $canonical->id), (string) $revision->active_slot)
                 || (int) $revision->revision_course_id !== (int) $draft->id
             ) {
                 throw ValidationException::withMessages([
@@ -179,7 +188,7 @@ final class CourseStagedAuthoringService
             }
 
             $audit = $this->publishing->audit($lockedDraft->fresh());
-            if (!$audit['ready']) {
+            if (! $audit['ready']) {
                 throw ValidationException::withMessages(['course' => $audit['issues']]);
             }
 
@@ -231,7 +240,7 @@ final class CourseStagedAuthoringService
             // even though the learner-facing revision was already permanent.
             CourseContentNotificationService::notifyCourseUpdate(
                 course: $canonical->fresh(),
-                deliveryKey: 'course-published:' . $canonical->id . ':v' . $publishedRevision
+                deliveryKey: 'course-published:'.$canonical->id.':v'.$publishedRevision
             );
 
             $canonicalId = (int) $canonical->id;
@@ -265,7 +274,9 @@ final class CourseStagedAuthoringService
                 );
             }
             $this->catalogueRevisions->invalidateAfterCommit(
-                static function (\Throwable $exception): void { report($exception); }
+                static function (\Throwable $exception): void {
+                    report($exception);
+                }
             );
 
             return [
@@ -288,7 +299,7 @@ final class CourseStagedAuthoringService
     private function isNeverPublishedDraft(Course $course): bool
     {
         return (bool) $course->is_coming_soon
-            && !(bool) $course->is_catalog_visible
+            && ! (bool) $course->is_catalog_visible
             && $course->published_at === null
             && (int) ($course->last_published_authoring_version ?? 0) < 1;
     }

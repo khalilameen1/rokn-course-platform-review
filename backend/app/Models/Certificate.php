@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\CertificateArtworkRenderer;
 use App\Services\CertificateTextTemplateService;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Certificate extends Model
@@ -50,7 +51,7 @@ class Certificate extends Model
     protected static function booted(): void
     {
         static::creating(function (Certificate $certificate): void {
-            if (!$certificate->public_id) {
+            if (! $certificate->public_id) {
                 $certificate->public_id = (string) Str::uuid();
             }
         });
@@ -108,14 +109,15 @@ class Certificate extends Model
     public function hasStoredArtifact(): bool
     {
         $path = trim((string) $this->image_path);
-        if ($path === '' || $path === 'pending' || !$this->isActiveCredential()) {
+        if ($path === '' || $path === 'pending' || ! $this->isActiveCredential()) {
             return false;
         }
 
         try {
-            return \Illuminate\Support\Facades\Storage::disk((string) config('certificate.disk', 'public'))->exists($path);
+            return Storage::disk((string) config('certificate.disk', 'public'))->exists($path);
         } catch (\Throwable $exception) {
             report($exception);
+
             return false;
         }
     }
@@ -132,7 +134,7 @@ class Certificate extends Model
 
     public function isActiveCredential(): bool
     {
-        return $this->status === 'active' && !$this->isRevokedCredential();
+        return $this->status === 'active' && ! $this->isRevokedCredential();
     }
 
     public function hasCompleteCredentialSnapshot(): bool
@@ -157,9 +159,9 @@ class Certificate extends Model
         if ($this->certificate_design_version === null) {
             return true;
         }
-        if (!in_array($this->certificate_design_version, CertificateArtworkRenderer::SUPPORTED_VERSIONS, true)
+        if (! in_array($this->certificate_design_version, CertificateArtworkRenderer::SUPPORTED_VERSIONS, true)
             || $this->certificate_text !== CertificateTextTemplateService::COMPLETION_PREFIX
-            || !in_array($this->certificate_completion_text, [
+            || ! in_array($this->certificate_completion_text, [
                 '', CertificateTextTemplateService::PROJECTS_COMPLETION,
             ], true)) {
             return false;
@@ -167,20 +169,24 @@ class Certificate extends Model
 
         $revision = $this->certificate_curriculum_revision;
         $evidence = $this->certificate_project_evidence;
-        if (($revision !== null && (!is_int($revision) || $revision < 1))
-            || !is_array($evidence) || !array_is_list($evidence)) {
+        if (($revision !== null && (! is_int($revision) || $revision < 1))
+            || ! is_array($evidence) || ! array_is_list($evidence)) {
             return false;
         }
         if ($this->certificate_completion_text === '') {
-            if ($evidence !== []) return false;
+            if ($evidence !== []) {
+                return false;
+            }
         } else {
-            if ($revision === null || $evidence === []) return false;
+            if ($revision === null || $evidence === []) {
+                return false;
+            }
             $projectIds = [];
             $submissionIds = [];
             foreach ($evidence as $row) {
-                if (!is_array($row)
-                    || !is_int($row['project_id'] ?? null) || $row['project_id'] < 1
-                    || !is_int($row['submission_id'] ?? null) || $row['submission_id'] < 1
+                if (! is_array($row)
+                    || ! is_int($row['project_id'] ?? null) || $row['project_id'] < 1
+                    || ! is_int($row['submission_id'] ?? null) || $row['submission_id'] < 1
                     || isset($projectIds[$row['project_id']])
                     || isset($submissionIds[$row['submission_id']])) {
                     return false;
@@ -191,16 +197,18 @@ class Certificate extends Model
         }
 
         $qr = $this->certificate_qr_snapshot;
-        if (!is_array($qr) || !in_array($qr['type'] ?? null, ['portfolio', 'certificate'], true)) {
+        if (! is_array($qr) || ! in_array($qr['type'] ?? null, ['portfolio', 'certificate'], true)) {
             return false;
         }
         foreach (['url', 'title', 'hint'] as $key) {
-            if (!is_string($qr[$key] ?? null) || trim($qr[$key]) === '') return false;
+            if (! is_string($qr[$key] ?? null) || trim($qr[$key]) === '') {
+                return false;
+            }
         }
         $url = parse_url($qr['url']);
         if (filter_var($qr['url'], FILTER_VALIDATE_URL) === false
-            || !is_array($url) || ($url['scheme'] ?? null) !== 'https'
-            || !isset($url['host'])
+            || ! is_array($url) || ($url['scheme'] ?? null) !== 'https'
+            || ! isset($url['host'])
             || isset($url['user']) || isset($url['pass']) || isset($url['port'])
             || isset($url['query']) || isset($url['fragment'])) {
             return false;

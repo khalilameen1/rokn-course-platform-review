@@ -17,8 +17,7 @@ final readonly class StoreServerNotificationService
         private StoreNotificationAuthenticityVerifier $authenticity,
         private OrderLifecycleService $orders,
         private StorePurchaseService $purchases
-    ) {
-    }
+    ) {}
 
     /** @return array{status:string,event_id:string} */
     public function handleGoogle(array $envelope, string $authorizationToken): array
@@ -30,7 +29,7 @@ final readonly class StoreServerNotificationService
         $encoded = (string) ($message['data'] ?? '');
         $decoded = base64_decode($encoded, true);
         $payload = is_string($decoded) ? json_decode($decoded, true) : null;
-        if ($eventId === '' || !is_array($payload)) {
+        if ($eventId === '' || ! is_array($payload)) {
             throw new StorePurchaseVerificationException(
                 'google_rtdn_payload_invalid',
                 'Google Play notification payload is invalid.'
@@ -38,7 +37,7 @@ final readonly class StoreServerNotificationService
         }
 
         $packageName = trim((string) ($payload['packageName'] ?? ''));
-        if (!hash_equals((string) config('store_billing.google.package_name'), $packageName)) {
+        if (! hash_equals((string) config('store_billing.google.package_name'), $packageName)) {
             throw new StorePurchaseVerificationException(
                 'google_rtdn_package_mismatch',
                 'Google Play notification package is invalid.',
@@ -54,7 +53,7 @@ final readonly class StoreServerNotificationService
             : null;
         $eventType = $voided
             ? 'voided_purchase'
-            : ($oneTime ? 'one_time_product_' . (string) ($oneTime['notificationType'] ?? 'unknown') : 'other');
+            : ($oneTime ? 'one_time_product_'.(string) ($oneTime['notificationType'] ?? 'unknown') : 'other');
         $purchaseToken = trim((string) (($voided ?? $oneTime)['purchaseToken'] ?? ''));
         $safePayload = [
             'package_name' => $packageName,
@@ -77,10 +76,10 @@ final readonly class StoreServerNotificationService
             return ['status' => $event->status, 'event_id' => $eventId];
         }
 
-        if ($oneTime && !$voided && in_array((int) ($oneTime['notificationType'] ?? 0), [1, 2], true)) {
+        if ($oneTime && ! $voided && in_array((int) ($oneTime['notificationType'] ?? 0), [1, 2], true)) {
             return $this->handleGoogleOneTime($event, $oneTime, $purchaseToken);
         }
-        if (!$voided) {
+        if (! $voided) {
             return $this->finish($event, StoreNotificationEvent::STATUS_IGNORED);
         }
         if ((int) ($voided['productType'] ?? 0) !== 2 || $purchaseToken === '') {
@@ -98,7 +97,7 @@ final readonly class StoreServerNotificationService
             })
             ->with('order')
             ->first();
-        if (!$purchase?->order) {
+        if (! $purchase?->order) {
             return $this->review($event, 'store_purchase_not_found');
         }
 
@@ -109,7 +108,7 @@ final readonly class StoreServerNotificationService
             $purchase->order,
             Order::FINANCIAL_REFUNDED,
             $reason,
-            'store-notification:google:' . $eventId,
+            'store-notification:google:'.$eventId,
             null,
             Order::PAYMENT_METHOD_GOOGLE_PLAY,
             $eventId,
@@ -138,7 +137,7 @@ final readonly class StoreServerNotificationService
                     ->where('purchase_token_hash', hash('sha256', $purchaseToken))
                     ->with('order');
                 $purchase = $purchaseQuery->first();
-                if (!$purchase?->order) {
+                if (! $purchase?->order) {
                     // A device may already hold an older PURCHASED snapshot.
                     // Persist the provider-confirmed cancellation so its later
                     // credit reconciles it, even if this RTDN is acknowledged.
@@ -146,14 +145,16 @@ final readonly class StoreServerNotificationService
                     // Close the race where credit committed/reconciled between
                     // the first lookup and persisting the cancellation marker.
                     $purchase = $purchaseQuery->first();
-                    if (!$purchase?->order) return $result;
+                    if (! $purchase?->order) {
+                        return $result;
+                    }
                 }
                 if ($purchase?->order) {
                     $this->orders->registerReversal(
                         $purchase->order,
                         Order::FINANCIAL_REFUNDED,
                         'Google Play cancelled purchase',
-                        'store-notification:google:' . $event->event_id,
+                        'store-notification:google:'.$event->event_id,
                         null,
                         Order::PAYMENT_METHOD_GOOGLE_PLAY,
                         $event->event_id,
@@ -169,7 +170,9 @@ final readonly class StoreServerNotificationService
                 // Pub/Sub to retry; pending payments never receive coins.
                 throw new StorePurchaseVerificationException('store_purchase_pending', 'Purchase confirmation is pending.', 503);
             }
-            if ($exception->httpStatus >= 500) throw $exception;
+            if ($exception->httpStatus >= 500) {
+                throw $exception;
+            }
 
             return $this->review($event, $exception->errorCode);
         }
@@ -187,7 +190,7 @@ final readonly class StoreServerNotificationService
         if ($eventId === '' || $eventType === '') {
             throw new StorePurchaseVerificationException('apple_notification_payload_invalid');
         }
-        if (!hash_equals((string) config('store_billing.apple.bundle_id'), (string) ($data['bundleId'] ?? ''))) {
+        if (! hash_equals((string) config('store_billing.apple.bundle_id'), (string) ($data['bundleId'] ?? ''))) {
             throw new StorePurchaseVerificationException(
                 'apple_notification_bundle_mismatch',
                 'App Store notification bundle is invalid.',
@@ -231,7 +234,7 @@ final readonly class StoreServerNotificationService
             // operations without silently sending personal usage details.
             return $this->review($event, 'apple_consumption_consent_required');
         }
-        if (!in_array($eventType, ['REFUND', 'REFUND_REVERSED'], true)) {
+        if (! in_array($eventType, ['REFUND', 'REFUND_REVERSED'], true)) {
             return $this->finish($event, StoreNotificationEvent::STATUS_IGNORED);
         }
         if ($transactionId === '' || (string) ($transactionClaims['type'] ?? '') !== 'Consumable') {
@@ -249,10 +252,10 @@ final readonly class StoreServerNotificationService
             })
             ->with('order')
             ->first();
-        if (!$purchase?->order) {
+        if (! $purchase?->order) {
             return $this->review($event, 'store_purchase_not_found');
         }
-        if (!hash_equals((string) $purchase->product_id, (string) ($transactionClaims['productId'] ?? ''))) {
+        if (! hash_equals((string) $purchase->product_id, (string) ($transactionClaims['productId'] ?? ''))) {
             return $this->review($event, 'store_product_mismatch');
         }
         if (strtolower((string) ($data['environment'] ?? '')) !== strtolower((string) $purchase->environment)) {
@@ -280,7 +283,7 @@ final readonly class StoreServerNotificationService
                 'received_at' => now(),
             ]
         );
-        if (!hash_equals((string) $event->payload_sha256, $payloadHash)) {
+        if (! hash_equals((string) $event->payload_sha256, $payloadHash)) {
             throw new StorePurchaseVerificationException(
                 'store_notification_event_conflict',
                 'Store notification identity was reused.',

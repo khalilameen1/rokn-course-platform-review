@@ -13,7 +13,7 @@ final readonly class KashierGatewayEvidenceService
         return $transactionId !== null
             && is_string($order->transaction_id)
             && $order->transaction_id !== ''
-            && !hash_equals($order->transaction_id, $transactionId);
+            && ! hash_equals($order->transaction_id, $transactionId);
     }
 
     /** @param array<string, mixed>|null $response */
@@ -24,7 +24,7 @@ final readonly class KashierGatewayEvidenceService
 
     public function normalizeTransactionId(mixed $value): ?string
     {
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             return null;
         }
         $value = trim($value);
@@ -42,15 +42,14 @@ final readonly class KashierGatewayEvidenceService
     /** @param array<string,mixed>|null $response */
     public function status(?array $response): ?string
     {
-        if (!$response) {
+        if (! $response) {
             return null;
         }
 
         $reversals = $this->reversalEvents($response);
         if ($reversals !== []) {
             $priority = ['CHARGEBACK' => 4, 'REVERSED' => 3, 'REFUNDED' => 2, 'PARTIAL_REFUND' => 1];
-            usort($reversals, static fn (array $left, array $right): int =>
-                ($priority[$right['payment_status']] ?? 0) <=> ($priority[$left['payment_status']] ?? 0)
+            usort($reversals, static fn (array $left, array $right): int => ($priority[$right['payment_status']] ?? 0) <=> ($priority[$left['payment_status']] ?? 0)
             );
 
             return $reversals[0]['payment_status'];
@@ -79,7 +78,7 @@ final readonly class KashierGatewayEvidenceService
                 ?? [];
             if (is_array($transactions)) {
                 foreach (array_reverse($transactions) as $transaction) {
-                    if (!is_array($transaction)) {
+                    if (! is_array($transaction)) {
                         continue;
                     }
                     $transactionStatus = strtoupper(trim((string) (
@@ -115,25 +114,25 @@ final readonly class KashierGatewayEvidenceService
     }
 
     /**
-     * @param array<string,mixed>|null $response
+     * @param  array<string,mixed>|null  $response
      * @return array<int,array{payment_status:string,provider_event_id:?string,original_transaction_id:?string,amount:int|float|string|null,currency:?string,occurred_at:?string,evidence_fingerprint:string}>
      */
     public function reversalEvents(?array $response): array
     {
-        if (!$response) {
+        if (! $response) {
             return [];
         }
         $transactions = $response['response']['transactions']
             ?? $response['data']['transactions']
             ?? $response['transactions']
             ?? null;
-        if (!is_array($transactions)) {
+        if (! is_array($transactions)) {
             return [];
         }
 
         $events = [];
         foreach ($transactions as $transaction) {
-            if (!is_array($transaction)) {
+            if (! is_array($transaction)) {
                 continue;
             }
             $transactionStatus = strtoupper(trim((string) (
@@ -142,7 +141,7 @@ final readonly class KashierGatewayEvidenceService
             $operation = strtoupper(trim((string) (
                 $transaction['operation'] ?? $transaction['type'] ?? ''
             )));
-            if (!in_array($transactionStatus, [
+            if (! in_array($transactionStatus, [
                 'SUCCESS', 'CAPTURED', 'PAID', 'REFUND', 'REFUNDED',
                 'FULLY_REFUNDED', 'PARTIAL_REFUND', 'PARTIALLY_REFUNDED',
                 'CHARGEBACK', 'DISPUTED', 'REVERSED', 'REVERSAL',
@@ -224,7 +223,7 @@ final readonly class KashierGatewayEvidenceService
             return true;
         }
 
-        return !in_array($status, [
+        return ! in_array($status, [
             'NOT_FOUND', 'UNPAID', 'PENDING', 'INITIATED', 'FAILED', 'FAILURE', 'DECLINED',
             'CANCELLED', 'CANCELED', 'VOIDED', 'EXPIRED',
         ], true);
@@ -241,7 +240,7 @@ final readonly class KashierGatewayEvidenceService
     /** @param array<string,mixed>|null $response */
     public function transactionId(?array $response): ?string
     {
-        if (!$response) {
+        if (! $response) {
             return null;
         }
 
@@ -258,7 +257,7 @@ final readonly class KashierGatewayEvidenceService
             ?? $response['data']['transactions']
             ?? $response['transactions']
             ?? [];
-        if (!is_array($transactions)) {
+        if (! is_array($transactions)) {
             return null;
         }
 
@@ -271,7 +270,7 @@ final readonly class KashierGatewayEvidenceService
         ));
         foreach (array_reverse($successful) as $transaction) {
             $operation = strtolower(trim((string) ($transaction['operation'] ?? '')));
-            if (!in_array($operation, ['pay', 'capture', 'sale', 'purchase'], true)) {
+            if (! in_array($operation, ['pay', 'capture', 'sale', 'purchase'], true)) {
                 continue;
             }
             $id = $this->normalizeTransactionId(
@@ -321,10 +320,12 @@ final readonly class KashierGatewayEvidenceService
             $keyName = strtolower((string) $key);
             if (in_array($keyName, $secretKeys, true)) {
                 unset($payload[$key]);
+
                 continue;
             }
             if (in_array($keyName, $privateContainers, true)) {
                 $payload[$key] = '[redacted]';
+
                 continue;
             }
             if (is_array($value)) {
@@ -393,7 +394,7 @@ final readonly class KashierGatewayEvidenceService
             'response.transactions.0.merchantOrderId', 'data.merchantOrderId',
             'data.merchant_order_id', 'data.order_ref',
         ]);
-        if ($orderRef !== null && !hash_equals((string) $order->order_ref, trim((string) $orderRef))) {
+        if ($orderRef !== null && ! hash_equals((string) $order->order_ref, trim((string) $orderRef))) {
             throw new \RuntimeException('Kashier merchant order reference mismatch.');
         }
 
@@ -421,7 +422,7 @@ final readonly class KashierGatewayEvidenceService
     {
         foreach ($paths as $path) {
             $value = data_get($payload, $path);
-            if ($value !== null && $value !== '' && !is_array($value) && !is_object($value)) {
+            if ($value !== null && $value !== '' && ! is_array($value) && ! is_object($value)) {
                 return $value;
             }
         }
@@ -434,7 +435,7 @@ final readonly class KashierGatewayEvidenceService
         if (is_int($value) || is_float($value)) {
             return (float) $value;
         }
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             return null;
         }
         $value = str_replace([',', ' '], '', trim($value));

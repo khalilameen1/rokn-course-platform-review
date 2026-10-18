@@ -28,8 +28,7 @@ final class ProjectSubmissionReviewService
         private readonly CourseRevisionLearnerReadService $revisionReads,
         private readonly ProjectSubmissionFileRetentionService $fileRetention,
         private readonly CourseCompletionService $courseCompletion
-    ) {
-    }
+    ) {}
 
     public function applyEvaluationOutcome(
         ProjectSubmission $submission,
@@ -41,7 +40,7 @@ final class ProjectSubmissionReviewService
             $active = User::query()->whereKey($submission->user_id)->where('active', true)->lockForUpdate()->exists();
             $locked = ProjectSubmission::query()->lockForUpdate()->findOrFail($submission->id);
             if (
-                !$active
+                ! $active
                 || $locked->review_status !== ProjectSubmission::STATUS_PENDING
                 || data_get($locked->submission_metadata, 'evaluation.request_id') !== $requestId
             ) {
@@ -58,12 +57,14 @@ final class ProjectSubmissionReviewService
             ]);
             unset($metadata['evaluation']['reason'], $metadata['evaluation']['failed_at']);
             $locked->forceFill(['submission_metadata' => $metadata, 'auto_pass_at' => null])->save();
+
             return $this->applyReviewOutcome($locked, $passed, 'relevance_review', $feedback);
         }, 3);
         if ($reviewed->review_status === ProjectSubmission::STATUS_PASSED) {
             $this->completeReportHandoff($reviewed);
         }
         $this->fileRetention->purgeIfEligible($reviewed);
+
         return $reviewed->fresh();
     }
 
@@ -74,7 +75,7 @@ final class ProjectSubmissionReviewService
         ?string $feedback = null
     ): ProjectSubmission {
         $reviewerRole = Str::lower((string) $reviewer->role);
-        if (!(bool) $reviewer->active || !in_array($reviewerRole, ['admin', 'moderator'], true)) {
+        if (! (bool) $reviewer->active || ! in_array($reviewerRole, ['admin', 'moderator'], true)) {
             throw new AuthorizationException('Only an active dashboard reviewer can review project submissions.');
         }
 
@@ -87,7 +88,7 @@ final class ProjectSubmissionReviewService
                 ->whereKey($submission->user_id)
                 ->lockForUpdate()
                 ->first();
-            if (!$learner) {
+            if (! $learner) {
                 throw ValidationException::withMessages([
                     'submission' => ['تم حذف حساب الطالب، لذلك لم يُسجل قرار جديد.'],
                 ]);
@@ -106,7 +107,7 @@ final class ProjectSubmissionReviewService
                 && $locked->review_source === 'graceful_fallback';
             if (
                 $locked->review_status !== ProjectSubmission::STATUS_PENDING
-                && !$isGracefulFallback
+                && ! $isGracefulFallback
             ) {
                 throw ValidationException::withMessages([
                     'submission' => ['تمت مراجعة هذه المحاولة بالفعل، لذلك لم يتغير القرار المسجل.'],
@@ -117,7 +118,7 @@ final class ProjectSubmissionReviewService
                 (int) $locked->user_id,
                 (int) $locked->project_id
             );
-            if (!$passed && $wasAlreadyPassed) {
+            if (! $passed && $wasAlreadyPassed) {
                 throw ValidationException::withMessages([
                     'submission' => ['لا يمكن سحب حق الطالب في الاستكمال بعد قبوله تلقائيًا. يمكن اعتماد جودة العمل يدويًا عند القبول.'],
                 ]);
@@ -222,7 +223,7 @@ final class ProjectSubmissionReviewService
             (int) $locked->id
         );
 
-        if (!$passed) {
+        if (! $passed) {
             return $locked->fresh();
         }
 
@@ -237,7 +238,7 @@ final class ProjectSubmissionReviewService
             (int) $locked->id
         );
 
-        if (!$projectSection) {
+        if (! $projectSection) {
             return $locked->fresh();
         }
 
@@ -266,7 +267,7 @@ final class ProjectSubmissionReviewService
         $snapshot = ProjectSubmissionEvaluationSnapshot::fromSubmission($submission);
         $terms = $snapshot ? data_get($snapshot, 'access.terms') : null;
 
-        if (!is_array($terms)) {
+        if (! is_array($terms)) {
             return false;
         }
 
@@ -306,6 +307,7 @@ final class ProjectSubmissionReviewService
             // Feedback is a paid enhancement, never a gate. Queue/provider
             // failures cannot revoke the already granted progression.
             $this->queueFeedback((int) $submission->id);
+
             return;
         }
 

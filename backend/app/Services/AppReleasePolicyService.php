@@ -13,7 +13,9 @@ use Throwable;
 final class AppReleasePolicyService
 {
     public const CHANNEL_PLAY = 'play';
+
     public const CHANNEL_DIRECT = 'direct';
+
     public const CHANNEL_APP_STORE = 'appstore';
 
     /** @return list<string> */
@@ -56,7 +58,7 @@ final class AppReleasePolicyService
     public function isAllowedDownloadUrl(string $channel, mixed $value): bool
     {
         $parts = is_string($value) ? parse_url(trim($value)) : false;
-        if (!is_array($parts)
+        if (! is_array($parts)
             || strtolower((string) ($parts['scheme'] ?? '')) !== 'https'
             || isset($parts['user'])
             || isset($parts['pass'])
@@ -87,13 +89,14 @@ final class AppReleasePolicyService
     public function activeVersions(string $platform, ?string $channel): Collection
     {
         try {
-            if (!DatabaseCapabilities::hasTable('app_versions')) {
+            if (! DatabaseCapabilities::hasTable('app_versions')) {
                 return collect();
             }
 
             return $this->activeVersionsFromDatabase($platform, $channel);
         } catch (Throwable $exception) {
             report($exception);
+
             return collect();
         }
     }
@@ -169,7 +172,7 @@ final class AppReleasePolicyService
      * Dashboard validation protects new writes, while this read-side guard
      * also covers imported rows and direct database changes.
      *
-     * @param Collection<int, AppVersion> $versions
+     * @param  Collection<int, AppVersion>  $versions
      * @return Collection<int, AppVersion>
      */
     private function usableVersions(Collection $versions, string $platform, ?string $requestedChannel): Collection
@@ -206,8 +209,8 @@ final class AppReleasePolicyService
         foreach ($this->channels() as $channel) {
             $status = ['ready' => false, 'reason' => null, 'release_id' => null];
             try {
-                if (!Schema::hasTable('app_versions')
-                    || !Schema::hasColumn('app_versions', 'distribution_channel')) {
+                if (! Schema::hasTable('app_versions')
+                    || ! Schema::hasColumn('app_versions', 'distribution_channel')) {
                     $status['reason'] = 'schema_missing';
                 } else {
                     $identifier = $channel === self::CHANNEL_APP_STORE
@@ -223,9 +226,9 @@ final class AppReleasePolicyService
                         ->orderByDesc('id')
                         ->first();
 
-                    if (!$release) {
+                    if (! $release) {
                         $status['reason'] = 'no_active_release';
-                    } elseif (!$this->isAllowedDownloadUrl($channel, $release->download_url)) {
+                    } elseif (! $this->isAllowedDownloadUrl($channel, $release->download_url)) {
                         $status['reason'] = 'invalid_download_url';
                         $status['release_id'] = (int) $release->id;
                     } else {

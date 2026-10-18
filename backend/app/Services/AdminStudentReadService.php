@@ -29,12 +29,11 @@ final readonly class AdminStudentReadService
         private CourseFinancialLedgerReportService $financialLedger,
         private WalletQueryService $wallet,
         private StudentProgressSummaryService $progressSummaries,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array{search?:?string,active?:?string} $filters
-     * @param array<string, mixed> $queryParameters
+     * @param  array{search?:?string,active?:?string}  $filters
+     * @param  array<string, mixed>  $queryParameters
      * @return array{users:LengthAwarePaginator,accountStateVersions:Collection<int, string>}
      */
     public function listing(array $filters, array $queryParameters): array
@@ -65,8 +64,8 @@ final readonly class AdminStudentReadService
     /**
      * Same selection as listing(), streamed in id order for CSV export.
      *
-     * @param array{search?:?string,active?:?string} $filters
-     * @param callable(User):void $each
+     * @param  array{search?:?string,active?:?string}  $filters
+     * @param  callable(User):void  $each
      */
     public function eachForExport(array $filters, callable $each, int $limit = 100000): void
     {
@@ -92,7 +91,7 @@ final readonly class AdminStudentReadService
     }
 
     /**
-     * @param array<string, mixed> $queryParameters
+     * @param  array<string, mixed>  $queryParameters
      * @return array<string, mixed>
      */
     public function workspace(User $user, array $queryParameters): array
@@ -100,10 +99,8 @@ final readonly class AdminStudentReadService
         $user->loadCount([
             'deviceTokens',
             'portfolioItems',
-            'portfolioItems as public_portfolio_items_count' => fn (Builder $items) =>
-                $items->where('is_public', true),
-            'enrollments as active_enrollments_count' => fn (Builder $enrollments) =>
-                $enrollments->active(),
+            'portfolioItems as public_portfolio_items_count' => fn (Builder $items) => $items->where('is_public', true),
+            'enrollments as active_enrollments_count' => fn (Builder $enrollments) => $enrollments->active(),
         ])->load([
             'photo',
             'socialAccounts' => fn ($accounts) => $accounts->orderBy('provider'),

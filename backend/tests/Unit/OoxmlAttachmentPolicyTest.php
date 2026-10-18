@@ -15,7 +15,9 @@ final class OoxmlAttachmentPolicyTest extends TestCase
 {
     public function test_zip_detected_docx_is_canonicalized_only_when_structure_is_genuine(): void
     {
-        if (!class_exists(ZipArchive::class)) self::markTestSkipped('ZIP extension unavailable.');
+        if (! class_exists(ZipArchive::class)) {
+            self::markTestSkipped('ZIP extension unavailable.');
+        }
         $valid = $this->officePackage('docx', true);
         $fake = $this->officePackage('docx', false);
         try {
@@ -26,13 +28,8 @@ final class OoxmlAttachmentPolicyTest extends TestCase
                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                 $service->canonicalMime(new UploadedFile($valid, 'project.docx', 'application/zip', null, true))
             );
-            $octetStream = new class(
-                $valid,
-                'project.docx',
-                'application/octet-stream',
-                null,
-                true
-            ) extends UploadedFile {
+            $octetStream = new class($valid, 'project.docx', 'application/octet-stream', null, true) extends UploadedFile
+            {
                 public function getMimeType(): ?string
                 {
                     return 'application/octet-stream';
@@ -64,7 +61,9 @@ final class OoxmlAttachmentPolicyTest extends TestCase
 
     public function test_zip_detected_pptx_is_canonicalized_from_its_own_main_part(): void
     {
-        if (!class_exists(ZipArchive::class)) self::markTestSkipped('ZIP extension unavailable.');
+        if (! class_exists(ZipArchive::class)) {
+            self::markTestSkipped('ZIP extension unavailable.');
+        }
         $path = $this->officePackage('pptx', true);
         try {
             $service = (new ReflectionClass(AiInputAttachmentService::class))
@@ -82,7 +81,7 @@ final class OoxmlAttachmentPolicyTest extends TestCase
     {
         $path = tempnam(sys_get_temp_dir(), 'rokn-ooxml-');
         self::assertIsString($path);
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         self::assertTrue($zip->open($path, ZipArchive::OVERWRITE) === true);
         $main = $type === 'docx' ? 'word/document.xml' : 'ppt/presentation.xml';
         $root = $type === 'docx'

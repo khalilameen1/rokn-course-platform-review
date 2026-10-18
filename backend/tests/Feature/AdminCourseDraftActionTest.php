@@ -17,14 +17,14 @@ final class AdminCourseDraftActionTest extends TestCase
 
     public function test_moderator_can_idempotently_start_and_resume_a_published_course_draft(): void
     {
-        $moderator = new User();
+        $moderator = new User;
         $moderator->forceFill([
             'name_ar' => 'محرر المحتوى',
             'email' => 'draft-moderator@example.test',
             'role' => 'moderator',
             'active' => true,
         ])->save();
-        $canonical = new Course();
+        $canonical = new Course;
         $canonical->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'الكورس المنشور',

@@ -13,9 +13,9 @@ final class RedactSensitiveContextTest extends TestCase
 {
     public function test_it_redacts_nested_secrets_and_bearer_values_without_hiding_usage_metrics(): void
     {
-        $handler = new TestHandler();
+        $handler = new TestHandler;
         $logger = new Logger('privacy', [$handler]);
-        (new RedactSensitiveContext())($logger);
+        (new RedactSensitiveContext)($logger);
 
         $logger->warning(
             'failed https://example.test/callback?signature=raw-signature Authorization: Bearer raw.token',
@@ -40,9 +40,9 @@ final class RedactSensitiveContextTest extends TestCase
 
     public function test_it_keeps_a_debuggable_exception_shape_without_raw_personal_data(): void
     {
-        $handler = new TestHandler();
+        $handler = new TestHandler;
         $logger = new Logger('privacy', [$handler]);
-        (new RedactSensitiveContext())($logger);
+        (new RedactSensitiveContext)($logger);
 
         $logger->error('provider failed', [
             'exception' => new \RuntimeException('account learner@example.test failed'),
@@ -58,9 +58,9 @@ final class RedactSensitiveContextTest extends TestCase
 
     public function test_it_removes_secret_assignments_and_exception_arguments_from_logs(): void
     {
-        $handler = new TestHandler();
+        $handler = new TestHandler;
         $logger = new Logger('privacy', [$handler]);
-        (new RedactSensitiveContext())($logger);
+        (new RedactSensitiveContext)($logger);
 
         try {
             $this->throwWithSensitiveArgument('phone=201001234567 password:plain-secret');

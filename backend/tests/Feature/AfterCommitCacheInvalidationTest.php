@@ -23,7 +23,9 @@ final class AfterCommitCacheInvalidationTest extends TestCase
 
     protected function tearDown(): void
     {
-        while (DB::transactionLevel() > 0) DB::rollBack();
+        while (DB::transactionLevel() > 0) {
+            DB::rollBack();
+        }
         parent::tearDown();
     }
 
@@ -31,7 +33,9 @@ final class AfterCommitCacheInvalidationTest extends TestCase
     {
         $events = [];
         $append = static function (string $event) use (&$events): \Closure {
-            return static function () use ($event, &$events): void { $events[] = $event; };
+            return static function () use ($event, &$events): void {
+                $events[] = $event;
+            };
         };
         AfterCommitCacheInvalidation::run($append('immediate'));
         DB::beginTransaction();
@@ -51,14 +55,20 @@ final class AfterCommitCacheInvalidationTest extends TestCase
     {
         $events = [];
         DB::beginTransaction();
-        AfterCommitCacheInvalidation::run(static function () use (&$events): void { $events[] = 'outer'; });
+        AfterCommitCacheInvalidation::run(static function () use (&$events): void {
+            $events[] = 'outer';
+        });
         DB::beginTransaction();
-        AfterCommitCacheInvalidation::run(static function () use (&$events): void { $events[] = 'rolled-back-inner'; });
+        AfterCommitCacheInvalidation::run(static function () use (&$events): void {
+            $events[] = 'rolled-back-inner';
+        });
         DB::rollBack();
         DB::commit();
         self::assertSame(['outer'], $events);
         DB::beginTransaction();
-        AfterCommitCacheInvalidation::run(static function () use (&$events): void { $events[] = 'rolled-back-outer'; });
+        AfterCommitCacheInvalidation::run(static function () use (&$events): void {
+            $events[] = 'rolled-back-outer';
+        });
         DB::rollBack();
         DB::transaction(static fn () => null);
         self::assertSame(['outer'], $events);
@@ -74,11 +84,15 @@ final class AfterCommitCacheInvalidationTest extends TestCase
             $events[] = $error->getMessage();
             throw new \RuntimeException('reporter down');
         });
-        AfterCommitCacheInvalidation::run(static function () use (&$events): void { $events[] = 'next cache'; });
+        AfterCommitCacheInvalidation::run(static function () use (&$events): void {
+            $events[] = 'next cache';
+        });
         self::assertSame([], $events);
         DB::commit();
         self::assertSame(['cache down', 'next cache'], $events);
-        AfterCommitCacheInvalidation::run(static function (): never { throw new \RuntimeException('optional silent cache'); });
+        AfterCommitCacheInvalidation::run(static function (): never {
+            throw new \RuntimeException('optional silent cache');
+        });
     }
 
     public function test_settings_and_reward_model_events_survive_post_commit_cache_outages(): void
@@ -90,7 +104,7 @@ final class AfterCommitCacheInvalidationTest extends TestCase
         $handler->shouldReceive('report')->times(3)->andReturnNull();
         $this->app->instance(ExceptionHandler::class, $handler);
         DB::transaction(static function (): void {
-            $settings = Setting::query()->first() ?? new Setting();
+            $settings = Setting::query()->first() ?? new Setting;
             $settings->fill(['site_name_ar' => 'رُكن'])->save();
             RewardRule::query()->updateOrCreate(['event_key' => 'welcome_bonus'], [
                 'title_ar' => 'ترحيب', 'title_en' => 'Welcome',

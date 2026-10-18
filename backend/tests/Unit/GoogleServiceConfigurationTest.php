@@ -18,7 +18,7 @@ final class GoogleServiceConfigurationTest extends TestCase
 
         $property = new ReflectionProperty(GoogleService::class, 'client');
         $property->setAccessible(true);
-        $client = $property->getValue(new GoogleService());
+        $client = $property->getValue(new GoogleService);
 
         self::assertInstanceOf(Client::class, $client);
         self::assertSame(2.0, $client->getHttpClient()->getConfig('connect_timeout'));

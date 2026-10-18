@@ -15,8 +15,7 @@ final readonly class StorePurchaseFinalizationService
     public function __construct(
         private StorePurchaseProviderGateway $gateway,
         private StoreBillingAccountIdentity $identities
-    ) {
-    }
+    ) {}
 
     /** The committed receipt doubles as a durable queue; never call inside a credit transaction. */
     public function attempt(int $purchaseId): bool
@@ -28,7 +27,7 @@ final readonly class StorePurchaseFinalizationService
             $claimed = $this->due()->whereKey($purchaseId)->update([
                 'finalization_retry_at' => now()->addMinutes(2),
             ]);
-            if (!$claimed) {
+            if (! $claimed) {
                 return StorePurchase::query()->whereKey($purchaseId)->whereNotNull('finalized_at')->exists();
             }
             $purchase = StorePurchase::query()->findOrFail($purchaseId);

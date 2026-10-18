@@ -21,16 +21,15 @@ final readonly class CertificateEligibilityService
         private LearningEvidenceService $learningEvidence,
         private CurriculumCompletionService $curriculumCompletion,
         private CourseRevisionLearnerReadService $revisionReads
-    ) {
-    }
+    ) {}
 
     /**
      * Batch eligibility for the learning dashboard. All revision-aware learner
      * evidence is fetched once; decisions retain the scalar rule order.
      *
-     * @param Collection<int,Course> $courses
-     * @param Collection<int,CourseEnrollment> $enrollments
-     * @param array<int,array<string,mixed>> $entitlements
+     * @param  Collection<int,Course>  $courses
+     * @param  Collection<int,CourseEnrollment>  $enrollments
+     * @param  array<int,array<string,mixed>>  $entitlements
      * @return array<int,array{included:bool,available:bool,reason:string}>
      */
     public function forCourses(
@@ -62,22 +61,24 @@ final readonly class CertificateEligibilityService
             $courseId = (int) $courseId;
             $enrollment = $enrollments->get($courseId);
             $included = (bool) ($entitlements[$courseId]['certificate_available'] ?? false);
-            if (!$enrollment || !$included) {
+            if (! $enrollment || ! $included) {
                 $result[$courseId] = [
                     'included' => false,
                     'available' => false,
                     'reason' => 'upgrade_required',
                 ];
+
                 continue;
             }
 
             $earnedRevision = $earnedRevisions->get((int) $enrollment->id);
-            if ($earnedRevision === null && !$enrollment->isActive()) {
+            if ($earnedRevision === null && ! $enrollment->isActive()) {
                 $result[$courseId] = [
                     'included' => true,
                     'available' => false,
                     'reason' => 'entitlement_inactive',
                 ];
+
                 continue;
             }
             if (
@@ -89,6 +90,7 @@ final readonly class CertificateEligibilityService
                     'available' => false,
                     'reason' => 'financial_review',
                 ];
+
                 continue;
             }
             if ($earnedRevision !== null) {
@@ -97,14 +99,16 @@ final readonly class CertificateEligibilityService
                     'available' => true,
                     'reason' => 'ready',
                 ];
+
                 continue;
             }
-            if (!$course->isPublishedForLearning()) {
+            if (! $course->isPublishedForLearning()) {
                 $result[$courseId] = [
                     'included' => true,
                     'available' => false,
                     'reason' => 'course_unavailable',
                 ];
+
                 continue;
             }
 
@@ -162,8 +166,7 @@ final readonly class CertificateEligibilityService
             if (
                 $courseSections->isEmpty()
                 || $courseSections->contains(
-                    fn (CourseSection $section): bool =>
-                        !$completedSectionIds->has((int) $section->id)
+                    fn (CourseSection $section): bool => ! $completedSectionIds->has((int) $section->id)
                 )
             ) {
                 $result[$courseId] = [
@@ -171,13 +174,13 @@ final readonly class CertificateEligibilityService
                     'available' => false,
                     'reason' => 'course_incomplete',
                 ];
+
                 continue;
             }
 
             $hasIncompleteLessonEvidence = $courseSections
                 ->filter(
-                    fn (CourseSection $section): bool =>
-                        $section->getSectionType() === 'lesson'
+                    fn (CourseSection $section): bool => $section->getSectionType() === 'lesson'
                 )
                 ->contains(function (CourseSection $section) use (
                     $lessons,
@@ -203,24 +206,25 @@ final readonly class CertificateEligibilityService
                     'available' => false,
                     'reason' => 'learning_evidence_incomplete',
                 ];
+
                 continue;
             }
 
             $courseGraduationProjectIds = $courseSections
                 ->filter(
-                    fn (CourseSection $section): bool =>
-                        $section->getSectionType() === 'project'
+                    fn (CourseSection $section): bool => $section->getSectionType() === 'project'
                 )
                 ->pluck('sectionable_id')
                 ->intersect($graduationProjectIds);
             if ($courseGraduationProjectIds->contains(
-                fn ($projectId): bool => !$passedProjectIds->has((int) $projectId)
+                fn ($projectId): bool => ! $passedProjectIds->has((int) $projectId)
             )) {
                 $result[$courseId] = [
                     'included' => true,
                     'available' => false,
                     'reason' => 'graduation_project_incomplete',
                 ];
+
                 continue;
             }
 
@@ -241,13 +245,15 @@ final readonly class CertificateEligibilityService
         $earnedRevision = $enrollment
             ? $this->curriculumCompletion->earnedRevision($enrollment)
             : null;
-        if (!$enrollment) {
+        if (! $enrollment) {
             return ['included' => false, 'available' => false, 'reason' => 'upgrade_required'];
         }
 
         $included = $this->courseAccess->enrollmentHasCertificateAccess($enrollment);
-        if (!$included) return ['included' => false, 'available' => false, 'reason' => 'upgrade_required'];
-        if ($earnedRevision === null && !$enrollment->isActive()) {
+        if (! $included) {
+            return ['included' => false, 'available' => false, 'reason' => 'upgrade_required'];
+        }
+        if ($earnedRevision === null && ! $enrollment->isActive()) {
             return ['included' => true, 'available' => false, 'reason' => 'entitlement_inactive'];
         }
         if ($enrollment->order_id && Order::query()
@@ -265,7 +271,7 @@ final readonly class CertificateEligibilityService
         if ($earnedRevision !== null) {
             return ['included' => true, 'available' => true, 'reason' => 'ready'];
         }
-        if (!$course->isPublishedForLearning()) {
+        if (! $course->isPublishedForLearning()) {
             return ['included' => true, 'available' => false, 'reason' => 'course_unavailable'];
         }
 
@@ -274,7 +280,9 @@ final readonly class CertificateEligibilityService
                 ->where('course_id', $course->id)
                 ->get(['id', 'course_id', 'section_type', 'sectionable_type', 'sectionable_id', 'module_id', 'order'])
         );
-        if ($sections->isEmpty()) return ['included' => true, 'available' => false, 'reason' => 'course_incomplete'];
+        if ($sections->isEmpty()) {
+            return ['included' => true, 'available' => false, 'reason' => 'course_incomplete'];
+        }
         $completed = $this->revisionReads->completedSectionIds(
             (int) $user->id,
             $sections->pluck('id')
@@ -344,8 +352,7 @@ final readonly class CertificateEligibilityService
             ->latest('id')
             ->get();
 
-        return $enrollments->first(fn (CourseEnrollment $candidate): bool =>
-            $this->curriculumCompletion->earnedRevision($candidate) !== null
+        return $enrollments->first(fn (CourseEnrollment $candidate): bool => $this->curriculumCompletion->earnedRevision($candidate) !== null
         ) ?? $enrollments->first(fn (CourseEnrollment $candidate): bool => $candidate->isActive());
     }
 }

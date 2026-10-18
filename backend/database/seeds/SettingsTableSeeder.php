@@ -32,13 +32,13 @@ class SettingsTableSeeder extends Seeder
     public function run(): void
     {
         foreach ($this->settings as $index => $setting) {
-            if (!Setting::query()->create($setting)) {
+            if (! Setting::query()->create($setting)) {
                 $this->command?->error("Settings seed failed at record {$index}.");
 
                 return;
             }
         }
 
-        $this->command?->info('Inserted ' . count($this->settings) . ' settings records.');
+        $this->command?->info('Inserted '.count($this->settings).' settings records.');
     }
 }

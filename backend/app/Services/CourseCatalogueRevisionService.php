@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use Closure;
 use App\Support\AfterCommitCacheInvalidation;
+use Closure;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 
@@ -30,7 +30,8 @@ final class CourseCatalogueRevisionService
     /**
      * Schedule against the outermost transaction, or execute immediately outside one.
      * Cache failures must not make a durable mutation appear to have failed.
-     * @param null|Closure(Throwable):void $onFailure Optional operational reporting.
+     *
+     * @param  null|Closure(Throwable):void  $onFailure  Optional operational reporting.
      */
     public function invalidateAfterCommit(?Closure $onFailure = null): void
     {

@@ -22,7 +22,7 @@ class Bill extends Model
         'payment_method',
         'due_date',
         'paid_at',
-        'notes'
+        'notes',
     ];
 
     protected $casts = [
@@ -33,12 +33,14 @@ class Bill extends Model
         'paid_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
-        'deleted_at' => 'datetime'
+        'deleted_at' => 'datetime',
     ];
 
     // Payment methods
     const PAYMENT_METHOD_ONLINE = 'online';
+
     const PAYMENT_METHOD_COURSE_CODE = 'course_code';
+
     const PAYMENT_METHOD_WALLET = 'wallet';
 
     /** Course access paid from the in-app wallet is denominated in Rokn coins. */
@@ -57,8 +59,11 @@ class Bill extends Model
 
     // Payment statuses
     const PAYMENT_STATUS_PENDING = 'pending';
+
     const PAYMENT_STATUS_PAID = 'paid';
+
     const PAYMENT_STATUS_OVERDUE = 'overdue';
+
     const PAYMENT_STATUS_CANCELLED = 'cancelled';
 
     /**
@@ -124,7 +129,7 @@ class Bill extends Model
     {
         $this->update([
             'payment_status' => self::PAYMENT_STATUS_PAID,
-            'paid_at' => now()
+            'paid_at' => now(),
         ]);
     }
 
@@ -135,6 +140,6 @@ class Bill extends Model
             throw new \InvalidArgumentException('A persisted order is required for billing.');
         }
 
-        return 'BILL-ORDER-' . $orderId;
+        return 'BILL-ORDER-'.$orderId;
     }
 }

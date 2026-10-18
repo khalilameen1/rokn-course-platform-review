@@ -2,8 +2,6 @@
 
 namespace App\Http\Requests\API;
 
-use App\Http\Requests\API\FormRequest;
-
 class LoginRequest extends FormRequest
 {
     /**
@@ -24,7 +22,7 @@ class LoginRequest extends FormRequest
     public function rules()
     {
         return [
-            //'phone' => 'required|exists:users,phone',
+            // 'phone' => 'required|exists:users,phone',
             'phone' => 'required',
             'password' => 'required',
             'device_id' => 'nullable|string|max:255',

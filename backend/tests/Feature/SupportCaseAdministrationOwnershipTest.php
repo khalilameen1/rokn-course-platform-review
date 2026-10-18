@@ -123,7 +123,9 @@ final class SupportCaseAdministrationOwnershipTest extends TestCase
         [$report] = $this->settledCase();
         $service = app(SupportCaseCompensationService::class);
         foreach ([0, 1] as $version) {
-            if ($version === 1) $report->update(['user_id' => $this->user()->id]);
+            if ($version === 1) {
+                $report->update(['user_id' => $this->user()->id]);
+            }
             try {
                 $service->compensate($report, [
                     'version' => $version, 'amount' => 100, 'note' => 'Investigated order issue',
@@ -178,6 +180,7 @@ final class SupportCaseAdministrationOwnershipTest extends TestCase
     {
         $path = 'support/'.Str::uuid().'.jpg';
         Storage::disk('feedback')->put($path, 'sanitized-test-bytes');
+
         return FeedbackAttachment::query()->create([
             'feedback_report_id' => $this->report()->id, 'disk' => 'feedback', 'path' => $path,
             'mime_type' => 'image/jpeg', 'size_bytes' => strlen('sanitized-test-bytes'),

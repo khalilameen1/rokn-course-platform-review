@@ -4,30 +4,33 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Support\NotificationAudience;
-use App\Models\StudentNotification;
-use App\Models\NotificationCampaign;
-use App\Models\NotificationCampaignRecipient;
-use App\Models\User;
 use App\Models\Course;
 use App\Models\FinancialEntitlementHold;
+use App\Models\NotificationCampaign;
+use App\Models\NotificationCampaignRecipient;
+use App\Models\StudentNotification;
+use App\Models\User;
 use App\Services\NotificationDeliveryPolicy;
 use App\Support\DurableJobDispatch;
+use App\Support\NotificationAudience;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 
-final class DeliverStudentNotificationChunk implements ShouldQueue, ShouldBeUnique
+final class DeliverStudentNotificationChunk implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 120;
+
     public int $uniqueFor = 900;
+
     public array $backoff = [15, 60, 180];
 
     /** @param array<int> $userIds */
@@ -41,7 +44,7 @@ final class DeliverStudentNotificationChunk implements ShouldQueue, ShouldBeUniq
 
     public function uniqueId(): string
     {
-        return hash('sha256', $this->deliveryKey . '|' . implode(',', $this->userIds));
+        return hash('sha256', $this->deliveryKey.'|'.implode(',', $this->userIds));
     }
 
     public function handle(): void
@@ -59,11 +62,10 @@ final class DeliverStudentNotificationChunk implements ShouldQueue, ShouldBeUniq
                 ->orderBy('user_id')
                 ->lockForUpdate()
                 ->get();
-            $pending = $recipients->reject(fn (NotificationCampaignRecipient $recipient): bool =>
-                in_array($recipient->status, [
-                    NotificationCampaignRecipient::STATUS_INBOX,
-                    NotificationCampaignRecipient::STATUS_SKIPPED,
-                ], true)
+            $pending = $recipients->reject(fn (NotificationCampaignRecipient $recipient): bool => in_array($recipient->status, [
+                NotificationCampaignRecipient::STATUS_INBOX,
+                NotificationCampaignRecipient::STATUS_SKIPPED,
+            ], true)
             );
             $resolvedUserIds = $recipients
                 ->where('status', NotificationCampaignRecipient::STATUS_INBOX)
@@ -265,7 +267,9 @@ final class DeliverStudentNotificationChunk implements ShouldQueue, ShouldBeUniq
                 ->whereKey($campaign->id)
                 ->lockForUpdate()
                 ->first();
-            if (!$freshCampaign) return;
+            if (! $freshCampaign) {
+                return;
+            }
             $counts = NotificationCampaignRecipient::query()
                 ->where('notification_campaign_id', $campaign->id)
                 ->selectRaw("SUM(CASE WHEN status = 'inbox' THEN 1 ELSE 0 END) as inbox_count")
@@ -293,7 +297,9 @@ final class DeliverStudentNotificationChunk implements ShouldQueue, ShouldBeUniq
     public function failed(\Throwable $exception): void
     {
         $campaign = NotificationCampaign::query()->where('delivery_key', $this->deliveryKey)->first();
-        if (!$campaign) return;
+        if (! $campaign) {
+            return;
+        }
 
         NotificationCampaignRecipient::query()
             ->where('notification_campaign_id', $campaign->id)
@@ -306,7 +312,7 @@ final class DeliverStudentNotificationChunk implements ShouldQueue, ShouldBeUniq
                 'updated_at' => now(),
             ]);
         NotificationCampaign::query()->whereKey($campaign->id)->update([
-            'failure_code' => 'chunk_' . substr(hash('sha256', $exception::class), 0, 12),
+            'failure_code' => 'chunk_'.substr(hash('sha256', $exception::class), 0, 12),
             'updated_at' => now(),
         ]);
     }

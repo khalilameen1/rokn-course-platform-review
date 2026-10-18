@@ -135,7 +135,7 @@ final class LearningRewardOwnershipTest extends ApiTestCase
         foreach ([0, -1, 101] as $requested) {
             self::assertNull($credits->credit(
                 user: $this->user, requested: $requested, category: 'course_completion_reward',
-                idempotencyKey: 'impossible-' . $requested, rollingCap: 200, deferOnCap: true
+                idempotencyKey: 'impossible-'.$requested, rollingCap: 200, deferOnCap: true
             ));
         }
         self::assertNull($credits->credit(
@@ -148,7 +148,7 @@ final class LearningRewardOwnershipTest extends ApiTestCase
     public function test_wallet_storage_failure_rolls_back_balance_and_allows_a_clean_retry(): void
     {
         $fail = true;
-        Event::listen('eloquent.creating: ' . WalletTransaction::class, static function () use (&$fail): void {
+        Event::listen('eloquent.creating: '.WalletTransaction::class, static function () use (&$fail): void {
             if ($fail) {
                 $fail = false;
                 throw new \RuntimeException('ledger unavailable');

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Support\NotificationAudience;
-use App\Support\NotificationCampaignIntent;
 use App\Http\Controllers\Admin\NotificationsController;
 use App\Jobs\DeliverStudentNotificationChunk;
 use App\Jobs\RecoverPendingCertificate;
@@ -16,20 +14,25 @@ use App\Models\Course;
 use App\Models\FinancialEntitlementHold;
 use App\Models\NotificationCampaign;
 use App\Models\NotificationCampaignRecipient;
+use App\Models\Project;
+use App\Models\ProjectSubmission;
 use App\Models\StudentNotification;
 use App\Models\User;
-use App\Services\CertificateService;
 use App\Services\CertificateEligibilityService;
-use App\Services\CoursePublishingService;
+use App\Services\CertificateService;
 use App\Services\CourseContentNotificationService;
+use App\Services\CoursePublishingService;
 use App\Services\NotificationCampaignService;
+use App\Services\StudentNotificationPresentationService;
+use App\Support\NotificationAudience;
+use App\Support\NotificationCampaignIntent;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -79,8 +82,8 @@ final class NotificationCertificateWorkflowTest extends TestCase
         $rows = [];
         for ($index = 1; $index <= 1001; $index++) {
             $rows[] = [
-                'name' => 'Student ' . $index,
-                'email' => 'student-' . $index . '@example.com',
+                'name' => 'Student '.$index,
+                'email' => 'student-'.$index.'@example.com',
                 'role' => 'client',
                 'active' => true,
                 'notifications_status' => true,
@@ -134,15 +137,14 @@ final class NotificationCertificateWorkflowTest extends TestCase
         self::assertSame(NotificationAudience::ENROLLED, $campaign->audience);
 
         $queued = collect(Queue::pushed(SendStudentNotification::class))
-            ->contains(fn (SendStudentNotification $job): bool =>
-                $this->jobProperty($job, 'deliveryKey') === $campaign->delivery_key
+            ->contains(fn (SendStudentNotification $job): bool => $this->jobProperty($job, 'deliveryKey') === $campaign->delivery_key
             );
         $campaign->refresh();
         self::assertTrue(
             $queued || $campaign->status === NotificationCampaign::STATUS_SCHEDULED,
             'Course notification must be queued now or durably scheduled after quiet hours.'
         );
-        if (!$queued) {
+        if (! $queued) {
             self::assertNotNull($campaign->scheduled_at);
         }
     }
@@ -182,15 +184,14 @@ final class NotificationCertificateWorkflowTest extends TestCase
         self::assertSame([], $campaign->exclude_user_ids);
 
         $queued = collect(Queue::pushed(SendStudentNotification::class))
-            ->contains(fn (SendStudentNotification $job): bool =>
-                $this->jobProperty($job, 'deliveryKey') === $campaign->delivery_key
+            ->contains(fn (SendStudentNotification $job): bool => $this->jobProperty($job, 'deliveryKey') === $campaign->delivery_key
             );
         $campaign->refresh();
         self::assertTrue(
             $queued || $campaign->status === NotificationCampaign::STATUS_SCHEDULED,
             'Admin notification must be queued now or durably scheduled after quiet hours.'
         );
-        if (!$queued) {
+        if (! $queued) {
             self::assertNotNull($campaign->scheduled_at);
         }
     }
@@ -286,8 +287,8 @@ final class NotificationCertificateWorkflowTest extends TestCase
             'SendStudentNotification job failed',
             Mockery::on(static function (array $context): bool {
                 return ($context['delivery_key'] ?? null) === 'account-notice:test'
-                    && !array_key_exists('user_ids', $context)
-                    && !array_key_exists('explicit_user_ids_count', $context);
+                    && ! array_key_exists('user_ids', $context)
+                    && ! array_key_exists('explicit_user_ids_count', $context);
             })
         )->once();
 
@@ -411,12 +412,12 @@ final class NotificationCertificateWorkflowTest extends TestCase
 
         Carbon::setTestNow('2026-08-07 10:00:00');
         (new SendUserPushNotification($notification->id))->handle(
-            app(\App\Services\StudentNotificationPresentationService::class)
+            app(StudentNotificationPresentationService::class)
         );
         $firstAttempt = $notification->fresh()->push_attempted_at;
         Carbon::setTestNow('2026-08-07 11:00:00');
         (new SendUserPushNotification($notification->id))->handle(
-            app(\App\Services\StudentNotificationPresentationService::class)
+            app(StudentNotificationPresentationService::class)
         );
 
         self::assertNotNull($firstAttempt);
@@ -502,7 +503,7 @@ final class NotificationCertificateWorkflowTest extends TestCase
 
     public function test_pending_certificate_is_recovered_to_configured_shared_disk(): void
     {
-        $this->certificateDiskRoot = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'rokn-certificate-' . uniqid('', true);
+        $this->certificateDiskRoot = sys_get_temp_dir().DIRECTORY_SEPARATOR.'rokn-certificate-'.uniqid('', true);
         File::ensureDirectoryExists($this->certificateDiskRoot);
         config()->set('filesystems.disks.certificate-test', [
             'driver' => 'local',
@@ -585,7 +586,7 @@ final class NotificationCertificateWorkflowTest extends TestCase
 
     public function test_new_certificate_snapshots_the_locked_course_revision_not_a_stale_model(): void
     {
-        $this->certificateDiskRoot = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'rokn-certificate-' . uniqid('', true);
+        $this->certificateDiskRoot = sys_get_temp_dir().DIRECTORY_SEPARATOR.'rokn-certificate-'.uniqid('', true);
         File::ensureDirectoryExists($this->certificateDiskRoot);
         config()->set('filesystems.disks.certificate-test', [
             'driver' => 'local',
@@ -609,7 +610,7 @@ final class NotificationCertificateWorkflowTest extends TestCase
             ->value('id');
         DB::table('course_sections')->where('id', $sectionId)->update([
             'section_type' => 'project',
-            'sectionable_type' => \App\Models\Project::class,
+            'sectionable_type' => Project::class,
             'sectionable_id' => $projectId,
         ]);
         DB::table('course_enrollments')->insert([
@@ -627,11 +628,11 @@ final class NotificationCertificateWorkflowTest extends TestCase
             'updated_at' => now(),
         ]);
         DB::table('project_submissions')->insert([
-            'public_id' => (string) \Illuminate\Support\Str::uuid(),
+            'public_id' => (string) Str::uuid(),
             'user_id' => $user->id,
             'project_id' => $projectId,
-            'idempotency_key' => 'certificate-project-' . $projectId,
-            'review_status' => \App\Models\ProjectSubmission::STATUS_PASSED,
+            'idempotency_key' => 'certificate-project-'.$projectId,
+            'review_status' => ProjectSubmission::STATUS_PASSED,
             'submitted_at' => now(),
             'reviewed_at' => now(),
             'created_at' => now(),

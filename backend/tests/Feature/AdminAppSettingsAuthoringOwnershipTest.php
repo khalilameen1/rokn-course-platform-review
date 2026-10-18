@@ -131,7 +131,7 @@ final class AdminAppSettingsAuthoringOwnershipTest extends TestCase
 
     private function version(): string
     {
-        return AppSettingsEditorVersion::for(Setting::query()->first() ?? new Setting(), DesignSetting::getDefaultSettings());
+        return AppSettingsEditorVersion::for(Setting::query()->first() ?? new Setting, DesignSetting::getDefaultSettings());
     }
 
     private function forbidController(): void

@@ -86,7 +86,7 @@ final class AdminEconomyDashboardContractTest extends TestCase
         $model = $this->source('app/Models/CoinEarningMethod.php');
         $list = $this->source('resources/views/admin/coin_earning_methods/index.blade.php');
 
-        self::assertStringContainsString('if (!$method->is_active)', $authoring);
+        self::assertStringContainsString('if (! $method->is_active)', $authoring);
         self::assertStringContainsString('$this->authoring->updateMethod(', $controller);
         self::assertStringContainsString('PublicAppSettingsService::class', $model);
         self::assertStringContainsString('$method->learnerTitleAr()', $list);

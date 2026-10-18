@@ -18,6 +18,7 @@ final class AdminEditorVersion
                 if ($value instanceof DateTimeInterface) {
                     return $value->format('Y-m-d\TH:i:s.uP');
                 }
+
                 return $value;
             },
             $fields

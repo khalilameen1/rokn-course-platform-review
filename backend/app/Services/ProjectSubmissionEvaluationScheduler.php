@@ -28,7 +28,7 @@ final class ProjectSubmissionEvaluationScheduler
                 ->whereKey($submission->user_id)
                 ->lockForUpdate()
                 ->first();
-            if (!$learner || !$learner->active) {
+            if (! $learner || ! $learner->active) {
                 return $submission->fresh();
             }
             $locked = ProjectSubmission::query()->lockForUpdate()->findOrFail($submission->id);
@@ -60,6 +60,7 @@ final class ProjectSubmissionEvaluationScheduler
                 'auto_pass_at' => now()->addSeconds(100),
             ])->save();
             $dispatch = true;
+
             return $locked;
         });
         if ($dispatch) {
@@ -70,6 +71,7 @@ final class ProjectSubmissionEvaluationScheduler
                 report($exception);
             }
         }
+
         return $result->fresh();
     }
 

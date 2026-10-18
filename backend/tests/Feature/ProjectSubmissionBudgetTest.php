@@ -54,7 +54,9 @@ final class ProjectSubmissionBudgetTest extends TestCase
         $project->load('section.course');
         $image = UploadedFile::fake()->image('work.jpg', 600, 600);
         $elapsed = 0.0;
-        $clock = static function () use (&$elapsed): float { return $elapsed; };
+        $clock = static function () use (&$elapsed): float {
+            return $elapsed;
+        };
         $expired = UploadBudget::start(16, $clock);
         $elapsed = 17.0;
 

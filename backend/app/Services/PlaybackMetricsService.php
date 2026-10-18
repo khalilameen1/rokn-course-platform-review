@@ -247,7 +247,7 @@ final class PlaybackMetricsService
 
     private function dimension(mixed $value, int $maxLength, string $fallback = 'unknown'): string
     {
-        if (!is_string($value) || trim($value) === '') {
+        if (! is_string($value) || trim($value) === '') {
             return $fallback;
         }
 

@@ -19,7 +19,7 @@ final class SecurityHeaders
         $response->headers->set('X-Permitted-Cross-Domain-Policies', 'none');
         // Controllers serving unlisted capability pages may deliberately set
         // no-referrer. Never weaken an explicit, stricter response policy.
-        if (!$response->headers->has('Referrer-Policy')) {
+        if (! $response->headers->has('Referrer-Policy')) {
             $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         }
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');

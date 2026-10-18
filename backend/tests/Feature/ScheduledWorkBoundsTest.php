@@ -91,8 +91,8 @@ final class ScheduledWorkBoundsTest extends TestCase
         $users = [];
         foreach (range(1, 8) as $index) {
             $users[$index] = User::query()->forceCreate([
-                'name' => 'Monitor ' . $index,
-                'email' => 'monitor-' . $index . '@rokn.test',
+                'name' => 'Monitor '.$index,
+                'email' => 'monitor-'.$index.'@rokn.test',
                 'role' => 'client',
                 'active' => true,
             ])->id;

@@ -12,9 +12,7 @@ use Illuminate\Http\Request;
 
 class AdminNotificationsController extends Controller
 {
-    public function __construct(private readonly AdminNotificationTemplateAuthoringService $authoring)
-    {
-    }
+    public function __construct(private readonly AdminNotificationTemplateAuthoringService $authoring) {}
 
     public function index()
     {

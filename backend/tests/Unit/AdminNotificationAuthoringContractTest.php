@@ -101,7 +101,7 @@ final class AdminNotificationAuthoringContractTest extends TestCase
         self::assertIsString($form);
         self::assertIsString($list);
         self::assertStringContainsString("\$systemKey === '' && \$surface !== 'announcement'", $request);
-        self::assertStringContainsString('$hasLink && !$hasArabicAction', $request);
+        self::assertStringContainsString('$hasLink && ! $hasArabicAction', $request);
         self::assertStringContainsString('name="surface" type="hidden" value="announcement"', $form);
         self::assertStringContainsString('$notification->public_image_url', $list);
     }

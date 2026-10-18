@@ -33,9 +33,11 @@ final class PublicDiskUrl
     public static function pathFrom(?string $value): ?string
     {
         $value = trim((string) $value);
-        if ($value === '') return null;
+        if ($value === '') {
+            return null;
+        }
 
-        if (preg_match('#^https?://#i', $value) !== 1 && !str_starts_with($value, '//')) {
+        if (preg_match('#^https?://#i', $value) !== 1 && ! str_starts_with($value, '//')) {
             return self::normalisedPath(self::urlPath($value));
         }
 
@@ -43,17 +45,27 @@ final class PublicDiskUrl
         $probeUrl = Storage::disk('public')->url($probe);
         $probeParts = self::urlParts($probeUrl);
         $valueParts = self::urlParts($value, (string) ($probeParts['scheme'] ?? 'https'));
-        if ($probeParts === null || $valueParts === null) return null;
-        if (!self::sameOrigin($probeParts, $valueParts)) return null;
+        if ($probeParts === null || $valueParts === null) {
+            return null;
+        }
+        if (! self::sameOrigin($probeParts, $valueParts)) {
+            return null;
+        }
 
         $probePath = self::decodedPath((string) ($probeParts['path'] ?? ''));
         $valuePath = self::decodedPath((string) ($valueParts['path'] ?? ''));
-        if ($probePath === null || $valuePath === null) return null;
+        if ($probePath === null || $valuePath === null) {
+            return null;
+        }
 
         $probeSuffix = '/'.$probe;
-        if (!str_ends_with($probePath, $probeSuffix)) return null;
+        if (! str_ends_with($probePath, $probeSuffix)) {
+            return null;
+        }
         $ownedPrefix = substr($probePath, 0, -strlen($probe));
-        if (!str_starts_with($valuePath, $ownedPrefix)) return null;
+        if (! str_starts_with($valuePath, $ownedPrefix)) {
+            return null;
+        }
 
         return self::normalisedDecodedPath(substr($valuePath, strlen($ownedPrefix)));
     }
@@ -67,8 +79,8 @@ final class PublicDiskUrl
         $parts = parse_url($url);
 
         return is_array($parts)
-            && !isset($parts['user'])
-            && !isset($parts['pass'])
+            && ! isset($parts['user'])
+            && ! isset($parts['pass'])
             && filled($parts['host'] ?? null)
                 ? $parts
                 : null;
@@ -79,7 +91,9 @@ final class PublicDiskUrl
     {
         $scheme = static fn (array $parts): string => strtolower((string) ($parts['scheme'] ?? ''));
         $port = static function (array $parts): int {
-            if (isset($parts['port'])) return (int) $parts['port'];
+            if (isset($parts['port'])) {
+                return (int) $parts['port'];
+            }
 
             return strtolower((string) ($parts['scheme'] ?? '')) === 'https' ? 443 : 80;
         };
@@ -98,7 +112,9 @@ final class PublicDiskUrl
 
     private static function decodedPath(string $value): ?string
     {
-        if (preg_match('/%(?![0-9a-f]{2})/i', $value)) return null;
+        if (preg_match('/%(?![0-9a-f]{2})/i', $value)) {
+            return null;
+        }
         $decoded = rawurldecode($value);
 
         return preg_match('/[\x00-\x1F\x7F]/', $decoded) ? null : $decoded;
@@ -107,7 +123,9 @@ final class PublicDiskUrl
     private static function normalisedPath(string $value): ?string
     {
         $decoded = self::decodedPath($value);
-        if ($decoded === null) return null;
+        if ($decoded === null) {
+            return null;
+        }
 
         return self::normalisedDecodedPath($decoded);
     }
@@ -119,9 +137,13 @@ final class PublicDiskUrl
             $path = substr($path, strlen('storage/'));
         }
 
-        if ($path === '' || preg_match('/^[A-Za-z]:\//', $path)) return null;
+        if ($path === '' || preg_match('/^[A-Za-z]:\//', $path)) {
+            return null;
+        }
         foreach (explode('/', $path) as $segment) {
-            if ($segment === '' || $segment === '.' || $segment === '..') return null;
+            if ($segment === '' || $segment === '.' || $segment === '..') {
+                return null;
+            }
         }
 
         return $path;

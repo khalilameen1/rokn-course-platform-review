@@ -38,7 +38,7 @@ final class AdminCourseSectionStateContractTest extends TestCase
 
         self::assertStringContainsString("'throttle:30,1'", $routes);
         self::assertStringContainsString(
-            "media:recover-pending --limit=200 --stale-minutes=2",
+            'media:recover-pending --limit=200 --stale-minutes=2',
             $kernel
         );
         self::assertStringContainsString("whereIn('status', ['unknown', 'processing'])", $recovery);
@@ -149,9 +149,9 @@ final class AdminCourseSectionStateContractTest extends TestCase
             self::assertStringContainsString('core.authoringFormData(', $formMutation);
         }
         self::assertStringContainsString("body.set('_method', method)", $core);
-        self::assertStringContainsString("if (feedback) showFeedback(feedback, message)", $core);
-        self::assertStringContainsString("else notify(message, true)", $core);
-        self::assertStringContainsString("sessionStorage.setItem(reconciliationMessageKey, message)", $core);
+        self::assertStringContainsString('if (feedback) showFeedback(feedback, message)', $core);
+        self::assertStringContainsString('else notify(message, true)', $core);
+        self::assertStringContainsString('sessionStorage.setItem(reconciliationMessageKey, message)', $core);
         self::assertStringContainsString('timeout: 30000', $details);
         self::assertStringNotContainsString('timeout: 45000', $details);
         self::assertStringNotContainsString('window.location.assign(course.studio_url)', $details);

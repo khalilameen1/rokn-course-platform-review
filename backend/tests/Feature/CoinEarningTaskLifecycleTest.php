@@ -48,7 +48,7 @@ final class CoinEarningTaskLifecycleTest extends TestCase
         $this->assertDatabaseCount('user_coin_task_attempts', 1);
         $this->assertDatabaseHas('student_notifications', [
             'user_id' => $user->id,
-            'delivery_key' => 'coins-claimed:' . $user->id . ':' . $method->id,
+            'delivery_key' => 'coins-claimed:'.$user->id.':'.$method->id,
             'notification_type' => 'coins_claimed',
         ]);
 
@@ -68,7 +68,7 @@ final class CoinEarningTaskLifecycleTest extends TestCase
         $this->assertDatabaseCount('user_coin_earnings', 1);
         $this->assertDatabaseCount('user_coin_task_attempts', 1);
         self::assertSame(1, StudentNotification::query()
-            ->where('delivery_key', 'coins-claimed:' . $user->id . ':' . $method->id)
+            ->where('delivery_key', 'coins-claimed:'.$user->id.':'.$method->id)
             ->count());
     }
 
@@ -148,7 +148,7 @@ final class CoinEarningTaskLifecycleTest extends TestCase
         $token = $user->generateApiToken();
         $method = $this->method('link_whatsapp', 43);
         $start = $this->withToken($token)
-            ->postJson('/api/v1/coin-earning-methods/' . $method->id . '/start')
+            ->postJson('/api/v1/coin-earning-methods/'.$method->id.'/start')
             ->assertOk();
         parse_str((string) parse_url((string) $start->json('data.action_url'), PHP_URL_QUERY), $query);
         $message = (string) ($query['text'] ?? '');
@@ -184,9 +184,9 @@ final class CoinEarningTaskLifecycleTest extends TestCase
         $this->assertDatabaseMissing('user_whatsapp_connections', ['user_id' => $user->id]);
 
         $this->postJson('/api/v1/whatsapp/webhook?token=reward-webhook-secret', [
-                'from' => '201012345678',
-                'message' => $message,
-            ])
+            'from' => '201012345678',
+            'message' => $message,
+        ])
             ->assertOk()
             ->assertJsonPath('matched', true)
             ->assertJsonPath('already_claimed', false)
@@ -194,7 +194,7 @@ final class CoinEarningTaskLifecycleTest extends TestCase
 
         $this->assertDatabaseHas('student_notifications', [
             'user_id' => $user->id,
-            'delivery_key' => 'whatsapp-linked:' . $user->id,
+            'delivery_key' => 'whatsapp-linked:'.$user->id,
             'notifiable_type' => CoinEarningMethod::class,
             'notifiable_id' => $method->id,
         ]);
@@ -215,7 +215,7 @@ final class CoinEarningTaskLifecycleTest extends TestCase
         $method->update(['requires_external_visit' => true]);
 
         $this->withToken($token)
-            ->postJson('/api/v1/coin-earning-methods/' . $method->id . '/start')
+            ->postJson('/api/v1/coin-earning-methods/'.$method->id.'/start')
             ->assertOk()
             ->assertJsonPath('data.task_state', 'started');
 
@@ -240,7 +240,7 @@ final class CoinEarningTaskLifecycleTest extends TestCase
         $wallet->credit($user->id, 100, 'test_reward', 'initial-reward');
 
         $start = $this->withToken($token)
-            ->postJson('/api/v1/coin-earning-methods/' . $method->id . '/start')->assertOk();
+            ->postJson('/api/v1/coin-earning-methods/'.$method->id.'/start')->assertOk();
         parse_str((string) parse_url((string) $start->json('data.action_url'), PHP_URL_QUERY), $query);
         $inbound = app(WhatsAppLinkService::class)->consumeInbound('201012345678', $query['text']);
         self::assertTrue($inbound['reward_deferred']);
@@ -254,7 +254,7 @@ final class CoinEarningTaskLifecycleTest extends TestCase
         // Returning to the task must not generate a new link or require a
         // second message for an ownership check already completed by inbound.
         $this->withToken($token)
-            ->postJson('/api/v1/coin-earning-methods/' . $method->id . '/start', ['supports_ready_claim' => true])
+            ->postJson('/api/v1/coin-earning-methods/'.$method->id.'/start', ['supports_ready_claim' => true])
             ->assertOk()
             ->assertJsonPath('data.task_state', 'ready_to_claim')
             ->assertJsonPath('data.action_url', null);
@@ -285,7 +285,7 @@ final class CoinEarningTaskLifecycleTest extends TestCase
 
         foreach ([true, false] as $deferred) {
             $start = $this->withToken($token)
-                ->postJson('/api/v1/coin-earning-methods/' . $method->id . '/start')
+                ->postJson('/api/v1/coin-earning-methods/'.$method->id.'/start')
                 ->assertOk()
                 ->assertJsonPath('data.task_state', 'started');
             parse_str((string) parse_url((string) $start->json('data.action_url'), PHP_URL_QUERY), $query);
@@ -298,7 +298,7 @@ final class CoinEarningTaskLifecycleTest extends TestCase
         }
 
         $this->withToken($token)
-            ->postJson('/api/v1/coin-earning-methods/' . $method->id . '/start')
+            ->postJson('/api/v1/coin-earning-methods/'.$method->id.'/start')
             ->assertOk()
             ->assertJsonPath('data.task_state', 'claimed');
         $this->assertDatabaseCount('user_coin_earnings', 1);
@@ -317,7 +317,7 @@ final class CoinEarningTaskLifecycleTest extends TestCase
             'role' => 'client',
             'active' => true,
             'social_provider' => 'google',
-            'social_id' => 'google:' . $email,
+            'social_id' => 'google:'.$email,
             'wallet_coins' => 0,
             'wallet_purchased_coins' => 0,
             'wallet_reward_coins' => 0,

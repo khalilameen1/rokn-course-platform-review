@@ -6,22 +6,23 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CourseCodeRequest;
 use App\Models\CourseCode;
 use App\Models\DesignSetting;
-use App\Services\AdminCourseCodeReadService;
 use App\Services\AdminAuthoringCreateIntentService;
-use Illuminate\Http\Request;
 use App\Services\AdminCourseCodeAuthoringService;
+use App\Services\AdminCourseCodeReadService;
 use App\Support\BusinessClock;
 use App\Support\CourseCodeEditorVersion;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CourseCodeController extends Controller
 {
     public function __construct(
         private readonly AdminCourseCodeAuthoringService $authoring,
         private readonly AdminCourseCodeReadService $reader
-    )
-    {
-    }
+    ) {}
 
     /**
      * Get design settings for the views
@@ -34,7 +35,7 @@ class CourseCodeController extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function index(Request $request)
     {
@@ -55,7 +56,7 @@ class CourseCodeController extends Controller
     /**
      * Show the form for creating a new resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function create()
     {
@@ -68,8 +69,7 @@ class CourseCodeController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \App\Http\Requests\Admin\CourseCodeRequest  $request
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function store(CourseCodeRequest $request, AdminAuthoringCreateIntentService $createIntents)
     {
@@ -100,7 +100,7 @@ class CourseCodeController extends Controller
 
             $message = $numberOfCodes > 1
                 ? "تم إنشاء {$numberOfCodes} أكواد بنجاح"
-                : "تم إنشاء الكود بنجاح";
+                : 'تم إنشاء الكود بنجاح';
 
             return redirect()->route('admin.course-codes.index')
                 ->with('success', $message);
@@ -114,6 +114,7 @@ class CourseCodeController extends Controller
             );
         } catch (\Exception $e) {
             report($e);
+
             return back()->withInput()->with('error', 'تعذر إنشاء الأكواد الآن');
         }
     }
@@ -121,8 +122,7 @@ class CourseCodeController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\CourseCode  $courseCode
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function show(CourseCode $courseCode)
     {
@@ -144,8 +144,7 @@ class CourseCodeController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\CourseCode  $courseCode
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function edit(CourseCode $courseCode)
     {
@@ -159,9 +158,7 @@ class CourseCodeController extends Controller
     /**
      * Update the specified resource in storage.
      *
-     * @param  \App\Http\Requests\Admin\CourseCodeRequest  $request
-     * @param  \App\Models\CourseCode  $courseCode
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function update(CourseCodeRequest $request, CourseCode $courseCode)
     {
@@ -190,6 +187,7 @@ class CourseCodeController extends Controller
             throw $e;
         } catch (\Exception $e) {
             report($e);
+
             return back()->withInput()->with('error', 'تعذر تحديث الكود الآن');
         }
     }
@@ -197,8 +195,7 @@ class CourseCodeController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\CourseCode  $courseCode
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function destroy(Request $request, CourseCode $courseCode)
     {
@@ -232,8 +229,7 @@ class CourseCodeController extends Controller
     /**
      * Bulk actions for course codes
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function bulkAction(Request $request)
     {
@@ -264,6 +260,7 @@ class CourseCodeController extends Controller
             throw $e;
         } catch (\Exception $e) {
             report($e);
+
             return back()->with('error', 'تعذر تنفيذ العملية الآن');
         }
     }
@@ -271,14 +268,13 @@ class CourseCodeController extends Controller
     /**
      * Get lessons for a specific course via AJAX
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function getLessons(Request $request)
     {
         $courseId = $request->input('course_id');
 
-        if (!$courseId) {
+        if (! $courseId) {
             return response()->json([]);
         }
 
@@ -288,6 +284,7 @@ class CourseCodeController extends Controller
             return response()->json($lessons);
         } catch (\Exception $e) {
             report($e);
+
             return response()->json(['error' => 'حدث خطأ أثناء تحميل الدروس'], 500);
         }
     }
@@ -295,22 +292,23 @@ class CourseCodeController extends Controller
     /**
      * Export codes to CSV
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Symfony\Component\HttpFoundation\StreamedResponse
+     * @return StreamedResponse
      */
     public function export(Request $request)
     {
         $filters = $this->filters($request);
-        $filename = 'course_codes_' . BusinessClock::now()->format('Y-m-d_H-i-s') . '.csv';
+        $filename = 'course_codes_'.BusinessClock::now()->format('Y-m-d_H-i-s').'.csv';
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
         $callback = function () use ($filters): void {
             $file = fopen('php://output', 'w');
             try {
                 fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-                foreach ($this->reader->csvRows($filters) as $row) fputcsv($file, $row);
+                foreach ($this->reader->csvRows($filters) as $row) {
+                    fputcsv($file, $row);
+                }
             } finally {
                 fclose($file);
             }
@@ -322,7 +320,6 @@ class CourseCodeController extends Controller
     /**
      * Export course codes to PDF for printing
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Symfony\Component\HttpFoundation\Response
      */
     public function exportToPdf(Request $request)
@@ -343,23 +340,23 @@ class CourseCodeController extends Controller
             }
 
             $designSettings = $this->getDesignSettings();
-            
+
             $data = [
                 'course_codes' => $courseCodes,
                 'platform_name' => $designSettings->name_ar ?? 'منصة تعليمية',
                 'export_date' => BusinessClock::now()->format('Y-m-d H:i:s'),
-                'total_codes' => $courseCodes->count()
+                'total_codes' => $courseCodes->count(),
             ];
 
             // Generate PDF using LaravelPdf package (mPDF wrapper)
             $pdf = \PDF::loadView('admin.course-codes.pdf', $data);
-            
+
             // Set PDF metadata dynamically from settings
             $pdf->setAuthor($designSettings->name_ar ?? 'منصة تعليمية');
             $pdf->setCreator($designSettings->name_ar ?? 'منصة تعليمية');
 
             // Generate filename
-            $filename = 'Course_Codes_' . BusinessClock::now()->format('Y-m-d_H-i-s') . '.pdf';
+            $filename = 'Course_Codes_'.BusinessClock::now()->format('Y-m-d_H-i-s').'.pdf';
 
             // Force download the PDF
             return $pdf->download($filename);
@@ -368,6 +365,7 @@ class CourseCodeController extends Controller
             throw $e;
         } catch (\Exception $e) {
             report($e);
+
             return back()->with('error', 'تعذر تصدير الأكواد الآن');
         }
     }
@@ -387,4 +385,3 @@ class CourseCodeController extends Controller
         ]);
     }
 }
-

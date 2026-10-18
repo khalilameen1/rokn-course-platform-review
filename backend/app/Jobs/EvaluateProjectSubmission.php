@@ -13,14 +13,18 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Str;
 
-final class EvaluateProjectSubmission implements ShouldQueue, ShouldBeUnique
+final class EvaluateProjectSubmission implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 80;
+
     public int $uniqueFor = 100;
+
     public bool $failOnTimeout = true;
+
     public string $executionId;
 
     public function __construct(public int $submissionId)
@@ -29,8 +33,15 @@ final class EvaluateProjectSubmission implements ShouldQueue, ShouldBeUnique
         $this->onQueue('ai-feedback');
     }
 
-    public function uniqueId(): string { return 'project-review:'.$this->submissionId; }
-    public function backoff(): array { return [15]; }
+    public function uniqueId(): string
+    {
+        return 'project-review:'.$this->submissionId;
+    }
+
+    public function backoff(): array
+    {
+        return [15];
+    }
 
     public function handle(ProjectSubmissionEvaluationService $evaluations): void
     {

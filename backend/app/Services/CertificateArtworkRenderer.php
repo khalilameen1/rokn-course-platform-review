@@ -21,13 +21,21 @@ use Endroid\QrCode\Writer\PngWriter;
 final class CertificateArtworkRenderer
 {
     public const VERSION = 'editorial_v2';
+
     public const SUPPORTED_VERSIONS = ['editorial_v1', self::VERSION];
+
     public const WIDTH = 2800;
+
     public const HEIGHT = 1900;
+
     private const SCALE = 2;
+
     private const INK = [16, 28, 45];
+
     private const SECONDARY = [102, 112, 123];
+
     private const PAPER = [252, 252, 250];
+
     // Issued snapshots retain their original geometry during artifact recovery.
     private const LAYOUTS = [
         'editorial_v1' => [
@@ -49,7 +57,7 @@ final class CertificateArtworkRenderer
     /** @param array{url:string,title:string,hint:string,type:string} $destination */
     public function render(Certificate $certificate, array $destination): string
     {
-        if (!in_array($certificate->certificate_design_version, self::SUPPORTED_VERSIONS, true)) {
+        if (! in_array($certificate->certificate_design_version, self::SUPPORTED_VERSIONS, true)) {
             throw new \InvalidArgumentException('Unsupported certificate artwork version.');
         }
         $layout = self::LAYOUTS[$certificate->certificate_design_version];
@@ -58,24 +66,28 @@ final class CertificateArtworkRenderer
                 throw new \InvalidArgumentException('Incomplete certificate artwork snapshot.');
             }
         }
-        if (!$certificate->generated_at instanceof \DateTimeInterface) {
+        if (! $certificate->generated_at instanceof \DateTimeInterface) {
             throw new \InvalidArgumentException('Missing certificate issue date.');
         }
         foreach (['type', 'url', 'title', 'hint'] as $field) {
-            if (!isset($destination[$field]) || !is_string($destination[$field]) || trim($destination[$field]) === '') {
+            if (! isset($destination[$field]) || ! is_string($destination[$field]) || trim($destination[$field]) === '') {
                 throw new \InvalidArgumentException('Incomplete certificate QR destination.');
             }
         }
-        if (!in_array($destination['type'], ['certificate', 'portfolio'], true)
+        if (! in_array($destination['type'], ['certificate', 'portfolio'], true)
             || filter_var($destination['url'], FILTER_VALIDATE_URL) === false) {
             throw new \InvalidArgumentException('Invalid certificate QR destination.');
         }
 
         $canvas = imagecreatetruecolor(self::WIDTH, self::HEIGHT);
-        if (!$canvas) throw new \RuntimeException('Unable to create certificate canvas.');
+        if (! $canvas) {
+            throw new \RuntimeException('Unable to create certificate canvas.');
+        }
         try {
             imagefill($canvas, 0, 0, imagecolorallocate($canvas, ...self::PAPER));
-            if ($layout['corner_artwork'] ?? false) (new CertificateCornerArtwork())->draw($canvas);
+            if ($layout['corner_artwork'] ?? false) {
+                (new CertificateCornerArtwork)->draw($canvas);
+            }
             $this->placeAsset($canvas, 'wordmark.png', 700, $layout['logo_y'], 132, 43.34, $layout['accent'] ?? self::INK);
 
             $lines = $this->statement($certificate, $layout);
@@ -114,7 +126,10 @@ final class CertificateArtworkRenderer
 
             ob_start();
             try {
-                if (!imagepng($canvas, null, 6)) throw new \RuntimeException('Unable to encode certificate.');
+                if (! imagepng($canvas, null, 6)) {
+                    throw new \RuntimeException('Unable to encode certificate.');
+                }
+
                 return (string) ob_get_contents();
             } finally {
                 ob_end_clean();
@@ -129,14 +144,15 @@ final class CertificateArtworkRenderer
     {
         $completion = UnicodeText::clean($certificate->certificate_completion_text, false);
         $lines = [
-            ['text'=>'تشهد رُكن أن','size'=>24,'weight'=>'Regular','color'=>self::SECONDARY,'height'=>37.2,'after'=>8],
-            ['text'=>(string) $certificate->holder_name,'size'=>66,'weight'=>'SemiBold','color'=>self::INK,'height'=>99.0,'after'=>14],
-            ['text'=>(string) $certificate->certificate_text,'size'=>23,'weight'=>'Regular','color'=>self::SECONDARY,'height'=>36.8,'after'=>2],
-            ['text'=>(string) $certificate->course_name,'size'=>$layout['course_size'],'weight'=>'SemiBold','color'=>$layout['accent'] ?? self::INK,'height'=>$layout['course_height'],'after'=>$completion === '' ? 0 : 8],
+            ['text' => 'تشهد رُكن أن', 'size' => 24, 'weight' => 'Regular', 'color' => self::SECONDARY, 'height' => 37.2, 'after' => 8],
+            ['text' => (string) $certificate->holder_name, 'size' => 66, 'weight' => 'SemiBold', 'color' => self::INK, 'height' => 99.0, 'after' => 14],
+            ['text' => (string) $certificate->certificate_text, 'size' => 23, 'weight' => 'Regular', 'color' => self::SECONDARY, 'height' => 36.8, 'after' => 2],
+            ['text' => (string) $certificate->course_name, 'size' => $layout['course_size'], 'weight' => 'SemiBold', 'color' => $layout['accent'] ?? self::INK, 'height' => $layout['course_height'], 'after' => $completion === '' ? 0 : 8],
         ];
         if ($completion !== '') {
-            $lines[] = ['text'=>$completion,'size'=>22,'weight'=>'Regular','color'=>self::SECONDARY,'height'=>35.2,'after'=>0];
+            $lines[] = ['text' => $completion, 'size' => 22, 'weight' => 'Regular', 'color' => self::SECONDARY, 'height' => 35.2, 'after' => 0];
         }
+
         return $lines;
     }
 
@@ -168,29 +184,37 @@ final class CertificateArtworkRenderer
     private function measure(string $text, int $size, string $weight): array
     {
         $box = imagettfbbox($size * self::SCALE * .75, 0, $this->font($weight), $text);
-        if ($box === false) throw new \RuntimeException('Unable to measure certificate text.');
-        $xs = [$box[0],$box[2],$box[4],$box[6]];
-        $ys = [$box[1],$box[3],$box[5],$box[7]];
-        return ['width'=>max($xs)-min($xs),'min_x'=>min($xs),'max_x'=>max($xs),'min_y'=>min($ys),'max_y'=>max($ys)];
+        if ($box === false) {
+            throw new \RuntimeException('Unable to measure certificate text.');
+        }
+        $xs = [$box[0], $box[2], $box[4], $box[6]];
+        $ys = [$box[1], $box[3], $box[5], $box[7]];
+
+        return ['width' => max($xs) - min($xs), 'min_x' => min($xs), 'max_x' => max($xs), 'min_y' => min($ys), 'max_y' => max($ys)];
     }
 
     private function font(string $weight): string
     {
-        $path = $this->asset('Cairo-' . $weight . '.ttf');
-        if (!is_file($path)) throw new \RuntimeException('Certificate font is unavailable.');
+        $path = $this->asset('Cairo-'.$weight.'.ttf');
+        if (! is_file($path)) {
+            throw new \RuntimeException('Certificate font is unavailable.');
+        }
+
         return $path;
     }
 
     private function asset(string $file): string
     {
-        return resource_path('certificates/editorial-v1/' . $file);
+        return resource_path('certificates/editorial-v1/'.$file);
     }
 
     private function shape(string $text): string
     {
         $text = UnicodeText::clean($text, false);
-        if (!preg_match('/\p{Arabic}/u', $text)) return $text;
-        $arabic = new Arabic();
+        if (! preg_match('/\p{Arabic}/u', $text)) {
+            return $text;
+        }
+        $arabic = new Arabic;
         $positions = $arabic->arIdentify($text);
         for ($i = count($positions) - 1; $i >= 1; $i -= 2) {
             $start = $positions[$i - 1];
@@ -198,6 +222,7 @@ final class CertificateArtworkRenderer
             $part = substr($text, $start, $length);
             $text = substr_replace($text, $arabic->utf8Glyphs($part, mb_strlen($part, 'UTF-8') + 1), $start, $length);
         }
+
         return $text;
     }
 
@@ -205,8 +230,8 @@ final class CertificateArtworkRenderer
     {
         $date = CarbonImmutable::instance($issuedAt)->locale('ar');
         $digits = static fn (string $value): string => strtr($value, [
-            '0'=>'٠','1'=>'١','2'=>'٢','3'=>'٣','4'=>'٤',
-            '5'=>'٥','6'=>'٦','7'=>'٧','8'=>'٨','9'=>'٩',
+            '0' => '٠', '1' => '١', '2' => '٢', '3' => '٣', '4' => '٤',
+            '5' => '٥', '6' => '٦', '7' => '٧', '8' => '٨', '9' => '٩',
         ]);
 
         // imagettftext paints left-to-right. Paint the RTL components from
@@ -220,7 +245,9 @@ final class CertificateArtworkRenderer
         float $width, float $height, ?array $tint = null): void
     {
         $asset = imagecreatefrompng($this->asset($file));
-        if (!$asset) throw new \RuntimeException('Certificate brand asset is unavailable.');
+        if (! $asset) {
+            throw new \RuntimeException('Certificate brand asset is unavailable.');
+        }
         try {
             if ($tint) {
                 $tinted = $this->solidAsset($asset, $tint);
@@ -239,7 +266,9 @@ final class CertificateArtworkRenderer
     private function solidAsset(\GdImage $source, array $color): \GdImage
     {
         $result = imagecreatetruecolor(imagesx($source), imagesy($source));
-        if (!$result) throw new \RuntimeException('Unable to tint certificate brand asset.');
+        if (! $result) {
+            throw new \RuntimeException('Unable to tint certificate brand asset.');
+        }
         imagealphablending($result, false);
         imagesavealpha($result, true);
         [$red, $green, $blue] = $color;
@@ -252,6 +281,7 @@ final class CertificateArtworkRenderer
             }
         }
         imagealphablending($result, true);
+
         return $result;
     }
 
@@ -259,8 +289,10 @@ final class CertificateArtworkRenderer
     {
         $code = new QrCode(data: $url, errorCorrectionLevel: ErrorCorrectionLevel::High,
             size: 184, margin: 16, foregroundColor: new Color(...self::INK), backgroundColor: new Color(...self::PAPER));
-        $qr = imagecreatefromstring((new PngWriter())->write($code)->getString());
-        if (!$qr) throw new \RuntimeException('Unable to draw certificate QR.');
+        $qr = imagecreatefromstring((new PngWriter)->write($code)->getString());
+        if (! $qr) {
+            throw new \RuntimeException('Unable to draw certificate QR.');
+        }
         try {
             imagecopy($canvas, $qr, $x * self::SCALE - (int) (imagesx($qr) / 2),
                 $y * self::SCALE - (int) (imagesy($qr) / 2), 0, 0, imagesx($qr), imagesy($qr));

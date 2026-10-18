@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\CourseRevisionLearnerReadService;
 use App\Traits\ResolvesLocalizedAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -27,7 +28,7 @@ class CourseModule extends Model
     public function getTitleAttribute()
     {
         // Check if we're accessing the raw attribute (to avoid infinite loop)
-        if (!array_key_exists('title_ar', $this->attributes) && !array_key_exists('title_en', $this->attributes)) {
+        if (! array_key_exists('title_ar', $this->attributes) && ! array_key_exists('title_en', $this->attributes)) {
             return $this->attributes['title'] ?? null;
         }
 
@@ -40,7 +41,7 @@ class CourseModule extends Model
     public function getDescriptionAttribute()
     {
         // Check if we're accessing the raw attribute (to avoid infinite loop)
-        if (!array_key_exists('description_ar', $this->attributes) && !array_key_exists('description_en', $this->attributes)) {
+        if (! array_key_exists('description_ar', $this->attributes) && ! array_key_exists('description_en', $this->attributes)) {
             return $this->attributes['description'] ?? null;
         }
 
@@ -88,6 +89,7 @@ class CourseModule extends Model
     public function getProjectAttribute()
     {
         $projectSection = $this->projectSection;
+
         return $projectSection ? $projectSection->project : null;
     }
 
@@ -98,11 +100,11 @@ class CourseModule extends Model
     {
         $project = $this->project;
 
-        if (!$project) {
+        if (! $project) {
             return true; // No project means module is passable
         }
 
-        return app(\App\Services\CourseRevisionLearnerReadService::class)
+        return app(CourseRevisionLearnerReadService::class)
             ->passedProjectIds($userId, [(int) $project->id])
             ->contains((int) $project->id);
     }
@@ -112,11 +114,11 @@ class CourseModule extends Model
     {
         $project = $this->project;
 
-        if (!$project) {
+        if (! $project) {
             return null;
         }
 
-        return app(\App\Services\CourseRevisionLearnerReadService::class)
+        return app(CourseRevisionLearnerReadService::class)
             ->projectSubmissions($userId, [(int) $project->id])
             ->get((int) $project->id);
     }

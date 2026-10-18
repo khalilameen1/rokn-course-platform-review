@@ -35,7 +35,7 @@ final class AdminBunnyCleanupReviewService
     }
 
     /**
-     * @param list<int|string> $ids Validated distinct candidate IDs.
+     * @param  list<int|string>  $ids  Validated distinct candidate IDs.
      * @return array{approved: int, skipped_active: int}
      */
     public function approveBatch(array $ids, int $reviewerId): array
@@ -67,7 +67,9 @@ final class AdminBunnyCleanupReviewService
             })
             ->where('lessons.bunny_video_id', $candidate->video_guid)
             ->exists();
-        if ($activeReference) return false;
+        if ($activeReference) {
+            return false;
+        }
 
         $candidate->forceFill([
             'reviewed_at' => now(),

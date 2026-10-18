@@ -20,8 +20,8 @@ use Illuminate\Database\Eloquent\Builder;
 final class NotificationRecipientSelector
 {
     /**
-     * @param list<int> $userIds
-     * @param list<int> $excludeUserIds
+     * @param  list<int>  $userIds
+     * @param  list<int>  $excludeUserIds
      * @return Builder<User>
      */
     public static function students(

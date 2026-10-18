@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\InternalSignal;
 use App\Models\CourseAuthoringRevision;
+use App\Models\InternalSignal;
 use App\Models\Project;
 use App\Models\RewardRule;
 use App\Support\DatabaseCapabilities;
@@ -16,8 +16,7 @@ final readonly class LearningAchievementSignalService
     public function __construct(
         private CurriculumCompletionService $curriculumCompletion,
         private InternalSignalService $signals
-    ) {
-    }
+    ) {}
 
     public function record(
         string $type,
@@ -28,7 +27,7 @@ final readonly class LearningAchievementSignalService
     ): InternalSignal {
         $type = trim($type);
         $identity = trim($identity);
-        if (!in_array($type, ['course.completed', 'project.passed.first_reward'], true)) {
+        if (! in_array($type, ['course.completed', 'project.passed.first_reward'], true)) {
             throw new \InvalidArgumentException('Unknown learning achievement.');
         }
         if ($identity === '') {
@@ -56,7 +55,7 @@ final readonly class LearningAchievementSignalService
             }
         }
 
-        $signalKey = hash('sha256', $type . '|' . $identity);
+        $signalKey = hash('sha256', $type.'|'.$identity);
         if (in_array($type, ['course.completed', 'project.passed.first_reward'], true)) {
             // The reward contract belongs to the accepted achievement, not to
             // whatever an admin edits the rule to before the durable signal is
@@ -75,11 +74,11 @@ final readonly class LearningAchievementSignalService
                 if (
                     $type === 'project.passed.first_reward'
                     && array_key_exists('course_id', $existingPayload)
-                    && !array_key_exists('course_id', $payload)
+                    && ! array_key_exists('course_id', $payload)
                 ) {
                     $payload['course_id'] = $existingPayload['course_id'];
                 }
-            } elseif (!array_key_exists('reward_contract', $payload)) {
+            } elseif (! array_key_exists('reward_contract', $payload)) {
                 $event = $type === 'course.completed'
                     ? 'course_completed'
                     : 'first_project_passed';
@@ -87,8 +86,8 @@ final readonly class LearningAchievementSignalService
             }
             if (
                 $type === 'project.passed.first_reward'
-                && !is_array($existingPayload)
-                && !isset($payload['course_id'])
+                && ! is_array($existingPayload)
+                && ! isset($payload['course_id'])
             ) {
                 $project = Project::query()->find((int) ($payload['project_id'] ?? 0));
                 $course = $project?->course;
@@ -112,7 +111,7 @@ final readonly class LearningAchievementSignalService
     private function rewardContract(string $event): array
     {
         $rule = RewardRule::activeFor($event);
-        if (!$rule) {
+        if (! $rule) {
             return [
                 'rule_id' => 0,
                 'coins_amount' => 0,

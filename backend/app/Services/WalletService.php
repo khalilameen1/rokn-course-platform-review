@@ -10,8 +10,9 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Support\DatabaseCapabilities;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -48,7 +49,7 @@ final readonly class WalletService
 
     public function coursePaidContribution(int $userId, int $courseId): int
     {
-        $key = $userId . ':' . $courseId;
+        $key = $userId.':'.$courseId;
 
         return max(0, (int) (
             $this->coursePaidContributionTotals([$userId], [$courseId])
@@ -62,8 +63,8 @@ final readonly class WalletService
      * remains lifetime/course-wide, but reversed package money must not let a
      * learner reopen an AI plan using only newly earned free coins.
      *
-     * @param list<int> $userIds
-     * @param list<int> $courseIds
+     * @param  list<int>  $userIds
+     * @param  list<int>  $courseIds
      * @return Collection<string,object>
      */
     public function coursePaidContributionTotals(array $userIds, array $courseIds): Collection
@@ -96,8 +97,7 @@ final readonly class WalletService
             ->groupBy('user_id', 'source_id')
             ->selectRaw('user_id, source_id, SUM(paid_amount) as paid_total')
             ->get()
-            ->keyBy(static fn ($row): string =>
-                ((int) $row->user_id) . ':' . ((int) $row->source_id)
+            ->keyBy(static fn ($row): string => ((int) $row->user_id).':'.((int) $row->source_id)
             );
     }
 
@@ -267,7 +267,7 @@ final readonly class WalletService
                 ->where('direction', WalletTransaction::DIRECTION_DEBIT)
                 ->lockForUpdate()
                 ->first();
-            if (!$lockedDebit || $amount > (int) $lockedDebit->amount) {
+            if (! $lockedDebit || $amount > (int) $lockedDebit->amount) {
                 throw new \InvalidArgumentException('Invalid wallet debit refund.');
             }
             $refundSource = $source ?? $lockedDebit;
@@ -284,6 +284,7 @@ final readonly class WalletService
                     $refundSource,
                     (string) $lockedDebit->public_id
                 );
+
                 return $existing;
             }
 
@@ -337,10 +338,10 @@ final readonly class WalletService
         if (
             $existing->direction !== WalletTransaction::DIRECTION_CREDIT
             || (int) $existing->amount !== $amount
-            || !hash_equals((string) $existing->category, $category)
+            || ! hash_equals((string) $existing->category, $category)
             || (string) $existing->source_type !== get_class($source)
             || (string) ($existing->source_id ?? '') !== (string) $source->getKey()
-            || !hash_equals(
+            || ! hash_equals(
                 (string) data_get($existing->metadata, 'refunded_transaction_id', ''),
                 $originalPublicId
             )
@@ -403,6 +404,7 @@ final readonly class WalletService
                 ->first();
             if ($existing) {
                 $this->assertIdempotentReplay($existing, $fingerprint, $amount, $direction, $category, $source);
+
                 return $existing;
             }
 
@@ -418,6 +420,7 @@ final readonly class WalletService
                 ->first();
             if ($existing) {
                 $this->assertIdempotentReplay($existing, $fingerprint, $amount, $direction, $category, $source);
+
                 return $existing;
             }
 
@@ -530,8 +533,8 @@ final readonly class WalletService
             && (string) ($existing->source_id ?? '') === (string) ($source?->getKey() ?? '');
 
         if (
-            ($storedFingerprint !== '' && !hash_equals($storedFingerprint, $fingerprint))
-            || ($storedFingerprint === '' && !$sameLegacyOperation)
+            ($storedFingerprint !== '' && ! hash_equals($storedFingerprint, $fingerprint))
+            || ($storedFingerprint === '' && ! $sameLegacyOperation)
         ) {
             throw new \UnexpectedValueException(
                 'Wallet idempotency key was reused for a different operation.'
@@ -564,7 +567,7 @@ final readonly class WalletService
 
     private function excludeInvalidatedCourseDebits(Builder $query): void
     {
-        if (!DatabaseCapabilities::hasColumns('orders', [
+        if (! DatabaseCapabilities::hasColumns('orders', [
             'wallet_transaction_id',
             'status',
             'financial_status',
@@ -619,8 +622,8 @@ final readonly class WalletService
                 $join->on('wallet_tail.user_id', '=', 'wallet_user.id')
                     ->whereRaw(
                         'wallet_tail.id = (SELECT MAX(wallet_latest.id)'
-                        . ' FROM wallet_transactions AS wallet_latest'
-                        . ' WHERE wallet_latest.user_id = wallet_user.id)'
+                        .' FROM wallet_transactions AS wallet_latest'
+                        .' WHERE wallet_latest.user_id = wallet_user.id)'
                     );
             })
             ->where('wallet_user.id', $user->getKey())
@@ -633,8 +636,8 @@ final readonly class WalletService
                 'wallet_tail.paid_balance_after as ledger_paid',
                 'wallet_tail.reward_balance_after as ledger_reward',
             ]);
-        if (!$snapshot) {
-            throw (new \Illuminate\Database\Eloquent\ModelNotFoundException())
+        if (! $snapshot) {
+            throw (new ModelNotFoundException)
                 ->setModel(User::class, [$user->getKey()]);
         }
 

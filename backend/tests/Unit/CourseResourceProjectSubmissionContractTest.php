@@ -54,7 +54,7 @@ final class CourseResourceProjectSubmissionContractTest extends TestCase
             $presenter
         );
         self::assertStringContainsString(
-            "\$effectiveFeedbackLevel = \$replyAvailable",
+            '$effectiveFeedbackLevel = $replyAvailable',
             $presenter
         );
         self::assertStringContainsString(
@@ -62,7 +62,7 @@ final class CourseResourceProjectSubmissionContractTest extends TestCase
             $presenter
         );
         self::assertStringContainsString(
-            "\$replyContract = \$this->feedbackThreads->activeReplyContract(\$thread)",
+            '$replyContract = $this->feedbackThreads->activeReplyContract($thread)',
             $presenter
         );
     }

@@ -8,6 +8,7 @@ use App\Models\Certificate;
 use App\Services\CertificatePdfService;
 use App\Support\DownloadFilename;
 use App\Support\RoknPublicUrl;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -27,7 +28,7 @@ final class PublicCertificateController extends Controller
             404
         );
 
-        $artifactReady = !$revoked && $certificate->hasStoredArtifact();
+        $artifactReady = ! $revoked && $certificate->hasStoredArtifact();
         $verification = [
             'holder_name' => (string) $certificate->holder_name,
             'course_name' => (string) $certificate->course_name,
@@ -78,7 +79,7 @@ final class PublicCertificateController extends Controller
             ? $extension
             : 'png';
         $name = DownloadFilename::safe(
-            'شهادة رُكن ' . (string) $certificate->holder_name,
+            'شهادة رُكن '.(string) $certificate->holder_name,
             'rokn-certificate',
             $extension
         );
@@ -102,7 +103,7 @@ final class PublicCertificateController extends Controller
     public function download(
         string $publicId,
         CertificatePdfService $pdf
-    ): \Illuminate\Http\Response {
+    ): Response {
         $certificate = Certificate::query()
             ->where('public_id', $publicId)
             ->where('status', 'active')

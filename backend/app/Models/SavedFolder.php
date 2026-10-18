@@ -43,6 +43,6 @@ class SavedFolder extends Model
     public function lessons()
     {
         return $this->belongsToMany(Lesson::class, 'saved_folder_lessons')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 }

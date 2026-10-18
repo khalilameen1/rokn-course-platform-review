@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\TestCase;
 use Rokn\Tooling\RepositorySecretScanner;
 
 require_once dirname(__DIR__, 2).'/scripts/RepositorySecretScanner.php';
@@ -34,7 +34,7 @@ final class RepositorySecretScannerTest extends TestCase
         $privateKey = '-----BEGIN'.' PRIVATE KEY-----'.PHP_EOL.'not-a-real-key'.PHP_EOL.'-----END'.' PRIVATE KEY-----';
         file_put_contents($this->directory.DIRECTORY_SEPARATOR.'credentials.txt', $privateKey);
 
-        $issues = (new RepositorySecretScanner())->scanFiles($this->directory, ['credentials.txt']);
+        $issues = (new RepositorySecretScanner)->scanFiles($this->directory, ['credentials.txt']);
 
         self::assertSame([
             ['path' => 'credentials.txt', 'rule' => 'private_key_material'],
@@ -44,10 +44,10 @@ final class RepositorySecretScannerTest extends TestCase
 
     public function test_it_scans_large_files_and_mixed_binary_content(): void
     {
-        $contents = "DB_"."PASSWORD=ordinaryProductionPassword123!\n".str_repeat("\0", 2_100_000);
+        $contents = 'DB_'."PASSWORD=ordinaryProductionPassword123!\n".str_repeat("\0", 2_100_000);
         file_put_contents($this->directory.DIRECTORY_SEPARATOR.'large-config.bin', $contents);
 
-        $issues = (new RepositorySecretScanner())->scanFiles($this->directory, ['large-config.bin']);
+        $issues = (new RepositorySecretScanner)->scanFiles($this->directory, ['large-config.bin']);
 
         self::assertSame([
             ['path' => 'large-config.bin', 'rule' => 'non_placeholder_secret_assignment'],
@@ -71,16 +71,16 @@ final class RepositorySecretScannerTest extends TestCase
             'aws_access_key',
             'github_access_token',
             'non_placeholder_secret_assignment',
-        ], (new RepositorySecretScanner())->scanContents($contents));
+        ], (new RepositorySecretScanner)->scanContents($contents));
     }
 
     public function test_it_covers_shell_source_code_and_compose_assignments(): void
     {
-        $scanner = new RepositorySecretScanner();
+        $scanner = new RepositorySecretScanner;
         $assignments = [
             'export DB_'.'PASSWORD=ordinaryProductionPassword123!',
             '- DB_'.'PASSWORD=ordinaryProductionPassword123!',
-            "const DB_"."PASSWORD = 'ordinaryProductionPassword123!';",
+            'const DB_'."PASSWORD = 'ordinaryProductionPassword123!';",
             'env DB_'.'PASSWORD=ordinaryProductionPassword123! command',
         ];
 
@@ -96,9 +96,9 @@ final class RepositorySecretScannerTest extends TestCase
 
     public function test_it_rejects_sensitive_paths_and_real_assignments(): void
     {
-        file_put_contents($this->directory.DIRECTORY_SEPARATOR.'.env_copy', "DB_"."PASSWORD=latestProductionPassword123!\n");
+        file_put_contents($this->directory.DIRECTORY_SEPARATOR.'.env_copy', 'DB_'."PASSWORD=latestProductionPassword123!\n");
 
-        $issues = (new RepositorySecretScanner())->scanFiles($this->directory, ['.env_copy']);
+        $issues = (new RepositorySecretScanner)->scanFiles($this->directory, ['.env_copy']);
 
         self::assertSame([
             ['path' => '.env_copy', 'rule' => 'environment_file'],
@@ -108,9 +108,9 @@ final class RepositorySecretScannerTest extends TestCase
 
     public function test_it_does_not_treat_root_as_a_placeholder_password(): void
     {
-        file_put_contents($this->directory.DIRECTORY_SEPARATOR.'.env.root', "DB_"."PASSWORD=root\n");
+        file_put_contents($this->directory.DIRECTORY_SEPARATOR.'.env.root', 'DB_'."PASSWORD=root\n");
 
-        $issues = (new RepositorySecretScanner())->scanFiles($this->directory, ['.env.root']);
+        $issues = (new RepositorySecretScanner)->scanFiles($this->directory, ['.env.root']);
 
         self::assertSame([
             ['path' => '.env.root', 'rule' => 'environment_file'],
@@ -122,17 +122,17 @@ final class RepositorySecretScannerTest extends TestCase
     {
         file_put_contents(
             $this->directory.DIRECTORY_SEPARATOR.'.env.production.example',
-            "APP_"."KEY=\nDB_"."PASSWORD=replace-me\nMAIL_"."PASSWORD=ci-only-not-a-secret\n"
+            'APP_'."KEY=\nDB_"."PASSWORD=replace-me\nMAIL_"."PASSWORD=ci-only-not-a-secret\n"
         );
 
-        $issues = (new RepositorySecretScanner())->scanFiles($this->directory, ['.env.production.example']);
+        $issues = (new RepositorySecretScanner)->scanFiles($this->directory, ['.env.production.example']);
 
         self::assertSame([], $issues);
     }
 
     public function test_only_exact_reviewed_secret_references_are_allowed(): void
     {
-        $scanner = new RepositorySecretScanner();
+        $scanner = new RepositorySecretScanner;
         $accepted = implode("\n", [
             'APP_'.'KEY=${{ secrets.APP_KEY }}',
             'DB_'.'PASSWORD=${DB_PASSWORD}',
@@ -159,7 +159,7 @@ final class RepositorySecretScannerTest extends TestCase
         $contents = (string) file_get_contents($root.'/.env.example')
             ."\n".(string) file_get_contents($root.'/.env.production.example')
             ."\n".(string) file_get_contents(dirname($root).'/.github/workflows/backend-ci.yml');
-        $scanner = new RepositorySecretScanner();
+        $scanner = new RepositorySecretScanner;
 
         self::assertSame([], $scanner->findUncoveredSecretNames($contents));
         self::assertSame(
@@ -170,7 +170,7 @@ final class RepositorySecretScannerTest extends TestCase
 
     public function test_historical_sensitive_paths_are_detected_without_reading_their_values(): void
     {
-        $issues = (new RepositorySecretScanner())->scanPathNames([
+        $issues = (new RepositorySecretScanner)->scanPathNames([
             'app/Http/Resources/.env_copy',
             'info.txt',
             'docs/architecture.md',
@@ -187,7 +187,7 @@ final class RepositorySecretScannerTest extends TestCase
         self::assertSame([
             ['path' => 'secrets/Rokn.mobileprovision', 'rule' => 'private_key_file'],
             ['path' => 'secrets/release-signing.jks', 'rule' => 'private_key_file'],
-        ], (new RepositorySecretScanner())->scanPathNames([
+        ], (new RepositorySecretScanner)->scanPathNames([
             'secrets/release-signing.jks',
             'secrets/Rokn.mobileprovision',
         ]));
@@ -195,7 +195,7 @@ final class RepositorySecretScannerTest extends TestCase
 
     public function test_history_content_patterns_cover_provider_tokens_and_private_keys(): void
     {
-        $patterns = (new RepositorySecretScanner())->historyContentPatterns();
+        $patterns = (new RepositorySecretScanner)->historyContentPatterns();
 
         self::assertSame([
             'private_key_material',
@@ -217,7 +217,7 @@ final class RepositorySecretScannerTest extends TestCase
         $this->runCommand(['git', 'config', 'user.name', 'Rokn Security Test'], $this->directory);
         file_put_contents(
             $this->directory.DIRECTORY_SEPARATOR.'old-config.txt',
-            "export DB_"."PASSWORD=ordinaryProductionPassword123!\n"
+            'export DB_'."PASSWORD=ordinaryProductionPassword123!\n"
         );
         $this->runCommand(['git', 'add', 'old-config.txt'], $this->directory);
         $this->runCommand(['git', 'commit', '--quiet', '-m', 'historical fixture'], $this->directory);
@@ -249,7 +249,7 @@ final class RepositorySecretScannerTest extends TestCase
         self::assertTrue(mkdir($backend, 0700, true));
         file_put_contents(
             $backend.DIRECTORY_SEPARATOR.'old-config.txt',
-            "export DB_"."PASSWORD=ordinaryProductionPassword123!\n"
+            'export DB_'."PASSWORD=ordinaryProductionPassword123!\n"
         );
         $this->runCommand(['git', 'add', 'backend/old-config.txt'], $this->directory);
         $this->runCommand(['git', 'commit', '--quiet', '-m', 'nested historical fixture'], $this->directory);
@@ -312,7 +312,7 @@ final class RepositorySecretScannerTest extends TestCase
 
     public function test_cloud_apple_signin_key_is_classified_as_secret_not_public_config(): void
     {
-        $scanner = new RepositorySecretScanner();
+        $scanner = new RepositorySecretScanner;
         self::assertSame(
             ['non_placeholder_secret_assignment'],
             $scanner->scanContents('APPLE_PRIVATE_'.'KEY_BASE64=ordinaryProductionPassword123!')
@@ -341,7 +341,7 @@ final class RepositorySecretScannerTest extends TestCase
             'changed fixture password is rejected' => [$path, str_replace('fixture-only', 'ordinaryProductionPassword123!', $plain), false, false, 1, $historyIssue],
             'changed fixture host is rejected' => [$path, str_replace('url-host.invalid', 'production.invalid', $plain), false, false, 1, $historyIssue],
             'extended fixture URL is not the reviewed literal' => [$path, substr($plain, 0, -1)."/other'", false, false, 1, $historyIssue],
-            'other secret rules remain active at reviewed path' => [$path, $reviewed."\nDB_"."PASSWORD=ordinaryProductionPassword123!", false, false, 1, 'history:'.$path.' [non_placeholder_secret_assignment]'],
+            'other secret rules remain active at reviewed path' => [$path, $reviewed."\nDB_".'PASSWORD=ordinaryProductionPassword123!', false, false, 1, 'history:'.$path.' [non_placeholder_secret_assignment]'],
             'existing single private key fixture is preserved' => ['tests/Feature/ProductionPreflightTest.php', '-----BEGIN'.' PRIVATE KEY-----\\nfixture\\n-----END'.' PRIVATE KEY-----', false, true, 0, 'Repository secret scan passed'],
         ];
     }

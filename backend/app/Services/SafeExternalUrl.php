@@ -8,7 +8,7 @@ final class SafeExternalUrl
 {
     public static function sanitize(mixed $value): ?string
     {
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             return null;
         }
 
@@ -19,7 +19,7 @@ final class SafeExternalUrl
 
         $parts = parse_url($url);
         if (
-            !is_array($parts)
+            ! is_array($parts)
             || strtolower((string) ($parts['scheme'] ?? '')) !== 'https'
             || trim((string) ($parts['host'] ?? '')) === ''
             || isset($parts['user'])

@@ -28,12 +28,13 @@ final class ArabicSearchNormalizer
             '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9',
         ]);
         $value = preg_replace('/[^\p{Arabic}\p{L}\p{N}]+/u', ' ', $value) ?? $value;
+
         return trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
     }
 
     public function courseTitle(?string $arabic, ?string $english): string
     {
-        return $this->normalize(trim((string) $arabic . ' ' . (string) $english));
+        return $this->normalize(trim((string) $arabic.' '.(string) $english));
     }
 
     public function courseTerms(
@@ -76,7 +77,7 @@ final class ArabicSearchNormalizer
             $next = [];
             foreach ($variants as $prefix) {
                 foreach ($alternatives[$character] ?? [$character] as $alternative) {
-                    $next[] = $prefix . $alternative;
+                    $next[] = $prefix.$alternative;
                     if (count($next) >= $limit) {
                         break 2;
                     }

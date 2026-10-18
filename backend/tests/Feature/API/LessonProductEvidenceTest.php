@@ -18,6 +18,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 
 /** Authoritative evidence and event writer are real; no provider calls. */
 final class LessonProductEvidenceTest extends ApiTestCase
@@ -178,6 +179,7 @@ final class LessonProductEvidenceTest extends ApiTestCase
             'sectionable_type' => Lesson::class, 'sectionable_id' => 10, 'section_type' => 'lesson']);
         DB::table('lesson_media_states')->insert(['lesson_id' => 10, 'provider' => 'bunny',
             'status' => 'ready', 'duration_seconds' => 25, 'created_at' => now(), 'updated_at' => now()]);
+
         return Lesson::with('courseSection', 'mediaState')->findOrFail(10);
     }
 
@@ -188,7 +190,7 @@ final class LessonProductEvidenceTest extends ApiTestCase
             'last_sequence' => 0, 'last_position_seconds' => 0, 'source_protocol' => 'hls']);
     }
 
-    private function sample(PlaybackSession $session, int $sequence, int $position): \Illuminate\Testing\TestResponse
+    private function sample(PlaybackSession $session, int $sequence, int $position): TestResponse
     {
         return $this->postJson('/api/v1/user/watch-history', ['lesson_id' => 10,
             'playback_session_id' => $session->id, 'sequence' => $sequence,

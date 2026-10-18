@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\ApplyAPILocale;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
@@ -92,7 +93,7 @@ final class ApiEnvelopeConsistencyTest extends TestCase
             'success' => true,
             'message' => 'تم',
             'data' => null,
-        ]))->middleware(\App\Http\Middleware\ApplyAPILocale::class);
+        ]))->middleware(ApplyAPILocale::class);
 
         $this->getJson('/api/v1/_contract/manual-success')
             ->assertOk()
@@ -108,7 +109,7 @@ final class ApiEnvelopeConsistencyTest extends TestCase
             'message' => 'تم',
             'data' => ['revision' => 'fixed'],
         ])->withHeaders(['ETag' => '"fixed"']))
-            ->middleware(\App\Http\Middleware\ApplyAPILocale::class);
+            ->middleware(ApplyAPILocale::class);
 
         $this->getJson('/api/v1/_contract/cached-success')
             ->assertOk()

@@ -112,7 +112,7 @@ final class StoreBillingRecoveryMigrationResumeTest extends TestCase
             static fn (object $row): array => (array) $row
         )->all());
 
-        if (!$accountsExist) {
+        if (! $accountsExist) {
             DB::table('store_billing_accounts')->insert($binding);
         }
         try {

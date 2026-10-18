@@ -56,7 +56,7 @@ final class StudentNotificationPresentationServiceTest extends TestCase
 
     public function test_course_fallback_image_is_part_of_the_delivery_presentation(): void
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'id' => 18,
             'image' => 'https://cdn.example/course-18.webp',
@@ -104,7 +104,7 @@ final class StudentNotificationPresentationServiceTest extends TestCase
 
     public function test_student_role_and_hidden_course_targeting_have_one_normalized_contract(): void
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'role' => ' Client ',
             'active' => true,

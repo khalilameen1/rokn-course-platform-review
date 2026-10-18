@@ -20,8 +20,7 @@ trait HasApiTokens
         ?string $verifiedSocialProvider = null,
         ?string $verifiedSocialProviderUserId = null,
         array $session = []
-    ): string
-    {
+    ): string {
         $verifiedSocialProvider = strtolower(trim((string) $verifiedSocialProvider));
         $verifiedSocialProviderUserId = trim((string) $verifiedSocialProviderUserId);
         if ($verifiedSocialProvider === '' || $verifiedSocialProviderUserId === '') {
@@ -83,6 +82,7 @@ trait HasApiTokens
     private function sessionDeviceId(array $session): ?string
     {
         $deviceId = trim((string) ($session['device_id'] ?? ''));
+
         return Str::isUuid($deviceId) ? $deviceId : null;
     }
 

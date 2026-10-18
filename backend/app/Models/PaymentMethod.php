@@ -14,6 +14,7 @@ class PaymentMethod extends Model
      * Default payment method names
      */
     const DEFAULT_VODAFONE_CASH = 'فودافون كاش';
+
     const DEFAULT_INSTAPAY = 'انستاباي';
 
     /**
@@ -54,7 +55,6 @@ class PaymentMethod extends Model
             ->whereRaw("TRIM(account_details) <> ''")
             ->where('account_details', '<>', self::DEFAULT_ACCOUNT_DETAILS);
     }
-
 
     /**
      * Scope a query to only include default payment methods.
@@ -119,7 +119,7 @@ class PaymentMethod extends Model
                 ->where('is_default', true)
                 ->exists();
 
-            if (!$exists) {
+            if (! $exists) {
                 self::create($methodData);
             }
         }

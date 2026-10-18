@@ -12,10 +12,13 @@ use App\Models\CoursePdf;
 use App\Models\CourseSection;
 use App\Models\Lesson;
 use App\Models\LessonMediaState;
+use App\Models\Project;
+use App\Models\ProjectSubmission;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\CourseSectionAccessService;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -193,7 +196,7 @@ final class CourseContentSecurityTest extends TestCase
             'bunny_enabled' => true,
         ]);
 
-        $user = new User();
+        $user = new User;
         $user->forceFill(['id' => 42, 'active' => true]);
         $user->exists = true;
 
@@ -205,7 +208,7 @@ final class CourseContentSecurityTest extends TestCase
             'access_granted_at' => now(),
         ]);
 
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'id' => 77,
             'name_ar' => 'اختبار حماية المحتوى',
@@ -223,7 +226,7 @@ final class CourseContentSecurityTest extends TestCase
         $course->setRelation('ratings', collect());
         $course->setRelation('coursePath', null);
         $course->setRelation('photo', null);
-        $pdf = new CoursePdf();
+        $pdf = new CoursePdf;
         $pdf->forceFill([
             'id' => 301,
             'course_id' => 77,
@@ -245,14 +248,14 @@ final class CourseContentSecurityTest extends TestCase
         $first = $this->section(101, 1, 201, $openLesson, 'الخطوة الأولى');
         $locked = $this->section(102, 2, 202, $lockedLesson, 'عنوان الخطوة المقفولة');
         $preview = $this->section(103, 3, 203, $previewLesson, 'معاينة مجانية');
-        $projectGate = new CourseSection();
+        $projectGate = new CourseSection;
         $projectGate->forceFill([
             'id' => 104,
             'course_id' => 77,
             'module_id' => 201,
             'title_ar' => 'مشروع العبور',
             'section_type' => 'project',
-            'sectionable_type' => \App\Models\Project::class,
+            'sectionable_type' => Project::class,
             'sectionable_id' => 401,
             'order' => 2,
         ]);
@@ -264,7 +267,7 @@ final class CourseContentSecurityTest extends TestCase
         $lockedModule = $this->module(202, 2, $locked);
         $previewModule = $this->module(203, 3, $preview);
         foreach ([$openModule, $lockedModule, $previewModule] as $module) {
-            \Illuminate\Support\Facades\DB::table('course_modules')->insert([
+            DB::table('course_modules')->insert([
                 'id' => $module->id,
                 'course_id' => 77,
                 'order' => $module->order,
@@ -322,25 +325,25 @@ final class CourseContentSecurityTest extends TestCase
         // This legacy setting used to turn every reel into a sequential gate.
         // The product contract now keeps ordinary reels freely scrollable and
         // reserves progression locks for authored projects.
-        \Illuminate\Support\Facades\DB::table('settings')->insert([
+        DB::table('settings')->insert([
             'enforce_course_section_order' => true,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        \Illuminate\Support\Facades\DB::table('course_modules')->insert([
+        DB::table('course_modules')->insert([
             ['id' => 201, 'course_id' => 77, 'order' => 1, 'created_at' => now(), 'updated_at' => now()],
             ['id' => 202, 'course_id' => 77, 'order' => 2, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         $first = $this->section(101, 1, 201, $this->lesson(11, false, 'first'), 'الأول');
         $nextReel = $this->section(102, 2, 201, $this->lesson(12, false, 'next'), 'التالي');
-        $project = new CourseSection();
+        $project = new CourseSection;
         $project->forceFill([
             'id' => 103,
             'course_id' => 77,
             'module_id' => 201,
             'section_type' => 'project',
-            'sectionable_type' => \App\Models\Project::class,
+            'sectionable_type' => Project::class,
             'sectionable_id' => 401,
             'order' => 3,
         ]);
@@ -361,7 +364,7 @@ final class CourseContentSecurityTest extends TestCase
 
     public function test_every_project_in_previous_module_must_pass_before_next_module(): void
     {
-        \Illuminate\Support\Facades\DB::table('course_modules')->insert([
+        DB::table('course_modules')->insert([
             [
                 'id' => 301,
                 'course_id' => 77,
@@ -377,23 +380,23 @@ final class CourseContentSecurityTest extends TestCase
                 'updated_at' => now(),
             ],
         ]);
-        $firstProject = new CourseSection();
+        $firstProject = new CourseSection;
         $firstProject->forceFill([
             'id' => 201,
             'course_id' => 77,
             'module_id' => 301,
             'section_type' => 'project',
-            'sectionable_type' => \App\Models\Project::class,
+            'sectionable_type' => Project::class,
             'sectionable_id' => 401,
             'order' => 1,
         ]);
-        $secondProject = new CourseSection();
+        $secondProject = new CourseSection;
         $secondProject->forceFill([
             'id' => 202,
             'course_id' => 77,
             'module_id' => 301,
             'section_type' => 'project',
-            'sectionable_type' => \App\Models\Project::class,
+            'sectionable_type' => Project::class,
             'sectionable_id' => 402,
             'order' => 2,
         ]);
@@ -404,10 +407,10 @@ final class CourseContentSecurityTest extends TestCase
             $this->lesson(21, false, 'next-module'),
             'الوحدة التالية'
         );
-        \Illuminate\Support\Facades\DB::table('project_submissions')->insert([
+        DB::table('project_submissions')->insert([
             'user_id' => 42,
             'project_id' => 401,
-            'review_status' => \App\Models\ProjectSubmission::STATUS_PASSED,
+            'review_status' => ProjectSubmission::STATUS_PASSED,
             'submitted_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),
@@ -425,7 +428,7 @@ final class CourseContentSecurityTest extends TestCase
 
     public function test_unpassed_crossing_project_locks_every_later_reel(): void
     {
-        \Illuminate\Support\Facades\DB::table('course_modules')->insert([
+        DB::table('course_modules')->insert([
             ['id' => 401, 'course_id' => 77, 'order' => 1, 'created_at' => now(), 'updated_at' => now()],
             ['id' => 402, 'course_id' => 77, 'order' => 2, 'created_at' => now(), 'updated_at' => now()],
             ['id' => 403, 'course_id' => 77, 'order' => 3, 'created_at' => now(), 'updated_at' => now()],
@@ -438,13 +441,13 @@ final class CourseContentSecurityTest extends TestCase
             $this->lesson(31, false, 'unordered-first'),
             'درس غير مكتمل'
         );
-        $project = new CourseSection();
+        $project = new CourseSection;
         $project->forceFill([
             'id' => 302,
             'course_id' => 77,
             'module_id' => 401,
             'section_type' => 'project',
-            'sectionable_type' => \App\Models\Project::class,
+            'sectionable_type' => Project::class,
             'sectionable_id' => 501,
             'order' => 2,
         ]);
@@ -493,10 +496,10 @@ final class CourseContentSecurityTest extends TestCase
         self::assertSame('module_project_not_passed', $states[305]['lock_reason']);
         self::assertFalse($states[302]['is_completed']);
 
-        \Illuminate\Support\Facades\DB::table('project_submissions')->insert([
+        DB::table('project_submissions')->insert([
             'user_id' => 42,
             'project_id' => 501,
-            'review_status' => \App\Models\ProjectSubmission::STATUS_PASSED,
+            'review_status' => ProjectSubmission::STATUS_PASSED,
             'submitted_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),
@@ -524,19 +527,19 @@ final class CourseContentSecurityTest extends TestCase
 
     public function test_playback_access_service_cannot_skip_a_crossing_project(): void
     {
-        \Illuminate\Support\Facades\DB::table('courses')->insert([
+        DB::table('courses')->insert([
             'id' => 77,
             'name_ar' => 'اختبار بوابة التشغيل',
             'is_coming_soon' => false,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        \Illuminate\Support\Facades\DB::table('course_modules')->insert([
+        DB::table('course_modules')->insert([
             ['id' => 401, 'course_id' => 77, 'order' => 1, 'created_at' => now(), 'updated_at' => now()],
             ['id' => 402, 'course_id' => 77, 'order' => 2, 'created_at' => now(), 'updated_at' => now()],
             ['id' => 403, 'course_id' => 77, 'order' => 3, 'created_at' => now(), 'updated_at' => now()],
         ]);
-        \Illuminate\Support\Facades\DB::table('course_sections')->insert([
+        DB::table('course_sections')->insert([
             [
                 'id' => 301,
                 'course_id' => 77,
@@ -561,7 +564,7 @@ final class CourseContentSecurityTest extends TestCase
                 'id' => 302,
                 'course_id' => 77,
                 'module_id' => 401,
-                'sectionable_type' => \App\Models\Project::class,
+                'sectionable_type' => Project::class,
                 'sectionable_id' => 501,
                 'order' => 3,
                 'created_at' => now(),
@@ -606,7 +609,7 @@ final class CourseContentSecurityTest extends TestCase
             'access_granted_at' => now(),
         ]);
 
-        $user = new User();
+        $user = new User;
         $user->forceFill(['id' => 42, 'active' => true]);
         $user->exists = true;
         $access = app(CourseSectionAccessService::class);
@@ -630,10 +633,10 @@ final class CourseContentSecurityTest extends TestCase
             self::assertSame('module_project_not_passed', $state['lock_reason']);
         }
 
-        \Illuminate\Support\Facades\DB::table('project_submissions')->insert([
+        DB::table('project_submissions')->insert([
             'user_id' => 42,
             'project_id' => 501,
-            'review_status' => \App\Models\ProjectSubmission::STATUS_PASSED,
+            'review_status' => ProjectSubmission::STATUS_PASSED,
             'submitted_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),
@@ -653,7 +656,7 @@ final class CourseContentSecurityTest extends TestCase
 
     private function lesson(int $id, bool $isPreview, string $guid): Lesson
     {
-        $lesson = new Lesson();
+        $lesson = new Lesson;
         $lesson->forceFill([
             'id' => $id,
             'title_ar' => "درس {$id}",
@@ -665,7 +668,7 @@ final class CourseContentSecurityTest extends TestCase
             'duration_minutes' => 2,
         ]);
         $lesson->exists = true;
-        $mediaState = new LessonMediaState();
+        $mediaState = new LessonMediaState;
         $mediaState->forceFill([
             'lesson_id' => $id,
             'provider_media_id' => $guid,
@@ -687,7 +690,7 @@ final class CourseContentSecurityTest extends TestCase
         Lesson $lesson,
         string $title
     ): CourseSection {
-        $section = new CourseSection();
+        $section = new CourseSection;
         $section->forceFill([
             'id' => $id,
             'course_id' => 77,
@@ -700,6 +703,7 @@ final class CourseContentSecurityTest extends TestCase
         ]);
         $section->exists = true;
         $section->setRelation('sectionable', $lesson);
+
         return $section;
     }
 
@@ -708,7 +712,7 @@ final class CourseContentSecurityTest extends TestCase
         int $order,
         CourseSection $section
     ): CourseModule {
-        $module = new CourseModule();
+        $module = new CourseModule;
         $module->forceFill([
             'id' => $id,
             'course_id' => 77,

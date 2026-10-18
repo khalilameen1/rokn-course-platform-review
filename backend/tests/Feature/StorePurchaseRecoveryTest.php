@@ -22,6 +22,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -103,7 +104,9 @@ final class StorePurchaseRecoveryTest extends TestCase
             self::assertSame(600, (int) $user->fresh()->wallet_purchased_coins);
             self::assertSame(Order::STATUS_APPROVED, Order::query()->firstOrFail()->status);
             self::assertSame(1, DB::table('wallet_credit_lots')->count());
-            if (++$calls === 1) throw new StorePurchaseVerificationException('google_consumption_unavailable', 'Retry', 503);
+            if (++$calls === 1) {
+                throw new StorePurchaseVerificationException('google_consumption_unavailable', 'Retry', 503);
+            }
         });
         $first = $this->credit($user);
         self::assertTrue($first['credited']);
@@ -243,8 +246,13 @@ final class StorePurchaseRecoveryTest extends TestCase
         app(StoreBillingAccountIdentity::class)->rememberGoogle($user);
         $responses = 0;
         $gateway->shouldReceive('verifyGoogleNotification')->times(3)->andReturnUsing(function () use (&$responses, $binding): VerifiedStorePurchase {
-            if (++$responses === 1) throw new StorePurchaseVerificationException('google_verification_unavailable', 'Unavailable', 503);
-            if ($responses === 2) throw new StorePurchaseVerificationException('store_purchase_pending');
+            if (++$responses === 1) {
+                throw new StorePurchaseVerificationException('google_verification_unavailable', 'Unavailable', 503);
+            }
+            if ($responses === 2) {
+                throw new StorePurchaseVerificationException('store_purchase_pending');
+            }
+
             return $this->receipt('google', 'production', $binding);
         });
         $gateway->shouldReceive('consumeGoogle')->once()->andReturnNull();
@@ -411,9 +419,10 @@ final class StorePurchaseRecoveryTest extends TestCase
         ]);
         $package = Package::query()->create([
             'name_ar' => 'باقة اختبار', 'name_en' => 'Recovery package', 'price' => 120, 'coins' => 600,
-            $provider . '_product_id' => 'rokn.coins.recovery.600', $provider . '_enabled' => true,
+            $provider.'_product_id' => 'rokn.coins.recovery.600', $provider.'_enabled' => true,
         ]);
         $identities = app(StoreBillingAccountIdentity::class);
+
         return [$user, $package, $this->mock(StorePurchaseProviderGateway::class), $identities->{$provider}($user)];
     }
 
@@ -432,10 +441,11 @@ final class StorePurchaseRecoveryTest extends TestCase
         );
     }
 
-    private function notification(string $id = 'completed-event', int $type = 1, string $purchaseToken = 'receipt-token'): \Illuminate\Testing\TestResponse
+    private function notification(string $id = 'completed-event', int $type = 1, string $purchaseToken = 'receipt-token'): TestResponse
     {
         $this->mock(StoreNotificationAuthenticityVerifier::class)->shouldReceive('verifyGooglePushToken')
             ->once()->with('test-oidc-token')->andReturn(['email' => 'rtdn@rokn.test']);
+
         return $this->withToken('test-oidc-token')->postJson('/api/store-notifications/google', [
             'message' => ['messageId' => $id, 'data' => base64_encode(json_encode([
                 'version' => '1.0', 'packageName' => 'com.rokn',
@@ -444,17 +454,18 @@ final class StorePurchaseRecoveryTest extends TestCase
         ]);
     }
 
-    private function appleNotification(string $id, string $type, ?int $signedDate, string $environment = 'Production'): \Illuminate\Testing\TestResponse
+    private function appleNotification(string $id, string $type, ?int $signedDate, string $environment = 'Production'): TestResponse
     {
         $authenticity = $this->mock(StoreNotificationAuthenticityVerifier::class);
-        $authenticity->shouldReceive('verifyAppleSignedPayload')->once()->with('outer-' . $id)->andReturn([
+        $authenticity->shouldReceive('verifyAppleSignedPayload')->once()->with('outer-'.$id)->andReturn([
             'notificationUUID' => $id, 'notificationType' => $type, 'signedDate' => $signedDate,
-            'data' => ['bundleId' => 'com.rokn', 'environment' => $environment, 'signedTransactionInfo' => 'transaction-' . $id],
+            'data' => ['bundleId' => 'com.rokn', 'environment' => $environment, 'signedTransactionInfo' => 'transaction-'.$id],
         ]);
-        $authenticity->shouldReceive('verifyAppleSignedPayload')->once()->with('transaction-' . $id)->andReturn([
+        $authenticity->shouldReceive('verifyAppleSignedPayload')->once()->with('transaction-'.$id)->andReturn([
             'transactionId' => 'verified-transaction', 'originalTransactionId' => 'verified-transaction',
             'productId' => 'rokn.coins.recovery.600', 'bundleId' => 'com.rokn', 'type' => 'Consumable',
         ]);
-        return $this->postJson('/api/store-notifications/apple', ['signedPayload' => 'outer-' . $id]);
+
+        return $this->postJson('/api/store-notifications/apple', ['signedPayload' => 'outer-'.$id]);
     }
 }

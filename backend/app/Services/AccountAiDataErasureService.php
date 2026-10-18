@@ -16,8 +16,7 @@ final class AccountAiDataErasureService
         private readonly AiEntitlementBudgetService $aiBudget,
         private readonly AiUsageSettlementService $settlements,
         private readonly PaidAiCallExecutionService $paidAiCalls
-    ) {
-    }
+    ) {}
 
     /** The account owner holds the learner lock in the deletion transaction. */
     public function eraseWithinDeletion(int $userId): void
@@ -48,6 +47,7 @@ final class AccountAiDataErasureService
                         $landed['request_context'] = ['reason' => 'account_deleted'];
                         $this->settlements->settle($event, $landed);
                         $this->paidAiCalls->markPresented($event->fresh());
+
                         return;
                     }
                     if ($this->paidAiCalls->providerWasStarted($event)) {

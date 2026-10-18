@@ -6,6 +6,7 @@ namespace App\Http\Controllers\API;
 
 use App\Exceptions\CourseCheckoutRejected;
 use App\Http\Controllers\Controller;
+use App\Models\CourseCheckout;
 use App\Services\CourseCheckoutService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,12 +29,14 @@ final class CourseCheckoutController extends Controller
             'coupon_code' => ['nullable', 'string', 'min:3', 'max:50'],
             'package_id' => ['nullable', 'integer', 'min:1'],
         ]);
+
         return $this->respond(fn () => $this->checkouts->create(auth('api')->user(), $input));
     }
 
     public function latest(Request $request): JsonResponse
     {
         $input = $request->validate(['course_id' => ['required', 'integer', 'min:1']]);
+
         return $this->respond(fn () => $this->checkouts->latest(auth('api')->user(), (int) $input['course_id']));
     }
 
@@ -64,12 +67,14 @@ final class CourseCheckoutController extends Controller
         } catch (\DomainException $exception) {
             $code = CourseCheckoutRejected::codeFor($exception);
             if ($code === CourseCheckoutRejected::CHECKOUT_ALREADY_PENDING) {
-                $pending = \App\Models\CourseCheckout::query()->where('user_id', auth('api')->id())
+                $pending = CourseCheckout::query()->where('user_id', auth('api')->id())
                     ->awaitingSettlement()->latest('id')->first();
+
                 return response()->json(['status' => 409, 'success' => false, 'code' => 'checkout_already_pending',
                     'message' => "عندك محاولة دفع لم تُحسم\nارجع إليها أو ألغها قبل بدء محاولة جديدة",
                     'data' => ['active_checkout' => $pending ? ['id' => $pending->public_id, 'course_id' => (int) $pending->course_id] : null]], 409);
             }
+
             return response()->json(['status' => 409, 'success' => false, 'code' => $code,
                 'message' => 'راجع تفاصيل الاشتراك قبل المتابعة', 'data' => null], 409);
         }

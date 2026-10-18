@@ -14,8 +14,7 @@ final readonly class CourseAuthoringDeletionService
     public function __construct(
         private CourseSectionMediaService $media,
         private ProjectSubmissionFileRetentionService $projectFiles
-    ) {
-    }
+    ) {}
 
     public function deleteSection(CourseSection $section): void
     {

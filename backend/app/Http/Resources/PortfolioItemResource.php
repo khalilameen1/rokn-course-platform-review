@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Services\SafeExternalUrl;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class PortfolioItemResource extends JsonResource
@@ -28,7 +29,7 @@ class PortfolioItemResource extends JsonResource
     /**
      * Transform the resource into an array.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  Request  $request
      * @return array
      */
     public function toArray($request)

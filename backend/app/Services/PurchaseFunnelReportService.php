@@ -27,6 +27,7 @@ final class PurchaseFunnelReportService
     public function __construct(private readonly SequentialProductEventQuery $journeys) {}
 
     private const WINDOW_DAYS = 14;
+
     // A valid requested quote is the common commerce entry, not proof of a
     // human impression. Modal/preview/task activity stays separate. All three
     // transitions use server time: device clock skew cannot reverse the flow.
@@ -80,5 +81,4 @@ final class PurchaseFunnelReportService
             'course_id' => $courseId,
         ];
     }
-
 }

@@ -21,7 +21,7 @@ final class ProjectSubmissionFilePolicyTest extends TestCase
         $policy = app(ProjectSubmissionFilePolicy::class);
 
         self::assertSame(['text/plain'], $policy->allowedMimeTypes());
-        self::assertSame(['text/plain'], $policy->allowedMimeTypes(new Project()));
+        self::assertSame(['text/plain'], $policy->allowedMimeTypes(new Project));
         self::assertSame([], $policy->allowedMimeTypes(new Project([
             'submission_allowed_mime_types' => [],
         ])));
@@ -33,7 +33,7 @@ final class ProjectSubmissionFilePolicyTest extends TestCase
     public function test_container_transport_aliases_are_not_offered_or_accepted_as_project_formats(): void
     {
         $policy = app(ProjectSubmissionFilePolicy::class);
-        $project = new Project();
+        $project = new Project;
         $archive = UploadedFile::fake()->createWithContent('work.zip', "PK\x05\x06".str_repeat("\0", 18));
 
         self::assertContains('application/zip', $policy->requestMimeTypes());
@@ -49,8 +49,8 @@ final class ProjectSubmissionFilePolicyTest extends TestCase
             'openrouter.attachment_provider_max_bytes' => $providerBytes,
         ]);
         $policy = app(ProjectSubmissionFilePolicy::class);
-        $submission = (new SubmitProjectRequest())->rules($policy);
-        $followup = (new UploadProjectFeedbackAttachmentRequest())->rules(app(AiInputAttachmentService::class));
+        $submission = (new SubmitProjectRequest)->rules($policy);
+        $followup = (new UploadProjectFeedbackAttachmentRequest)->rules(app(AiInputAttachmentService::class));
 
         self::assertSame($expectedBytes, ProjectSubmissionFilePolicy::maximumFileBytes());
         foreach ([$submission['submission_file'], $submission['submission_files.*'], $followup['attachment']] as $rules) {

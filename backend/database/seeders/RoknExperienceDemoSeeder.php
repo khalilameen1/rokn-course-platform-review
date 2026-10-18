@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use Database\Seeders\Concerns\GuardsDevelopmentFixtures;
 use App\Models\CoinEarningMethod;
 use App\Models\Course;
 use App\Models\CourseModule;
@@ -18,6 +17,7 @@ use App\Models\Project;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\CoursePlanAuthoringService;
+use Database\Seeders\Concerns\GuardsDevelopmentFixtures;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -224,7 +224,7 @@ class RoknExperienceDemoSeeder extends Seeder
                 $project = $projectSection && $projectSection->sectionable_type === Project::class
                     ? Project::find($projectSection->sectionable_id)
                     : null;
-                $project = $project ?: new Project();
+                $project = $project ?: new Project;
                 $project->fill([
                     'requirements_text' => $definition['project'],
                     'requirements_text_ar' => $definition['project'],
@@ -236,8 +236,8 @@ class RoknExperienceDemoSeeder extends Seeder
                     ['course_id' => $course->id, 'order' => $projectOrder],
                     [
                         'module_id' => $module->id,
-                        'title' => 'مشروع عبور: ' . $definition['title_ar'],
-                        'title_ar' => 'مشروع عبور: ' . $definition['title_ar'],
+                        'title' => 'مشروع عبور: '.$definition['title_ar'],
+                        'title_ar' => 'مشروع عبور: '.$definition['title_ar'],
                         'title_en' => 'Module crossing project',
                         'section_type' => 'project',
                         'sectionable_type' => Project::class,
@@ -272,7 +272,7 @@ class RoknExperienceDemoSeeder extends Seeder
                 'action_key',
                 'demo_coin_guide'
             )->exists();
-            if ($legacyNotificationTask && !$coinGuideTaskExists) {
+            if ($legacyNotificationTask && ! $coinGuideTaskExists) {
                 $legacyNotificationTask->update(['action_key' => 'demo_coin_guide']);
             } elseif ($legacyNotificationTask) {
                 $legacyNotificationTask->update(['is_active' => false]);

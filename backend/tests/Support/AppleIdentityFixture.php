@@ -15,6 +15,7 @@ trait AppleIdentityFixture
     private const KEY_ID = 'apple-test-key';
 
     private string $privateKey;
+
     private ?string $clientKeyFile = null;
 
     private function configureAppleIdentityFixture(): void

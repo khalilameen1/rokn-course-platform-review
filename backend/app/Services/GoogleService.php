@@ -13,7 +13,7 @@ class GoogleService
 
     public function __construct()
     {
-        $this->client = new Client();
+        $this->client = new Client;
         $connectTimeout = max(1.0, min(10.0, (float) config('services.google.connect_timeout_seconds', 3)));
         $timeout = max($connectTimeout, min(30.0, (float) config('services.google.timeout_seconds', 8)));
         $this->client->setHttpClient(new HttpClient([
@@ -29,8 +29,8 @@ class GoogleService
     /**
      * Verify Google ID token and retrieve user data
      *
-     * @param string $idToken
      * @return array ['id', 'name', 'email', 'picture']
+     *
      * @throws Exception
      */
     public function verify(string $idToken, ?string $expectedNonceHash = null): array
@@ -44,7 +44,7 @@ class GoogleService
 
             $ticket = $this->client->verifyIdToken($idToken);
 
-            if (!$ticket) {
+            if (! $ticket) {
                 throw new Exception('Invalid Google ID token');
             }
 
@@ -58,7 +58,7 @@ class GoogleService
                 throw new Exception('Unexpected Google token verification result');
             }
 
-            if (!isset($claims['sub'])) {
+            if (! isset($claims['sub'])) {
                 throw new Exception('Missing user ID in token');
             }
 
@@ -67,7 +67,7 @@ class GoogleService
                 $tokenNonce = trim((string) ($claims['nonce'] ?? ''));
                 if (
                     $tokenNonce === ''
-                    || !hash_equals($expectedNonceHash, hash('sha256', $tokenNonce))
+                    || ! hash_equals($expectedNonceHash, hash('sha256', $tokenNonce))
                 ) {
                     throw new Exception('Google identity token nonce does not match.');
                 }
@@ -78,8 +78,8 @@ class GoogleService
             }
 
             if (
-                !array_key_exists('email_verified', $claims)
-                || !filter_var($claims['email_verified'], FILTER_VALIDATE_BOOLEAN)
+                ! array_key_exists('email_verified', $claims)
+                || ! filter_var($claims['email_verified'], FILTER_VALIDATE_BOOLEAN)
             ) {
                 throw new Exception('Google email address is not verified');
             }
@@ -87,7 +87,7 @@ class GoogleService
             Log::info('Google token verified');
 
             return [
-                'id' => (string)$claims['sub'],
+                'id' => (string) $claims['sub'],
                 'identity_issued_at' => is_numeric($claims['iat'] ?? null)
                     ? (int) $claims['iat']
                     : null,

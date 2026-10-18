@@ -25,16 +25,16 @@ final class AuditOrderState extends Command
             ->limit($limit)
             ->get()
             ->each(function (Order $order) use (&$issues): void {
-                $expectedBill = $order->status === Order::STATUS_APPROVED && !$order->reversed_at
+                $expectedBill = $order->status === Order::STATUS_APPROVED && ! $order->reversed_at
                     ? 'paid'
                     : ($order->status === Order::STATUS_PENDING ? 'pending' : 'cancelled');
                 $shapeValid = ((bool) $order->course_id xor (bool) $order->package_id)
                     && (bool) $order->user;
-                if (!$shapeValid) {
+                if (! $shapeValid) {
                     $issues[] = ['order_id' => $order->id, 'issue' => 'invalid_order_shape'];
                 }
                 if (
-                    ($order->course_id && !$order->bill)
+                    ($order->course_id && ! $order->bill)
                     || ($order->bill && $order->bill->payment_status !== $expectedBill)
                 ) {
                     $issues[] = [
@@ -62,7 +62,7 @@ final class AuditOrderState extends Command
                 'count' => count($issues),
                 'sample' => array_slice($issues, 0, 50),
             ]);
-            $this->error('Found ' . count($issues) . ' financial state inconsistency(s).');
+            $this->error('Found '.count($issues).' financial state inconsistency(s).');
 
             return self::FAILURE;
         }

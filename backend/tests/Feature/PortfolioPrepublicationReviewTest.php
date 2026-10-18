@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Middleware\RequireAdminMfa;
+use App\Models\Certificate;
 use App\Models\PortfolioItem;
-use App\Models\PortfolioMedia;
 use App\Models\User;
-use App\Services\BunnyService;
 use App\Services\BunnyDeliveryService;
+use App\Services\BunnyService;
+use App\Services\CertificateQrDestinationService;
 use App\Services\PortfolioModerationService;
 use App\Services\PublicPortfolioService;
+use App\Support\RoknPublicUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -151,13 +153,13 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         $this->actingAs($owner->fresh(), 'api')->putJson('/api/v1/portfolio-profile', ['portfolio_headline' => 'عنوان جديد'])
             ->assertOk()->assertJsonPath('data.sharing_status', 'pending')
             ->assertJsonPath('data.published', true)->assertJsonPath('data.has_unpublished_changes', true)
-            ->assertJsonPath('data.public_url', \App\Support\RoknPublicUrl::portfolio($owner->portfolio_slug));
+            ->assertJsonPath('data.public_url', RoknPublicUrl::portfolio($owner->portfolio_slug));
         $this->get(route('portfolio.public', $owner->portfolio_slug))->assertOk()->assertDontSee('عنوان جديد');
         $this->approve($owner);
         $this->get(route('portfolio.public', $owner->portfolio_slug))->assertOk()->assertSee('عنوان جديد');
         $owner->fresh()->update(['name' => 'Changed account identity']);
         self::assertSame('pending', $owner->fresh()->portfolio_sharing_status);
-        self::assertSame(\App\Support\RoknPublicUrl::portfolio($owner->portfolio_slug), $owner->fresh()->profile_deeplink);
+        self::assertSame(RoknPublicUrl::portfolio($owner->portfolio_slug), $owner->fresh()->profile_deeplink);
         $this->approve($owner);
         $item->update(['is_featured' => true]);
         self::assertSame('pending', $owner->fresh()->portfolio_sharing_status);
@@ -202,12 +204,12 @@ final class PortfolioPrepublicationReviewTest extends TestCase
     {
         $owner = $this->owner();
         $item = $this->work($owner);
-        $certificate = new \App\Models\Certificate([
+        $certificate = new Certificate([
             'public_id' => (string) Str::uuid(), 'user_id' => $owner->id,
             'certificate_text_template_key' => 'projects',
         ]);
         $certificate->setRelation('user', $owner);
-        $qr = app(\App\Services\CertificateQrDestinationService::class)->for($certificate);
+        $qr = app(CertificateQrDestinationService::class)->for($certificate);
         self::assertSame('portfolio', $qr['type']);
         $permanentQrTarget = $qr['url'];
         $this->get($permanentQrTarget)->assertNotFound()->assertDontSee($item->title);
@@ -218,7 +220,7 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         $this->get($permanentQrTarget)->assertOk()->assertSee('Selected work')->assertDontSee('New unreviewed version');
         $this->approve($owner);
         $this->get($permanentQrTarget)->assertOk()->assertSee('New unreviewed version');
-        self::assertSame($permanentQrTarget, app(\App\Services\CertificateQrDestinationService::class)->for($certificate)['url']);
+        self::assertSame($permanentQrTarget, app(CertificateQrDestinationService::class)->for($certificate)['url']);
     }
 
     public function test_clients_cannot_approve_or_edit_other_owners_and_unready_files_cannot_be_approved(): void
@@ -278,6 +280,7 @@ final class PortfolioPrepublicationReviewTest extends TestCase
     {
         $item = PortfolioItem::query()->create(['user_id' => $owner->id, 'title' => 'Selected work', 'is_public' => $public]);
         $item->mediaFiles()->create(['file_path' => 'portfolio/original.jpg', 'file_type' => 'image', 'content_sha256' => str_repeat('a', 64)]);
+
         return $item->fresh(['mediaFiles']);
     }
 }

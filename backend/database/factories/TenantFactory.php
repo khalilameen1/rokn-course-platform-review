@@ -13,8 +13,8 @@ class TenantFactory extends Factory
     {
         return [
             'user_id' => 1,
-            'name'    => $this->faker->company(),
-            'phone'   => $this->faker->phoneNumber(),
+            'name' => $this->faker->company(),
+            'phone' => $this->faker->phoneNumber(),
         ];
     }
 }

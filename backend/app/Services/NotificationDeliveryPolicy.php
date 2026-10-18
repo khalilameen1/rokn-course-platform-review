@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\AdminNotification;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 
 final class NotificationDeliveryPolicy
 {
@@ -42,8 +43,13 @@ final class NotificationDeliveryPolicy
 
     public static function defaultCooldownHours(string $type): int
     {
-        if (self::isMarketing($type)) return 72;
-        if (self::isLearningReminder($type)) return 24;
+        if (self::isMarketing($type)) {
+            return 72;
+        }
+        if (self::isLearningReminder($type)) {
+            return 24;
+        }
+
         return 0;
     }
 
@@ -61,8 +67,13 @@ final class NotificationDeliveryPolicy
     /** @return array<int,string> */
     public static function frequencyFamily(string $type): array
     {
-        if (self::isMarketing($type)) return self::MARKETING_TYPES;
-        if (self::isLearningReminder($type)) return self::LEARNING_TYPES;
+        if (self::isMarketing($type)) {
+            return self::MARKETING_TYPES;
+        }
+        if (self::isLearningReminder($type)) {
+            return self::LEARNING_TYPES;
+        }
+
         return [$type];
     }
 
@@ -83,17 +94,22 @@ final class NotificationDeliveryPolicy
     }
 
     /** Marketing and retention pushes wait for the shared quiet window to end. */
-    public static function nextAllowedAt(string $type, ?\DateTimeInterface $requested = null): \Illuminate\Support\Carbon
+    public static function nextAllowedAt(string $type, ?\DateTimeInterface $requested = null): Carbon
     {
         $time = $requested
-            ? \Illuminate\Support\Carbon::instance($requested)->setTimezone('Africa/Cairo')
+            ? Carbon::instance($requested)->setTimezone('Africa/Cairo')
             : now('Africa/Cairo');
-        if (!self::isMarketing($type) && !self::isLearningReminder($type)) {
+        if (! self::isMarketing($type) && ! self::isLearningReminder($type)) {
             return $time->utc();
         }
         $hour = (int) $time->format('G');
-        if ($hour >= 22) return $time->copy()->addDay()->startOfDay()->addHours(9)->utc();
-        if ($hour < 9) return $time->copy()->startOfDay()->addHours(9)->utc();
+        if ($hour >= 22) {
+            return $time->copy()->addDay()->startOfDay()->addHours(9)->utc();
+        }
+        if ($hour < 9) {
+            return $time->copy()->startOfDay()->addHours(9)->utc();
+        }
+
         return $time->utc();
     }
 
@@ -101,7 +117,7 @@ final class NotificationDeliveryPolicy
     {
         return (bool) $user->active
             && strtolower(trim((string) $user->role)) === 'client'
-            && (!self::isMarketing($type) || (bool) $user->marketing_notifications_enabled);
+            && (! self::isMarketing($type) || (bool) $user->marketing_notifications_enabled);
     }
 
     /** Service receipts remain in the inbox; this only controls waking a device. */

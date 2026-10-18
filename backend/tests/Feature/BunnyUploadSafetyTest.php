@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Jobs\ProbeLessonMedia;
 use App\Models\Lesson;
 use App\Models\Setting;
-use App\Jobs\ProbeLessonMedia;
-use App\Services\MediaReconciliationService;
 use App\Services\BunnyService;
-use Illuminate\Database\Schema\Blueprint;
+use App\Services\MediaReconciliationService;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
-use Illuminate\Http\Client\Request;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -114,7 +114,7 @@ final class BunnyUploadSafetyTest extends TestCase
 
     public function test_replacement_generation_has_its_own_probe_and_stale_job_never_calls_provider(): void
     {
-        $courseId = \Illuminate\Support\Facades\DB::table('courses')->insertGetId([
+        $courseId = DB::table('courses')->insertGetId([
             'name_ar' => 'كورس',
             'created_at' => now(),
             'updated_at' => now(),

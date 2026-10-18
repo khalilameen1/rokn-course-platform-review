@@ -12,6 +12,7 @@ final class WebhookEndpoint extends Model
     protected $fillable = [
         'name', 'url', 'secret', 'events', 'is_active', 'timeout_seconds',
     ];
+
     protected $casts = [
         'secret' => 'encrypted',
         'events' => 'array',
@@ -27,6 +28,7 @@ final class WebhookEndpoint extends Model
     public function accepts(string $topic): bool
     {
         $events = $this->events ?: ['*'];
+
         return in_array('*', $events, true) || in_array($topic, $events, true);
     }
 }

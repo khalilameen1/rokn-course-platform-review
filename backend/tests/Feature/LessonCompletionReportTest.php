@@ -30,7 +30,9 @@ final class LessonCompletionReportTest extends TestCase
         $at = CarbonImmutable::now('UTC')->subHour();
         $this->event('lesson_started', 'a', 1, 10, $at);
         $this->event('lesson_started', 'a', 1, 10, $at->addSecond());
-        for ($i = 1; $i <= 5; $i++) $this->event('lesson_completed', 'a', 1, 10, $at->addMinutes($i));
+        for ($i = 1; $i <= 5; $i++) {
+            $this->event('lesson_completed', 'a', 1, 10, $at->addMinutes($i));
+        }
         $this->event('lesson_started', 'b', 1, 10, $at);
         $row = $this->report()['rows']->sole();
         self::assertSame(2, $row['starts']);
@@ -134,7 +136,9 @@ final class LessonCompletionReportTest extends TestCase
     public function test_rows_rank_unfinished_students_and_disclose_truncation_not_silent_loss(): void
     {
         $at = CarbonImmutable::now('UTC')->subHour();
-        for ($i = 1; $i <= 101; $i++) $this->event('lesson_started', 'a', 1, $i, $at);
+        for ($i = 1; $i <= 101; $i++) {
+            $this->event('lesson_started', 'a', 1, $i, $at);
+        }
         $this->event('lesson_started', 'b', 1, 101, $at);
         $report = $this->report();
         self::assertSame(101, $report['total_lessons']);

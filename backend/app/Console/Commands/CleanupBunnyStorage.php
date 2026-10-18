@@ -15,6 +15,7 @@ use Throwable;
 final class CleanupBunnyStorage extends Command
 {
     protected $signature = 'bunny:cleanup-storage {--limit=100}';
+
     protected $description = 'Retry safe deletion of unreferenced Bunny Storage course objects';
 
     public function handle(BunnyService $bunny, StoredFileReferenceService $references): int
@@ -31,15 +32,20 @@ final class CleanupBunnyStorage extends Command
         foreach ($ids as $id) {
             $candidate = DB::transaction(function () use ($id): ?BunnyStorageCleanupCandidate {
                 $row = BunnyStorageCleanupCandidate::query()->lockForUpdate()->find($id);
-                if (!$row || $row->completed_at || $row->eligible_after->isFuture()) return null;
+                if (! $row || $row->completed_at || $row->eligible_after->isFuture()) {
+                    return null;
+                }
                 $row->forceFill([
                     'attempts' => (int) $row->attempts + 1,
                     'last_attempt_at' => now(),
                     'eligible_after' => now()->addMinutes(15),
                 ])->save();
+
                 return $row->fresh();
             });
-            if (!$candidate) continue;
+            if (! $candidate) {
+                continue;
+            }
 
             $path = (string) $candidate->path;
             if ($references->isBunnyStoragePathReferenced($path)) {
@@ -51,10 +57,11 @@ final class CleanupBunnyStorage extends Command
                     'path' => null,
                     'last_error' => 'Cleanup skipped because the path is referenced.',
                 ])->save();
+
                 continue;
             }
             try {
-                if (!$bunny->deleteFileFromStorage($path)) {
+                if (! $bunny->deleteFileFromStorage($path)) {
                     throw new \RuntimeException('Bunny Storage did not confirm deletion.');
                 }
                 $candidate->forceFill([

@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\AiInputAttachment;
 use App\Models\CourseChatTurn;
 use Illuminate\Support\Collection;
 
 final readonly class CourseChatAdmissionResult
 {
-    /** @var Collection<int, \App\Models\AiInputAttachment> */
+    /** @var Collection<int, AiInputAttachment> */
     public Collection $attachments;
 
     public function __construct(

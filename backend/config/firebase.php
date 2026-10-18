@@ -28,7 +28,6 @@ return [
      *
      * If no credentials file can be found, an exception will be thrown the
      * first time you try to access a component of the Firebase Admin SDK.
-     *
      */
     'credentials' => [
         'file' => env('FIREBASE_CREDENTIALS', storage_path('app/firebase-service-account.json')),
@@ -49,7 +48,6 @@ return [
      * Firebase Realtime Database
      * ------------------------------------------------------------------------
      */
-
     'database' => [
 
         /**
@@ -82,7 +80,7 @@ return [
          * The value must be a valid domain, for example,
          * https://example.page.link
          */
-        'default_domain' => env('FIREBASE_DYNAMIC_LINKS_DEFAULT_DOMAIN')
+        'default_domain' => env('FIREBASE_DYNAMIC_LINKS_DEFAULT_DOMAIN'),
     ],
 
     /**
@@ -90,7 +88,6 @@ return [
      * Firebase Cloud Storage
      * ------------------------------------------------------------------------
      */
-
     'storage' => [
 
         /**
@@ -99,7 +96,6 @@ return [
          * use another one as the default for your application, you can
          * override it here.
          */
-
         'default_bucket' => env('FIREBASE_STORAGE_DEFAULT_BUCKET'),
 
     ],
@@ -111,9 +107,7 @@ return [
      *
      * The Firebase Admin SDK can cache some data returned from the Firebase
      * API, for example Google's public keys used to verify ID tokens.
-     *
      */
-
     'cache_store' => env('FIREBASE_CACHE_STORE', 'file'),
 
 ];

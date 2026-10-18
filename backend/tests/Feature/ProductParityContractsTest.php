@@ -13,9 +13,11 @@ use App\Models\Lesson;
 use App\Models\LessonMediaState;
 use App\Models\Path;
 use App\Models\User;
+use App\Services\CoursePlanAuthoringService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class ProductParityContractsTest extends TestCase
@@ -109,7 +111,7 @@ final class ProductParityContractsTest extends TestCase
     public function test_feedback_is_private_server_owned_and_accepts_anonymous_reports(): void
     {
         Storage::fake('feedback');
-        $clientRequestId = (string) \Illuminate\Support\Str::uuid();
+        $clientRequestId = (string) Str::uuid();
         DB::table('app_versions')->insert([
             'platform' => 'android',
             'distribution_channel' => 'direct',
@@ -323,13 +325,13 @@ final class ProductParityContractsTest extends TestCase
                 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
-        (new CourseRating())->forceFill([
+        (new CourseRating)->forceFill([
             'user_id' => $activeLearners[0]->id,
             'course_id' => $course->id,
             'rating' => 5,
             'version' => 1,
         ])->save();
-        (new CourseRating())->forceFill([
+        (new CourseRating)->forceFill([
             'user_id' => $activeLearners[1]->id,
             'course_id' => $course->id,
             'rating' => 4,
@@ -490,7 +492,7 @@ final class ProductParityContractsTest extends TestCase
 
     private function user(array $attributes = []): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill(array_merge([
             'name' => 'Parity Student',
             'email' => 'parity-'.str()->uuid().'@example.test',
@@ -507,7 +509,7 @@ final class ProductParityContractsTest extends TestCase
     private function course(array $attributes): Course
     {
         $teacher = $this->user(['role' => 'teacher']);
-        $course = new Course();
+        $course = new Course;
         $course->forceFill(array_merge([
             'tenant_id' => 1,
             'teacher_id' => $teacher->id,
@@ -534,7 +536,7 @@ final class ProductParityContractsTest extends TestCase
             'classification_id' => $classificationId,
             'course_id' => $course->id,
         ]);
-        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($course);
+        app(CoursePlanAuthoringService::class)->createDefaults($course);
 
         return $course;
     }

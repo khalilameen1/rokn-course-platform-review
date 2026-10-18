@@ -24,8 +24,7 @@ final readonly class StorePurchaseService
         private OrderLifecycleService $orders,
         private WalletQueryService $wallet,
         private StorePurchaseFinalizationService $finalization
-    ) {
-    }
+    ) {}
 
     /** @return array<string, mixed> */
     public function verifyAndCredit(
@@ -43,7 +42,7 @@ final readonly class StorePurchaseService
             ->where('purchase_token_hash', $tokenHash)
             ->first();
         if ($existing) {
-            if (!$existing->package) {
+            if (! $existing->package) {
                 throw new StorePurchaseVerificationException(
                     'store_purchase_receipt_incomplete',
                     'تعذّر مطابقة عملية الشراء بالباقة',
@@ -74,6 +73,7 @@ final readonly class StorePurchaseService
             $transactionId,
             $binding
         );
+
         return $this->creditVerified($user, $package, $purchaseToken, $verified, $provider, $productId, $binding, $contractCoins);
     }
 
@@ -85,7 +85,7 @@ final readonly class StorePurchaseService
         $verified = $this->gateway->verifyGoogleNotification($productId, $purchaseToken);
         $binding = (string) $verified->accountBinding;
         $user = $binding !== '' ? $this->identities->googleUser($binding) : null;
-        if (!$user || $user->trashed()) {
+        if (! $user || $user->trashed()) {
             throw new StorePurchaseVerificationException('store_account_not_recoverable');
         }
 
@@ -107,15 +107,15 @@ final readonly class StorePurchaseService
         int $contractCoins
     ): array {
         if (
-            !hash_equals($provider, $verified->provider)
-            || !hash_equals($productId, $verified->productId)
+            ! hash_equals($provider, $verified->provider)
+            || ! hash_equals($productId, $verified->productId)
         ) {
             throw new StorePurchaseVerificationException('store_verification_contract_mismatch');
         }
         $environment = strtolower(trim($verified->environment));
         $allowedEnvironments = $provider === StorePurchase::PROVIDER_GOOGLE
             ? ['production', 'test'] : ['production', 'sandbox'];
-        if (!in_array($environment, $allowedEnvironments, true)) {
+        if (! in_array($environment, $allowedEnvironments, true)) {
             throw new StorePurchaseVerificationException('store_purchase_environment_invalid');
         }
         // Apple requires production servers to accept sandbox receipts so App
@@ -126,14 +126,14 @@ final readonly class StorePurchaseService
         if (
             $environment !== 'production'
             && $testAccounts !== []
-            && !in_array(strtolower((string) $user->email), $testAccounts, true)
+            && ! in_array(strtolower((string) $user->email), $testAccounts, true)
         ) {
             throw new StorePurchaseVerificationException('store_test_purchase_not_allowed');
         }
         if ($verified->quantity !== 1) {
             throw new StorePurchaseVerificationException('store_purchase_quantity_unsupported');
         }
-        if ($verified->accountBinding !== null && !hash_equals(strtolower($binding), strtolower($verified->accountBinding))) {
+        if ($verified->accountBinding !== null && ! hash_equals(strtolower($binding), strtolower($verified->accountBinding))) {
             throw new StorePurchaseVerificationException('store_account_mismatch');
         }
         $tokenHash = hash('sha256', $purchaseToken);
@@ -162,7 +162,7 @@ final readonly class StorePurchaseService
                     ? 'google_product_id'
                     : 'apple_product_id';
                 if (
-                    !hash_equals((string) $lockedPackage->{$providerProductColumn}, $productId)
+                    ! hash_equals((string) $lockedPackage->{$providerProductColumn}, $productId)
                     || $contractCoins <= 0
                     || (int) $lockedPackage->coins !== $contractCoins
                 ) {
@@ -185,6 +185,7 @@ final readonly class StorePurchaseService
                 if ($existing) {
                     $this->assertReplayMatches($existing, $user, $package, $productId);
                     $alreadyProcessed = true;
+
                     return $existing;
                 }
 
@@ -192,7 +193,7 @@ final readonly class StorePurchaseService
                 $isTest = in_array($environment, ['test', 'sandbox'], true);
                 $gatewayGross = $isTest ? 0.0 : $verified->grossAmount;
                 $gatewayCurrency = $verified->currency;
-                $transactionKey = $provider . ':' . $verified->externalTransactionId;
+                $transactionKey = $provider.':'.$verified->externalTransactionId;
 
                 $order = Order::query()->create([
                     'user_id' => $user->id,
@@ -202,7 +203,7 @@ final readonly class StorePurchaseService
                     'payment_method' => $provider === StorePurchase::PROVIDER_GOOGLE
                         ? Order::PAYMENT_METHOD_GOOGLE_PLAY
                         : Order::PAYMENT_METHOD_APP_STORE,
-                    'order_ref' => strtoupper($provider) . '-' . Str::orderedUuid(),
+                    'order_ref' => strtoupper($provider).'-'.Str::orderedUuid(),
                     'transaction_id' => $transactionKey,
                     // Test coins can exercise real entitlements/AI but never
                     // represent cash, including downstream lot attribution.
@@ -257,7 +258,7 @@ final readonly class StorePurchaseService
             // Two devices can submit the same store receipt before either sees
             // the other's row. The database uniqueness constraint is the final
             // arbiter; the losing request becomes a normal idempotent replay.
-            if (!in_array((string) $exception->getCode(), ['23000', '23505'], true)) {
+            if (! in_array((string) $exception->getCode(), ['23000', '23505'], true)) {
                 throw $exception;
             }
             $storePurchase = StorePurchase::query()
@@ -268,7 +269,9 @@ final readonly class StorePurchaseService
                 })
                 ->with('order')
                 ->first();
-            if (!$storePurchase) throw $exception;
+            if (! $storePurchase) {
+                throw $exception;
+            }
             $this->assertReplayMatches($storePurchase, $user, $package, $productId);
             $alreadyProcessed = true;
         }
@@ -295,7 +298,7 @@ final readonly class StorePurchaseService
     ): array {
         $this->assertReplayMatches($purchase, $user, $package, $productId);
         $order = $purchase->order;
-        if (!$order) {
+        if (! $order) {
             throw new StorePurchaseVerificationException(
                 'store_purchase_receipt_incomplete',
                 'تعذّر مطابقة عملية الشراء بالطلب',
@@ -309,7 +312,7 @@ final readonly class StorePurchaseService
         if (
             $order->status === Order::STATUS_PENDING
             && $order->financial_status === Order::FINANCIAL_PENDING
-            && !$order->reversed_at
+            && ! $order->reversed_at
         ) {
             $this->orders->approve($purchase->order, null, null, true);
             $purchase->forceFill(['status' => 'credited'])->save();
@@ -334,7 +337,9 @@ final readonly class StorePurchaseService
                 try {
                     $receipt = StorePurchase::query()->find($purchaseId);
                     $owner = $receipt ? User::query()->find($receipt->user_id) : null;
-                    if ($receipt && $owner) app(CourseCheckoutService::class)->bindStorePurchase($owner, $profile, $receipt);
+                    if ($receipt && $owner) {
+                        app(CourseCheckoutService::class)->bindStorePurchase($owner, $profile, $receipt);
+                    }
                 } catch (\Throwable $exception) {
                     // Credit is committed independently; the reconciler retries
                     // the durable provider profile, never repeats the credit.
@@ -354,6 +359,7 @@ final readonly class StorePurchaseService
     {
         if ($purchase->provider === StorePurchase::PROVIDER_APPLE) {
             $this->reconcileAppleNotifications($purchase);
+
             return;
         }
         $query = StoreNotificationEvent::query()
@@ -385,7 +391,7 @@ final readonly class StorePurchaseService
                     : ((int) ($payload['refund_type'] ?? 1) === 2
                         ? 'Google Play quantity-based refund'
                         : 'Google Play voided purchase'),
-                'store-notification:google:' . $event->event_id,
+                'store-notification:google:'.$event->event_id,
                 null,
                 Order::PAYMENT_METHOD_GOOGLE_PLAY,
                 $event->event_id,
@@ -404,7 +410,9 @@ final readonly class StorePurchaseService
     /** Apply the newest authenticated Apple snapshot, never network arrival order. */
     public function reconcileAppleNotifications(StorePurchase $purchase): void
     {
-        if ($purchase->provider !== StorePurchase::PROVIDER_APPLE) return;
+        if ($purchase->provider !== StorePurchase::PROVIDER_APPLE) {
+            return;
+        }
 
         DB::transaction(function () use ($purchase): void {
             User::withTrashed()->lockForUpdate()->findOrFail($purchase->user_id);
@@ -418,26 +426,28 @@ final readonly class StorePurchaseService
                         ->orWhere('payload->original_transaction_id', $purchase->external_transaction_id);
                 })->lockForUpdate()->get()->filter(function (StoreNotificationEvent $event) use ($purchase): bool {
                     $payload = (array) $event->payload;
+
                     return strtolower((string) ($payload['environment'] ?? '')) === strtolower($purchase->environment)
                         && (string) ($payload['bundle_id'] ?? '') === (string) config('store_billing.apple.bundle_id')
-                        && (!isset($payload['transaction_type']) || $payload['transaction_type'] === 'Consumable');
+                        && (! isset($payload['transaction_type']) || $payload['transaction_type'] === 'Consumable');
                 });
-            if ($events->isEmpty()) return;
+            if ($events->isEmpty()) {
+                return;
+            }
 
             // Apple documents signedDate as the state snapshot timestamp and
             // explicitly requires using the newest one for a transaction.
             // Legacy/ambiguous evidence stays visible for financial review.
-            $invalidDate = $events->contains(fn (StoreNotificationEvent $event): bool =>
-                !is_numeric(data_get($event->payload, 'signed_date')) || (int) data_get($event->payload, 'signed_date') <= 0
+            $invalidDate = $events->contains(fn (StoreNotificationEvent $event): bool => ! is_numeric(data_get($event->payload, 'signed_date')) || (int) data_get($event->payload, 'signed_date') <= 0
             );
             $latest = $events->sortByDesc(fn (StoreNotificationEvent $event): int => (int) data_get($event->payload, 'signed_date'))->first();
-            $sameTimeTypes = $events->filter(fn (StoreNotificationEvent $event): bool =>
-                data_get($event->payload, 'signed_date') == data_get($latest->payload, 'signed_date')
+            $sameTimeTypes = $events->filter(fn (StoreNotificationEvent $event): bool => data_get($event->payload, 'signed_date') == data_get($latest->payload, 'signed_date')
             )->pluck('event_type')->unique();
             if ($invalidDate || $sameTimeTypes->count() > 1) {
                 foreach ($events->whereNotIn('status', ['processed', 'ignored']) as $event) {
                     $event->forceFill(['status' => 'review_required', 'error_code' => 'apple_notification_chronology_ambiguous', 'processed_at' => now()])->save();
                 }
+
                 return;
             }
 
@@ -445,18 +455,19 @@ final readonly class StorePurchaseService
                 if ($latest->event_type === 'refund') {
                     $this->orders->registerReversal(
                         $order, Order::FINANCIAL_REFUNDED, 'App Store refund',
-                        'store-notification:apple:' . $latest->event_id,
+                        'store-notification:apple:'.$latest->event_id,
                         null, Order::PAYMENT_METHOD_APP_STORE, $latest->event_id, (array) $latest->payload
                     );
                     $purchase->forceFill(['status' => 'refunded'])->save();
                 } elseif ($order->financial_status === Order::FINANCIAL_REVIEW_REQUIRED && $order->reversed_at) {
                     $this->orders->resolveFinancialReview(
-                        $order, 'repaid', 'store-notification:apple:' . $latest->event_id,
+                        $order, 'repaid', 'store-notification:apple:'.$latest->event_id,
                         null, 'App Store reversed a prior refund.'
                     );
                     $purchase->forceFill(['status' => 'credited'])->save();
-                } elseif (!$order->isFinanciallyEffective()) {
+                } elseif (! $order->isFinanciallyEffective()) {
                     $latest->forceFill(['status' => 'review_required', 'error_code' => 'refund_reversal_requires_manual_review', 'processed_at' => now()])->save();
+
                     return;
                 }
                 $latest->forceFill(['status' => 'processed', 'error_code' => null, 'processed_at' => now()])->save();
@@ -476,7 +487,7 @@ final readonly class StorePurchaseService
         if (
             (int) $purchase->user_id !== (int) $user->id
             || (int) $purchase->package_id !== (int) $package->id
-            || !hash_equals((string) $purchase->product_id, $productId)
+            || ! hash_equals((string) $purchase->product_id, $productId)
         ) {
             throw new StorePurchaseVerificationException(
                 'store_purchase_already_claimed',
@@ -497,7 +508,7 @@ final readonly class StorePurchaseService
             ->where($idColumn, $productId)
             ->where('coins', '>', 0)
             ->first();
-        if (!$package) {
+        if (! $package) {
             throw new StorePurchaseVerificationException(
                 'store_product_not_configured',
                 'باقة الشحن غير متاحة الآن'
@@ -519,7 +530,7 @@ final readonly class StorePurchaseService
         $isSettled = $order
             && $order->status === Order::STATUS_APPROVED
             && $order->financial_status === Order::FINANCIAL_SETTLED
-            && !$order->reversed_at;
+            && ! $order->reversed_at;
         $creditedCoins = $isSettled
             ? max(0, (int) ($order->package_coins ?? 0))
             : 0;

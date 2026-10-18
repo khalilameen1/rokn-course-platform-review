@@ -5,50 +5,63 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Events\CourseCompleted;
-use App\Jobs\GenerateProjectFeedback;
+use App\Http\Middleware\WebsiteVisitorCount;
 use App\Http\Requests\Admin\CourseRequest;
 use App\Http\Resources\BaseCourseResource;
-use App\Http\Middleware\WebsiteVisitorCount;
+use App\Jobs\GenerateCourseChatReply;
+use App\Jobs\GenerateProjectFeedback;
 use App\Listeners\AwardLevelBadge;
+use App\Models\AiInputAttachment;
+use App\Models\AiUsageEvent;
+use App\Models\Contact;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
-use App\Models\CourseCode;
 use App\Models\CourseChatTurn;
-use App\Models\AiUsageEvent;
-use App\Models\AiInputAttachment;
-use App\Models\Contact;
+use App\Models\CourseCode;
+use App\Models\CourseEnrollment;
+use App\Models\CourseGrantClaim;
+use App\Models\Lesson;
+use App\Models\LessonMediaState;
 use App\Models\Order;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Models\WalletTransaction;
-use App\Services\ProjectSubmissionService;
+use App\Services\AiConsentService;
+use App\Services\AiInputAttachmentService;
+use App\Services\AiStreamCheckpointService;
+use App\Services\AiUsageSettlementService;
+use App\Services\CourseAccessPlanService;
+use App\Services\CourseChatPromptContextService;
+use App\Services\CourseChatTurnService;
+use App\Services\CourseCodeEligibilityService;
+use App\Services\CourseEntitlementService;
+use App\Services\CoursePlanAuthoringService;
+use App\Services\LearningEvidenceService;
+use App\Services\PaidAiCallExecutionService;
+use App\Services\ProjectSubmissionEffortGuard;
 use App\Services\ProjectSubmissionEvaluationScheduler;
 use App\Services\ProjectSubmissionReviewService;
-use App\Services\AiConsentService;
-use App\Services\AiUsageSettlementService;
-use App\Services\AiInputAttachmentService;
-use App\Services\CourseEntitlementService;
-use App\Services\CourseChatTurnService;
-use App\Services\PaidAiCallExecutionService;
+use App\Services\ProjectSubmissionService;
 use App\Services\WalletService;
+use App\Support\AdminEditorVersion;
 use App\Support\CourseAccessPlanSnapshot;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
-use App\Support\AdminEditorVersion;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Mpdf\Mpdf;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class BackendHardeningTest extends TestCase
@@ -466,7 +479,7 @@ final class BackendHardeningTest extends TestCase
         $user = $this->user();
         $course = $this->course();
         $plan = $this->paidPlanTerms($course);
-        $enrollment = \App\Models\CourseEnrollment::query()->create([
+        $enrollment = CourseEnrollment::query()->create([
             'user_id' => $user->id,
             'course_id' => $course->id,
             'access_plan_id' => $plan['id'],
@@ -521,7 +534,7 @@ final class BackendHardeningTest extends TestCase
         $user = $this->user();
         $course = $this->course();
         $plan = $this->paidPlanTerms($course);
-        $enrollment = \App\Models\CourseEnrollment::query()->create([
+        $enrollment = CourseEnrollment::query()->create([
             'user_id' => $user->id,
             'course_id' => $course->id,
             'access_plan_id' => $plan['id'],
@@ -533,7 +546,7 @@ final class BackendHardeningTest extends TestCase
         // Authoring state controls discovery and new admissions. It must not
         // erase an active paid contract captured by an accepted submission.
         $course->forceFill(['is_coming_soon' => true])->save();
-        $access = app(\App\Services\CourseEntitlementService::class);
+        $access = app(CourseEntitlementService::class);
 
         self::assertNull($access->activeEnrollmentFor($user->id, $course->id));
         self::assertSame(
@@ -648,15 +661,15 @@ final class BackendHardeningTest extends TestCase
 
     public function test_client_duration_cannot_create_or_lower_the_completion_threshold(): void
     {
-        $lesson = new \App\Models\Lesson(['duration_minutes' => null]);
+        $lesson = new Lesson(['duration_minutes' => null]);
         config()->set('learning_evidence.minimum_verified_seconds', 20);
         config()->set('learning_evidence.required_fraction', 0.80);
 
-        $service = app(\App\Services\LearningEvidenceService::class);
+        $service = app(LearningEvidenceService::class);
         self::assertNull($service->requiredSeconds($lesson, 1));
 
         $lesson->duration_minutes = 1;
-        $mediaState = new \App\Models\LessonMediaState([
+        $mediaState = new LessonMediaState([
             'duration_seconds' => 60,
         ]);
         $mediaState->exists = true;
@@ -735,7 +748,7 @@ final class BackendHardeningTest extends TestCase
 
     public function test_project_effort_guard_rejects_empty_documents_without_grading_real_work(): void
     {
-        $guard = app(\App\Services\ProjectSubmissionEffortGuard::class);
+        $guard = app(ProjectSubmissionEffortGuard::class);
 
         $emptyText = UploadedFile::fake()->createWithContent(
             'empty.txt',
@@ -755,7 +768,7 @@ final class BackendHardeningTest extends TestCase
             $guard->assess(null, [$brokenPdf])
         );
 
-        $writer = new \Mpdf\Mpdf(['tempDir' => sys_get_temp_dir()]);
+        $writer = new Mpdf(['tempDir' => sys_get_temp_dir()]);
         $writer->WriteHTML('<h1>Project evidence</h1><p>A completed piece of work.</p>');
         $validPdfBody = $writer->Output('', 'S');
 
@@ -769,7 +782,7 @@ final class BackendHardeningTest extends TestCase
             'valid-project.pdf',
             $validPdfBody
         );
-        $reader = new \Mpdf\Mpdf(['tempDir' => sys_get_temp_dir()]);
+        $reader = new Mpdf(['tempDir' => sys_get_temp_dir()]);
         self::assertSame(1, $reader->SetSourceFile($compactValidPdf->getRealPath()));
         self::assertSame(
             ProjectSubmission::EFFORT_VALID,
@@ -786,7 +799,7 @@ final class BackendHardeningTest extends TestCase
         );
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('projectImageContentCases')]
+    #[DataProvider('projectImageContentCases')]
     public function test_project_image_submission_judges_visible_colours_not_png_encoding(
         bool $palette,
         array $background,
@@ -919,8 +932,8 @@ final class BackendHardeningTest extends TestCase
         $file = UploadedFile::fake()->createWithContent(
             'answer.pdf',
             "%PDF-1.4\n1 0 obj\n<< /Type /Page >>\nendobj\n"
-                . str_repeat("% learner project evidence\n", 32)
-                . "%%EOF"
+                .str_repeat("% learner project evidence\n", 32)
+                .'%%EOF'
         );
 
         $submission = app(ProjectSubmissionService::class)->submit(
@@ -952,7 +965,7 @@ final class BackendHardeningTest extends TestCase
 
     public function test_badge_course_requires_an_existing_level(): void
     {
-        $rules = (new CourseRequest())->rules();
+        $rules = (new CourseRequest)->rules();
         $missing = Validator::make([
             'name_ar' => 'كورس شارات',
             'awards_badge' => 1,
@@ -1023,7 +1036,7 @@ final class BackendHardeningTest extends TestCase
     public function test_admin_cannot_delete_account_deletion_request_audit_record(): void
     {
         $admin = $this->user(['role' => 'admin']);
-        $contact = new Contact();
+        $contact = new Contact;
         $contact->forceFill([
             'name' => 'Deletion Test',
             'email' => 'delete.audit@example.com',
@@ -1050,7 +1063,7 @@ final class BackendHardeningTest extends TestCase
     {
         $admin = $this->user(['role' => 'admin']);
         $account = $this->user(['email' => 'owner@example.com']);
-        $contact = new Contact();
+        $contact = new Contact;
         $contact->forceFill([
             'name' => 'Owner',
             'email' => 'owner@example.com',
@@ -1092,7 +1105,7 @@ final class BackendHardeningTest extends TestCase
     {
         $admin = $this->user(['role' => 'admin']);
         $account = $this->user(['email' => 'still-active@example.com']);
-        $contact = new Contact();
+        $contact = new Contact;
         $contact->forceFill([
             'name' => 'Owner',
             'email' => $account->email,
@@ -1123,7 +1136,7 @@ final class BackendHardeningTest extends TestCase
         $course = $this->course();
         $grantOrder = $this->order($user, $course, Order::PAYMENT_METHOD_COURSE_CODE, 0, 0);
         $grantCode = CourseCode::query()->create([
-            'code' => 'GRANT-CHAT-' . $course->id,
+            'code' => 'GRANT-CHAT-'.$course->id,
             'type' => 'course',
             'course_id' => $course->id,
             'is_grant' => true,
@@ -1142,7 +1155,7 @@ final class BackendHardeningTest extends TestCase
         ]);
 
         $this->actingAs($user, 'api')
-            ->postJson('/api/v1/courses/' . $course->id . '/chat', ['message' => 'اشرح الفكرة'])
+            ->postJson('/api/v1/courses/'.$course->id.'/chat', ['message' => 'اشرح الفكرة'])
             ->assertStatus(403)
             ->assertJsonPath('code', 'chat_upgrade_required');
 
@@ -1162,14 +1175,14 @@ final class BackendHardeningTest extends TestCase
 
         $requestId = (string) Str::uuid();
         $this->actingAs($user, 'api')
-            ->postJson('/api/v1/courses/' . $course->id . '/chat', [
+            ->postJson('/api/v1/courses/'.$course->id.'/chat', [
                 'message' => 'اشرح الفكرة',
                 'client_request_id' => $requestId,
             ])
             ->assertOk()
             ->assertJsonPath('code', 'chat_answer_in_progress');
         $this->actingAs($user, 'api')
-            ->postJson('/api/v1/courses/' . $course->id . '/chat', [
+            ->postJson('/api/v1/courses/'.$course->id.'/chat', [
                 'message' => 'اشرح الفكرة',
                 'client_request_id' => $requestId,
             ])
@@ -1184,7 +1197,7 @@ final class BackendHardeningTest extends TestCase
         $course = $this->course(['ai_model_type' => 'test/model']);
         $grantOrder = $this->order($user, $course, Order::PAYMENT_METHOD_COURSE_CODE, 0, 0);
         $grantCode = CourseCode::query()->create([
-            'code' => 'GRANT-DETAILS-' . $course->id,
+            'code' => 'GRANT-DETAILS-'.$course->id,
             'type' => 'course',
             'course_id' => $course->id,
             'is_grant' => true,
@@ -1261,7 +1274,7 @@ final class BackendHardeningTest extends TestCase
             ->firstOrFail();
         $originalPrice = (int) $plan->price_coins;
 
-        app(\App\Services\CoursePlanAuthoringService::class)->syncGlobalAiPolicy([
+        app(CoursePlanAuthoringService::class)->syncGlobalAiPolicy([
             'guided' => [
                 'chat_enabled' => false,
                 'chat_message_limit' => 0,
@@ -1282,7 +1295,7 @@ final class BackendHardeningTest extends TestCase
         self::assertSame(0, (int) $plan->project_followup_message_limit);
         self::assertFalse((bool) $plan->project_followup_attachments_enabled);
 
-        $snapshot = app(\App\Services\CourseAccessPlanService::class)->snapshot($plan);
+        $snapshot = app(CourseAccessPlanService::class)->snapshot($plan);
         CourseAccessPlanSnapshot::assertValidForPlan((int) $plan->id, $snapshot);
     }
 
@@ -1313,21 +1326,21 @@ final class BackendHardeningTest extends TestCase
 
         $firstRequestId = (string) Str::uuid();
         $this->actingAs($user, 'api')
-            ->postJson('/api/v1/courses/' . $course->id . '/chat', [
+            ->postJson('/api/v1/courses/'.$course->id.'/chat', [
                 'message' => 'السؤال الأول',
                 'client_request_id' => $firstRequestId,
             ])
             ->assertOk()
             ->assertJsonPath('code', 'chat_answer_in_progress');
         $this->actingAs($user, 'api')
-            ->postJson('/api/v1/courses/' . $course->id . '/chat', [
+            ->postJson('/api/v1/courses/'.$course->id.'/chat', [
                 'message' => 'السؤال الأول',
                 'client_request_id' => $firstRequestId,
             ])
             ->assertOk()
             ->assertJsonPath('data.unavailable', false);
         $this->actingAs($user, 'api')
-            ->postJson('/api/v1/courses/' . $course->id . '/chat', [
+            ->postJson('/api/v1/courses/'.$course->id.'/chat', [
                 'message' => 'السؤال الثاني',
                 'client_request_id' => (string) Str::uuid(),
             ])
@@ -1405,7 +1418,7 @@ final class BackendHardeningTest extends TestCase
         ]);
         $requestId = '4e52629a-8452-4636-8e8f-84d3ed611cf4';
         $question = 'أعد لي النتيجة المحفوظة';
-        $promptVersion = app(\App\Services\CourseChatPromptContextService::class)
+        $promptVersion = app(CourseChatPromptContextService::class)
             ->version($course);
         $turn = app(CourseChatTurnService::class)->begin(
             $user->id,
@@ -1461,11 +1474,10 @@ final class BackendHardeningTest extends TestCase
         ];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('technicalCourseChatQuestions')]
+    #[DataProvider('technicalCourseChatQuestions')]
     public function test_course_chat_admission_keeps_completed_technical_context_and_excludes_failed_turns(
         string $question
-    ): void
-    {
+    ): void {
         Bus::fake();
         Http::preventStrayRequests();
         config([
@@ -1487,7 +1499,7 @@ final class BackendHardeningTest extends TestCase
         ]);
         DB::table('course_sections')->insert([
             'course_id' => $course->id,
-            'sectionable_type' => \App\Models\Lesson::class,
+            'sectionable_type' => Lesson::class,
             'sectionable_id' => $lessonId,
             'section_type' => 'lesson',
             'title' => 'HTML forms',
@@ -1507,7 +1519,7 @@ final class BackendHardeningTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        $promptVersion = app(\App\Services\CourseChatPromptContextService::class)->version($course);
+        $promptVersion = app(CourseChatPromptContextService::class)->version($course);
         $turns = app(CourseChatTurnService::class);
         $technicalQuestion = 'Why does SQLSTATE appear in the stack trace for <html> output?';
         $technicalAnswer = 'SQLSTATE identifies a database error. Review the stack trace, then render <html><body>Example</body></html> as text.';
@@ -1549,7 +1561,7 @@ final class BackendHardeningTest extends TestCase
             'lesson_id' => $lessonId,
         ])->assertStatus(409)->assertJsonPath('code', 'chat_request_identity_conflict');
 
-        Bus::assertDispatched(\App\Jobs\GenerateCourseChatReply::class, function ($job) use (
+        Bus::assertDispatched(GenerateCourseChatReply::class, function ($job) use (
             $technicalQuestion, $technicalAnswer, $question, $courseDescription, $lessonDescription
         ): bool {
             self::assertSame('system', $job->messages[0]['role']);
@@ -1591,7 +1603,7 @@ final class BackendHardeningTest extends TestCase
 
             return true;
         });
-        Bus::assertDispatchedTimes(\App\Jobs\GenerateCourseChatReply::class, 1);
+        Bus::assertDispatchedTimes(GenerateCourseChatReply::class, 1);
         Http::assertNothingSent();
     }
 
@@ -1870,7 +1882,7 @@ final class BackendHardeningTest extends TestCase
             'prompt-v1'
         );
         $turns->markStreaming($turn);
-        app(\App\Services\AiStreamCheckpointService::class)->courseChat(
+        app(AiStreamCheckpointService::class)->courseChat(
             $turn->fresh(),
             'ابدأ بتجهيز الملف ثم راجع'
         );
@@ -1936,7 +1948,7 @@ final class BackendHardeningTest extends TestCase
         ];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('paidCourseChatCancellationStates')]
+    #[DataProvider('paidCourseChatCancellationStates')]
     public function test_cancelling_a_paid_course_chat_answer_preserves_delivery_and_quota(
         bool $settled,
         string $expectedCode
@@ -2200,7 +2212,7 @@ final class BackendHardeningTest extends TestCase
         ]);
         $first = $this->course(['level_id' => $levelId, 'awards_badge' => true, 'badge_track' => 'freelance']);
         $second = $this->course(['level_id' => $levelId, 'awards_badge' => true, 'badge_track' => 'professional']);
-        $listener = new AwardLevelBadge();
+        $listener = new AwardLevelBadge;
 
         $listener->handle(new CourseCompleted($user, $first));
         $listener->handle(new CourseCompleted($user, $first));
@@ -2233,7 +2245,7 @@ final class BackendHardeningTest extends TestCase
             'awards_badge' => true,
             'badge_track' => null,
         ]);
-        $listener = new AwardLevelBadge();
+        $listener = new AwardLevelBadge;
 
         $listener->handle(new CourseCompleted($user, $disabled));
         $listener->handle(new CourseCompleted($user, $missingTrack));
@@ -2250,7 +2262,7 @@ final class BackendHardeningTest extends TestCase
             'updated_at' => now(),
         ]);
         for ($index = 1; $index <= 16; $index++) {
-            $course = $this->course(['name_ar' => 'كورس ' . $index, 'is_main_course' => $index === 1]);
+            $course = $this->course(['name_ar' => 'كورس '.$index, 'is_main_course' => $index === 1]);
             DB::table('classification_course')->insert([
                 'classification_id' => $classificationId,
                 'course_id' => $course->id,
@@ -2334,17 +2346,17 @@ final class BackendHardeningTest extends TestCase
         ]);
         DB::table('course_grant_claims')->insert([
             'user_id' => $user->id,
-            'normalized_email_hash' => \App\Models\CourseGrantClaim::emailHash($user->email),
-            'email_hint' => \App\Models\CourseGrantClaim::emailHint($user->email),
+            'normalized_email_hash' => CourseGrantClaim::emailHash($user->email),
+            'email_hint' => CourseGrantClaim::emailHint($user->email),
             'course_code_id' => $first->id,
             'course_id' => 1,
-            'status' => \App\Models\CourseGrantClaim::STATUS_ACTIVE,
+            'status' => CourseGrantClaim::STATUS_ACTIVE,
             'claimed_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        $eligibility = app(\App\Services\CourseCodeEligibilityService::class);
+        $eligibility = app(CourseCodeEligibilityService::class);
         self::assertTrue($eligibility->hasReachedGrantLimit($second, $user));
         self::assertNotNull($eligibility->rejectionFor($second, $user));
     }
@@ -2471,7 +2483,7 @@ final class BackendHardeningTest extends TestCase
     {
         $id = DB::table('users')->insertGetId(array_merge([
             'name' => 'Test User',
-            'email' => uniqid('student-', true) . '@example.com',
+            'email' => uniqid('student-', true).'@example.com',
             'phone' => null,
             'role' => 'client',
             'active' => true,
@@ -2523,7 +2535,7 @@ final class BackendHardeningTest extends TestCase
     private function course(array $overrides = []): Course
     {
         $teacher = $this->user([
-            'email' => uniqid('teacher-', true) . '@example.com',
+            'email' => uniqid('teacher-', true).'@example.com',
             'role' => 'teacher',
         ]);
         $id = DB::table('courses')->insertGetId(array_merge([
@@ -2622,7 +2634,7 @@ final class BackendHardeningTest extends TestCase
 
         return [
             'id' => (int) $plan->id,
-            'snapshot' => app(\App\Services\CourseAccessPlanService::class)->snapshot($plan),
+            'snapshot' => app(CourseAccessPlanService::class)->snapshot($plan),
         ];
     }
 
@@ -2630,7 +2642,7 @@ final class BackendHardeningTest extends TestCase
     {
         $course = $this->course();
         $plan = $this->paidPlanTerms($course);
-        \App\Models\CourseEnrollment::query()->create([
+        CourseEnrollment::query()->create([
             'user_id' => $user->id,
             'course_id' => $course->id,
             'access_plan_id' => $plan['id'],

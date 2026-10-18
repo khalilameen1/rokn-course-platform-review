@@ -112,7 +112,7 @@ final class AdminClassificationOwnershipTest extends TestCase
         $changed = false;
         DB::listen(static function ($query) use ($course, &$changed): void {
             $sql = strtolower($query->sql);
-            if (!$changed && str_contains($sql, 'from "courses"') && str_contains($sql, 'order by "id" asc')) {
+            if (! $changed && str_contains($sql, 'from "courses"') && str_contains($sql, 'order by "id" asc')) {
                 $changed = true;
                 DB::table('courses')->where('id', $course->id)->update(['is_catalog_visible' => false]);
             }

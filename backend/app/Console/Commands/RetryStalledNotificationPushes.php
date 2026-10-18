@@ -5,20 +5,24 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Jobs\SendUserPushNotification;
-use App\Models\StudentNotification;
 use App\Models\NotificationPushDelivery;
+use App\Models\StudentNotification;
 use App\Services\NotificationDeliveryPolicy;
 use App\Support\DurableJobDispatch;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 final class RetryStalledNotificationPushes extends Command
 {
     protected $signature = 'notifications:retry-stalled {--limit=500}';
+
     protected $description = 'Dispatch untouched pushes and quarantine claims with an unknown provider outcome';
 
     public function handle(): int
     {
         $remaining = max(1, min(5000, (int) $this->option('limit')));
+
         return $this->handlePerDevice($remaining);
     }
 
@@ -171,7 +175,9 @@ SQL);
             ->orderBy('id')
             ->chunkById(100, function ($notifications) use (&$remaining, &$queued, &$dispatchFailures): bool {
                 foreach ($notifications as $notification) {
-                    if ($remaining-- <= 0) return false;
+                    if ($remaining-- <= 0) {
+                        return false;
+                    }
                     try {
                         DurableJobDispatch::now(
                             new SendUserPushNotification((int) $notification->id)
@@ -182,6 +188,7 @@ SQL);
                         report($exception);
                     }
                 }
+
                 return $remaining > 0;
             });
 
@@ -198,6 +205,7 @@ SQL);
         );
 
         $this->info("Queued {$queued} push job(s); {$dispatchFailures} queue write(s) failed; retired {$retiredUntouched} untouched parent(s), {$unboundDeliveryIds->count()} unbound and {$ineligibleDeliveryIds->count()} ineligible device claim(s); quarantined {$staleClaimed} uncertain device claim(s) and {$legacyClaimed} legacy claim(s).");
+
         return self::SUCCESS;
     }
 
@@ -213,7 +221,9 @@ SQL);
         $retired = 0;
         $settle = function ($query, string $code) use (&$retired): void {
             $ids = $query->limit(5000)->pluck('id');
-            if ($ids->isEmpty()) return;
+            if ($ids->isEmpty()) {
+                return;
+            }
             $retired += StudentNotification::query()->whereIn('id', $ids)->update([
                 'push_failed_at' => now(),
                 'push_failure_code' => $code,
@@ -268,7 +278,7 @@ SQL);
         return $retired;
     }
 
-    private function untouchedParents(): \Illuminate\Database\Eloquent\Builder
+    private function untouchedParents(): Builder
     {
         return StudentNotification::query()
             ->whereDoesntHave('pushDeliveries')
@@ -277,13 +287,15 @@ SQL);
             ->whereNull('push_failed_at');
     }
 
-    private function refreshParentOutcomes(\Illuminate\Support\Collection $notificationIds): void
+    private function refreshParentOutcomes(Collection $notificationIds): void
     {
         foreach ($notificationIds as $notificationId) {
             $deliveries = NotificationPushDelivery::query()
                 ->where('student_notification_id', $notificationId)
                 ->get();
-            if ($deliveries->isEmpty()) continue;
+            if ($deliveries->isEmpty()) {
+                continue;
+            }
             $accepted = $deliveries->where('status', NotificationPushDelivery::STATUS_ACCEPTED);
             $active = $deliveries->whereIn('status', [
                 NotificationPushDelivery::STATUS_PENDING,

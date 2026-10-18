@@ -18,14 +18,18 @@ use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Throwable;
 
-final class RecoverPendingCertificate implements ShouldQueue, ShouldBeUnique
+final class RecoverPendingCertificate implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 120;
+
     public int $uniqueFor = 900;
+
     public bool $failOnTimeout = true;
+
     public array $backoff = [15, 60, 300];
 
     public function __construct(public readonly int $certificateId)
@@ -35,31 +39,33 @@ final class RecoverPendingCertificate implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'certificate-recovery:' . $this->certificateId;
+        return 'certificate-recovery:'.$this->certificateId;
     }
 
     public function handle(CertificateService $certificates): void
     {
         $observed = Certificate::query()->find($this->certificateId);
-        if (!$observed || !$observed->isActiveCredential()) {
+        if (! $observed || ! $observed->isActiveCredential()) {
             return;
         }
         if ($observed->hasStoredArtifact()) {
             Certificate::query()->whereKey($this->certificateId)->update([
                 'artifact_checked_at' => now(),
             ]);
+
             return;
         }
-        if (!$observed->hasCompleteCredentialSnapshot()) {
+        if (! $observed->hasCompleteCredentialSnapshot()) {
             $this->markTerminal('snapshot_invalid');
+
             return;
         }
 
         $certificate = DB::transaction(function () use ($observed): ?Certificate {
             $row = Certificate::query()->lockForUpdate()->find($this->certificateId);
             if (
-                !$row
-                || !$row->isActiveCredential()
+                ! $row
+                || ! $row->isActiveCredential()
                 || $row->image_path !== $observed->image_path
             ) {
                 return null;
@@ -87,7 +93,7 @@ final class RecoverPendingCertificate implements ShouldQueue, ShouldBeUnique
 
             $maxAttempts = max(1, (int) config('operations.certificate_recovery_max_attempts', 3));
             if ((int) $row->recovery_attempts >= $maxAttempts) {
-                if (!$row->recovery_next_attempt_at || $row->recovery_next_attempt_at->isFuture()) {
+                if (! $row->recovery_next_attempt_at || $row->recovery_next_attempt_at->isFuture()) {
                     return null;
                 }
                 // Start a new, slow recovery epoch after the provider had time
@@ -111,7 +117,7 @@ final class RecoverPendingCertificate implements ShouldQueue, ShouldBeUnique
             return $row->fresh();
         }, 3);
 
-        if (!$certificate) {
+        if (! $certificate) {
             return;
         }
 
@@ -123,13 +129,14 @@ final class RecoverPendingCertificate implements ShouldQueue, ShouldBeUnique
         // already earned from it. Recovery rebuilds from immutable certificate
         // snapshots and therefore must still resolve a soft-deleted course.
         $course = Course::withTrashed()->find($certificate->course_id);
-        if (!$user || !$course) {
+        if (! $user || ! $course) {
             $this->markTerminal('subject_missing');
+
             return;
         }
 
         $recovered = $certificates->generate($user, $course);
-        if (!$recovered || !$recovered->hasStoredArtifact()) {
+        if (! $recovered || ! $recovered->hasStoredArtifact()) {
             throw new RuntimeException('Certificate recovery did not produce an artifact.');
         }
     }
@@ -139,8 +146,8 @@ final class RecoverPendingCertificate implements ShouldQueue, ShouldBeUnique
         $maxAttempts = max(1, (int) config('operations.certificate_recovery_max_attempts', 3));
         $certificate = Certificate::query()->find($this->certificateId);
         if (
-            !$certificate
-            || !$certificate->isActiveCredential()
+            ! $certificate
+            || ! $certificate->isActiveCredential()
             || $certificate->hasStoredArtifact()
         ) {
             return;
@@ -150,7 +157,7 @@ final class RecoverPendingCertificate implements ShouldQueue, ShouldBeUnique
         $certificate->forceFill([
             'recovery_next_attempt_at' => $exhausted ? now()->addHours(6) : now()->addMinutes(30),
             'recovery_failed_at' => now(),
-            'recovery_failure_code' => hash('sha256', $exception::class . '|' . $exception->getMessage()),
+            'recovery_failure_code' => hash('sha256', $exception::class.'|'.$exception->getMessage()),
         ])->save();
     }
 

@@ -13,8 +13,8 @@ use App\Services\AdminContactWorkflowService;
 use App\Services\ContactAccountLookupService;
 use App\Support\ContactEditorVersion;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -86,7 +86,9 @@ final class AdminContactWorkflowOwnershipTest extends TestCase
         $workflow = app(AdminContactWorkflowService::class);
         foreach ([true, false] as $typedRequest) {
             $contact = $this->requestFor($student->email);
-            if (!$typedRequest) $contact->forceFill(['request_type' => null])->save();
+            if (! $typedRequest) {
+                $contact->forceFill(['request_type' => null])->save();
+            }
             try {
                 $workflow->deleteMessage((int) $contact->id, ContactEditorVersion::for($contact));
                 self::fail('Both typed and legacy deletion requests must keep their audit record.');
@@ -196,7 +198,9 @@ final class AdminContactWorkflowOwnershipTest extends TestCase
             self::assertSame(70, (int) Cache::get('courses:catalog-revision'));
             DB::commit();
         } finally {
-            if (DB::transactionLevel() > 0) DB::rollBack();
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
         }
 
         self::assertGreaterThan(70, (int) Cache::get('courses:catalog-revision'));

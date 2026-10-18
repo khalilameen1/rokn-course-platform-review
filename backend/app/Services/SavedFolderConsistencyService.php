@@ -12,7 +12,7 @@ final class SavedFolderConsistencyService
 {
     public function repairLegacyFolders(int $batch): int
     {
-        if (!$this->schemaExists()) {
+        if (! $this->schemaExists()) {
             return 0;
         }
 
@@ -31,7 +31,7 @@ final class SavedFolderConsistencyService
 
     public function repairableCount(): int
     {
-        if (!$this->schemaExists()) {
+        if (! $this->schemaExists()) {
             return 0;
         }
 
@@ -44,7 +44,7 @@ final class SavedFolderConsistencyService
     {
         return DB::transaction(function () use ($folderId): int {
             $folder = DB::table('saved_folders')->where('id', $folderId)->lockForUpdate()->first();
-            if (!$folder) {
+            if (! $folder) {
                 return 0;
             }
 
@@ -59,7 +59,7 @@ final class SavedFolderConsistencyService
                 ->lockForUpdate()
                 ->first(['id']);
 
-            if (!$keeper) {
+            if (! $keeper) {
                 $displayName = $cleanName !== '' ? $cleanName : 'قائمة محفوظة';
                 if (
                     hash_equals((string) $folder->name, $displayName)

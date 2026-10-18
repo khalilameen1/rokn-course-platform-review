@@ -44,7 +44,7 @@ final class UserProgressStatisticsTest extends TestCase
         DB::table('student_section_progress')->insert([
             'user_id' => 8, 'course_section_id' => 1, 'is_completed' => true,
         ]);
-        $user = (new User())->forceFill(['id' => 7]);
+        $user = (new User)->forceFill(['id' => 7]);
         DB::enableQueryLog();
         DB::flushQueryLog();
         $statistics = $user->lesson_progress_statistics;

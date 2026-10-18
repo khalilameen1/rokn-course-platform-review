@@ -3,22 +3,23 @@
 namespace App\Models;
 
 use App\Traits\InvalidatesCourseCatalogue;
+use App\Traits\ResolvesLocalizedAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Traits\ResolvesLocalizedAttributes;
 
 class Path extends Model
 {
-    use HasFactory, ResolvesLocalizedAttributes, InvalidatesCourseCatalogue;
+    use HasFactory, InvalidatesCourseCatalogue, ResolvesLocalizedAttributes;
 
     protected $fillable = [
         'title_ar',
         'title_en',
     ];
 
-    public function getTitleAttribute() {
+    public function getTitleAttribute()
+    {
         // Check if we're accessing the raw attribute (to avoid infinite loop)
-        if (!array_key_exists('title_ar', $this->attributes) && !array_key_exists('title_en', $this->attributes)) {
+        if (! array_key_exists('title_ar', $this->attributes) && ! array_key_exists('title_en', $this->attributes)) {
             return null;
         }
 

@@ -25,6 +25,7 @@ final class AiConsentController extends Controller
             'version' => ['required', Rule::in([AiConsentService::VERSION])],
             'accepted' => ['required', 'boolean'],
         ]);
+
         return $responses->success($consent->record(auth('api')->user(), (bool) $data['accepted']), 'تم حفظ اختيارك')
             ->header('Cache-Control', 'no-store');
     }

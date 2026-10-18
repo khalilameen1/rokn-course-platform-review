@@ -5,29 +5,28 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Models\FeedbackReport;
 use App\Models\FeedbackAttachment;
-use App\Services\SupportCaseAttachmentDeliveryService;
+use App\Models\FeedbackReport;
 use App\Services\ApiResponseService;
-use App\Services\SupportCaseService;
 use App\Services\SupportCaseAccessService;
+use App\Services\SupportCaseAttachmentDeliveryService;
 use App\Services\SupportCaseReadService;
+use App\Services\SupportCaseService;
 use App\Services\SupportCaseSubmissionService;
 use App\Support\PrivacyFingerprint;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Http\Response;
 
 final class FeedbackController extends Controller
 {
     public function __construct(
         private readonly SupportCaseAccessService $access,
         private readonly SupportCaseReadService $reads
-    ) {
-    }
+    ) {}
 
     public function index(Request $request, ApiResponseService $responses): JsonResponse
     {
@@ -78,6 +77,7 @@ final class FeedbackController extends Controller
     ): JsonResponse {
         $report = FeedbackReport::query()->where('public_id', $publicId)->firstOrFail();
         $this->access->authorizeViewer($report, auth('api')->user(), $this->accessTokenFromRequest($request));
+
         return $responses->success($this->reads->customerPayload($report), 'تم تحميل الحالة');
     }
 
@@ -99,6 +99,7 @@ final class FeedbackController extends Controller
         $cases->appendLearnerMessage(
             $report, $user, trim($validated['message']), $validated['client_request_id'], $request->file('screenshot')
         );
+
         return $responses->success($this->reads->customerPayload($report->fresh()), 'تم إرسال الرد');
     }
 
@@ -114,11 +115,12 @@ final class FeedbackController extends Controller
             ->where('scan_status', 'sanitized')
             ->firstOrFail();
         $bytes = $delivery->bytes($file);
-        $name = 'rokn-support-' . strtoupper(substr($publicId, -8))
-            . '-' . $file->id . '.jpg';
+        $name = 'rokn-support-'.strtoupper(substr($publicId, -8))
+            .'-'.$file->id.'.jpg';
+
         return response($bytes, 200, [
             'Content-Type' => (string) ($file->mime_type ?: 'image/jpeg'),
-            'Content-Disposition' => 'inline; filename="' . $name . '"',
+            'Content-Disposition' => 'inline; filename="'.$name.'"',
             'Cache-Control' => 'private, no-store',
             'X-Content-Type-Options' => 'nosniff',
             'Referrer-Policy' => 'no-referrer',
@@ -135,6 +137,7 @@ final class FeedbackController extends Controller
         abort_unless($user, 401);
         $report = FeedbackReport::query()->where('public_id', $publicId)->firstOrFail();
         $report = $cases->claim($report, $user, $this->accessTokenFromRequest($request));
+
         return $responses->success($this->reads->customerPayload($report->fresh()), 'أضيف البلاغ إلى حسابك');
     }
 
@@ -145,7 +148,10 @@ final class FeedbackController extends Controller
         ?string $accessToken
     ): JsonResponse {
         $payload = $this->reads->customerPayload($report) + ['replayed' => $replayed];
-        if ($accessToken) $payload['access_token'] = $accessToken;
+        if ($accessToken) {
+            $payload['access_token'] = $accessToken;
+        }
+
         return $responses->success($payload, 'وصلتنا رسالتك', $replayed ? 200 : 201);
     }
 
@@ -184,7 +190,9 @@ final class FeedbackController extends Controller
 
     private function ensureRequestIdentity(Request $request): void
     {
-        if ($request->filled('client_request_id')) return;
+        if ($request->filled('client_request_id')) {
+            return;
+        }
         $candidate = trim((string) $request->header('Idempotency-Key'));
         $request->merge([
             'client_request_id' => Str::isUuid($candidate) ? $candidate : (string) Str::uuid(),
@@ -203,7 +211,7 @@ final class FeedbackController extends Controller
             ['options' => ['min_range' => 1, 'max_range' => 2147483647]]
         );
 
-        if (!in_array($platform, ['android', 'ios'], true)
+        if (! in_array($platform, ['android', 'ios'], true)
             || preg_match('/\A\d{1,6}(?:\.\d{1,6}){1,3}(?:[-+][0-9A-Za-z.-]{1,16})?\z/', $version) !== 1
             || $build === false) {
             return $empty;
@@ -230,6 +238,7 @@ final class FeedbackController extends Controller
     private function accessTokenFromRequest(Request $request): ?string
     {
         $token = trim((string) $request->header('X-Support-Access'));
+
         return $token !== '' && strlen($token) <= 128 ? $token : null;
     }
 }

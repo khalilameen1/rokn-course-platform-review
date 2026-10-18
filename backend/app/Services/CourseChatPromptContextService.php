@@ -15,8 +15,7 @@ final readonly class CourseChatPromptContextService
         private CourseRevisionResolver $revisionResolver,
         private AiPromptPolicy $promptPolicy,
         private OpenRouterRequestPolicy $requestPolicy
-    ) {
-    }
+    ) {}
 
     public function currentLesson(int $lessonId, Course $course): ?Lesson
     {
@@ -28,8 +27,7 @@ final readonly class CourseChatPromptContextService
         return Lesson::query()
             ->whereKey($currentId)
             ->where('list_id', $course->id)
-            ->whereHas('courseSection', fn ($sections) =>
-                $sections->where('course_id', $course->id)
+            ->whereHas('courseSection', fn ($sections) => $sections->where('course_id', $course->id)
             )
             ->first();
     }
@@ -103,7 +101,7 @@ final readonly class CourseChatPromptContextService
         foreach ($course->modules as $module) {
             $moduleTitle = UnicodeText::clean((string) $module->title, false);
             if ($moduleTitle !== '') {
-                $lines[] = 'الوحدة: ' . $moduleTitle;
+                $lines[] = 'الوحدة: '.$moduleTitle;
             }
             foreach ($module->sections as $section) {
                 $sectionTitle = UnicodeText::clean((string) $section->title, false);
@@ -111,7 +109,7 @@ final readonly class CourseChatPromptContextService
                     continue;
                 }
                 $lines[] = ($section->getSectionType() === 'project' ? 'مشروع: ' : 'مقطع: ')
-                    . $sectionTitle;
+                    .$sectionTitle;
             }
         }
 

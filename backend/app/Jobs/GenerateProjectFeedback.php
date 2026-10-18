@@ -12,15 +12,15 @@ use App\Models\Course;
 use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Services\AiEntitlementBudgetService;
-use App\Services\AiUsageSettlementService;
 use App\Services\AiFailurePolicy;
 use App\Services\AiInputAttachmentService;
 use App\Services\AiPromptPolicy;
 use App\Services\AiStreamCheckpointService;
+use App\Services\AiUsageSettlementService;
 use App\Services\CourseAccessPlanService;
 use App\Services\CourseEntitlementService;
-use App\Services\OpenRouterService;
 use App\Services\OpenRouterRequestPolicy;
+use App\Services\OpenRouterService;
 use App\Services\PaidAiCallExecutionService;
 use App\Services\ProjectFeedbackThreadService;
 use App\Services\ProjectSubmissionFileRetentionService;
@@ -28,8 +28,8 @@ use App\Support\CoachReplyText;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
 use App\Support\UnicodeText;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -37,16 +37,20 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
 
-final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
+final class GenerateProjectFeedback implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     // OpenRouter may use the full 50-second transport cap. Preserve enough
     // time to land and settle a valid report after the final response byte.
     public int $timeout = 80;
+
     public int $uniqueFor = 600;
+
     public bool $failOnTimeout = true;
+
     public string $executionId;
 
     public function __construct(public int $submissionId)
@@ -63,7 +67,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'project-feedback:' . $this->submissionId;
+        return 'project-feedback:'.$this->submissionId;
     }
 
     public function handle(
@@ -82,26 +86,31 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
         ProjectSubmissionFileRetentionService $fileRetention
     ): void {
         $submission = ProjectSubmission::with('project')->find($this->submissionId);
-        if (!$submission || $submission->review_status !== ProjectSubmission::STATUS_PASSED) return;
-        if (!User::query()->whereKey($submission->user_id)->where('active', true)->exists()) {
+        if (! $submission || $submission->review_status !== ProjectSubmission::STATUS_PASSED) {
+            return;
+        }
+        if (! User::query()->whereKey($submission->user_id)->where('active', true)->exists()) {
             // Do not leave a revoked learner's report permanently queued for
             // the recovery command to dispatch every two minutes.
             $this->markUnavailable($submission->id, 'account_unavailable');
             $fileRetention->purgeIfEligible($submission->fresh(), true);
+
             return;
         }
 
         $evaluationSnapshot = ProjectSubmissionEvaluationSnapshot::fromSubmission($submission);
-        if (!$evaluationSnapshot) {
+        if (! $evaluationSnapshot) {
             $this->markUnavailable($submission->id, 'project_context_missing');
             $fileRetention->purgeIfEligible($submission->fresh(), true);
+
             return;
         }
         $courseId = (int) $evaluationSnapshot['course_id'];
         $course = Course::query()->find($courseId);
-        if (!$course || $courseId <= 0) {
+        if (! $course || $courseId <= 0) {
             $this->markUnavailable($submission->id, 'project_context_missing');
             $fileRetention->purgeIfEligible($submission->fresh(), true);
+
             return;
         }
 
@@ -116,15 +125,16 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
         $evaluationTerms = is_array($evaluationTerms) ? $evaluationTerms : null;
         $contract = $plans->publicPayloadFromTerms($evaluationTerms ?? []);
         if (
-            !$enrollment
-            || !$currentTerms
-            || !$evaluationTerms
-            || !$access->enrollmentAllowsVariableCostFeatures($enrollment)
-            || !(bool) $currentContract['project_report_enabled']
-            || !(bool) $contract['project_report_enabled']
+            ! $enrollment
+            || ! $currentTerms
+            || ! $evaluationTerms
+            || ! $access->enrollmentAllowsVariableCostFeatures($enrollment)
+            || ! (bool) $currentContract['project_report_enabled']
+            || ! (bool) $contract['project_report_enabled']
         ) {
             $this->markUnavailable($submission->id, 'report_not_included');
             $fileRetention->purgeIfEligible($submission->fresh(), true);
+
             return;
         }
         $projectPolicy = (array) $evaluationSnapshot['project'];
@@ -152,7 +162,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             if ($report === '') {
                 $report = trim((string) $submission->feedbackThread?->messages()
                     ->where('role', 'assistant')
-                    ->where('client_request_id', 'report:' . $submission->public_id)
+                    ->where('client_request_id', 'report:'.$submission->public_id)
                     ->where('status', 'completed')
                     ->value('body'));
             }
@@ -161,6 +171,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                 $paidCalls->markPresented($event);
                 $fileRetention->purgeIfEligible($submission->fresh());
             }
+
             return;
         }
         // A landed/settled report no longer needs its original upload. Resolve
@@ -181,10 +192,14 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
         );
         $claimed = DB::transaction(function () use ($submission): bool {
             $locked = ProjectSubmission::query()->lockForUpdate()->findOrFail($submission->id);
-            if ($locked->review_status !== ProjectSubmission::STATUS_PASSED) return false;
+            if ($locked->review_status !== ProjectSubmission::STATUS_PASSED) {
+                return false;
+            }
             $meta = is_array($locked->submission_metadata) ? $locked->submission_metadata : [];
             $status = (string) data_get($meta, 'ai_feedback.status', '');
-            if ($status === 'ready') return false;
+            if ($status === 'ready') {
+                return false;
+            }
 
             $owner = (string) data_get($meta, 'ai_feedback.execution_id', '');
             $leaseExpiresAt = (string) data_get($meta, 'ai_feedback.lease_expires_at', '');
@@ -212,9 +227,12 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
 
             return true;
         }, 3);
-        if (!$claimed) return;
-        if ($text === '' && $ownedAttachments->isEmpty() && !$hasKnownReport) {
+        if (! $claimed) {
+            return;
+        }
+        if ($text === '' && $ownedAttachments->isEmpty() && ! $hasKnownReport) {
             $this->markUnavailable($submission->id, 'report_input_missing');
+
             return;
         }
 
@@ -267,7 +285,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                     'text' => $promptPolicy->learnerSubmission($text),
                 ]], $inputParts),
             ]];
-            if (!$hasKnownReport) {
+            if (! $hasKnownReport) {
                 $model = $requestPolicy->configuredModel('project_model');
                 $estimated = $maxTokens
                     + OpenRouterRequestPolicy::reasoningHeadroom($reasoningEffort)
@@ -281,7 +299,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                     $requestId
                 );
             }
-            if (!$reservation) {
+            if (! $reservation) {
                 throw new AiPlanLimitReachedException('Project feedback is not metered for this enrollment.');
             }
             if ($reservation->status === 'completed') {
@@ -305,7 +323,9 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                         $landed,
                         (int) $submission->user_id
                     );
-                    if (!AiUsageSettlementService::settlementAllowsDelivery($settlement)) return;
+                    if (! AiUsageSettlementService::settlementAllowsDelivery($settlement)) {
+                        return;
+                    }
                     $result = $landed;
                     if ($ownedAttachments->isNotEmpty()) {
                         $attachments->markProcessed(
@@ -329,15 +349,19 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                     );
                     if ($callState === PaidAiCallExecutionService::INACTIVE) {
                         $budget->release($reservation, 'account_deleted_before_provider');
+
                         return;
                     }
                     if ($callState === PaidAiCallExecutionService::CONSENT_REQUIRED) {
                         $budget->release($reservation, 'ai_consent_required');
                         $this->markUnavailable($submission->id, 'ai_consent_required');
+
                         return;
                     }
                     if ($callState !== PaidAiCallExecutionService::START) {
-                        if ($callState === PaidAiCallExecutionService::LIVE) return;
+                        if ($callState === PaidAiCallExecutionService::LIVE) {
+                            return;
+                        }
                         $fresh = $reservation->fresh();
                         if (
                             $callState === PaidAiCallExecutionService::STALE_STARTED
@@ -350,6 +374,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                             ]);
                         }
                         $this->markUnavailable($submission->id, 'provider_outcome_unknown');
+
                         return;
                     }
 
@@ -404,14 +429,18 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                         (int) $submission->user_id,
                         $result
                     );
-                    if ($landingState !== PaidAiCallExecutionService::LANDED) return;
+                    if ($landingState !== PaidAiCallExecutionService::LANDED) {
+                        return;
+                    }
                     $result = $paidCalls->landedResult($reservation->fresh()) ?? $result;
                     $settlement = $settlements->settleForActiveUser(
                         $reservation,
                         $result,
                         (int) $submission->user_id
                     );
-                    if (!AiUsageSettlementService::settlementAllowsDelivery($settlement)) return;
+                    if (! AiUsageSettlementService::settlementAllowsDelivery($settlement)) {
+                        return;
+                    }
                     if ($ownedAttachments->isNotEmpty()) {
                         $attachments->markProcessed(
                             $ownedAttachments,
@@ -425,10 +454,14 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             $presented = DB::transaction(function () use (
                 $submission, $contract, $result, $requestId, $threads, $enrollment, $courseId, $evaluationTerms
             ): bool {
-                if (!User::query()->whereKey($submission->user_id)->where('active', true)
-                    ->lockForUpdate()->exists()) return false;
+                if (! User::query()->whereKey($submission->user_id)->where('active', true)
+                    ->lockForUpdate()->exists()) {
+                    return false;
+                }
                 $fresh = ProjectSubmission::query()->lockForUpdate()->find($submission->id);
-                if (!$fresh) return false;
+                if (! $fresh) {
+                    return false;
+                }
                 $meta = is_array($fresh->submission_metadata) ? $fresh->submission_metadata : [];
                 if (
                     data_get($meta, 'ai_feedback.status') === 'ready'
@@ -455,7 +488,9 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
 
                 return true;
             }, 3);
-            if (!$presented) return;
+            if (! $presented) {
+                return;
+            }
             $paidCalls->markPresented($reservation?->fresh());
             $fileRetention->purgeIfEligible($submission->fresh());
         } catch (AiPlanLimitReachedException $exception) {
@@ -492,10 +527,11 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             // the existing bounded recovery window, even when another paid
             // request is unsafe. The retention sweep handles expiry separately.
             $fileRetention->purgeIfEligible($submission->fresh());
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             if ($inputParts === null) {
                 $this->markUnavailable($submission->id, 'attachment_unavailable');
                 report($exception);
+
                 return;
             }
             $settled = $reservation?->fresh();
@@ -545,7 +581,9 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
     {
         DB::transaction(function () use ($submissionId): void {
             $submission = ProjectSubmission::query()->lockForUpdate()->find($submissionId);
-            if (!$submission) return;
+            if (! $submission) {
+                return;
+            }
             $metadata = is_array($submission->submission_metadata)
                 ? $submission->submission_metadata
                 : [];
@@ -608,6 +646,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                     $attachmentService->markProcessed($ownedAttachments, $savedAnnotations);
                 }
             }
+
             // Keep the processing lease recoverable. The scheduled recovery
             // will replay the settled answer without another provider call.
             return;
@@ -636,11 +675,17 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
     {
         $changed = DB::transaction(function () use ($submissionId, $reason): bool {
             $submission = ProjectSubmission::query()->lockForUpdate()->find($submissionId);
-            if (!$submission) return false;
+            if (! $submission) {
+                return false;
+            }
             $metadata = is_array($submission->submission_metadata) ? $submission->submission_metadata : [];
-            if (data_get($metadata, 'ai_feedback.status') === 'ready') return false;
+            if (data_get($metadata, 'ai_feedback.status') === 'ready') {
+                return false;
+            }
             $owner = (string) data_get($metadata, 'ai_feedback.execution_id', '');
-            if ($owner !== '' && $owner !== $this->executionId) return false;
+            if ($owner !== '' && $owner !== $this->executionId) {
+                return false;
+            }
 
             $metadata['ai_feedback'] = [
                 'status' => 'unavailable',

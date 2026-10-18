@@ -13,12 +13,10 @@ use Illuminate\Support\Collection;
 
 final readonly class AdminProjectSubmissionReviewReadService
 {
-    public function __construct(private ProjectSubmissionPresenter $presenter)
-    {
-    }
+    public function __construct(private ProjectSubmissionPresenter $presenter) {}
 
     /**
-     * @param array{status?:string|null,search?:string|null} $filters
+     * @param  array{status?:string|null,search?:string|null}  $filters
      * @return array{submissions:LengthAwarePaginator,statusCounts:Collection}
      */
     public function index(array $filters, bool $administrator): array
@@ -43,7 +41,7 @@ final readonly class AdminProjectSubmissionReviewReadService
         $search = trim((string) ($filters['search'] ?? ''));
         if ($search !== '') {
             $query->where(function (Builder $submissionQuery) use ($search, $administrator): void {
-                $like = '%' . addcslashes($search, '%_\\') . '%';
+                $like = '%'.addcslashes($search, '%_\\').'%';
                 $submissionQuery
                     ->where('public_id', 'like', $like)
                     ->orWhereHas('project.section', function (Builder $sectionQuery) use ($like): void {
@@ -114,9 +112,9 @@ final readonly class AdminProjectSubmissionReviewReadService
                 ->values();
             $initial = ProjectFeedbackMessage::query()
                 ->where('thread_id', $submission->feedbackThread->id)
-                ->where('client_request_id', 'report:' . $submission->public_id)
+                ->where('client_request_id', 'report:'.$submission->public_id)
                 ->first();
-            if ($initial && !$threadMessages->contains('id', $initial->id)) {
+            if ($initial && ! $threadMessages->contains('id', $initial->id)) {
                 $threadMessages->prepend($initial);
             }
 
@@ -139,7 +137,7 @@ final readonly class AdminProjectSubmissionReviewReadService
             'submission' => $submission,
             'submissionState' => $this->presenter->present($submission, false),
             'threadMessages' => $threadMessages,
-            'isLatestAttempt' => !ProjectSubmission::query()
+            'isLatestAttempt' => ! ProjectSubmission::query()
                 ->where('user_id', $submission->user_id)
                 ->where('project_id', $submission->project_id)
                 ->where('id', '>', $submission->id)

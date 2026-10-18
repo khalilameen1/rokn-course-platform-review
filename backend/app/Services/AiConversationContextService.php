@@ -10,8 +10,8 @@ use App\Models\ProjectFeedbackThread;
 use App\Models\User;
 use App\Support\DatabaseCapabilities;
 use App\Support\UnicodeText;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -27,7 +27,10 @@ final class AiConversationContextService
         int $characterBudget,
         string $focus
     ): string {
-        if ($characterBudget <= 0) return '';
+        if ($characterBudget <= 0) {
+            return '';
+        }
+
         return $this->rebuildAndSelect(
             (int) $thread->user_id,
             (int) $thread->course_id,
@@ -48,7 +51,7 @@ final class AiConversationContextService
                 'id' => (int) $message->id,
                 'kind' => (string) $message->role,
                 'text' => ($message->role === 'user' ? 'الطالب: ' : 'ركن: ')
-                    . UnicodeText::limit(
+                    .UnicodeText::limit(
                         UnicodeText::clean((string) $message->body),
                         520
                     ),
@@ -70,7 +73,9 @@ final class AiConversationContextService
         string $focus,
         ?Carbon $expiresAt
     ): string {
-        if (!DatabaseCapabilities::hasTable('ai_conversation_contexts')) return '';
+        if (! DatabaseCapabilities::hasTable('ai_conversation_contexts')) {
+            return '';
+        }
 
         $entries = DB::transaction(function () use (
             $userId,
@@ -81,8 +86,10 @@ final class AiConversationContextService
             $formatRow,
             $expiresAt
         ): array {
-            if (!User::query()->whereKey($userId)->where('active', true)
-                ->lockForUpdate()->exists()) return [];
+            if (! User::query()->whereKey($userId)->where('active', true)
+                ->lockForUpdate()->exists()) {
+                return [];
+            }
 
             DB::table('ai_conversation_contexts')->insertOrIgnore([
                 'user_id' => $userId,
@@ -105,6 +112,7 @@ final class AiConversationContextService
             $rows = $loadRows();
             $structured = $rows->map(function ($row) use ($formatRow): array {
                 $entry = $formatRow($row);
+
                 return [
                     'id' => max(0, (int) ($entry['id'] ?? 0)),
                     'kind' => substr((string) ($entry['kind'] ?? 'fact'), 0, 24),
@@ -136,7 +144,9 @@ final class AiConversationContextService
     private function select(array $entries, int $characterBudget, string $focus): string
     {
         $budget = max(0, min(12000, $characterBudget));
-        if ($entries === [] || $budget === 0) return '';
+        if ($entries === [] || $budget === 0) {
+            return '';
+        }
         $tokens = collect(preg_split(
             '/[^\p{L}\p{N}]+/u',
             mb_strtolower(UnicodeText::clean($focus))
@@ -149,7 +159,9 @@ final class AiConversationContextService
             $text = mb_strtolower($entry['text']);
             $relevance = 0;
             foreach ($tokens as $token) {
-                if (mb_strpos($text, $token) !== false) $relevance++;
+                if (mb_strpos($text, $token) !== false) {
+                    $relevance++;
+                }
             }
             $scores[$entry['id']] = ($index < 2 ? 10000 : 0)
                 + ($index >= max(0, $count - 6) ? 5000 + $index : 0)
@@ -158,13 +170,16 @@ final class AiConversationContextService
 
         usort($entries, static function (array $left, array $right) use ($scores): int {
             $score = $scores[$right['id']] <=> $scores[$left['id']];
+
             return $score !== 0 ? $score : ($right['id'] <=> $left['id']);
         });
         $selected = [];
         $used = 0;
         foreach ($entries as $entry) {
             $length = mb_strlen($entry['text']) + 1;
-            if ($used + $length > $budget) continue;
+            if ($used + $length > $budget) {
+                continue;
+            }
             $selected[] = $entry;
             $used += $length;
         }

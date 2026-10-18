@@ -17,12 +17,12 @@ final class ProjectAttachmentDownloadService
     /** @return array{disk:FilesystemAdapter,path:string,name:string,mime:string}|null */
     public function submissionForAdmin(ProjectSubmission $submission): ?array
     {
-        if (!$submission->submission_file) {
+        if (! $submission->submission_file) {
             return null;
         }
 
         $path = ltrim(str_replace('\\', '/', trim((string) $submission->submission_file)), '/');
-        if ($path === '' || str_contains($path, '../') || !str_starts_with($path, "project_submissions/{$submission->user_id}/{$submission->project_id}/")) {
+        if ($path === '' || str_contains($path, '../') || ! str_starts_with($path, "project_submissions/{$submission->user_id}/{$submission->project_id}/")) {
             return null;
         }
 
@@ -61,7 +61,7 @@ final class ProjectAttachmentDownloadService
                     'thread',
                     fn ($thread) => $thread->where('submission_id', $submission->id)
                 )->exists();
-        if (!$belongsToSubmission && !$belongsToThread) {
+        if (! $belongsToSubmission && ! $belongsToThread) {
             return null;
         }
 
@@ -71,7 +71,7 @@ final class ProjectAttachmentDownloadService
     /** @return array{disk:FilesystemAdapter,path:string,name:string,mime:string}|null */
     public function attachment(AiInputAttachment $attachment, int $userId): ?array
     {
-        if (!$this->belongsTo($attachment, $userId)) {
+        if (! $this->belongsTo($attachment, $userId)) {
             return null;
         }
 
@@ -120,7 +120,7 @@ final class ProjectAttachmentDownloadService
         }
         $path = ltrim((string) $attachment->storage_path, '/');
         $disk = Storage::disk((string) $attachment->storage_disk);
-        if ($path === '' || str_contains($path, '../') || !$disk->exists($path)) {
+        if ($path === '' || str_contains($path, '../') || ! $disk->exists($path)) {
             return null;
         }
 
@@ -140,8 +140,7 @@ final class ProjectAttachmentDownloadService
         string $original,
         string $mime,
         string $fallback
-    ): array
-    {
+    ): array {
         $name = DownloadFilename::safe($original, $fallback, pathinfo($path, PATHINFO_EXTENSION));
 
         return compact('disk', 'path', 'name', 'mime');

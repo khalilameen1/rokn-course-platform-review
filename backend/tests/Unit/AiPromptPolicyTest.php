@@ -12,11 +12,11 @@ final class AiPromptPolicyTest extends TestCase
     /** @return array<string, string> */
     private function prompts(): array
     {
-        $policy = new AiPromptPolicy();
+        $policy = new AiPromptPolicy;
 
         return [
             'course chat' => $policy->courseChat('التصميم', 'الوحدة الأولى')
-                . "\n" . $policy->courseChatResponseContract(),
+                ."\n".$policy->courseChatResponseContract(),
             'project report' => $policy->projectReport('سلّم صورة'),
             'project followup' => $policy->projectFollowup('سلّم صورة', 'رفعت الصورة'),
         ];
@@ -58,7 +58,7 @@ final class AiPromptPolicyTest extends TestCase
 
     public function test_instructions_and_examples_follow_the_reply_shape_they_ask_for(): void
     {
-        $policy = new AiPromptPolicy();
+        $policy = new AiPromptPolicy;
         $instructions = preg_replace(
             '/BEGIN [A-Z ]+\n.*?\nEND [A-Z ]+/su',
             '',
@@ -77,7 +77,7 @@ final class AiPromptPolicyTest extends TestCase
 
     public function test_chat_is_general_and_grounded_in_the_course(): void
     {
-        $chat = (new AiPromptPolicy())->courseChat('التصميم', 'مقطع: الألوان', 'كورس تصميم سوشيال');
+        $chat = (new AiPromptPolicy)->courseChat('التصميم', 'مقطع: الألوان', 'كورس تصميم سوشيال');
 
         self::assertStringContainsString('جاوب أي سؤال حتى لو برا الكورس من معرفتك الكاملة', $chat);
         self::assertStringContainsString('دوّر عليها', $chat);
@@ -89,7 +89,7 @@ final class AiPromptPolicyTest extends TestCase
 
     public function test_project_prompts_do_not_delegate_grading(): void
     {
-        $policy = new AiPromptPolicy();
+        $policy = new AiPromptPolicy;
         foreach ([$policy->projectReport('متطلبات'), $policy->projectFollowup('متطلبات', 'محاولة')] as $prompt) {
             self::assertStringContainsString('ما تغيرش قرار النجاح ولا تدي درجة', $prompt);
         }
@@ -100,7 +100,7 @@ final class AiPromptPolicyTest extends TestCase
 
     public function test_project_context_uses_published_requirements_not_hidden_editor_policy(): void
     {
-        $prompt = (new AiPromptPolicy())->projectFollowup('صمم شعارًا', 'هذا هو الشعار');
+        $prompt = (new AiPromptPolicy)->projectFollowup('صمم شعارًا', 'هذا هو الشعار');
 
         self::assertStringNotContainsString('MODERATOR PROJECT CRITERIA', $prompt);
         self::assertStringContainsString('BEGIN PROJECT REQUIREMENTS', $prompt);
@@ -110,7 +110,7 @@ final class AiPromptPolicyTest extends TestCase
 
     public function test_prompt_version_is_stable_and_scope_aware(): void
     {
-        $policy = new AiPromptPolicy();
+        $policy = new AiPromptPolicy;
 
         self::assertSame(
             $policy->version('course-chat', ['name' => 'أ', 'context' => 'ب']),

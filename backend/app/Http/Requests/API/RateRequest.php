@@ -2,8 +2,6 @@
 
 namespace App\Http\Requests\API;
 
-use App\Http\Requests\API\FormRequest;
-
 class RateRequest extends FormRequest
 {
     /**
@@ -25,7 +23,7 @@ class RateRequest extends FormRequest
     {
         return [
             'rate' => 'required|min:1|max:5',
-            'comment' => 'required'
+            'comment' => 'required',
         ];
     }
 }

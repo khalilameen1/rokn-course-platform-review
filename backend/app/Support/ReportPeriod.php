@@ -17,8 +17,7 @@ final readonly class ReportPeriod
         public string $key,
         public ?CarbonImmutable $start,
         public ?CarbonImmutable $end,
-    ) {
-    }
+    ) {}
 
     public static function labels(): array
     {
@@ -28,7 +27,7 @@ final readonly class ReportPeriod
 
     public static function fromKey(string $key = 'all', ?CarbonImmutable $now = null): self
     {
-        if (!array_key_exists($key, self::labels())) {
+        if (! array_key_exists($key, self::labels())) {
             throw new InvalidArgumentException('Unsupported report period.');
         }
         if ($key === 'all') {

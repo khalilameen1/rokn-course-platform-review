@@ -9,8 +9,11 @@ use Illuminate\Database\Eloquent\Model;
 final class NotificationCampaignRecipient extends Model
 {
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_DELIVERING = 'delivering';
+
     public const STATUS_INBOX = 'inbox';
+
     public const STATUS_SKIPPED = 'skipped';
 
     protected $fillable = [

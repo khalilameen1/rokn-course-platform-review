@@ -18,8 +18,7 @@ final readonly class CourseSectionAccessService
         private CourseSectionSequenceService $sectionSequence,
         private CourseRevisionLearnerReadService $revisionReads,
         private CourseAccessPlanService $plans
-    ) {
-    }
+    ) {}
 
     public function canAccessSection(User $user, CourseSection $section): bool
     {
@@ -32,14 +31,14 @@ final readonly class CourseSectionAccessService
         $course = $section->relationLoaded('course')
             ? $section->course
             : Course::find($section->course_id);
-        if (!$course || !$this->courseAccess->hasCourseAccess($user, $course)) {
+        if (! $course || ! $this->courseAccess->hasCourseAccess($user, $course)) {
             return [
                 'can_access' => false,
                 'is_locked' => true,
                 'lock_reason' => 'course_purchase_required',
             ];
         }
-        if ($section->getSectionType() === 'project' && !$this->projectsEnabledForUser((int) $user->id, (int) $course->id)) {
+        if ($section->getSectionType() === 'project' && ! $this->projectsEnabledForUser((int) $user->id, (int) $course->id)) {
             return ['can_access' => false, 'is_locked' => true, 'lock_reason' => 'projects_not_included'];
         }
 
@@ -119,7 +118,7 @@ final readonly class CourseSectionAccessService
                 $lockReason = 'module_project_not_passed';
             }
 
-            if ($userId && $isProject && !$projectPassed) {
+            if ($userId && $isProject && ! $projectPassed) {
                 $hasUnpassedProjectGate = true;
             }
 
@@ -132,20 +131,22 @@ final readonly class CourseSectionAccessService
                 'is_completed' => $isCompleted,
                 'is_locked' => $isLocked,
                 'lock_reason' => $lockReason,
-                'can_access' => !$isLocked,
+                'can_access' => ! $isLocked,
             ];
         });
     }
 
     public function projectsEnabledForUser(?int $userId, int $courseId): bool
     {
-        if (!$userId || !$courseId) return true;
+        if (! $userId || ! $courseId) {
+            return true;
+        }
 
         $enrollment = CourseEnrollment::query()
             ->where('user_id', $userId)->where('course_id', $courseId)->first();
 
         // Public/legacy callers retain the full curriculum. Access itself is
         // enforced separately; only an explicit captured watch-only plan skips projects.
-        return !$enrollment || $this->plans->projectsEnabledForEnrollment($enrollment);
+        return ! $enrollment || $this->plans->projectsEnabledForEnrollment($enrollment);
     }
 }

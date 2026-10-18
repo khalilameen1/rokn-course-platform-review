@@ -12,8 +12,8 @@ use App\Models\PortfolioVideoUpload;
 use App\Models\User;
 use App\Support\DownloadFilename;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -24,6 +24,7 @@ use Throwable;
 final class PortfolioMediaAuthoringService
 {
     public const VIDEO_MAX_BYTES = PortfolioVideoUploadService::MAX_BYTES;
+
     public const VIDEO_MIMES = PortfolioVideoUploadService::MIMES;
 
     public function __construct(
@@ -31,8 +32,7 @@ final class PortfolioMediaAuthoringService
         private BunnyService $bunny,
         private BunnyMediaRegistry $mediaRegistry,
         private PortfolioUploadAccessService $uploadAccess
-    ) {
-    }
+    ) {}
 
     public function ownedItem(User $user, int $itemId): PortfolioItem
     {
@@ -92,7 +92,7 @@ final class PortfolioMediaAuthoringService
         string $clientRequestId,
         ?string $caption
     ): array {
-        if (!Str::isUuid($clientRequestId)) {
+        if (! Str::isUuid($clientRequestId)) {
             throw ValidationException::withMessages(['client_request_id' => ['معرّف الرفع غير صالح']]);
         }
 
@@ -102,7 +102,7 @@ final class PortfolioMediaAuthoringService
         $caption = $caption !== null ? trim($caption) : null;
 
         return Cache::lock(
-            'portfolio-media-upload:' . $user->id . ':' . strtolower($clientRequestId),
+            'portfolio-media-upload:'.$user->id.':'.strtolower($clientRequestId),
             3900
         )->block(10, function () use (
             $user,
@@ -137,7 +137,7 @@ final class PortfolioMediaAuthoringService
                 $clientRequestId,
                 'portfolio_upload_unpublished'
             );
-            if (!$path) {
+            if (! $path) {
                 throw new PortfolioOperationException(PortfolioOperationException::UPLOAD_FAILED);
             }
 
@@ -163,7 +163,7 @@ final class PortfolioMediaAuthoringService
                         ->lockForUpdate()
                         ->firstOrFail();
                     if ((int) $lockedItem->user_id !== (int) $user->id) {
-                        throw (new ModelNotFoundException())
+                        throw (new ModelNotFoundException)
                             ->setModel(PortfolioItem::class, [$item->id]);
                     }
                     if ($lockedItem->deletion_started_at !== null) {
@@ -211,13 +211,13 @@ final class PortfolioMediaAuthoringService
                     return $media;
                 }, 3);
             } catch (Throwable $exception) {
-                if (!$pathConsumed) {
+                if (! $pathConsumed) {
                     $this->cleanupImage($path);
                 }
                 throw $exception;
             }
 
-            if ($replayed && !$pathConsumed) {
+            if ($replayed && ! $pathConsumed) {
                 $this->cleanupImage($path);
             }
 
@@ -239,7 +239,7 @@ final class PortfolioMediaAuthoringService
     private function assertImage(UploadedFile $file, string $field): array
     {
         $mimeType = (string) $file->getMimeType();
-        if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/webp'], true)) {
+        if (! in_array($mimeType, ['image/jpeg', 'image/png', 'image/webp'], true)) {
             throw ValidationException::withMessages([
                 $field => ['The uploaded file does not match its selected media type.'],
             ]);
@@ -266,7 +266,7 @@ final class PortfolioMediaAuthoringService
         $path = (string) $file->getRealPath();
         $sha256 = $path !== '' ? hash_file('sha256', $path) : false;
         $size = (int) $file->getSize();
-        if (!$sha256 || $size <= 0) {
+        if (! $sha256 || $size <= 0) {
             throw ValidationException::withMessages([
                 'file' => ['The selected media file is empty or could not be read completely.'],
             ]);
@@ -287,12 +287,16 @@ final class PortfolioMediaAuthoringService
 
     private function cleanupImage(string $path): void
     {
-        if ($path !== '') $this->mediaRegistry->queueStorageCleanup($path, 'portfolio_rollback', 5);
+        if ($path !== '') {
+            $this->mediaRegistry->queueStorageCleanup($path, 'portfolio_rollback', 5);
+        }
     }
 
     private function consumeImage(string $path): void
     {
-        if ($path === '') return;
+        if ($path === '') {
+            return;
+        }
         $this->mediaRegistry->consumeStorageCleanupCandidate($path);
     }
 
@@ -303,7 +307,7 @@ final class PortfolioMediaAuthoringService
         ?string $caption
     ): void {
         if (
-            !hash_equals((string) $media->content_sha256, $fingerprint['sha256'])
+            ! hash_equals((string) $media->content_sha256, $fingerprint['sha256'])
             || (int) $media->size_bytes !== $fingerprint['size']
             || (string) $media->mime_type !== $fingerprint['mime']
             || (string) $media->file_type !== 'image'

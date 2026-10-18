@@ -20,8 +20,7 @@ final class CourseCostReportService
     public function __construct(
         private readonly AiUsageReportService $usage,
         private readonly ProviderInvoiceReportService $invoices,
-    ) {
-    }
+    ) {}
 
     public static function aiFeatureLabels(): array
     {
@@ -86,7 +85,7 @@ final class CourseCostReportService
         $services->prepend(['key' => self::OPENROUTER_SERVICE, 'label' => 'OpenRouter',
             'actual_egp' => $summary['cost_egp'], 'actual_complete' => $summary['cost_egp'] !== null,
             'with_estimates_egp' => null, 'estimate_complete' => false]);
-        $complete = !$invoices['shared_costs'] && $invoices['missing_fx'] === 0
+        $complete = ! $invoices['shared_costs'] && $invoices['missing_fx'] === 0
             && $summary['cost_egp'] !== null
             && $services->whereIn('key', ['bunny_delivery', 'bunny_storage', 'infrastructure'])
                 ->every(fn (array $service): bool => $service['actual_complete']);
@@ -111,7 +110,7 @@ final class CourseCostReportService
                 'تكلفة OpenRouter من المزود بالدولار والتحويل للجنيه يتطلب سعرًا مسجلًا وقت الاستهلاك',
                 'فواتير الخدمات حسب نهاية فترة الفاتورة ولا توزع تقديريًا على الأيام أو الطلاب',
                 $invoices['shared_costs'] ? 'توجد فواتير مشتركة للمنصة لا يمكن نسبتها بدقة لهذا الكورس' : null,
-                !$complete ? 'إجمالي تكلفة التشغيل والهامش غير مكتملين حتى تكتمل فواتير الخدمات المنسوبة للكورس' : null,
+                ! $complete ? 'إجمالي تكلفة التشغيل والهامش غير مكتملين حتى تكتمل فواتير الخدمات المنسوبة للكورس' : null,
             ])),
         ];
     }

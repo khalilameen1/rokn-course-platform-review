@@ -15,13 +15,13 @@ trait GuardsDevelopmentFixtures
      */
     private function guardDevelopmentFixtures(): void
     {
-        if (!app()->environment(['local', 'testing'])) {
+        if (! app()->environment(['local', 'testing'])) {
             throw new LogicException(
                 'Development fixtures are forbidden outside the local and testing environments.'
             );
         }
 
-        if (!config('demo.seed_enabled', false)) {
+        if (! config('demo.seed_enabled', false)) {
             throw new LogicException(
                 'Development fixtures are disabled. Set ROKN_SEED_DEMO=true only in an isolated local or test environment.'
             );

@@ -31,7 +31,7 @@ final class AdminShellNavigationContractTest extends TestCase
         $tabs = $this->read('resources/views/admin/partials/support-inbox-tabs.blade.php');
 
         foreach ([$feedback, $contacts] as $surface) {
-            self::assertStringContainsString("admin.partials.support-inbox-tabs", $surface);
+            self::assertStringContainsString('admin.partials.support-inbox-tabs', $surface);
         }
 
         self::assertSame(1, substr_count($tabs, "route('admin.feedback.index')"));

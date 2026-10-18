@@ -62,10 +62,8 @@ $runGit = static function (array $arguments) use ($root): string {
 $gitPathPrefix = trim($runGit(['rev-parse', '--show-prefix']));
 $reviewedHistoryFixtures = [
     'private_key_material' => [
-        'tests/Feature/ProductionPreflightTest.php' =>
-            '-----BEGIN'.' PRIVATE KEY-----\nfixture\n-----END'.' PRIVATE KEY-----',
-        'tests/Feature/ProductionCapabilityTest.php' =>
-            '-----BEGIN'.' PRIVATE KEY-----\nfixture\n-----END'.' PRIVATE KEY-----',
+        'tests/Feature/ProductionPreflightTest.php' => '-----BEGIN'.' PRIVATE KEY-----\nfixture\n-----END'.' PRIVATE KEY-----',
+        'tests/Feature/ProductionCapabilityTest.php' => '-----BEGIN'.' PRIVATE KEY-----\nfixture\n-----END'.' PRIVATE KEY-----',
     ],
     // These three exact, quoted PHP literals were reviewed in commit 78aaaa2.
     // They are synthetic parser inputs on reserved .invalid hosts, not live
@@ -85,7 +83,7 @@ $reviewedHistoryFixtures = [
 
 $output = $runGit(['ls-files', '--cached', '--others', '--exclude-standard', '-z']);
 $paths = array_values(array_filter(explode("\0", $output), static fn (string $path): bool => $path !== ''));
-$scanner = new RepositorySecretScanner();
+$scanner = new RepositorySecretScanner;
 $issues = $scanner->scanFiles($root, $paths);
 $additionalFileCount = 0;
 $rootWorkflowPath = dirname($root).'/'.'.github/workflows/backend-ci.yml';

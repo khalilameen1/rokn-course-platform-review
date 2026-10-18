@@ -44,15 +44,25 @@ final class OperatingCostPool extends Model
         'is_final' => 'boolean',
     ];
 
-    public function course() { return $this->belongsTo(Course::class); }
-    public function creator() { return $this->belongsTo(User::class, 'created_by'); }
+    public function course()
+    {
+        return $this->belongsTo(Course::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 
     public function amountEgp(): ?float
     {
-        if ($this->currency === 'EGP') return (float) $this->amount;
+        if ($this->currency === 'EGP') {
+            return (float) $this->amount;
+        }
         if ($this->currency === 'USD' && (float) $this->fx_rate_to_egp > 0) {
             return (float) $this->amount * (float) $this->fx_rate_to_egp;
         }
+
         return null;
     }
 }

@@ -17,12 +17,11 @@ final class AdminCourseModuleApplicationService
         private readonly CourseAuthoringDeletionService $deletion,
         private readonly CourseModuleOrderingService $ordering,
         private readonly AdminCourseOutlinePresenter $outline
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, mixed> $data
-     * @param Closure(Course, CourseModule, array<string, mixed>): void $completeIntent
+     * @param  array<string, mixed>  $data
+     * @param  Closure(Course, CourseModule, array<string, mixed>): void  $completeIntent
      * @return array<string, mixed>
      */
     public function store(
@@ -191,7 +190,7 @@ final class AdminCourseModuleApplicationService
 
     private function assertDraft(Course $course): void
     {
-        if (!$course->is_coming_soon) {
+        if (! $course->is_coming_soon) {
             throw ValidationException::withMessages([
                 'course' => [
                     'حوّل الكورس إلى مسودة قبل إضافة وحدة ثم أعد نشره بعد اكتمال محتواها',

@@ -4,25 +4,26 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
 use App\Auth\SocialLoginCredentials;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\API\ClientDeviceInput;
 use App\Http\Responses\SocialLoginResponse;
-use App\Services\SocialLoginAction;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use App\Models\ApiToken;
 use App\Models\SocialOAuthAttempt;
 use App\Models\User;
 use App\Services\SocialAuthProviderRegistry;
+use App\Services\SocialLoginAction;
 use App\Services\SocialOAuthAttemptService;
 use App\Support\FacebookGraphVersion;
 use App\Support\RoknLocale;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use RuntimeException;
 
 final class SocialOAuthController extends Controller
@@ -41,11 +42,11 @@ final class SocialOAuthController extends Controller
         ]);
         $challenge = trim((string) $pkce['code_challenge']);
         $returnTo = (string) $request->query('return_to', 'rokn://auth');
-        if (!in_array($returnTo, $this->allowedReturnUrls(), true)) {
+        if (! in_array($returnTo, $this->allowedReturnUrls(), true)) {
             abort(422, 'تعذّر بدء تسجيل الدخول');
         }
 
-        if (!$this->socialProviders->isReady($provider)) {
+        if (! $this->socialProviders->isReady($provider)) {
             return $this->redirectToApp($returnTo, [
                 'error' => 'provider_unavailable',
                 'attempt' => $challenge,
@@ -64,6 +65,7 @@ final class SocialOAuthController extends Controller
                 $challenge,
                 $nonce
             );
+
             return redirect()->away($this->authorizationUrl($provider, $state, $nonce));
         } catch (\Throwable $exception) {
             report($exception);
@@ -90,7 +92,7 @@ final class SocialOAuthController extends Controller
         // legitimate state value. The atomic pull happens only after all
         // callback constraints match.
         $stateAttempt = $state !== '' ? $this->attempts->inspectState($state) : null;
-        if (!$stateAttempt && $state !== '') {
+        if (! $stateAttempt && $state !== '') {
             $replayAttempt = $this->attempts->waitForCallbackReplay(
                 $state,
                 $provider,
@@ -117,14 +119,14 @@ final class SocialOAuthController extends Controller
             }
 
         }
-        $knownAttempt = !$stateAttempt && $state !== ''
+        $knownAttempt = ! $stateAttempt && $state !== ''
             ? $this->attempts->inspectKnownState($state, $provider)
             : null;
         $returnTo = $stateAttempt
             ? (string) $stateAttempt->return_to
             : ($knownAttempt ? (string) $knownAttempt->return_to : 'rokn://auth');
 
-        if (!$stateAttempt && $knownAttempt) {
+        if (! $stateAttempt && $knownAttempt) {
             // Expiry is terminal, but an unbound deep link is ignored by the
             // app when a newer browser callback exists. Preserve the original
             // PKCE attempt binding so this exact login ends immediately.
@@ -134,11 +136,11 @@ final class SocialOAuthController extends Controller
             );
         }
 
-        if (!$stateAttempt || !hash_equals((string) $stateAttempt->provider, $provider)) {
+        if (! $stateAttempt || ! hash_equals((string) $stateAttempt->provider, $provider)) {
             return $this->redirectToApp($returnTo, ['error' => 'login_cancelled']);
         }
 
-        if (!$request->filled('code')) {
+        if (! $request->filled('code')) {
             // A valid provider cancellation is terminal for this browser
             // attempt. Consume its state so a copied callback cannot be reused.
             $this->attempts->consumeState($state, $provider);
@@ -161,7 +163,7 @@ final class SocialOAuthController extends Controller
                 $this->callbackPayload($stateAttempt, ['error' => 'provider_unavailable'])
             );
         }
-        if (!$claimedState) {
+        if (! $claimedState) {
             return $this->redirectToApp($returnTo, ['error' => 'login_cancelled']);
         }
 
@@ -191,6 +193,7 @@ final class SocialOAuthController extends Controller
             } catch (\Throwable $stateException) {
                 report($stateException);
             }
+
             return $this->redirectToApp(
                 $returnTo,
                 $this->callbackPayload($claimedState, ['error' => 'provider_unavailable'])
@@ -209,7 +212,7 @@ final class SocialOAuthController extends Controller
         // Inspect without consuming first. A wrong verifier must not be able to
         // burn the legitimate app's one-time completion code.
         $attempt = $this->attempts->inspectCompletion((string) $validated['code']);
-        if (!$attempt) {
+        if (! $attempt) {
             return response()->json([
                 'status' => 410,
                 'success' => false,
@@ -225,7 +228,7 @@ final class SocialOAuthController extends Controller
             abort(422, 'أكمل تسجيل الدخول من صفحة الشحن');
         }
 
-        if (!$this->browserProviders()->contains((string) $attempt->provider)) {
+        if (! $this->browserProviders()->contains((string) $attempt->provider)) {
             // Corrupted or injected attempt records are unusable and should not
             // remain replayable. Verifier mismatches on a valid provider stay
             // non-consuming so an attacker cannot burn the real app's code.
@@ -242,7 +245,7 @@ final class SocialOAuthController extends Controller
 
         $challenge = trim((string) $attempt->code_challenge);
         $verifier = trim((string) ($validated['code_verifier'] ?? ''));
-        if ($challenge === '' || $verifier === '' || !hash_equals($challenge, $this->pkceChallenge($verifier))) {
+        if ($challenge === '' || $verifier === '' || ! hash_equals($challenge, $this->pkceChallenge($verifier))) {
             return response()->json([
                 'status' => 422,
                 'success' => false,
@@ -267,7 +270,7 @@ final class SocialOAuthController extends Controller
         }
 
         $claimedAttempt = $this->attempts->claimCompletion((string) $validated['code']);
-        if (!$claimedAttempt) {
+        if (! $claimedAttempt) {
             return response()->json([
                 'status' => 409,
                 'success' => false,
@@ -321,7 +324,7 @@ final class SocialOAuthController extends Controller
                         'body' => $response->getData(true),
                     ], JSON_THROW_ON_ERROR))
                 );
-                if (!$finalized) {
+                if (! $finalized) {
                     $plainToken = trim((string) data_get(
                         $response->getData(true),
                         'data.api_token',
@@ -364,7 +367,7 @@ final class SocialOAuthController extends Controller
         return $response;
     }
 
-    private function replayCompletedSession(\App\Models\SocialOAuthAttempt $attempt)
+    private function replayCompletedSession(SocialOAuthAttempt $attempt)
     {
         if (empty($attempt->encrypted_session_response)) {
             return response()->json([
@@ -404,7 +407,7 @@ final class SocialOAuthController extends Controller
                 ->whereKey($userId)
                 ->where('active', true)
                 ->exists();
-            if (!$sessionExists || !$activeUserExists) {
+            if (! $sessionExists || ! $activeUserExists) {
                 throw new RuntimeException('Stored social session has been revoked.');
             }
 
@@ -429,7 +432,8 @@ final class SocialOAuthController extends Controller
             $clientId = (string) config('services.google.client_id');
             $this->requireValue($clientId, 'Google client ID');
             $this->requireValue((string) $nonce, 'Google OAuth nonce');
-            return 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query([
+
+            return 'https://accounts.google.com/o/oauth2/v2/auth?'.http_build_query([
                 'client_id' => $clientId,
                 'redirect_uri' => $redirectUri,
                 'response_type' => 'code',
@@ -443,7 +447,8 @@ final class SocialOAuthController extends Controller
         if ($provider === 'facebook') {
             $clientId = (string) config('services.facebook.client_id');
             $this->requireValue($clientId, 'Facebook client ID');
-            return 'https://www.facebook.com/' . $this->facebookGraphVersion() . '/dialog/oauth?' . http_build_query([
+
+            return 'https://www.facebook.com/'.$this->facebookGraphVersion().'/dialog/oauth?'.http_build_query([
                 'client_id' => $clientId,
                 'redirect_uri' => $redirectUri,
                 'response_type' => 'code',
@@ -454,7 +459,8 @@ final class SocialOAuthController extends Controller
 
         $clientKey = (string) config('services.tiktok.client_key');
         $this->requireValue($clientKey, 'TikTok client key');
-        return 'https://www.tiktok.com/v2/auth/authorize/?' . http_build_query([
+
+        return 'https://www.tiktok.com/v2/auth/authorize/?'.http_build_query([
             'client_key' => $clientKey,
             'redirect_uri' => $redirectUri,
             'response_type' => 'code',
@@ -474,17 +480,19 @@ final class SocialOAuthController extends Controller
                 'redirect_uri' => $redirectUri,
                 'grant_type' => 'authorization_code',
             ])->throw();
+
             return $this->token($response->json('id_token'));
         }
 
         if ($provider === 'facebook') {
             $response = Http::timeout($this->requestTimeout())->get(
-                'https://graph.facebook.com/' . $this->facebookGraphVersion() . '/oauth/access_token', [
-                'client_id' => config('services.facebook.client_id'),
-                'client_secret' => config('services.facebook.client_secret'),
-                'code' => $code,
-                'redirect_uri' => $redirectUri,
-            ])->throw();
+                'https://graph.facebook.com/'.$this->facebookGraphVersion().'/oauth/access_token', [
+                    'client_id' => config('services.facebook.client_id'),
+                    'client_secret' => config('services.facebook.client_secret'),
+                    'code' => $code,
+                    'redirect_uri' => $redirectUri,
+                ])->throw();
+
             return $this->token($response->json('access_token'));
         }
 
@@ -495,13 +503,15 @@ final class SocialOAuthController extends Controller
             'grant_type' => 'authorization_code',
             'redirect_uri' => $redirectUri,
         ])->throw();
+
         return $this->token($response->json('access_token'));
     }
 
     private function redirectToApp(string $returnTo, array $query): RedirectResponse
     {
         $separator = str_contains($returnTo, '?') ? '&' : '?';
-        return redirect()->away($returnTo . $separator . http_build_query($query));
+
+        return redirect()->away($returnTo.$separator.http_build_query($query));
     }
 
     /** Bind a mobile callback to the PKCE flow that created it. */
@@ -524,7 +534,7 @@ final class SocialOAuthController extends Controller
     {
         $urls = config('social_auth.return_urls', []);
 
-        if (!is_array($urls)) {
+        if (! is_array($urls)) {
             return [];
         }
 
@@ -555,11 +565,12 @@ final class SocialOAuthController extends Controller
     {
         $provider = strtolower(trim($provider));
         abort_unless($this->browserProviders()->contains($provider), 404);
+
         return $provider;
     }
 
-    /** @return \Illuminate\Support\Collection<int, string> */
-    private function browserProviders(): \Illuminate\Support\Collection
+    /** @return Collection<int, string> */
+    private function browserProviders(): Collection
     {
         return $this->socialProviders->browserDeclared();
     }
@@ -570,13 +581,14 @@ final class SocialOAuthController extends Controller
         if ($token === '') {
             throw new RuntimeException('The provider did not return an identity token.');
         }
+
         return $token;
     }
 
     private function requireValue(string $value, string $name): void
     {
         if (trim($value) === '') {
-            throw new RuntimeException($name . ' is not configured.');
+            throw new RuntimeException($name.' is not configured.');
         }
     }
 

@@ -29,7 +29,7 @@ final class BunnyDeliveryOwnershipTest extends TestCase
         foreach ([BunnyService::class, BunnyMediaRegistry::class,
             MediaHealthService::class, MediaReconciliationService::class] as $service) {
             $this->app->bind($service, static function () use ($service): never {
-                throw new \LogicException('Delivery must not resolve ' . $service);
+                throw new \LogicException('Delivery must not resolve '.$service);
             });
         }
         Http::preventStrayRequests();
@@ -62,11 +62,11 @@ final class BunnyDeliveryOwnershipTest extends TestCase
         $expires = strtotime($result['expires_at']);
         self::assertGreaterThanOrEqual($before + $expected, $expires);
         self::assertLessThanOrEqual($after + $expected, $expires);
-        $path = '/' . self::GUID . '/';
-        $token = BunnyDeliveryService::advancedToken('stream-key', $path, $expires, 'token_path=' . $path);
+        $path = '/'.self::GUID.'/';
+        $token = BunnyDeliveryService::advancedToken('stream-key', $path, $expires, 'token_path='.$path);
         self::assertSame(
-            'https://stream.example.test/bcdn_token=' . $token . '&token_path=' . rawurlencode($path)
-                . '&expires=' . $expires . $path . 'playlist.m3u8',
+            'https://stream.example.test/bcdn_token='.$token.'&token_path='.rawurlencode($path)
+                .'&expires='.$expires.$path.'playlist.m3u8',
             $result['url']
         );
         self::assertStringNotContainsString('stream-key', $result['url']);
@@ -96,22 +96,22 @@ final class BunnyDeliveryOwnershipTest extends TestCase
         self::assertGreaterThanOrEqual($before + 300, (int) $query['expires']);
         self::assertLessThanOrEqual(time() + 300, (int) $query['expires']);
         self::assertSame(
-            hash('sha256', 'stream-key' . self::GUID . $query['expires']),
+            hash('sha256', 'stream-key'.self::GUID.$query['expires']),
             $query['token']
         );
-        self::assertSame('/embed/123/' . self::GUID, parse_url($embed['url'], PHP_URL_PATH));
+        self::assertSame('/embed/123/'.self::GUID, parse_url($embed['url'], PHP_URL_PATH));
 
         $thumbnail = $delivery->videoThumbnail(self::GUID, 'thumbnail.jpg');
         self::assertNotNull($thumbnail);
-        self::assertStringEndsWith('/' . self::GUID . '/thumbnail.jpg', $thumbnail['url']);
-        self::assertStringContainsString('token_path=' . rawurlencode('/' . self::GUID . '/'), $thumbnail['url']);
+        self::assertStringEndsWith('/'.self::GUID.'/thumbnail.jpg', $thumbnail['url']);
+        self::assertStringContainsString('token_path='.rawurlencode('/'.self::GUID.'/'), $thumbnail['url']);
         self::assertNull($delivery->videoThumbnail(self::GUID, 'invalid?.jpg'));
 
         // Bunny Stream serves captions under the same signed directory.
         $caption = $delivery->videoCaption(self::GUID, 'ar', 1800);
         self::assertNotNull($caption);
-        self::assertStringEndsWith('/' . self::GUID . '/captions/ar.vtt', $caption['url']);
-        self::assertStringContainsString('token_path=' . rawurlencode('/' . self::GUID . '/'), $caption['url']);
+        self::assertStringEndsWith('/'.self::GUID.'/captions/ar.vtt', $caption['url']);
+        self::assertStringContainsString('token_path='.rawurlencode('/'.self::GUID.'/'), $caption['url']);
         $expires = strtotime($caption['expires_at']);
         self::assertGreaterThanOrEqual($before + 1800, $expires);
         self::assertNull($delivery->videoCaption(self::GUID, '../x'));
@@ -168,7 +168,7 @@ final class BunnyDeliveryOwnershipTest extends TestCase
         ?array $overrides, string $source, bool $ready
     ): void {
         $this->configure();
-        $lesson = new Lesson();
+        $lesson = new Lesson;
         $lesson->forceFill(['id' => 11, 'video_source_type' => $source,
             'bunny_video_id' => self::GUID, 'video_link' => 'https://legacy.example.test/public.mp4']);
         $state = $overrides === null ? null : new LessonMediaState(array_replace([

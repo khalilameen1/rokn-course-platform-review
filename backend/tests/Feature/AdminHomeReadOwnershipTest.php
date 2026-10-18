@@ -138,6 +138,7 @@ final class AdminHomeReadOwnershipTest extends TestCase
                 ? CourseAuthoringRevision::draftSlot((int) $canonical->id) : null,
             'clone_key' => (string) Str::uuid(),
         ]);
+
         return $revision;
     }
 

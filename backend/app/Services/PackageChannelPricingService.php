@@ -59,7 +59,7 @@ final class PackageChannelPricingService
             throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_AMOUNT_INVALID);
         }
         $payload = $this->packagePayload($package);
-        if (!$payload['channels']['direct']) {
+        if (! $payload['channels']['direct']) {
             throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_PACKAGE_UNAVAILABLE);
         }
         $shortfall = $coins;
@@ -68,6 +68,7 @@ final class PackageChannelPricingService
             BigDecimal::of($amount)->multipliedBy($coins)
                 ->dividedBy((int) $package->coins, 2, RoundingMode::HalfUp)->toFloat()
         );
+
         return array_replace($payload, [
             'funding_mode' => 'exact_shortfall',
             'pricing_basis' => [

@@ -12,8 +12,7 @@ final readonly class KashierProviderOrderService
     public function __construct(
         private KashierConfigurationService $configuration,
         private KashierGatewayEvidenceService $evidence,
-    ) {
-    }
+    ) {}
 
     /**
      * Kashier's order API is the only capture authority. A signed callback
@@ -21,7 +20,7 @@ final readonly class KashierProviderOrderService
      * fields are never used to credit, because Kashier does not sign every
      * field and the signing key also produces the learner-visible HPP hash.
      *
-     * @param array<string, mixed> $gatewayResponse
+     * @param  array<string, mixed>  $gatewayResponse
      * @return array{0: ?string, 1: array<string, mixed>}|null null until Kashier confirms the capture
      */
     public function captureEvidence(
@@ -30,7 +29,7 @@ final readonly class KashierProviderOrderService
         array $gatewayResponse
     ): ?array {
         $apiResponse = $this->fetch($orderRef);
-        if (!$this->evidence->isCaptured($apiResponse)) {
+        if (! $this->evidence->isCaptured($apiResponse)) {
             return null;
         }
 
@@ -52,7 +51,7 @@ final readonly class KashierProviderOrderService
     /** @return array<string,mixed>|null */
     public function fetch(string $orderRef): ?array
     {
-        if (!$this->isValidReference($orderRef)) {
+        if (! $this->isValidReference($orderRef)) {
             Log::warning('Kashier order verification rejected an invalid reference', [
                 'order_ref_fingerprint' => hash('sha256', $orderRef),
             ]);
@@ -80,7 +79,7 @@ final readonly class KashierProviderOrderService
                 'Authorization' => $configuration['secret_key'],
             ])->connectTimeout(5)
                 ->timeout(10)
-                ->get("{$apiHost}/payments/orders/" . rawurlencode($orderRef));
+                ->get("{$apiHost}/payments/orders/".rawurlencode($orderRef));
 
             if ($response->status() === 404) {
                 return [
@@ -91,7 +90,7 @@ final readonly class KashierProviderOrderService
                 ];
             }
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::warning('Kashier order verification API failed', [
                     'order_ref' => $orderRef,
                     'status' => $response->status(),
@@ -101,7 +100,7 @@ final readonly class KashierProviderOrderService
             }
 
             $payload = $response->json();
-            if (!is_array($payload)) {
+            if (! is_array($payload)) {
                 Log::warning('Kashier order verification returned an invalid payload', [
                     'order_ref' => $orderRef,
                 ]);

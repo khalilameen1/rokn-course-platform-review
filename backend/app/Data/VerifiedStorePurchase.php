@@ -17,6 +17,5 @@ final readonly class VerifiedStorePurchase
         public array $auditPayload = [],
         public int $quantity = 1,
         public ?string $accountBinding = null
-    ) {
-    }
+    ) {}
 }

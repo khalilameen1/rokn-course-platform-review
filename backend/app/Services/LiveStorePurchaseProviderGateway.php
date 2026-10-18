@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Http;
 final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGateway
 {
     private const APPLE_RECEIPT_SIGNER_OID = '1.2.840.113635.100.6.11.1';
+
     private const APPLE_WWDR_INTERMEDIATE_OID = '1.2.840.113635.100.6.2.1';
 
     public function verify(
@@ -101,7 +102,7 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
             static fn ($item): string => trim((string) $item->getProductId()),
             $lineItems
         )));
-        if (!in_array($productId, $verifiedProductIds, true)) {
+        if (! in_array($productId, $verifiedProductIds, true)) {
             throw new StorePurchaseVerificationException('store_product_mismatch');
         }
         // These coin contracts fulfill exactly one consumable per token.
@@ -114,7 +115,7 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
         }
 
         $account = trim((string) $purchase->getObfuscatedExternalAccountId());
-        if ($account === '' || ($expectedAccountBinding !== null && !hash_equals($expectedAccountBinding, $account))) {
+        if ($account === '' || ($expectedAccountBinding !== null && ! hash_equals($expectedAccountBinding, $account))) {
             throw new StorePurchaseVerificationException('store_account_mismatch');
         }
 
@@ -181,7 +182,7 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
 
     private function googlePublisher(): AndroidPublisher
     {
-        $client = new GoogleClient();
+        $client = new GoogleClient;
         $client->setAuthConfig($this->googleCredentials());
         $client->setScopes([AndroidPublisher::ANDROIDPUBLISHER]);
         $client->setHttpClient(new HttpClient([
@@ -209,7 +210,7 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
         // while its Sandbox purchases are valid.
         $deviceClaims = $this->verifiedAppleClaims(trim($purchaseToken));
         $environment = strtolower((string) ($deviceClaims['environment'] ?? ''));
-        if (!in_array($environment, ['production', 'sandbox'], true)) {
+        if (! in_array($environment, ['production', 'sandbox'], true)) {
             throw new StorePurchaseVerificationException('store_purchase_environment_invalid');
         }
         $this->assertApplePurchaseClaims(
@@ -232,7 +233,7 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
                 503
             );
         }
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             // A provider authentication/configuration or connectivity failure
             // is retryable, not evidence that the learner has not paid.
             $notFound = $response->status() === 404
@@ -285,15 +286,15 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
         string $environment
     ): void {
         if (
-            !hash_equals((string) config('store_billing.apple.bundle_id'), (string) ($claims['bundleId'] ?? ''))
-            || !hash_equals($productId, (string) ($claims['productId'] ?? ''))
-            || !hash_equals($transactionId, (string) ($claims['transactionId'] ?? ''))
+            ! hash_equals((string) config('store_billing.apple.bundle_id'), (string) ($claims['bundleId'] ?? ''))
+            || ! hash_equals($productId, (string) ($claims['productId'] ?? ''))
+            || ! hash_equals($transactionId, (string) ($claims['transactionId'] ?? ''))
         ) {
             throw new StorePurchaseVerificationException('store_product_mismatch');
         }
         if (
-            !isset($claims['appAccountToken'])
-            || !hash_equals(strtolower($expectedAccountBinding), strtolower((string) $claims['appAccountToken']))
+            ! isset($claims['appAccountToken'])
+            || ! hash_equals(strtolower($expectedAccountBinding), strtolower((string) $claims['appAccountToken']))
         ) {
             throw new StorePurchaseVerificationException('store_account_mismatch');
         }
@@ -385,7 +386,7 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
             ->acceptJson()
             ->connectTimeout((float) config('store_billing.connect_timeout_seconds', 3))
             ->timeout((float) config('store_billing.timeout_seconds', 12))
-            ->get('/inApps/v1/transactions/' . rawurlencode($transactionId));
+            ->get('/inApps/v1/transactions/'.rawurlencode($transactionId));
     }
 
     /** @return array<string, mixed> */
@@ -403,18 +404,19 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
 
         $certificates = array_map(function ($value): string {
             $der = base64_decode((string) $value, true);
-            if (!is_string($der)) {
+            if (! is_string($der)) {
                 throw new StorePurchaseVerificationException('apple_transaction_signature_invalid');
             }
+
             return "-----BEGIN CERTIFICATE-----\n"
-                . chunk_split(base64_encode($der), 64, "\n")
-                . "-----END CERTIFICATE-----\n";
+                .chunk_split(base64_encode($der), 64, "\n")
+                ."-----END CERTIFICATE-----\n";
         }, $chain);
 
         $trustedRoots = (array) config('store_billing.apple.root_certificate_sha256', []);
         $rootDer = base64_decode((string) end($chain), true);
         $rootFingerprint = is_string($rootDer) ? hash('sha256', $rootDer) : '';
-        if ($rootFingerprint === '' || !in_array($rootFingerprint, $trustedRoots, true)) {
+        if ($rootFingerprint === '' || ! in_array($rootFingerprint, $trustedRoots, true)) {
             throw new StorePurchaseVerificationException(
                 'apple_certificate_root_untrusted',
                 'تعذّر التحقق من عملية الشراء',
@@ -428,8 +430,8 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
         // sign App Store transactions or server notifications.
         if (
             count($certificates) !== 3
-            || !$this->hasExtension($certificates[0], self::APPLE_RECEIPT_SIGNER_OID)
-            || !$this->hasExtension($certificates[1], self::APPLE_WWDR_INTERMEDIATE_OID)
+            || ! $this->hasExtension($certificates[0], self::APPLE_RECEIPT_SIGNER_OID)
+            || ! $this->hasExtension($certificates[1], self::APPLE_WWDR_INTERMEDIATE_OID)
         ) {
             throw new StorePurchaseVerificationException('apple_transaction_signature_invalid');
         }
@@ -438,7 +440,7 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
             $certificateDetails = openssl_x509_parse($certificate);
             $now = time();
             if (
-                !is_array($certificateDetails)
+                ! is_array($certificateDetails)
                 || (int) ($certificateDetails['validFrom_time_t'] ?? PHP_INT_MAX) > $now
                 || (int) ($certificateDetails['validTo_time_t'] ?? 0) < $now
             ) {
@@ -479,8 +481,8 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
 
     private function base64UrlDecode(string $value): string
     {
-        $decoded = base64_decode(strtr($value, '-_', '+/') . str_repeat('=', (4 - strlen($value) % 4) % 4), true);
-        if (!is_string($decoded)) {
+        $decoded = base64_decode(strtr($value, '-_', '+/').str_repeat('=', (4 - strlen($value) % 4) % 4), true);
+        if (! is_string($decoded)) {
             throw new StorePurchaseVerificationException('apple_transaction_signature_invalid');
         }
 

@@ -14,7 +14,9 @@ use Illuminate\Support\Facades\DB;
 final class SavedLibraryService
 {
     public const MAX_FOLDERS_PER_USER = 100;
+
     public const FOLDER_PREVIEW_LIMIT = 100;
+
     private const REVISION_MATERIALIZATION_BATCH = 250;
 
     public function __construct(
@@ -131,7 +133,7 @@ final class SavedLibraryService
             ->where('user_id', $user->id)
             ->withCount(['lessons' => fn ($query) => $query->publishedLearningGraph()])
             ->first();
-        if (!$folder) {
+        if (! $folder) {
             return null;
         }
 
@@ -154,7 +156,7 @@ final class SavedLibraryService
             ->whereKey($folderId)
             ->where('user_id', $user->id)
             ->first();
-        if (!$folder) {
+        if (! $folder) {
             return null;
         }
 
@@ -174,7 +176,7 @@ final class SavedLibraryService
         $this->materializeSavedLessons((int) $user->id);
         $currentLessonId = $this->currentLessonId($lessonId);
         $lesson = Lesson::query()->publishedLearningGraph()->find($currentLessonId);
-        if (!$lesson) {
+        if (! $lesson) {
             return null;
         }
 
@@ -250,7 +252,7 @@ final class SavedLibraryService
     {
         $currentLessonId = $this->currentLessonId($lessonId);
         $lesson = Lesson::with(['course', 'courseSection'])->find($currentLessonId);
-        if (!$lesson) {
+        if (! $lesson) {
             return ['status' => 'lesson_unavailable'];
         }
 
@@ -258,9 +260,9 @@ final class SavedLibraryService
         $course = $lesson->course;
         $section = $lesson->courseSection;
         if (
-            !$course
-            || !$section
-            || !$course->isPublishedForLearning()
+            ! $course
+            || ! $section
+            || ! $course->isPublishedForLearning()
             || (int) $section->course_id !== $courseId
             || $section->getSectionType() !== 'lesson'
             || (int) $section->sectionable_id !== (int) $lesson->id
@@ -270,7 +272,7 @@ final class SavedLibraryService
 
         $hasAccess = $courseId > 0
             && $this->courseAccess->hasLearningAccess((int) $user->id, $courseId);
-        if (!$hasAccess && !(bool) $lesson->is_opened) {
+        if (! $hasAccess && ! (bool) $lesson->is_opened) {
             return ['status' => 'forbidden'];
         }
 
@@ -280,7 +282,7 @@ final class SavedLibraryService
                 ->where('user_id', $user->id)
                 ->lockForUpdate()
                 ->first();
-            if (!$folder) {
+            if (! $folder) {
                 return null;
             }
 
@@ -295,7 +297,7 @@ final class SavedLibraryService
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            if (!DB::table('saved_folder_lessons')
+            if (! DB::table('saved_folder_lessons')
                 ->where('saved_folder_id', $folder->id)
                 ->where('lesson_id', $lesson->id)
                 ->exists()) {
@@ -309,7 +311,7 @@ final class SavedLibraryService
 
             return [
                 'folder' => $folder,
-                'inserted' => !$alreadySaved && (bool) $inserted,
+                'inserted' => ! $alreadySaved && (bool) $inserted,
             ];
         }, 3);
         if ($saved === null) {
@@ -349,7 +351,7 @@ final class SavedLibraryService
                 ->where('user_id', $user->id)
                 ->lockForUpdate()
                 ->first();
-            if (!$folder) {
+            if (! $folder) {
                 return null;
             }
 
@@ -489,7 +491,7 @@ final class SavedLibraryService
                 $obsoleteRowIds = [];
                 foreach ($rows as $row) {
                     $target = (int) ($current[(int) $row->lesson_id] ?? $row->lesson_id);
-                    if ($target === (int) $row->lesson_id || !$published->has($target)) {
+                    if ($target === (int) $row->lesson_id || ! $published->has($target)) {
                         continue;
                     }
 

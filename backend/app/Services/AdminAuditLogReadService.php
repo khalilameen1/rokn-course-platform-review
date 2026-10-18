@@ -23,13 +23,13 @@ final class AdminAuditLogReadService
     /** @param array{actor_id?:int|string|null,action?:?string,from?:?string,to?:?string} $filters */
     public function paginate(array $filters): LengthAwarePaginator
     {
-        $from = !empty($filters['from']) ? BusinessClock::localDayRangeUtc($filters['from'])[0] : null;
-        $toExclusive = !empty($filters['to']) ? BusinessClock::localDayRangeUtc($filters['to'])[1] : null;
+        $from = ! empty($filters['from']) ? BusinessClock::localDayRangeUtc($filters['from'])[0] : null;
+        $toExclusive = ! empty($filters['to']) ? BusinessClock::localDayRangeUtc($filters['to'])[1] : null;
         $action = trim((string) ($filters['action'] ?? ''));
 
         return AdminAuditLog::query()
             ->with('actor:id,name,name_ar,role,deleted_at')
-            ->when(!empty($filters['actor_id']), fn ($query) => $query->where('actor_id', (int) $filters['actor_id']))
+            ->when(! empty($filters['actor_id']), fn ($query) => $query->where('actor_id', (int) $filters['actor_id']))
             ->when($action !== '', function ($query) use ($action): void {
                 $query->where(function ($match) use ($action): void {
                     $escaped = AdminStudentSearch::escape($action);

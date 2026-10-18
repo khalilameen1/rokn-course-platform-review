@@ -14,10 +14,11 @@ use App\Models\Lesson;
 use App\Models\Order;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\AdminStudentProgressReadService;
 use App\Services\CourseAccessPlanService;
 use App\Services\CourseLeaderboardService;
-use App\Services\AdminStudentProgressReadService;
 use App\Services\StudentProgressSummaryService;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -27,17 +28,23 @@ final class WatchOnlyStaffProgressTest extends TestCase
     use RefreshDatabase;
 
     private Course $course;
+
     private CourseAccessPlan $basic;
+
     private CourseAccessPlan $plus;
+
     private User $watcher;
+
     private User $practical;
+
     private User $legacy;
+
     private CourseEnrollment $watchEnrollment;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->course = new Course();
+        $this->course = new Course;
         $this->course->forceFill([
             'tenant_id' => 1, 'name_ar' => 'كورس للمقارنة', 'price' => 400,
             'is_coming_soon' => false, 'is_catalog_visible' => true,
@@ -169,16 +176,16 @@ final class WatchOnlyStaffProgressTest extends TestCase
 
     public function test_leaderboard_week_boundary_terminates_for_every_weekday(): void
     {
-        $original = \Carbon\CarbonImmutable::getTestNow();
-        $start = \Carbon\CarbonImmutable::parse('2026-09-19 12:00:00', 'Africa/Cairo');
+        $original = CarbonImmutable::getTestNow();
+        $start = CarbonImmutable::parse('2026-09-19 12:00:00', 'Africa/Cairo');
         try {
             foreach (range(0, 6) as $day) {
-                \Carbon\CarbonImmutable::setTestNow($start->addDays($day));
+                CarbonImmutable::setTestNow($start->addDays($day));
                 $result = app(CourseLeaderboardService::class)->forCourse($this->course->id);
                 self::assertCount(3, $result['data']['best_students']);
             }
         } finally {
-            \Carbon\CarbonImmutable::setTestNow($original);
+            CarbonImmutable::setTestNow($original);
         }
     }
 
@@ -195,11 +202,12 @@ final class WatchOnlyStaffProgressTest extends TestCase
 
     private function student(string $name): User
     {
-        $student = new User();
+        $student = new User;
         $student->forceFill([
             'name' => $name, 'name_ar' => $name, 'email' => $name.'@staff-progress.test',
             'role' => 'client', 'active' => true,
         ])->save();
+
         return $student;
     }
 
@@ -220,13 +228,14 @@ final class WatchOnlyStaffProgressTest extends TestCase
             'status' => Order::STATUS_APPROVED, 'financial_status' => Order::FINANCIAL_SETTLED,
             'approved_at' => now(),
         ]);
-        $enrollment = new CourseEnrollment();
+        $enrollment = new CourseEnrollment;
         $enrollment->forceFill([
             'tenant_id' => 1,
             'user_id' => $user->id, 'course_id' => $this->course->id, 'order_id' => $order->id,
             'access_plan_id' => $plan->id, 'access_plan_order_id' => $order->id,
             'access_plan_snapshot' => $receipt, 'is_active' => true, 'enrolled_at' => now(),
         ])->save();
+
         return $enrollment;
     }
 }

@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Middleware\RequireAdminMfa;
+use App\Http\Resources\UsersResource;
 use App\Models\PortfolioItem;
 use App\Models\PortfolioMedia;
 use App\Models\User;
 use App\Services\BunnyDeliveryService;
+use App\Services\PortfolioReviewReadService;
+use App\Services\PublicPortfolioService;
 use App\Support\RoknPublicUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -33,7 +36,7 @@ final class PortfolioSharingAwarenessTest extends TestCase
         $this->getJson('/api/v1/user/profile')->assertOk()
             ->assertJsonPath('data.portfolio_url', null)
             ->assertJsonPath('data.portfolio_slug', $owner->portfolio_slug);
-        self::assertNull((new \App\Http\Resources\UsersResource($owner))->resolve()['profile_deeplink']);
+        self::assertNull((new UsersResource($owner))->resolve()['profile_deeplink']);
         $this->getJson('/api/v1/portfolio')->assertOk()
             ->assertJsonPath('data.0.id', $item->id);
         $this->get(route('portfolio.public', $owner->portfolio_slug))->assertNotFound();
@@ -47,7 +50,7 @@ final class PortfolioSharingAwarenessTest extends TestCase
         $this->getJson('/api/v1/user/profile')->assertOk()
             ->assertJsonPath('data.portfolio_url', RoknPublicUrl::portfolio($owner->portfolio_slug));
         self::assertSame(RoknPublicUrl::portfolio($owner->portfolio_slug),
-            (new \App\Http\Resources\UsersResource($owner->fresh()))->resolve()['profile_deeplink']);
+            (new UsersResource($owner->fresh()))->resolve()['profile_deeplink']);
     }
 
     public function test_only_admin_can_preview_suspended_public_work_and_its_media(): void
@@ -58,7 +61,7 @@ final class PortfolioSharingAwarenessTest extends TestCase
         $private = $this->item($owner, false);
         $owner->forceFill(['portfolio_sharing_suspended_at' => now()])->save();
         $preview = route('admin.portfolio-preview.show', $owner);
-        $media = app(\App\Services\PublicPortfolioService::class)->adminPreview($owner)['projects'][0]['media'][0]['image_url'];
+        $media = app(PublicPortfolioService::class)->adminPreview($owner)['projects'][0]['media'][0]['image_url'];
         $this->get($preview)->assertRedirect();
         $this->get($media)->assertRedirect();
         $this->actingAs($this->owner('moderator'), 'web')->get($preview)->assertForbidden();
@@ -91,7 +94,7 @@ final class PortfolioSharingAwarenessTest extends TestCase
     private function approveFixture(User $owner): void
     {
         $owner = $owner->fresh();
-        $snapshot = app(\App\Services\PortfolioReviewReadService::class)->snapshot($owner);
+        $snapshot = app(PortfolioReviewReadService::class)->snapshot($owner);
         $owner->forceFill(['portfolio_sharing_status' => 'approved', 'portfolio_approved_hash' => $snapshot['hash']])->save();
     }
 

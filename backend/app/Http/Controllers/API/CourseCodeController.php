@@ -13,8 +13,8 @@ use App\Services\CourseCodeRedemptionService;
 use App\Services\CourseEntitlementService;
 use App\Support\CourseCodeRejection;
 use App\Support\UnicodeText;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 final class CourseCodeController extends Controller
@@ -23,8 +23,7 @@ final class CourseCodeController extends Controller
         private readonly CourseEntitlementService $courseAccess,
         private readonly CourseCodeEligibilityService $eligibility,
         private readonly CourseCodeRedemptionService $redemptions
-    ) {
-    }
+    ) {}
 
     public function redeem(Request $request): JsonResponse
     {
@@ -83,6 +82,7 @@ final class CourseCodeController extends Controller
         } catch (\Throwable $exception) {
             $this->rethrowExpectedRequestException($exception);
             report($exception);
+
             return response()->json([
                 'status' => 500, 'success' => false, 'message' => 'حدث خطأ في الخادم', 'data' => null,
             ], 500);
@@ -100,7 +100,7 @@ final class CourseCodeController extends Controller
 
         try {
             $code = CourseCode::query()->where('code', UnicodeText::identifier($request->input('code')))->first();
-            if (!$code) {
+            if (! $code) {
                 throw new CourseCodeUnavailable(CourseCodeRejection::NOT_FOUND);
             }
             if ($code->type !== 'course') {
@@ -131,6 +131,7 @@ final class CourseCodeController extends Controller
         } catch (\Throwable $exception) {
             $this->rethrowExpectedRequestException($exception);
             report($exception);
+
             return response()->json([
                 'status' => 500, 'success' => false, 'message' => 'حدث خطأ في الخادم', 'data' => null,
             ], 500);
@@ -175,17 +176,15 @@ final class CourseCodeController extends Controller
 
     /**
      * Get user's redeemed codes
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
     public function myCodes(): JsonResponse
     {
         try {
             $user = Auth::guard('api')->user();
 
-            $codes = CourseCode::whereHas('usages', function($query) use ($user) {
+            $codes = CourseCode::whereHas('usages', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
-            })->with(['course', 'lesson', 'usages' => function($query) use ($user) {
+            })->with(['course', 'lesson', 'usages' => function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             }])->get();
 
@@ -230,11 +229,11 @@ final class CourseCodeController extends Controller
                     'used_at' => $code->usages->first()->used_at->format('Y-m-d H:i:s'),
                     'course' => $code->course ? [
                         'id' => $code->course->id,
-                        'name' => $code->course->name_ar
+                        'name' => $code->course->name_ar,
                     ] : null,
                     'lesson' => $code->lesson ? [
                         'id' => $code->lesson->id,
-                        'title' => $code->lesson->title
+                        'title' => $code->lesson->title,
                     ] : null,
                     'lessons' => $code->type === 'multiple_lessons'
                         ? collect($code->lesson_ids)
@@ -259,6 +258,7 @@ final class CourseCodeController extends Controller
         } catch (\Throwable $e) {
             $this->rethrowExpectedRequestException($e);
             report($e);
+
             return response()->json([
                 'status' => 500,
                 'success' => false,
@@ -268,4 +268,3 @@ final class CourseCodeController extends Controller
         }
     }
 }
-

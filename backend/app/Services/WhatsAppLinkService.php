@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\UserCoinTaskAttempt;
 use App\Models\UserWhatsAppConnection;
 use App\Models\WhatsAppLinkToken;
+use App\Support\BusinessClock;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -19,16 +20,15 @@ final readonly class WhatsAppLinkService
     public function __construct(
         private WalletService $wallet,
         private AcquisitionRewardTombstoneService $rewardTombstones
-    ) {
-    }
+    ) {}
 
     /** @return array<string, mixed> */
     public function createLink(User $user, CoinEarningMethod $method, bool $supportsReadyClaim = false): array
     {
         if (
-            !(bool) config('whatsapp.enabled')
-            || !$method->isAvailableNow()
-            || !$method->hasClaimCapacity()
+            ! (bool) config('whatsapp.enabled')
+            || ! $method->isAvailableNow()
+            || ! $method->hasClaimCapacity()
             || $method->action_key !== 'link_whatsapp'
         ) {
             throw new \DomainException('task_unavailable');
@@ -51,7 +51,7 @@ final readonly class WhatsAppLinkService
             // Starting a link does not consume the campaign quota. The actual
             // inbound claim below is its financial boundary.
             $lockedMethod = CoinEarningMethod::query()->findOrFail($method->id);
-            if (!$lockedMethod->isAvailableNow() || !$lockedMethod->hasClaimCapacity()) {
+            if (! $lockedMethod->isAvailableNow() || ! $lockedMethod->hasClaimCapacity()) {
                 throw new \DomainException('task_unavailable');
             }
             $earning = $lockedUser->coinEarnings()
@@ -106,12 +106,12 @@ final readonly class WhatsAppLinkService
         }
 
         $message = 'أرسل هذه الجملة لربط الحساب والحصول على المكافأة '
-            . self::TOKEN_PREFIX . $rawToken;
+            .self::TOKEN_PREFIX.$rawToken;
 
         return [
             'task_state' => 'started',
             'attempt_id' => $result['attempt']->public_id,
-            'action_url' => 'https://wa.me/' . $botPhone . '?text=' . rawurlencode($message),
+            'action_url' => 'https://wa.me/'.$botPhone.'?text='.rawurlencode($message),
             'expires_at' => $expiresAt->toIso8601String(),
         ];
     }
@@ -131,7 +131,7 @@ final readonly class WhatsAppLinkService
                 ->where('token_hash', hash('sha256', $rawToken))
                 ->lockForUpdate()
                 ->first();
-            if (!$link || $link->expires_at->isPast()) {
+            if (! $link || $link->expires_at->isPast()) {
                 return $this->unmatched();
             }
 
@@ -154,7 +154,7 @@ final readonly class WhatsAppLinkService
                 // superseded link. Only a token carrying the same verified
                 // sender is a real inbound replay.
                 $linkedPhone = trim((string) $link->sender_phone_e164);
-                if ($linkedPhone === '' || !hash_equals($linkedPhone, $phone)) {
+                if ($linkedPhone === '' || ! hash_equals($linkedPhone, $phone)) {
                     return $this->unmatched();
                 }
 
@@ -193,7 +193,7 @@ final readonly class WhatsAppLinkService
                 ->first();
             if (
                 $connection?->verified_at
-                && !hash_equals((string) $connection->phone_e164, $phone)
+                && ! hash_equals((string) $connection->phone_e164, $phone)
             ) {
                 // Multiple composers may be open after a double tap. Once one
                 // number has proved ownership, a late sibling token must never
@@ -246,7 +246,7 @@ final readonly class WhatsAppLinkService
             $balance = $this->wallet->balances($user)['total'];
             $rewardDeferred = false;
 
-            if (!$alreadyClaimed && $rewardAvailable) {
+            if (! $alreadyClaimed && $rewardAvailable) {
                 $transaction = $this->wallet->creditRewardWithinConfiguredCap(
                     $user->id,
                     (int) $method->coins_amount,
@@ -257,7 +257,7 @@ final readonly class WhatsAppLinkService
                         'action_key' => $method->action_key,
                         'campaign_key' => $method->campaign_key,
                         'verified_by' => 'whatsapp_inbound',
-                        'reward_timezone' => \App\Support\BusinessClock::timezoneName(),
+                        'reward_timezone' => BusinessClock::timezoneName(),
                     ]
                 );
                 if ($transaction) {
@@ -305,14 +305,14 @@ final readonly class WhatsAppLinkService
                 'earned_coins' => $earnedCoins,
                 'balance' => $balance,
                 'reward_deferred' => $rewardDeferred,
-                'reward_unavailable' => !$alreadyClaimed && !$rewardAvailable,
+                'reward_unavailable' => ! $alreadyClaimed && ! $rewardAvailable,
             ];
         });
     }
 
     private function extractToken(string $message): ?string
     {
-        if (!preg_match('/' . self::TOKEN_PREFIX . '([a-f0-9]{48})/i', $message, $matches)) {
+        if (! preg_match('/'.self::TOKEN_PREFIX.'([a-f0-9]{48})/i', $message, $matches)) {
             return null;
         }
 
@@ -335,10 +335,10 @@ final readonly class WhatsAppLinkService
         if (str_starts_with($digits, '00')) {
             $digits = substr($digits, 2);
         } elseif (str_starts_with($digits, '0')) {
-            $digits = '20' . substr($digits, 1);
+            $digits = '20'.substr($digits, 1);
         }
 
-        return preg_match('/^[1-9][0-9]{9,14}$/', $digits) ? '+' . $digits : null;
+        return preg_match('/^[1-9][0-9]{9,14}$/', $digits) ? '+'.$digits : null;
     }
 
     /** @return array{matched:false,already_claimed:false,user:null,method_id:null,coins:0,earned_coins:0,balance:0,reward_deferred:false,reward_unavailable:false} */

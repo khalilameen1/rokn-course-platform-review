@@ -24,7 +24,7 @@ final class ArabicSearchNormalizerTest extends TestCase
         string $first,
         string $second
     ): void {
-        $normalizer = new ArabicSearchNormalizer();
+        $normalizer = new ArabicSearchNormalizer;
 
         self::assertSame(
             $normalizer->normalize($first),

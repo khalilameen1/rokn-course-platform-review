@@ -24,6 +24,7 @@ use Tests\TestCase;
 final class AppArtworkManagementTest extends TestCase
 {
     private array $imageFixtures = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -33,7 +34,7 @@ final class AppArtworkManagementTest extends TestCase
         config(['app.url' => 'https://localhost', 'filesystems.disks.public.url' => 'https://localhost/storage']);
         URL::forceScheme('https');
         Storage::fake('public', ['url' => 'https://localhost/storage']);
-        $admin = new User();
+        $admin = new User;
         $admin->forceFill(['name_ar' => 'مدير', 'email' => 'artwork@example.test', 'role' => 'admin', 'active' => true])->save();
         $this->withoutMiddleware(RequireAdminMfa::class);
         $this->actingAs($admin, 'web');
@@ -148,12 +149,14 @@ final class AppArtworkManagementTest extends TestCase
     {
         $fixture = UploadedFile::fake()->image($name, 16, 16);
         $this->imageFixtures[] = $fixture;
+
         return new UploadedFile($fixture->getPathname(), $name, 'image/png', null, true);
     }
 
     private function payload(): array
     {
         $editor = $this->get(route('admin.design-settings.index'))->assertOk();
+
         return [
             'name_ar' => 'رُكن', 'name_en' => 'Rokn',
             'color_1' => '#005EFF', 'color_2' => '#FFFFFF', 'color_3' => '#101318', 'color_4' => '#818896',

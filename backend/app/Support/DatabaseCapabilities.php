@@ -30,7 +30,9 @@ use Throwable;
 final class DatabaseCapabilities
 {
     private const CACHE_PREFIX = 'db-capabilities:v1:';
+
     private const GENERATION_KEY = 'db-capabilities:generation';
+
     private const NEGATIVE_TTL_SECONDS = 60;
 
     /** @var array<string, bool> */
@@ -46,7 +48,7 @@ final class DatabaseCapabilities
         if (self::schemaIsMutableInProcess()) {
             return Schema::hasTable($table);
         }
-        $key = self::connectionKey() . ':table:' . $table;
+        $key = self::connectionKey().':table:'.$table;
 
         return self::$tables[$key] ??= self::remember($key, static fn (): bool => Schema::hasTable($table));
     }
@@ -56,7 +58,7 @@ final class DatabaseCapabilities
         if (self::schemaIsMutableInProcess()) {
             return Schema::hasColumn($table, $column);
         }
-        $key = self::connectionKey() . ':column:' . $table . ':' . $column;
+        $key = self::connectionKey().':column:'.$table.':'.$column;
 
         return self::$columns[$key] ??= self::remember(
             $key,
@@ -68,7 +70,7 @@ final class DatabaseCapabilities
     public static function hasColumns(string $table, array $columns): bool
     {
         foreach ($columns as $column) {
-            if (!self::hasColumn($table, $column)) {
+            if (! self::hasColumn($table, $column)) {
                 return false;
             }
         }
@@ -118,14 +120,14 @@ final class DatabaseCapabilities
         }
         $migrations = @filemtime(database_path('migrations'));
 
-        return self::$cacheVersion = $generation . ':' . ($migrations === false ? '0' : (string) $migrations);
+        return self::$cacheVersion = $generation.':'.($migrations === false ? '0' : (string) $migrations);
     }
 
     /** @param Closure(): bool $probe */
     private static function remember(string $key, Closure $probe): bool
     {
         try {
-            $cacheKey = self::CACHE_PREFIX . self::cacheVersion() . ':' . $key;
+            $cacheKey = self::CACHE_PREFIX.self::cacheVersion().':'.$key;
             $cached = Cache::get($cacheKey);
             if (is_bool($cached)) {
                 return $cached;
@@ -154,7 +156,7 @@ final class DatabaseCapabilities
     {
         $connection = DB::connection();
 
-        return $connection->getName() . ':' . (string) $connection->getDatabaseName();
+        return $connection->getName().':'.(string) $connection->getDatabaseName();
     }
 
     /**

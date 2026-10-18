@@ -4,13 +4,14 @@ namespace App\Models;
 
 use App\Support\BusinessClock;
 use App\Support\UnicodeText;
+use App\Traits\HasPhoto;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\HasPhoto;
 
 class Coupon extends Model
 {
-    use SoftDeletes, HasPhoto;
+    use HasPhoto, SoftDeletes;
 
     protected $fillable = [
         'name_ar', 'name_en', 'code', 'course_id', 'starts_at', 'balance',
@@ -71,7 +72,7 @@ class Coupon extends Model
     public function isAvailableAt(?\DateTimeInterface $at = null): bool
     {
         $moment = $at
-            ? \Carbon\CarbonImmutable::instance($at)->utc()
+            ? CarbonImmutable::instance($at)->utc()
             : BusinessClock::utcNow();
         $expiryDate = trim((string) $this->getRawOriginal('expiry_date'));
         $expiresAt = $expiryDate === ''
@@ -81,8 +82,7 @@ class Coupon extends Model
         return (bool) $this->active
             && (int) $this->balance > 0
             && (int) $this->balance <= 100
-            && (!$this->starts_at || $this->starts_at->lessThanOrEqualTo($moment))
+            && (! $this->starts_at || $this->starts_at->lessThanOrEqualTo($moment))
             && ($expiresAt === null || $moment->lessThan($expiresAt));
     }
-
 }

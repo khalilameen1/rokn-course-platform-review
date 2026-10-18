@@ -10,22 +10,22 @@ use App\Models\Lesson;
 use App\Models\LessonWatchEvidence;
 use App\Models\ProductEvent;
 use App\Models\User;
-use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\DB;
 use App\Support\BusinessClock;
-use Ramsey\Uuid\Uuid;
+use Carbon\CarbonImmutable;
 use DateTimeInterface;
+use Illuminate\Support\Facades\DB;
+use Ramsey\Uuid\Uuid;
 
 final class ProductEventService
 {
-    public function __construct(private OutboxService $outbox)
-    {
-    }
+    public function __construct(private OutboxService $outbox) {}
 
     /** Committed receipt evidence; never a synthetic device session. */
     public function recordCourseCheckoutTransition(User $user, CourseCheckout $checkout, string $event): void
     {
-        if ($checkout->terms['mode'] !== 'purchase') return;
+        if ($checkout->terms['mode'] !== 'purchase') {
+            return;
+        }
         $occurredAt = match ($event) {
             'checkout_quoted' => $checkout->created_at,
             'purchase_started' => $checkout->authorized_at,
@@ -49,7 +49,7 @@ final class ProductEventService
     public function recordLessonWatchTransition(User $user, Lesson $lesson,
         LessonWatchEvidence $evidence, string $event, DateTimeInterface $occurredAt, int $courseId): void
     {
-        if (!in_array($event, ['lesson_started', 'lesson_completed'], true)) {
+        if (! in_array($event, ['lesson_started', 'lesson_completed'], true)) {
             throw new \LogicException('Unsupported lesson product event.');
         }
         $this->record([
@@ -114,14 +114,14 @@ final class ProductEventService
                 $attributes
             );
 
-            if (!$event->wasRecentlyCreated && !$this->sameEvent($event, $attributes)) {
+            if (! $event->wasRecentlyCreated && ! $this->sameEvent($event, $attributes)) {
                 throw new ProductEventConflictException('event_id payload mismatch');
             }
 
             // A durable guest event may be replayed after sign-in. Promote the
             // same immutable event to its known account instead of permanently
             // splitting that learner between anonymous and authenticated actors.
-            if (!$event->wasRecentlyCreated && $user && $event->user_id === null) {
+            if (! $event->wasRecentlyCreated && $user && $event->user_id === null) {
                 $event->forceFill([
                     'user_id' => $user->id,
                     'actor_key' => $attributes['actor_key'],
@@ -130,7 +130,7 @@ final class ProductEventService
 
             if ($event->wasRecentlyCreated) {
                 $this->outbox->record(
-                    'product.' . $event->event_name,
+                    'product.'.$event->event_name,
                     [
                         'event_id' => $event->event_id,
                         'event_name' => $event->event_name,

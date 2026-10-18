@@ -9,7 +9,7 @@ use App\Http\Requests\Admin\CourseRequest;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
 use App\Models\User;
-use App\Services\CourseAccessPlanService;
+use App\Services\CoursePlanAuthoringService;
 use App\Services\CourseStagedAuthoringService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Validator;
@@ -160,8 +160,10 @@ final class ModeratorCourseCommercialPrivacyTest extends TestCase
             ]);
             $request->setContainer($this->app);
             $request->setUserResolver(fn (): User => $actor);
-            $request->setRouteResolver(fn () => new class($course) {
+            $request->setRouteResolver(fn () => new class($course)
+            {
                 public function __construct(private readonly Course $course) {}
+
                 public function parameter(string $key, mixed $default = null): mixed
                 {
                     return $key === 'course' ? $this->course : $default;
@@ -189,7 +191,7 @@ final class ModeratorCourseCommercialPrivacyTest extends TestCase
     /** @return array{Course, User, User} */
     private function records(): array
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'كورس تجاري',
@@ -198,7 +200,7 @@ final class ModeratorCourseCommercialPrivacyTest extends TestCase
             'is_catalog_visible' => false,
             'authoring_version' => 3,
         ])->save();
-        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($course);
+        app(CoursePlanAuthoringService::class)->createDefaults($course);
         $guided = $course->accessPlans()->where('code', CourseAccessPlan::GUIDED)->firstOrFail();
         $guided->forceFill([
             'ai_budget_usd' => '7.123456',
@@ -218,7 +220,7 @@ final class ModeratorCourseCommercialPrivacyTest extends TestCase
 
     private function dashboardUser(string $role, string $email): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'name_ar' => $role === 'admin' ? 'مالك ركن' : 'محرر المحتوى',
             'email' => $email,
@@ -231,7 +233,7 @@ final class ModeratorCourseCommercialPrivacyTest extends TestCase
 
     private function publishedCourse(string $name, bool $isMain, int $version): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => $name,

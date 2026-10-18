@@ -34,13 +34,14 @@ final class ApiTokenGuard implements Guard
         }
 
         $apiToken = $this->findToken($plainToken);
-        if (!$apiToken) {
+        if (! $apiToken) {
             return null;
         }
 
         $user = $this->provider->retrieveById($apiToken->user_id);
-        if (!$user || !(bool) $user->getAuthIdentifier() || !(bool) ($user->active ?? false)) {
+        if (! $user || ! (bool) $user->getAuthIdentifier() || ! (bool) ($user->active ?? false)) {
             $apiToken->revoke();
+
             return null;
         }
 
@@ -60,13 +61,14 @@ final class ApiTokenGuard implements Guard
     {
         $plainToken = trim((string) ($credentials['token'] ?? ''));
         $apiToken = $plainToken === '' ? null : $this->findToken($plainToken);
-        if (!$apiToken) {
+        if (! $apiToken) {
             return false;
         }
 
         $user = $this->provider->retrieveById($apiToken->user_id);
-        if (!$user || !(bool) ($user->active ?? false)) {
+        if (! $user || ! (bool) ($user->active ?? false)) {
             $apiToken->revoke();
+
             return false;
         }
 

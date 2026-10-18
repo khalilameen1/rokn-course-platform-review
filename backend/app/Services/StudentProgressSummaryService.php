@@ -6,8 +6,8 @@ namespace App\Services;
 
 use App\Models\CourseEnrollment;
 use App\Models\CourseSection;
-use App\Support\SectionProgressSummary;
 use App\Models\User;
+use App\Support\SectionProgressSummary;
 use Illuminate\Support\Collection;
 
 final class StudentProgressSummaryService
@@ -16,11 +16,10 @@ final class StudentProgressSummaryService
         private readonly CourseSectionSequenceService $sectionSequence,
         private readonly CourseRevisionLearnerReadService $revisionReads,
         private readonly CourseAccessPlanService $plans
-    ) {
-    }
+    ) {}
 
     /**
-     * @param Collection<int, User> $users
+     * @param  Collection<int, User>  $users
      * @return Collection<int, array<string, mixed>> keyed by user id
      */
     public function latestForUsers(Collection $users, ?int $courseId = null): Collection
@@ -69,7 +68,7 @@ final class StudentProgressSummaryService
         ): array {
             /** @var CourseEnrollment|null $enrollment */
             $enrollment = $enrollments->get($user->id);
-            if (!$enrollment) {
+            if (! $enrollment) {
                 return [$user->id => [
                     'user' => $user,
                     'has_enrollment' => false,
@@ -83,6 +82,7 @@ final class StudentProgressSummaryService
                 $sections,
                 $this->plans->projectsEnabledForEnrollment($enrollment)
             );
+
             return [$user->id => [
                 'user' => $user,
                 'has_enrollment' => true,

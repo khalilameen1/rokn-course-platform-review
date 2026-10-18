@@ -13,9 +13,11 @@ use App\Models\CourseEnrollment;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\CourseAccessPlanService;
+use App\Services\CourseCommercialReportService;
 use App\Support\ReportPeriod;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -111,7 +113,9 @@ final class CourseReportPeriodPageTest extends TestCase
         self::assertStringEndsWith('#commercial-report', $rows->url(1));
         $csv = $this->get(route('admin.courses.commercial-report.export', [$course, 'period' => '30d']))
             ->assertOk()->streamedContent();
-        foreach ($learners as $enrollment) self::assertStringContainsString($enrollment->user->email, $csv);
+        foreach ($learners as $enrollment) {
+            self::assertStringContainsString($enrollment->user->email, $csv);
+        }
         self::assertCount(27, $this->csvRows($csv));
     }
 
@@ -206,7 +210,7 @@ final class CourseReportPeriodPageTest extends TestCase
             $course, 'tab' => 'commercial-report', 'period' => '7d',
         ]))->assertOk();
         $feature = $response->viewData('commercialReport')['student_rows']->first()['ai_by_feature']['project_feedback'];
-        self::assertSame(!$pending, $feature['cost_complete']);
+        self::assertSame(! $pending, $feature['cost_complete']);
         self::assertSame($pending ? 1 : 0, $feature['estimated_cost_requests']);
         $cells = $this->tableRowCells($response->getContent(), $enrollment->user->email);
         $consumption = $cells[9];
@@ -215,7 +219,9 @@ final class CourseReportPeriodPageTest extends TestCase
         self::assertStringContainsString($expected.' · 0 دقيقة', $consumption);
         self::assertStringContainsString('شات الكورس · 1 مكتمل · 0 بلا نتيجة · $0.000000', $consumption);
         self::assertStringNotContainsString('$0.500000', $consumption);
-        if (!$pending) self::assertStringNotContainsString('بانتظار', $consumption);
+        if (! $pending) {
+            self::assertStringNotContainsString('بانتظار', $consumption);
+        }
     }
 
     public static function netEvidence(): array
@@ -232,8 +238,8 @@ final class CourseReportPeriodPageTest extends TestCase
     {
         $course = $this->course();
         $period = ReportPeriod::fromKey('all');
-        $report = app(\App\Services\CourseCommercialReportService::class)->forCourse($course, $period);
-        $report['student_rows'] = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 25);
+        $report = app(CourseCommercialReportService::class)->forCourse($course, $period);
+        $report['student_rows'] = new LengthAwarePaginator([], 0, 25);
         $report['cash_channel_breakdown'] = collect([[
             'label' => 'Test settlement channel', 'paid_coins' => 100, 'gross_egp' => 10,
             'estimated_gross_egp' => 0, 'net_complete' => $complete, 'net_known_egp' => $known,
@@ -249,7 +255,9 @@ final class CourseReportPeriodPageTest extends TestCase
     {
         preg_match_all('/<tr\b[^>]*>(.*?)<\/tr>/su', $html, $rows);
         foreach ($rows[1] as $row) {
-            if (!str_contains($row, $needle)) continue;
+            if (! str_contains($row, $needle)) {
+                continue;
+            }
             preg_match_all('/<td\b[^>]*>(.*?)<\/td>/su', $row, $cells);
 
             return array_map(fn (string $cell): string => trim(preg_replace('/\s+/u', ' ',
@@ -313,7 +321,9 @@ final class CourseReportPeriodPageTest extends TestCase
         fwrite($stream, substr($csv, 3));
         rewind($stream);
         $rows = [];
-        while (($row = fgetcsv($stream, null, ',', '"', '')) !== false) $rows[] = $row;
+        while (($row = fgetcsv($stream, null, ',', '"', '')) !== false) {
+            $rows[] = $row;
+        }
         fclose($stream);
 
         return $rows;

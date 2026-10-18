@@ -11,7 +11,7 @@ if ($client === false) {
 }
 stream_set_timeout($client, 5);
 $request = '';
-while (!str_contains($request, "\r\n\r\n")) {
+while (! str_contains($request, "\r\n\r\n")) {
     $part = fread($client, 8192);
     if ($part === false || $part === '') {
         exit(3);
@@ -129,7 +129,7 @@ if ($scenario === 'headers_then_silence') {
     usleep(7_000_000);
 }
 $ticks = $scenario === 'drip' ? 14 : 2;
-for ($i = 0; $i < $ticks; ++$i) {
+for ($i = 0; $i < $ticks; $i++) {
     usleep(500_000);
     $send(": heartbeat\n\n");
 }

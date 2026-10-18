@@ -14,6 +14,7 @@ use App\Support\UnicodeText;
 final class CertificateTextTemplateService
 {
     public const COMPLETION_PREFIX = 'أتم كورس';
+
     public const PROJECTS_COMPLETION = 'واجتاز مشروعاته';
 
     /**
@@ -24,7 +25,7 @@ final class CertificateTextTemplateService
         $catalogue = [];
         foreach ((array) config('certificate.text_templates', []) as $key => $template) {
             $key = trim((string) $key);
-            if ($key === '' || !is_array($template)) {
+            if ($key === '' || ! is_array($template)) {
                 continue;
             }
 

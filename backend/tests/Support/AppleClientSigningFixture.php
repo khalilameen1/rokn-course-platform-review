@@ -15,7 +15,7 @@ final class AppleClientSigningFixture
             'curve_name' => 'prime256v1',
         ];
         $key = openssl_pkey_new($options);
-        if ($key === false || !openssl_pkey_export($key, $pem, null, $options)) {
+        if ($key === false || ! openssl_pkey_export($key, $pem, null, $options)) {
             throw new \RuntimeException('Could not generate disposable Apple signing fixture.');
         }
 

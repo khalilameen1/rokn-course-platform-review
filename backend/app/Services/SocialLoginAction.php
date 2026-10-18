@@ -11,7 +11,11 @@ use App\Auth\VerifiedSocialIdentity;
 use App\Exceptions\SocialProviderUnavailableException;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\ServerException;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -34,7 +38,7 @@ final class SocialLoginAction
     ): SocialLoginResult {
         $provider = $credentials->provider;
         if ($this->providers->browserDeclared()->contains($provider)
-            && !$credentials->isBrowserAttempt()) {
+            && ! $credentials->isBrowserAttempt()) {
             return SocialLoginResult::rejected(
                 422, 'social_browser_attempt_required',
                 "ابدأ تسجيل الدخول من جديد\nثم أكمله من المتصفح"
@@ -55,6 +59,7 @@ final class SocialLoginAction
                 'exception' => get_class($exception),
             ]);
             $unavailable = $this->isTransientSocialProviderFailure($exception);
+
             return SocialLoginResult::rejected(
                 $unavailable ? 503 : 422,
                 $unavailable ? 'social_provider_unavailable' : 'social_identity_verification_failed',
@@ -65,9 +70,9 @@ final class SocialLoginAction
         }
 
         $attemptStartedAt = $credentials->attemptStartedAt;
-        if (!$attemptStartedAt instanceof CarbonInterface) {
+        if (! $attemptStartedAt instanceof CarbonInterface) {
             $issuedAt = $socialData['identity_issued_at'] ?? null;
-            if (!is_numeric($issuedAt) || (int) $issuedAt <= 0) {
+            if (! is_numeric($issuedAt) || (int) $issuedAt <= 0) {
                 return SocialLoginResult::rejected(
                     410, 'social_login_fresh_attempt_required',
                     "انتهت محاولة تسجيل الدخول\nابدأ مرة أخرى"
@@ -94,12 +99,14 @@ final class SocialLoginAction
             $user = $this->accountBinding->bind($identity, $attemptStartedAt, $preferredLocale);
         } catch (QueryException $exception) {
             report($exception);
+
             return SocialLoginResult::rejected(
                 503, 'social_login_unavailable',
                 "تعذّر إكمال تسجيل الدخول\nحاول مرة أخرى"
             );
         } catch (\DomainException $exception) {
             report($exception);
+
             return match ($exception->getMessage()) {
                 'social_login_predates_account_deletion' => SocialLoginResult::rejected(
                     410, 'social_login_expired', "انتهت محاولة تسجيل الدخول\nابدأ مرة أخرى"
@@ -114,7 +121,7 @@ final class SocialLoginAction
             };
         }
 
-        if ($user->trashed() || !$user->active) {
+        if ($user->trashed() || ! $user->active) {
             return SocialLoginResult::rejected(
                 403, 'account_disabled', "حسابك غير مفعّل\nتواصل مع الدعم"
             );
@@ -144,7 +151,7 @@ final class SocialLoginAction
         }
 
         $deviceAccess = $deviceSession['access'];
-        if (!$deviceAccess['allowed']) {
+        if (! $deviceAccess['allowed']) {
             return SocialLoginResult::rejected(
                 403, $deviceAccess['code'] ?? 'device_login_denied', $deviceAccess['message']
             );
@@ -179,9 +186,9 @@ final class SocialLoginAction
         for ($current = $exception; $current !== null; $current = $current->getPrevious()) {
             if (
                 $current instanceof SocialProviderUnavailableException
-                || $current instanceof \Illuminate\Http\Client\ConnectionException
-                || $current instanceof \GuzzleHttp\Exception\ConnectException
-                || $current instanceof \GuzzleHttp\Exception\ServerException
+                || $current instanceof ConnectionException
+                || $current instanceof ConnectException
+                || $current instanceof ServerException
             ) {
                 return true;
             }
@@ -194,8 +201,8 @@ final class SocialLoginAction
             }
 
             if (
-                $current instanceof \GuzzleHttp\Exception\RequestException
-                && (!$current->hasResponse() || ($current->getResponse()?->getStatusCode() ?? 0) >= 500)
+                $current instanceof RequestException
+                && (! $current->hasResponse() || ($current->getResponse()?->getStatusCode() ?? 0) >= 500)
             ) {
                 return true;
             }

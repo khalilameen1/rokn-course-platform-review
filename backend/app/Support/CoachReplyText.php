@@ -16,7 +16,9 @@ namespace App\Support;
 final class CoachReplyText
 {
     private const ARABIC = '[\x{0621}-\x{064A}\x{066E}-\x{06D3}\x{06FA}-\x{06FF}\x{0660}-\x{0669}]';
+
     private const TOKEN = "\u{E000}%d\u{E001}";
+
     private const DIGITS = [
         '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4',
         '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
@@ -50,12 +52,12 @@ final class CoachReplyText
         // Arabic prose punctuation. A sentence end becomes a line break, the
         // way a coach sends one short sentence per line.
         $text = (string) preg_replace('/[ \t]*[،؛][ \t]*/u', ' ', $text);
-        $text = (string) preg_replace('/(?<=' . $a . ')[ \t]*[,;][ \t]*/u', ' ', $text);
-        $text = (string) preg_replace('/(?<=' . $a . $a . ')(?:\.{1,3}|…)[ \t]+(?=\S)/u', "\n", $text);
-        $text = (string) preg_replace('/(?<=' . $a . ')(?:\.{1,3}|…)[ \t]*$/mu', '', $text);
-        $text = (string) preg_replace('/(?<=' . $a . ')[ \t]*:[ \t]*$/mu', '', $text);
-        $text = (string) preg_replace('/(?<=' . $a . ')[ \t]*:[ \t]+/u', ' ', $text);
-        $text = (string) preg_replace('/(?<=' . $a . ')[ \t]+[—–-][ \t]+(?=' . $a . ')/u', ' ', $text);
+        $text = (string) preg_replace('/(?<='.$a.')[ \t]*[,;][ \t]*/u', ' ', $text);
+        $text = (string) preg_replace('/(?<='.$a.$a.')(?:\.{1,3}|…)[ \t]+(?=\S)/u', "\n", $text);
+        $text = (string) preg_replace('/(?<='.$a.')(?:\.{1,3}|…)[ \t]*$/mu', '', $text);
+        $text = (string) preg_replace('/(?<='.$a.')[ \t]*:[ \t]*$/mu', '', $text);
+        $text = (string) preg_replace('/(?<='.$a.')[ \t]*:[ \t]+/u', ' ', $text);
+        $text = (string) preg_replace('/(?<='.$a.')[ \t]+[—–-][ \t]+(?='.$a.')/u', ' ', $text);
 
         $lines = array_map(
             static fn (string $line): string => trim((string) preg_replace('/[ \t]{2,}/u', ' ', $line)),
@@ -96,7 +98,7 @@ final class CoachReplyText
     }
 
     /**
-     * @param list<string> $lines
+     * @param  list<string>  $lines
      * @return list<string>
      */
     private static function withoutGreeting(array $lines): array
@@ -116,7 +118,7 @@ final class CoachReplyText
     }
 
     /**
-     * @param list<string> $lines
+     * @param  list<string>  $lines
      * @return list<string>
      */
     private static function withoutHelpOffer(array $lines): array

@@ -9,8 +9,8 @@ use App\Models\Package;
 use App\Models\PaymentReconciliationCheckpoint;
 use App\Models\PaymentReconciliationFinding;
 use App\Models\User;
-use App\Services\KashierOrderSettlementService;
 use App\Services\KashierGatewayEvidenceService;
+use App\Services\KashierOrderSettlementService;
 use App\Services\KashierReconciliationService;
 use App\Services\StudentNotificationService;
 use Illuminate\Console\Command;
@@ -100,11 +100,10 @@ final class KashierReconciliationTest extends TestCase
 
         self::assertSame(1, $first['fulfilled']);
         self::assertSame(1, $second['consistent']);
-        Http::assertSent(static fn ($request): bool =>
-            $request->hasHeader(
-                'Authorization',
-                'test-dashboard-key-not-a-secret'
-            )
+        Http::assertSent(static fn ($request): bool => $request->hasHeader(
+            'Authorization',
+            'test-dashboard-key-not-a-secret'
+        )
         );
         $this->assertDatabaseHas('orders', [
             'id' => $order->id,
@@ -360,7 +359,7 @@ final class KashierReconciliationTest extends TestCase
     {
         $orders = [];
         foreach (range(1, 5) as $index) {
-            $orders[$index] = $this->pendingOrder('PKG-RECON-LANE-' . $index);
+            $orders[$index] = $this->pendingOrder('PKG-RECON-LANE-'.$index);
         }
         Http::fake(['https://test-api.kashier.io/*' => Http::response([], 404)]);
 
@@ -412,7 +411,7 @@ final class KashierReconciliationTest extends TestCase
         DB::table('orders')->where('id', $order->id)->update([
             'status' => Order::STATUS_APPROVED,
             'financial_status' => Order::FINANCIAL_SETTLED,
-            'transaction_id' => 'TXN-' . $reference,
+            'transaction_id' => 'TXN-'.$reference,
             'approved_at' => $createdAt,
             'created_at' => $createdAt,
         ]);

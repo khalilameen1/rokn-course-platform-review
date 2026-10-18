@@ -65,7 +65,7 @@ final class AdminOrderSettlementService
     private function assertRecordable(Order $order): void
     {
         if (
-            !in_array($order->payment_method, [
+            ! in_array($order->payment_method, [
                 Order::PAYMENT_METHOD_KASHIER,
                 Order::PAYMENT_METHOD_GOOGLE_PLAY,
                 Order::PAYMENT_METHOD_APP_STORE,

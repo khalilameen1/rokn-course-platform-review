@@ -18,7 +18,9 @@ final class AiStreamCheckpointService
     public function courseChat(CourseChatTurn $turn, string $content): bool
     {
         $content = $this->content($content, 12000);
-        if ($content === '') return false;
+        if ($content === '') {
+            return false;
+        }
 
         try {
             return CourseChatTurn::query()
@@ -35,7 +37,9 @@ final class AiStreamCheckpointService
     public function projectMessage(ProjectFeedbackMessage $message, string $content): bool
     {
         $content = $this->content($content, 12000);
-        if ($content === '') return false;
+        if ($content === '') {
+            return false;
+        }
 
         try {
             return ProjectFeedbackMessage::query()

@@ -57,7 +57,7 @@ class TrustProxies extends Middleware
         if ($proxy === '' || in_array($proxy, ['*', '0.0.0.0/0', '::/0'], true)) {
             return false;
         }
-        if (!str_contains($proxy, '/')) {
+        if (! str_contains($proxy, '/')) {
             return filter_var($proxy, FILTER_VALIDATE_IP) !== false;
         }
 

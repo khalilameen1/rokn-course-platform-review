@@ -14,7 +14,7 @@ final class SocialLoginResponse
 {
     public static function make(SocialLoginResult $result, Request $request): JsonResponse
     {
-        if (!$result->isSuccessful()) {
+        if (! $result->isSuccessful()) {
             return response()->json([
                 'status' => $result->status,
                 'success' => false,

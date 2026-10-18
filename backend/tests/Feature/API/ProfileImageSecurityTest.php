@@ -50,6 +50,6 @@ final class ProfileImageSecurityTest extends ApiTestCase
 
         self::assertNull($this->user->fresh()->profile_image);
         Storage::disk('public')->assertMissing('profiles/legacy.svg');
-        Storage::disk('security-quarantine')->assertExists('profile-svg/' . $this->user->id . '-legacy.svg');
+        Storage::disk('security-quarantine')->assertExists('profile-svg/'.$this->user->id.'-legacy.svg');
     }
 }

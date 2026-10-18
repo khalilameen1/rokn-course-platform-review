@@ -53,7 +53,7 @@ final class SentryEventScrubber
     {
         try {
             $container = Container::getInstance();
-            if (!$container->bound('request')) {
+            if (! $container->bound('request')) {
                 return null;
             }
 
@@ -76,7 +76,7 @@ final class SentryEventScrubber
 
         $route = $request->route();
         if ($route instanceof Route) {
-            $endpoint = '/' . ltrim($route->uri(), '/');
+            $endpoint = '/'.ltrim($route->uri(), '/');
             if (strlen($endpoint) <= 180
                 && preg_match('/^\/[A-Za-z0-9._\-\/{\}?]+$/', $endpoint) === 1) {
                 $tags['endpoint'] = $endpoint;
@@ -107,6 +107,7 @@ final class SentryEventScrubber
     private static function safeHeader(Request $request, string $name, string $pattern): ?string
     {
         $value = trim((string) $request->header($name));
+
         return preg_match($pattern, $value) === 1 ? $value : null;
     }
 
@@ -139,6 +140,7 @@ final class SentryEventScrubber
             $normalized = strtolower(str_replace('-', '_', (string) $key));
             if (self::isSensitiveKey($normalized)) {
                 $values[$key] = '[Filtered]';
+
                 continue;
             }
             if (is_array($value)) {

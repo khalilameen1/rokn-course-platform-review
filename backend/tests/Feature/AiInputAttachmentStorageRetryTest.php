@@ -78,6 +78,7 @@ final class AiInputAttachmentStorageRetryTest extends TestCase
         $failingDisk->shouldReceive('putFileAs')->once()
             ->andReturnUsing(function ($directory, $file, $name) use ($disk): bool {
                 $disk->put($directory.'/'.$name, 'partial');
+
                 return false;
             });
         Storage::set('ai-input-retry', $failingDisk);
@@ -101,6 +102,7 @@ final class AiInputAttachmentStorageRetryTest extends TestCase
                 // reserve and publish its attachment before native delete runs.
                 $accepted = $service->store($user, $course,
                     UploadedFile::fake()->createWithContent('notes.txt', $bytes), $purpose, $clientId);
+
                 return $disk->delete($failedPath);
             });
         Storage::set('ai-input-retry', $interleavedDisk);

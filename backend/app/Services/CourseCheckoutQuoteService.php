@@ -19,28 +19,36 @@ final readonly class CourseCheckoutQuoteService
 
     public function calculate(User $user, array $input, bool $selectPackage = true, bool $includeFundingOptions = true): array
     {
-        if (!$user->active) throw new CourseCheckoutRejected(CourseCheckoutRejected::ACCOUNT_INACTIVE);
+        if (! $user->active) {
+            throw new CourseCheckoutRejected(CourseCheckoutRejected::ACCOUNT_INACTIVE);
+        }
         $course = Course::query()->sharedLock()->findOrFail($input['course_id']);
         // Same lock order as purchase/publish, held by the surrounding intent
         // transaction through validation and the final wallet debit.
         $course->accessPlans()->sharedLock()->get();
         $mode = $input['mode'] ?? 'purchase';
-        if ($mode === 'upgrade' ? !$course->isPublishedForLearning() : !$course->isAvailableForNewPurchase()) {
+        if ($mode === 'upgrade' ? ! $course->isPublishedForLearning() : ! $course->isAvailableForNewPurchase()) {
             throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_NOT_AVAILABLE);
         }
         $code = $input['access_plan_code'];
         $enrollment = $this->access->activeEnrollmentFor((int) $user->id, (int) $course->id);
         if ($mode === 'upgrade') {
-            if (!$enrollment || (int) $enrollment->course_id !== (int) $course->id
-                || !$this->access->hasLearningAccess((int) $user->id, (int) $course->id)) {
+            if (! $enrollment || (int) $enrollment->course_id !== (int) $course->id
+                || ! $this->access->hasLearningAccess((int) $user->id, (int) $course->id)) {
                 throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_ACCESS_REQUIRED);
             }
-            if ($this->coupons->normalize($input['coupon_code'] ?? null)) throw new CourseCheckoutRejected(CourseCheckoutRejected::COUPON_NOT_APPLICABLE);
+            if ($this->coupons->normalize($input['coupon_code'] ?? null)) {
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::COUPON_NOT_APPLICABLE);
+            }
             $plan = $this->upgrades->targetPlan($course, $enrollment, $code, $input['required_feature'] ?? null);
             $price = $this->upgrades->upgradePrice($course, $enrollment, $plan);
-            if ($price === null || !$plan) throw new CourseCheckoutRejected(CourseCheckoutRejected::FULL_TRACK_UPGRADE_NOT_AVAILABLE);
+            if ($price === null || ! $plan) {
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::FULL_TRACK_UPGRADE_NOT_AVAILABLE);
+            }
         } else {
-            if ($enrollment) throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_ACCESS_CHANGED);
+            if ($enrollment) {
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_ACCESS_CHANGED);
+            }
             $plan = $this->plans->selectedPlan($course, $code);
             $price = max(0, (int) $plan->price_coins);
         }
@@ -55,7 +63,9 @@ final readonly class CourseCheckoutQuoteService
                     && (int) ($capabilities['project_message_limit'] ?? 0) > 0,
                 default => false,
             };
-            if (!$available) throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FEATURE_UNAVAILABLE);
+            if (! $available) {
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FEATURE_UNAVAILABLE);
+            }
         }
         $promotion = $this->promotions->allowance((int) $user->id, (int) $course->id, (int) $plan->price_coins);
         $paidFloor = max(0, (int) $plan->minimum_paid_coins - $this->wallet->coursePaidContribution((int) $user->id, (int) $course->id));
@@ -75,12 +85,16 @@ final readonly class CourseCheckoutQuoteService
         // which package the client binds in the next quote.
         $minimumDeficit = max(0, $final - $balances['paid'] - $maxReward);
         $channel = $input['channel'];
-        if (!in_array($channel, ['google', 'apple', 'direct'], true)) throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_CHANNEL_INVALID);
+        if (! in_array($channel, ['google', 'apple', 'direct'], true)) {
+            throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_CHANNEL_INVALID);
+        }
         // Explicit negotiation preserves already-issued legacy/store contracts.
         // Exact funding is a provider amount, never a mutable native product.
         $exactFunding = ($input['funding_mode'] ?? 'package') === 'exact_shortfall';
-        if ($exactFunding && $channel !== 'direct') throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MODE_INVALID);
-        $eligible = !$includeFundingOptions ? collect() : Package::query()->where('is_active', true)->where('coins', '>', 0)->where('price', '>', 0)
+        if ($exactFunding && $channel !== 'direct') {
+            throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MODE_INVALID);
+        }
+        $eligible = ! $includeFundingOptions ? collect() : Package::query()->where('is_active', true)->where('coins', '>', 0)->where('price', '>', 0)
             ->where($channel.'_enabled', true)->orderBy('price')->orderBy('coins')->get()
             ->filter(fn (Package $package): bool => $package->availableChannels()[$channel])
             ->filter(fn (Package $package): bool => $exactFunding || (int) $package->coins >= $minimumDeficit)->values();
@@ -90,7 +104,9 @@ final readonly class CourseCheckoutQuoteService
             // After funding, its issued immutable coin contract remains valid even
             // when the catalogue disables future sales of that denomination.
             $selected = $selectPackage ? $eligible->firstWhere('id', (int) $packageId) : Package::query()->find($packageId);
-            if (!$selected || ($selectPackage && $minimumDeficit === 0)) throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_PACKAGE_UNAVAILABLE);
+            if (! $selected || ($selectPackage && $minimumDeficit === 0)) {
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_PACKAGE_UNAVAILABLE);
+            }
         } elseif ($exactFunding && $selectPackage && $minimumDeficit > 0) {
             // Exact direct funding has no buyer-facing denomination choice.
             // Bind the least cash amount in this same immutable quote instead
@@ -110,10 +126,11 @@ final readonly class CourseCheckoutQuoteService
         unset($snapshot['purchased_at']);
         // A captured funding order owns its issued denomination AND cash rate.
         // Catalogue availability/rate changes affect future authorizations only.
-        $package = $selected ? (!$selectPackage
+        $package = $selected ? (! $selectPackage
             ? $input['selected_package']
             : ($exactFunding ? $this->pricing->courseFundingPayload($selected, $deficit)
                 : $this->pricing->packagePayload($selected))) : null;
+
         return [
             'course_id' => (int) $course->id, 'course_revision' => max(1, (int) ($course->last_published_authoring_version ?: $course->authoring_version)),
             'access_plan_code' => $code, 'mode' => $mode, 'channel' => $channel,
@@ -148,6 +165,7 @@ final readonly class CourseCheckoutQuoteService
         $fields['package'] = $package ? ['id' => $package['id'], 'coins' => $package['coins'],
             'product' => $package['store_products'][$terms['channel']] ?? null,
             'direct_price' => $terms['channel'] === 'direct' ? $package['direct_price'] : null] : null;
+
         return hash('sha256', json_encode($fields, JSON_THROW_ON_ERROR));
     }
 }

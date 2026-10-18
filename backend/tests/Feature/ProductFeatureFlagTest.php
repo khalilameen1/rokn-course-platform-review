@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\RequireAdminMfa;
 use App\Models\ProductFeatureFlag;
 use App\Models\User;
-use App\Http\Middleware\RequireAdminMfa;
 use App\Services\ProductFeatureFlagService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;

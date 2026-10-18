@@ -8,6 +8,7 @@ use App\Services\ArabicSearchNormalizer;
 use App\Services\CourseCatalogueRevisionService;
 use App\Services\SavedFolderConsistencyService;
 use Illuminate\Console\Command;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -25,9 +26,8 @@ final class FinalizeReleaseBackfills extends Command
         SavedFolderConsistencyService $savedFolders,
         ArabicSearchNormalizer $searchNormalizer,
         CourseCatalogueRevisionService $catalogueRevisions
-    ): int
-    {
-        if (!(bool) $this->option('old-workers-drained')) {
+    ): int {
+        if (! (bool) $this->option('old-workers-drained')) {
             $this->error('Drain the previous web release and queue workers before finalizing backfills.');
 
             return self::INVALID;
@@ -45,7 +45,7 @@ final class FinalizeReleaseBackfills extends Command
         }
 
         $lock = Cache::lock('release:finalize-backfills:v1', 900);
-        if (!$lock->get()) {
+        if (! $lock->get()) {
             $this->error('Another release finalizer is already running.');
 
             return self::FAILURE;
@@ -117,13 +117,13 @@ final class FinalizeReleaseBackfills extends Command
         $ran = array_fill_keys($migrator->getRepository()->getRan(), true);
 
         return collect(array_keys($files))->contains(
-            static fn (string $migration): bool => !isset($ran[$migration])
+            static fn (string $migration): bool => ! isset($ran[$migration])
         );
     }
 
     private function finalizeCourseSearch(ArabicSearchNormalizer $normalizer, int $batch): int
     {
-        if (!$this->courseSearchSchemaExists()) {
+        if (! $this->courseSearchSchemaExists()) {
             return 0;
         }
 
@@ -155,7 +155,7 @@ final class FinalizeReleaseBackfills extends Command
 
     private function staleCourseSearchCount(ArabicSearchNormalizer $normalizer, int $batch): int
     {
-        if (!$this->courseSearchSchemaExists()) {
+        if (! $this->courseSearchSchemaExists()) {
             return 0;
         }
 
@@ -165,8 +165,8 @@ final class FinalizeReleaseBackfills extends Command
                 foreach ($courses as $course) {
                     [$title, $terms] = $this->normalizedCourseSearch($course, $normalizer);
                     if (
-                        !hash_equals((string) $course->search_title_normalized, $title)
-                        || !hash_equals((string) $course->search_terms_normalized, $terms)
+                        ! hash_equals((string) $course->search_title_normalized, $title)
+                        || ! hash_equals((string) $course->search_terms_normalized, $terms)
                     ) {
                         $stale++;
                     }
@@ -176,7 +176,7 @@ final class FinalizeReleaseBackfills extends Command
         return $stale;
     }
 
-    private function courseSearchQuery(): \Illuminate\Database\Query\Builder
+    private function courseSearchQuery(): Builder
     {
         return DB::table('courses')
             ->select([
@@ -215,5 +215,4 @@ final class FinalizeReleaseBackfills extends Command
                 'search_title_normalized', 'search_terms_normalized',
             ]);
     }
-
 }

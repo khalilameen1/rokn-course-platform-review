@@ -18,7 +18,7 @@ final class BunnyStoragePath
             $parts = parse_url($value);
             if (
                 ($parts['scheme'] ?? null) !== 'https'
-                || !$expectedHost
+                || ! $expectedHost
                 || strtolower((string) ($parts['host'] ?? '')) !== $expectedHost
                 || isset($parts['user'])
                 || isset($parts['pass'])

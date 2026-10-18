@@ -22,8 +22,7 @@ final readonly class AiEntitlementBudgetService
         private FinancialAnomalyService $financialRisk,
         private AiProviderExposureService $providerExposure,
         private AiUsageSettlementService $settlements
-    ) {
-    }
+    ) {}
 
     public function reserve(
         CourseEnrollment $enrollment,
@@ -32,7 +31,7 @@ final readonly class AiEntitlementBudgetService
         string $model,
         ?string $requestId = null
     ): ?AiUsageEvent {
-        if (!in_array($feature, AiEntitlementUsage::FEATURES, true)) {
+        if (! in_array($feature, AiEntitlementUsage::FEATURES, true)) {
             throw new \InvalidArgumentException('Unknown metered AI feature.');
         }
 
@@ -46,10 +45,10 @@ final readonly class AiEntitlementBudgetService
             $lockedEnrollment = CourseEnrollment::query()
                 ->lockForUpdate()
                 ->findOrFail($enrollment->id);
-            if (!$lockedEnrollment->isActive()) {
+            if (! $lockedEnrollment->isActive()) {
                 throw new AiPlanLimitReachedException('The course entitlement is not active.');
             }
-            if (!$this->financialRisk->allowsVariableCostFeatures($lockedEnrollment)) {
+            if (! $this->financialRisk->allowsVariableCostFeatures($lockedEnrollment)) {
                 throw new AiPlanLimitReachedException('This enrollment is under financial review.');
             }
 
@@ -71,7 +70,7 @@ final readonly class AiEntitlementBudgetService
             }
 
             $terms = $this->accessPlans->termsForEnrollment($lockedEnrollment);
-            if (!$terms) {
+            if (! $terms) {
                 return null;
             }
             $planId = $lockedEnrollment->access_plan_id
@@ -132,8 +131,8 @@ final readonly class AiEntitlementBudgetService
                 : ($isFollowup ? (int) ($terms['project_followup_message_limit'] ?? 0) : null);
 
             if (
-                !$featureAllowed
-                || !$this->hasCapacity($usage, $requestLimit, $tokenBudget,
+                ! $featureAllowed
+                || ! $this->hasCapacity($usage, $requestLimit, $tokenBudget,
                     $costBudgetMicros, $reserveCostMicros, $estimatedTokens)
             ) {
                 throw new AiPlanLimitReachedException('The selected plan AI budget is exhausted.');
@@ -184,7 +183,7 @@ final readonly class AiEntitlementBudgetService
             ->where('feature', AiEntitlementUsage::FEATURE_PROJECT_FOLLOWUP)->first() : null;
         $limit = (int) ($terms['project_followup_message_limit'] ?? 0);
 
-        return (!$enrollment || $this->projectFollowupCommittedRequests($enrollment, $usage) < $limit)
+        return (! $enrollment || $this->projectFollowupCommittedRequests($enrollment, $usage) < $limit)
             && $this->hasCapacity($usage, $limit, (int) ($terms['project_followup_token_budget'] ?? 0),
                 AiUsageCost::micros($terms['project_followup_budget_usd'] ?? 0),
                 max(1, AiUsageCost::micros($terms['project_followup_reserve_usd'] ?? 0)), max(1, $estimatedTokens));
@@ -224,7 +223,7 @@ final readonly class AiEntitlementBudgetService
             User::query()->whereKey($enrollment->user_id)->where('active', true)
                 ->lockForUpdate()->firstOrFail();
             $locked = CourseEnrollment::query()->lockForUpdate()->findOrFail($enrollment->id);
-            if (!$locked->isActive()) {
+            if (! $locked->isActive()) {
                 throw new AiPlanLimitReachedException('The course entitlement is not active.');
             }
             $existing = AiUsageEvent::query()->where('request_id', $requestId)->lockForUpdate()->first();
@@ -233,6 +232,7 @@ final readonly class AiEntitlementBudgetService
                     || $existing->feature !== AiUsageEvent::FEATURE_PROJECT_REVIEW) {
                     throw new \UnexpectedValueException('AI request identity conflict.');
                 }
+
                 return $existing;
             }
             $today = AiUsageEvent::query()->where('user_id', $locked->user_id)
@@ -241,6 +241,7 @@ final readonly class AiEntitlementBudgetService
             if ($today >= max(1, (int) config('projects.evaluation_daily_attempt_limit', 60))) {
                 throw new AiPlanLimitReachedException('The platform review daily limit is reached.');
             }
+
             return AiUsageEvent::query()->create([
                 'request_id' => $requestId,
                 'enrollment_id' => $locked->id,
@@ -264,12 +265,12 @@ final readonly class AiEntitlementBudgetService
 
     public function release(?AiUsageEvent $event, ?string $reason = null): void
     {
-        if (!$event) {
+        if (! $event) {
             return;
         }
         DB::transaction(function () use ($event, $reason): void {
             $lockedEvent = AiUsageEvent::query()->lockForUpdate()->find($event->id);
-            if (!$lockedEvent) {
+            if (! $lockedEvent) {
                 return;
             }
             if ($lockedEvent->status !== 'reserved') {
@@ -345,10 +346,12 @@ final readonly class AiEntitlementBudgetService
 
             $safeToCancel = $reserved->filter(function (AiUsageEvent $event): bool {
                 $state = (string) data_get($event->metadata, 'provider_call_state', '');
-                return !in_array($state, ['started', 'outcome_unknown'], true);
+
+                return ! in_array($state, ['started', 'outcome_unknown'], true);
             });
             $providerStarted = $reserved->filter(function (AiUsageEvent $event): bool {
                 $state = (string) data_get($event->metadata, 'provider_call_state', '');
+
                 return in_array($state, ['started', 'outcome_unknown'], true);
             });
 
@@ -357,11 +360,10 @@ final readonly class AiEntitlementBudgetService
             // immutable detached event that can record platform cost later.
             foreach ($reserved->groupBy('feature') as $feature => $events) {
                 $usage = $usages->get($feature);
-                if (!$usage) {
+                if (! $usage) {
                     continue;
                 }
-                $costMicros = $events->sum(fn (AiUsageEvent $event): int =>
-                    AiUsageCost::micros($event->reserved_cost_usd)
+                $costMicros = $events->sum(fn (AiUsageEvent $event): int => AiUsageCost::micros($event->reserved_cost_usd)
                 );
                 $usage->forceFill([
                     'reserved_requests' => max(0, $usage->reserved_requests - $events->count()),
@@ -417,7 +419,7 @@ final readonly class AiEntitlementBudgetService
                     ->where('feature', $pair->feature)
                     ->lockForUpdate()
                     ->first();
-                if (!$usage) {
+                if (! $usage) {
                     $orphaned = AiUsageEvent::query()
                         ->where('enrollment_id', $pair->enrollment_id)
                         ->where('feature', $pair->feature)
@@ -443,6 +445,7 @@ final readonly class AiEntitlementBudgetService
                                 $event,
                                 'reservation_expired_after_provider_start'
                             );
+
                             continue;
                         }
                         $event->forceFill([
@@ -451,6 +454,7 @@ final readonly class AiEntitlementBudgetService
                             'completed_at' => now(),
                         ])->save();
                     }
+
                     return $orphaned->count();
                 }
 
@@ -477,33 +481,31 @@ final readonly class AiEntitlementBudgetService
             return 0;
         }
         $expired = $expired->reject(
-            static fn (AiUsageEvent $event): bool =>
-                data_get($event->metadata, 'provider_call_state') === PaidAiCallExecutionService::LANDED
+            static fn (AiUsageEvent $event): bool => data_get($event->metadata, 'provider_call_state') === PaidAiCallExecutionService::LANDED
         );
-        if ($expired->isEmpty()) return 0;
+        if ($expired->isEmpty()) {
+            return 0;
+        }
 
         $unknownProviderOutcomes = $expired->filter(
-            static fn (AiUsageEvent $event): bool =>
-                in_array($event->feature, [
-                    AiEntitlementUsage::FEATURE_COURSE_CHAT,
-                    AiEntitlementUsage::FEATURE_PROJECT_FEEDBACK,
-                    AiEntitlementUsage::FEATURE_PROJECT_FOLLOWUP,
-                ], true) && in_array(
-                    data_get($event->metadata, 'provider_call_state'),
-                    ['started', 'outcome_unknown'],
-                    true
-                )
+            static fn (AiUsageEvent $event): bool => in_array($event->feature, [
+                AiEntitlementUsage::FEATURE_COURSE_CHAT,
+                AiEntitlementUsage::FEATURE_PROJECT_FEEDBACK,
+                AiEntitlementUsage::FEATURE_PROJECT_FOLLOWUP,
+            ], true) && in_array(
+                data_get($event->metadata, 'provider_call_state'),
+                ['started', 'outcome_unknown'],
+                true
+            )
         );
         $aggregateEvents = $expired->reject(
-            static fn (AiUsageEvent $event): bool =>
-                (bool) data_get($event->metadata, 'reservation_detached', false)
+            static fn (AiUsageEvent $event): bool => (bool) data_get($event->metadata, 'reservation_detached', false)
         );
         $aggregateUnknownOutcomes = $unknownProviderOutcomes->filter(
             fn (AiUsageEvent $event): bool => $aggregateEvents->contains('id', $event->id)
         );
         $reservedTokens = (int) $aggregateEvents->sum('reserved_tokens');
-        $reservedCostMicros = $aggregateEvents->sum(fn (AiUsageEvent $event): int =>
-            AiUsageCost::micros($event->reserved_cost_usd)
+        $reservedCostMicros = $aggregateEvents->sum(fn (AiUsageEvent $event): int => AiUsageCost::micros($event->reserved_cost_usd)
         );
         $usageUpdate = [
             'reserved_requests' => max(0, $usage->reserved_requests - $aggregateEvents->count()),
@@ -538,6 +540,7 @@ final readonly class AiEntitlementBudgetService
                     $event,
                     'reservation_expired_after_provider_start'
                 );
+
                 continue;
             }
             $metadata['reason'] = 'reservation_expired';

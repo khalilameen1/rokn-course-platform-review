@@ -12,9 +12,7 @@ use Illuminate\Http\JsonResponse;
 
 final class CategoryController extends Controller
 {
-    public function __construct(private readonly ApiResponseService $responses)
-    {
-    }
+    public function __construct(private readonly ApiResponseService $responses) {}
 
     public function index(): JsonResponse
     {

@@ -2,14 +2,14 @@
 
 namespace App\Models;
 
-use App\Support\RoknLocale;
-
-use Illuminate\Database\Eloquent\Model;
 use App\Services\PublicAppSettingsService;
-use Illuminate\Support\Facades\Cache;
 use App\Support\AfterCommitCacheInvalidation;
 use App\Support\DatabaseCapabilities;
+use App\Support\RoknLocale;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Throwable;
+
 class Setting extends Model
 {
     private const DERIVED_CACHE_KEYS = [
@@ -29,6 +29,7 @@ class Setting extends Model
     private const RUNTIME_CONFIG_TTL_SECONDS = 600;
 
     private const DEFAULT_COIN_RULES_AR = "استخدم عملات ركن عند شراء الكورسات والخدمات داخل التطبيق\nتظهر لك القيمة المتاحة قبل تأكيد الشراء";
+
     private const DEFAULT_COIN_RULES_EN = "Use Rokn Coins for courses and services inside the app\nYou will see the available amount before confirming a purchase";
 
     protected $fillable = [
@@ -199,13 +200,13 @@ class Setting extends Model
 
     private static function runtimeConfigCacheKey(): string
     {
-        return self::RUNTIME_CONFIG_CACHE_PREFIX . DatabaseCapabilities::cacheVersion();
+        return self::RUNTIME_CONFIG_CACHE_PREFIX.DatabaseCapabilities::cacheVersion();
     }
 
     /** @return array<string, mixed>|null null when the table is not migrated yet */
     private static function loadRuntimeConfig(): ?array
     {
-        if (!DatabaseCapabilities::hasTable('settings')) {
+        if (! DatabaseCapabilities::hasTable('settings')) {
             return null;
         }
 
@@ -235,7 +236,7 @@ class Setting extends Model
         $arabic = trim((string) ($this->attributes['how_to_use_coins_ar'] ?? ''));
         $english = trim((string) ($this->attributes['how_to_use_coins_en'] ?? ''));
 
-        if (!RoknLocale::isArabic()) {
+        if (! RoknLocale::isArabic()) {
             return $english !== '' ? $english : ($arabic !== '' ? $arabic : self::DEFAULT_COIN_RULES_EN);
         }
 
@@ -246,6 +247,7 @@ class Setting extends Model
     {
         $locale = RoknLocale::isArabic() ? 'ar' : 'en';
         $text = trim((string) ($this->attributes["rewards_help_{$locale}"] ?? ''));
+
         return $text !== '' ? $text : self::defaultRewardsHelp($locale);
     }
 
@@ -258,13 +260,11 @@ class Setting extends Model
 
     /**
      * Check if Bunny.net integration is enabled and configured
-     *
-     * @return bool
      */
     public function isBunnyConfigured(): bool
     {
-        return $this->bunny_enabled 
-            && !empty(config('bunny.stream_api_key') ?: $this->bunny_api_key_secret)
-            && !empty(config('bunny.library_id') ?: $this->bunny_library_id);
+        return $this->bunny_enabled
+            && ! empty(config('bunny.stream_api_key') ?: $this->bunny_api_key_secret)
+            && ! empty(config('bunny.library_id') ?: $this->bunny_library_id);
     }
 }

@@ -10,9 +10,9 @@ use App\Models\CourseChatTurn;
 use App\Models\CourseEnrollment;
 use App\Models\FeedbackReport;
 use App\Models\Project;
-use App\Models\ProjectSubmission;
-use App\Models\ProjectFeedbackThread;
 use App\Models\ProjectFeedbackMessage;
+use App\Models\ProjectFeedbackThread;
+use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Services\AiConsentService;
 use App\Services\PaidAiCallExecutionService;
@@ -87,10 +87,11 @@ final class AiConsentAndReportingTest extends TestCase
         foreach ($actions as $action) {
             $routes = collect(app('router')->getRoutes())->filter(fn ($route) => str_ends_with($route->getActionName(), $action));
             self::assertNotEmpty($routes, $action);
-            foreach ($routes as $route) self::assertContains('ai.consent', $route->gatherMiddleware(), $action);
+            foreach ($routes as $route) {
+                self::assertContains('ai.consent', $route->gatherMiddleware(), $action);
+            }
         }
-        foreach (collect(app('router')->getRoutes())->filter(fn ($route) =>
-            str_ends_with($route->getActionName(), 'CourseChatController@history') ||
+        foreach (collect(app('router')->getRoutes())->filter(fn ($route) => str_ends_with($route->getActionName(), 'CourseChatController@history') ||
             str_ends_with($route->getActionName(), 'ProjectController@feedbackThread')) as $route) {
             self::assertNotContains('ai.consent', $route->gatherMiddleware());
         }

@@ -9,14 +9,13 @@ use App\Models\Package;
 use App\Models\RewardRule;
 use App\Models\Setting;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 final readonly class AdminEconomyReadService
 {
-    public function __construct(private SocialAuthProviderRegistry $socialProviders)
-    {
-    }
+    public function __construct(private SocialAuthProviderRegistry $socialProviders) {}
 
-    /** @return array{methods:LengthAwarePaginator,setting:?Setting,rewardRules:\Illuminate\Support\Collection,rewardEvents:array<string,string>,socialProviderLabels:array<string,string>} */
+    /** @return array{methods:LengthAwarePaginator,setting:?Setting,rewardRules:Collection,rewardEvents:array<string,string>,socialProviderLabels:array<string,string>} */
     public function rewards(): array
     {
         $methods = CoinEarningMethod::query()

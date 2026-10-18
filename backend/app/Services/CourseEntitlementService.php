@@ -19,8 +19,7 @@ final class CourseEntitlementService
         private FinancialEntitlementHoldReadService $holds,
         private CourseAccessPlanService $plans,
         private FinancialAnomalyService $financialRisk
-    ) {
-    }
+    ) {}
 
     public function entitlementFor(int $userId, int $courseId): array
     {
@@ -28,7 +27,7 @@ final class CourseEntitlementService
     }
 
     /**
-     * @param Collection<int,int>|array<int,int> $courseIds
+     * @param  Collection<int,int>|array<int,int>  $courseIds
      * @return array<int,array<string,mixed>>
      */
     public function entitlementsFor(int $userId, Collection|array $courseIds): array
@@ -75,9 +74,8 @@ final class CourseEntitlementService
         $enrollments = $enrollments->reject(
             fn (CourseEnrollment $row): bool => $this->hasLoadedHold($row, $holds, ['course'])
         );
-        $funded = $enrollments->filter(fn (CourseEnrollment $row): bool =>
-            $this->hasVariableCostFunding($row)
-                && !$this->hasLoadedHold($row, $holds, ['chat', 'plan'])
+        $funded = $enrollments->filter(fn (CourseEnrollment $row): bool => $this->hasVariableCostFunding($row)
+                && ! $this->hasLoadedHold($row, $holds, ['chat', 'plan'])
         );
         $financial = $this->financialRisk->variableCostDecisions($funded);
 
@@ -143,13 +141,13 @@ final class CourseEntitlementService
     {
         $enrollment->loadMissing($this->enrollmentRelations());
 
-        return !$this->holds->enrollmentHasActiveHold($enrollment, ['course'])
+        return ! $this->holds->enrollmentHasActiveHold($enrollment, ['course'])
             && $this->certificateAllowedByPlan($enrollment, $this->plans->termsForEnrollment($enrollment));
     }
 
     private function certificateAllowedByPlan(CourseEnrollment $enrollment, ?array $terms): bool
     {
-        return (!$this->isGrantEnrollment($enrollment) || $this->isPaidPlanUpgrade($enrollment))
+        return (! $this->isGrantEnrollment($enrollment) || $this->isPaidPlanUpgrade($enrollment))
             && ($terms
                 ? (bool) ($terms['certificate_enabled'] ?? false)
                 : $enrollment->access_plan_id === null
@@ -158,7 +156,7 @@ final class CourseEntitlementService
 
     public function hasLearningAccess(int $userId, int $courseId): bool
     {
-        if (!$this->courseIsReady($courseId)) {
+        if (! $this->courseIsReady($courseId)) {
             return false;
         }
 
@@ -166,7 +164,7 @@ final class CourseEntitlementService
         $enrollment = $this->activeEnrollments($userId, [$courseId])->first();
 
         return $enrollment !== null
-            && !$this->holds->enrollmentHasActiveHold($enrollment, ['course']);
+            && ! $this->holds->enrollmentHasActiveHold($enrollment, ['course']);
     }
 
     public function hasChatAccess(int $userId, int $courseId): bool
@@ -176,14 +174,14 @@ final class CourseEntitlementService
 
     public function activeEnrollmentFor(int $userId, int $courseId): ?CourseEnrollment
     {
-        if (!$this->courseIsReady($courseId)) {
+        if (! $this->courseIsReady($courseId)) {
             return null;
         }
 
         $enrollment = $this->activeEnrollments($userId, [$courseId])
             ->with($this->enrollmentRelations())->first();
 
-        return $enrollment && !$this->holds->enrollmentHasActiveHold($enrollment, ['course'])
+        return $enrollment && ! $this->holds->enrollmentHasActiveHold($enrollment, ['course'])
             ? $enrollment
             : null;
     }
@@ -217,7 +215,7 @@ final class CourseEntitlementService
         $enrollment = $this->activeEnrollments($userId, [$courseId])
             ->whereKey($enrollmentId)->with($this->enrollmentRelations())->first();
 
-        return $enrollment && !$this->holds->enrollmentHasActiveHold($enrollment, ['course'])
+        return $enrollment && ! $this->holds->enrollmentHasActiveHold($enrollment, ['course'])
             ? $enrollment
             : null;
     }
@@ -229,7 +227,7 @@ final class CourseEntitlementService
 
         return $enrollment->isActive()
             && $this->hasVariableCostFunding($enrollment)
-            && !$this->holds->enrollmentHasActiveHold($enrollment, ['course', 'chat', 'plan'])
+            && ! $this->holds->enrollmentHasActiveHold($enrollment, ['course', 'chat', 'plan'])
             && $this->financialRisk->allowsVariableCostFeaturesReadOnly($enrollment);
     }
 
@@ -239,7 +237,7 @@ final class CourseEntitlementService
         $fullAccessCode = $order
             && $order->isFinanciallyEffective()
             && $order->payment_method === Order::PAYMENT_METHOD_COURSE_CODE
-            && !$this->isGrantEnrollment($enrollment);
+            && ! $this->isGrantEnrollment($enrollment);
 
         return $this->isPaidOrder($order) || $fullAccessCode || $this->isPaidPlanUpgrade($enrollment);
     }
@@ -258,7 +256,7 @@ final class CourseEntitlementService
 
         // A code that no longer resolves cannot silently become a paid benefit.
         return $order?->payment_method === Order::PAYMENT_METHOD_COURSE_CODE
-            && (!$order->courseCode || $order->courseCode->isInstitutionalGrant());
+            && (! $order->courseCode || $order->courseCode->isInstitutionalGrant());
     }
 
     private function isPaidPlanUpgrade(CourseEnrollment $enrollment): bool
@@ -274,7 +272,7 @@ final class CourseEntitlementService
 
     private function hasLoadedHold(CourseEnrollment $enrollment, Collection $holds, array $scopes): bool
     {
-        if (!$enrollment->order_id) {
+        if (! $enrollment->order_id) {
             return false;
         }
 
@@ -282,7 +280,7 @@ final class CourseEntitlementService
 
         return $holds->contains(function (FinancialEntitlementHold $hold) use ($enrollment, $scopes, $planOrderId): bool {
             if ((int) $hold->course_id !== (int) $enrollment->course_id
-                || !in_array($hold->entitlement_scope, $scopes, true)) {
+                || ! in_array($hold->entitlement_scope, $scopes, true)) {
                 return false;
             }
 

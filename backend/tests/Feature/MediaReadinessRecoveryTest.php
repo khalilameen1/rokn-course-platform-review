@@ -10,8 +10,8 @@ use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\LessonMediaState;
 use App\Models\User;
-use App\Services\BunnyService;
 use App\Services\BunnyDeliveryService;
+use App\Services\BunnyService;
 use App\Services\MediaHealthService;
 use App\Services\MediaReconciliationService;
 use Illuminate\Bus\UniqueLock;
@@ -30,14 +30,14 @@ final class MediaReadinessRecoveryTest extends TestCase
 
     public function test_manual_video_probe_completes_the_same_reconciliation_required_by_publish(): void
     {
-        $administrator = new User();
+        $administrator = new User;
         $administrator->forceFill([
             'name_ar' => 'مدير التشغيل',
             'email' => 'media-readiness@example.test',
             'role' => 'admin',
             'active' => true,
         ])->save();
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'كورس فيديو',
@@ -100,7 +100,7 @@ final class MediaReadinessRecoveryTest extends TestCase
 
     public function test_probe_job_retries_when_bunny_is_ready_before_the_hls_document(): void
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'كورس تجهيز متدرج',
@@ -199,7 +199,7 @@ final class MediaReadinessRecoveryTest extends TestCase
     public function test_pending_recovery_redelivers_only_stale_recoverable_readiness(bool $draft): void
     {
         Bus::fake();
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'كورس استرداد الوسائط',
@@ -346,7 +346,7 @@ final class MediaReadinessRecoveryTest extends TestCase
         bool $hasReconciliation
     ): void {
         Bus::fake();
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'Long-running draft encoding',
@@ -485,7 +485,7 @@ final class MediaReadinessRecoveryTest extends TestCase
     public function test_queued_unique_lock_blocks_recovery_then_crashed_worker_release_allows_it(): void
     {
         Bus::fake();
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'كورس استرداد عامل متوقف',
@@ -592,7 +592,7 @@ final class MediaReadinessRecoveryTest extends TestCase
                 "#EXTM3U\n#EXTINF:6.0,\n#EXT-X-ENDLIST\n",
             ],
             'html error containing the token' => [
-                "<!doctype html><html><body>#EXTM3U token=signed</body></html>",
+                '<!doctype html><html><body>#EXTM3U token=signed</body></html>',
             ],
         ];
     }
@@ -600,7 +600,7 @@ final class MediaReadinessRecoveryTest extends TestCase
     /** @return array{array<string, mixed>, Lesson} */
     private function reconcilePlaylist(string $playlist): array
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'كورس تحقق HLS',

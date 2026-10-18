@@ -25,7 +25,7 @@ final class ProjectSubmissionCanonicalStateContractTest extends TestCase
         ];
 
         foreach ($runtimeFiles as $path) {
-            $source = file_get_contents(dirname(__DIR__, 2) . '/' . $path);
+            $source = file_get_contents(dirname(__DIR__, 2).'/'.$path);
             self::assertIsString($source, $path);
             self::assertStringNotContainsString('use App\Models\UserProjectEvaluation;', $source, $path);
             self::assertStringNotContainsString('UserProjectEvaluation::', $source, $path);
@@ -36,7 +36,7 @@ final class ProjectSubmissionCanonicalStateContractTest extends TestCase
     public function test_revision_reader_selects_one_latest_canonical_submission_per_logical_project(): void
     {
         $source = file_get_contents(
-            dirname(__DIR__, 2) . '/app/Services/CourseRevisionLearnerReadService.php'
+            dirname(__DIR__, 2).'/app/Services/CourseRevisionLearnerReadService.php'
         );
 
         self::assertIsString($source);
@@ -49,7 +49,7 @@ final class ProjectSubmissionCanonicalStateContractTest extends TestCase
     public function test_project_review_cannot_mutate_an_issued_certificate_claim(): void
     {
         $source = file_get_contents(
-            dirname(__DIR__, 2) . '/app/Services/ProjectSubmissionReviewService.php'
+            dirname(__DIR__, 2).'/app/Services/ProjectSubmissionReviewService.php'
         );
 
         self::assertIsString($source);

@@ -12,17 +12,16 @@ use Illuminate\Validation\ValidationException;
 
 final class AdminClassificationAuthoringService
 {
-    public function __construct(private readonly AdminClassificationReadService $read)
-    {
-    }
+    public function __construct(private readonly AdminClassificationReadService $read) {}
 
     /** @param array<string, mixed> $data Validated row fields with normalized show_on_home.
-     *  @param list<int> $courseIds
-     *  @param callable(Classification):void $complete Creation receipt, in the same transaction.
+     * @param  list<int>  $courseIds
+     * @param  callable(Classification):void  $complete  Creation receipt, in the same transaction.
      */
     public function create(array $data, array $courseIds, callable $complete): Classification
     {
         $courseIds = $this->validatedHomeCourseIds($courseIds);
+
         return DB::transaction(function () use ($data, $courseIds, $complete): Classification {
             $this->lockCoursesForHomeMembership($courseIds);
             $this->validatedHomeCourseIds($courseIds);
@@ -35,7 +34,7 @@ final class AdminClassificationAuthoringService
     }
 
     /** @param array<string, mixed> $data Validated row fields with normalized show_on_home.
-     *  @param list<int> $courseIds
+     * @param  list<int>  $courseIds
      */
     public function update(Classification $classification, array $data, array $courseIds, string $editorVersion): void
     {
@@ -64,7 +63,7 @@ final class AdminClassificationAuthoringService
             // waits for a concurrent publish. Never attach a now-hidden course.
             $this->validatedHomeCourseIds($courseIds);
             $locked = Classification::query()->whereKey($classification->id)->lockForUpdate()->firstOrFail();
-            if (!hash_equals($this->read->editorVersion($locked), $editorVersion)) {
+            if (! hash_equals($this->read->editorVersion($locked), $editorVersion)) {
                 throw ValidationException::withMessages([
                     'editor_version' => "عدّل شخص آخر هذا التصنيف\nأعد تحميل الصفحة قبل الحفظ",
                 ]);
@@ -88,8 +87,11 @@ final class AdminClassificationAuthoringService
             }
             // Revision snapshots are not editable home membership. Once the
             // real courses are moved, their old snapshots cannot trap this row.
-            if ($this->read->canonicalCourseIds($locked) !== []) return false;
+            if ($this->read->canonicalCourseIds($locked) !== []) {
+                return false;
+            }
             $locked->delete();
+
             return true;
         }, 3);
     }
@@ -147,7 +149,7 @@ final class AdminClassificationAuthoringService
      * syncs. This also matches the parent-lock order imposed by pivot FKs, so
      * one operation completes before the other without a deadlock cycle.
      *
-     * @param array<int, int> $courseIds
+     * @param  array<int, int>  $courseIds
      * @return array<int, int>
      */
     private function lockCoursesForHomeMembership(array $courseIds): array

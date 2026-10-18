@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -81,7 +81,7 @@ class CourseCode extends Model
      */
     public function isValid(): bool
     {
-        if (!$this->is_active) {
+        if (! $this->is_active) {
             return false;
         }
 
@@ -136,12 +136,14 @@ class CourseCode extends Model
                 \Log::warning('Lesson type but no lesson or course found', [
                     'lesson_id' => $this->lesson_id,
                     'has_lesson' => $this->lesson ? 'yes' : 'no',
-                    'has_course' => $this->lesson && $this->lesson->course ? 'yes' : 'no'
+                    'has_course' => $this->lesson && $this->lesson->course ? 'yes' : 'no',
                 ]);
+
                 return null;
 
             default:
                 \Log::warning('Unknown code type', ['type' => $this->type]);
+
                 return null;
         }
     }
@@ -184,8 +186,8 @@ class CourseCode extends Model
     public function users()
     {
         return $this->belongsToMany(User::class, 'course_code_usages', 'course_code_id', 'user_id')
-                    ->withPivot('used_at', 'ip_address')
-                    ->withTimestamps();
+            ->withPivot('used_at', 'ip_address')
+            ->withTimestamps();
     }
 
     /**
@@ -202,15 +204,15 @@ class CourseCode extends Model
     public function scopeValid($query)
     {
         return $query->where('is_active', true)
-                    ->where('used_count', '<', DB::raw('max_uses'))
-                    ->where(function($q) {
-                        $q->whereNull('start_date')
-                          ->orWhere('start_date', '<=', now());
-                    })
-                    ->where(function($q) {
-                        $q->whereNull('expiry_date')
-                          ->orWhere('expiry_date', '>=', now());
-                    });
+            ->where('used_count', '<', DB::raw('max_uses'))
+            ->where(function ($q) {
+                $q->whereNull('start_date')
+                    ->orWhere('start_date', '<=', now());
+            })
+            ->where(function ($q) {
+                $q->whereNull('expiry_date')
+                    ->orWhere('expiry_date', '>=', now());
+            });
     }
 
     /**
@@ -226,6 +228,7 @@ class CourseCode extends Model
             case 'multiple_lessons':
                 $lessons = Lesson::query()->whereIn('id', (array) $this->lesson_ids)->get();
                 $lessonNames = $lessons->pluck('title')->toArray();
+
                 return implode(', ', $lessonNames) ?: 'غير محدد';
             default:
                 return 'غير محدد';
@@ -255,6 +258,4 @@ class CourseCode extends Model
     {
         return $this->start_date && now()->lt($this->start_date);
     }
-
 }
-

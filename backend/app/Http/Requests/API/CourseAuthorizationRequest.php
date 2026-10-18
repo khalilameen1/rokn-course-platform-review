@@ -9,7 +9,7 @@ class CourseAuthorizationRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
-        if (!$this->filled('idempotency_key') && $this->hasHeader('Idempotency-Key')) {
+        if (! $this->filled('idempotency_key') && $this->hasHeader('Idempotency-Key')) {
             $this->merge(['idempotency_key' => $this->header('Idempotency-Key')]);
         }
     }
@@ -53,16 +53,16 @@ class CourseAuthorizationRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator): void {
-            if (!$this->hasHeader('Idempotency-Key')
-                || !array_key_exists('idempotency_key', $this->all())) {
+            if (! $this->hasHeader('Idempotency-Key')
+                || ! array_key_exists('idempotency_key', $this->all())) {
                 return;
             }
 
             $bodyKey = $this->input('idempotency_key');
             $headerKey = $this->header('Idempotency-Key');
-            if (!is_string($bodyKey)
-                || !is_string($headerKey)
-                || !hash_equals($bodyKey, $headerKey)) {
+            if (! is_string($bodyKey)
+                || ! is_string($headerKey)
+                || ! hash_equals($bodyKey, $headerKey)) {
                 $validator->errors()->add(
                     'idempotency_key',
                     'أعد محاولة الشراء'

@@ -15,7 +15,7 @@ final class StorageWriteOptions
     public static function forDisk(string $disk, string $localVisibility): array
     {
         $config = config("filesystems.disks.{$disk}");
-        if (!is_array($config)) {
+        if (! is_array($config)) {
             return [];
         }
 

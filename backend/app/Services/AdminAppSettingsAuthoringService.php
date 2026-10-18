@@ -20,8 +20,7 @@ final class AdminAppSettingsAuthoringService
     public function __construct(
         private readonly PublicAppSettingsService $publicSettings,
         private readonly CoursePlanAuthoringService $planAuthoring
-    ) {
-    }
+    ) {}
 
     /** @param array<string, mixed> $validated Validated editor fields, including submitted secrets. */
     public function update(#[\SensitiveParameter] array $validated): void
@@ -35,7 +34,7 @@ final class AdminAppSettingsAuthoringService
             }
             foreach (['basic', 'guided', 'mentor'] as $code) {
                 $tier = (array) $aiPlanPolicy[$code];
-                $chatEnabled = $code !== 'basic' && !empty($tier['chat_enabled']);
+                $chatEnabled = $code !== 'basic' && ! empty($tier['chat_enabled']);
                 $chatLimit = max(0, (int) $tier['chat_message_limit']);
                 $feedback = (string) $tier['project_feedback_level'];
                 $followupLimit = max(0, (int) $tier['project_followup_message_limit']);
@@ -51,8 +50,7 @@ final class AdminAppSettingsAuthoringService
                 }
                 if ($chatLimit > $tierCeiling) {
                     throw ValidationException::withMessages([
-                        "ai_plan_policy.{$code}.chat_message_limit" =>
-                            "الحد الأقصى لهذه الفئة {$tierCeiling} رسالة",
+                        "ai_plan_policy.{$code}.chat_message_limit" => "الحد الأقصى لهذه الفئة {$tierCeiling} رسالة",
                     ]);
                 }
                 if ($code === 'basic') {
@@ -73,8 +71,7 @@ final class AdminAppSettingsAuthoringService
                 ));
                 if ($followupLimit > $followupCeiling) {
                     throw ValidationException::withMessages([
-                        "ai_plan_policy.{$code}.project_followup_message_limit" =>
-                            "الحد الأقصى لهذه الفئة {$followupCeiling} رسالة",
+                        "ai_plan_policy.{$code}.project_followup_message_limit" => "الحد الأقصى لهذه الفئة {$followupCeiling} رسالة",
                     ]);
                 }
 
@@ -82,7 +79,7 @@ final class AdminAppSettingsAuthoringService
                     'chat_enabled' => $chatEnabled,
                     'chat_message_limit' => $chatEnabled ? $chatLimit : 0,
                     'chat_attachments_enabled' => $chatEnabled
-                        && !empty($tier['chat_attachments_enabled']),
+                        && ! empty($tier['chat_attachments_enabled']),
                     'project_feedback_level' => $feedback,
                     'project_followup_message_limit' => $feedback === 'enhanced'
                         ? $followupLimit : 0,
@@ -107,6 +104,7 @@ final class AdminAppSettingsAuthoringService
         foreach ($designUpdates as $field => $url) {
             if ($url === null || trim((string) $url) === '') {
                 $designUpdates[$field] = null;
+
                 continue;
             }
             $channel = str_replace('_url', '', $field);
@@ -124,18 +122,18 @@ final class AdminAppSettingsAuthoringService
         }
 
         $secretUpdates = [];
-        if (!empty($validated['bunny_api_key'])) {
+        if (! empty($validated['bunny_api_key'])) {
             $secretUpdates['bunny_api_key_secret'] = $validated['bunny_api_key'];
         }
-        if (!empty($validated['bunny_storage_password'])) {
+        if (! empty($validated['bunny_storage_password'])) {
             $secretUpdates['bunny_storage_password_secret'] = $validated['bunny_storage_password'];
         }
-        if (!empty($validated['bunny_security_key'])) {
+        if (! empty($validated['bunny_security_key'])) {
             $secretUpdates['bunny_security_key_secret'] = $validated['bunny_security_key'];
         }
         unset($validated['bunny_api_key'], $validated['bunny_storage_password'], $validated['bunny_security_key']);
 
-        if (!empty($validated['support_whatsapp_url'])) {
+        if (! empty($validated['support_whatsapp_url'])) {
             $normalizedWhatsAppUrl = $this->publicSettings->whatsAppUrl($validated['support_whatsapp_url']);
             if ($normalizedWhatsAppUrl === null) {
                 throw ValidationException::withMessages([
@@ -154,9 +152,9 @@ final class AdminAppSettingsAuthoringService
             AdminSingletonLock::acquire('settings', 'design_settings');
             $settings = Setting::query()->lockForUpdate()->first();
             $design = DesignSetting::query()->lockForUpdate()->first();
-            $settingsSnapshot = $settings ?? new Setting();
+            $settingsSnapshot = $settings ?? new Setting;
             $designSnapshot = $design ?? DesignSetting::getDefaultSettings();
-            if (!hash_equals(
+            if (! hash_equals(
                 AppSettingsEditorVersion::for($settingsSnapshot, $designSnapshot),
                 $editorVersion
             )) {

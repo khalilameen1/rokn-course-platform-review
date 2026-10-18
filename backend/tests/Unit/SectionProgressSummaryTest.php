@@ -17,8 +17,8 @@ final class SectionProgressSummaryTest extends TestCase
     public function test_projection_uses_only_entitled_sections_and_counts_a_completion_once_without_queries(): void
     {
         $sections = collect([
-            (new CourseSection())->forceFill(['id' => 1, 'sectionable_type' => Lesson::class]),
-            (new CourseSection())->forceFill(['id' => 2, 'sectionable_type' => Project::class]),
+            (new CourseSection)->forceFill(['id' => 1, 'sectionable_type' => Lesson::class]),
+            (new CourseSection)->forceFill(['id' => 2, 'sectionable_type' => Project::class]),
         ]);
         $progress = collect([
             $this->row(1, true, '2026-09-01 12:00:00'),
@@ -52,7 +52,7 @@ final class SectionProgressSummaryTest extends TestCase
 
     private function row(int $sectionId, bool $completed, string $at): StudentSectionProgress
     {
-        return (new StudentSectionProgress())->forceFill([
+        return (new StudentSectionProgress)->forceFill([
             'course_section_id' => $sectionId, 'is_completed' => $completed,
             'completed_at' => $completed ? $at : null, 'updated_at' => $at,
         ]);

@@ -28,9 +28,13 @@ final class WatchHistoryCanonicalizationService
     public function ensureCanonical(int $userId, int $maxBatches = 1): void
     {
         $fingerprint = $this->fingerprint($userId);
-        if ($fingerprint === null) return;
-        $key = 'watch-history:canonical:' . $userId;
-        if ($this->remembered($key) === $fingerprint) return;
+        if ($fingerprint === null) {
+            return;
+        }
+        $key = 'watch-history:canonical:'.$userId;
+        if ($this->remembered($key) === $fingerprint) {
+            return;
+        }
 
         // The fingerprint is taken before the merge. A publish or a new resume
         // row that commits while it runs changes the next fingerprint, so the
@@ -39,6 +43,7 @@ final class WatchHistoryCanonicalizationService
         for ($batch = 0; $batch < max(1, $maxBatches); $batch++) {
             if ($this->materialize($userId)) {
                 $this->remember($key, $fingerprint);
+
                 return;
             }
         }
@@ -93,7 +98,9 @@ final class WatchHistoryCanonicalizationService
                 'newest_log_id'
             )
             ->first();
-        if (!$row || $row->newest_log_id === null) return null;
+        if (! $row || $row->newest_log_id === null) {
+            return null;
+        }
 
         return implode('|', [
             (int) $row->archived_revisions,
@@ -110,7 +117,9 @@ final class WatchHistoryCanonicalizationService
             ->select('lesson_id')
             ->distinct()
             ->pluck('lesson_id');
-        if ($lessonIds->isEmpty()) return true;
+        if ($lessonIds->isEmpty()) {
+            return true;
+        }
         $current = $this->revisionResolver->currentLearnerEntityMap(
             Lesson::class,
             $lessonIds
@@ -118,7 +127,9 @@ final class WatchHistoryCanonicalizationService
         $staleLessonIds = collect($current)
             ->filter(fn ($target, $source): bool => (int) $target !== (int) $source)
             ->keys();
-        if ($staleLessonIds->isEmpty()) return true;
+        if ($staleLessonIds->isEmpty()) {
+            return true;
+        }
         $logs = WatchingLog::query()
             ->where('user_id', $userId)
             ->whereIn('lesson_id', $staleLessonIds)
@@ -136,15 +147,21 @@ final class WatchHistoryCanonicalizationService
         foreach ($logs as $source) {
             $targetLessonId = (int) ($current[(int) $source->lesson_id] ?? $source->lesson_id);
             $targetSection = $currentSections->get($targetLessonId);
-            if ($targetLessonId === (int) $source->lesson_id || !$targetSection) continue;
+            if ($targetLessonId === (int) $source->lesson_id || ! $targetSection) {
+                continue;
+            }
             DB::transaction(function () use ($source, $targetLessonId, $targetSection, $userId): void {
                 $locked = WatchingLog::query()->whereKey($source->id)->lockForUpdate()->first();
-                if (!$locked) return;
+                if (! $locked) {
+                    return;
+                }
 
                 // Another history request may have canonicalized this exact
                 // row while we waited. Never treat that now-current row as
                 // both source and target and delete it during the merge.
-                if ((int) $locked->lesson_id !== (int) $source->lesson_id) return;
+                if ((int) $locked->lesson_id !== (int) $source->lesson_id) {
+                    return;
+                }
 
                 $sourceTime = $locked->watched_at ?? $locked->updated_at;
                 // Recency is always explicit so history can order by an index.
@@ -168,9 +185,11 @@ final class WatchHistoryCanonicalizationService
                 ]);
                 $target = WatchingLog::query()->where('user_id', $userId)
                     ->where('lesson_id', $targetLessonId)->lockForUpdate()->first();
-                if (!$target) throw new \RuntimeException('Canonical watch history row was not persisted.');
+                if (! $target) {
+                    throw new \RuntimeException('Canonical watch history row was not persisted.');
+                }
                 $targetTime = $target->watched_at ?? $target->updated_at;
-                if ($sourceTime && (!$targetTime || $sourceTime->gt($targetTime))) {
+                if ($sourceTime && (! $targetTime || $sourceTime->gt($targetTime))) {
                     $target->forceFill([
                         'position_seconds' => $locked->position_seconds,
                         'duration_seconds' => $locked->duration_seconds,
@@ -191,7 +210,7 @@ final class WatchHistoryCanonicalizationService
                 }
                 if (
                     $locked->completed_at
-                    && (!$target->completed_at || $locked->completed_at->lt($target->completed_at))
+                    && (! $target->completed_at || $locked->completed_at->lt($target->completed_at))
                 ) {
                     $target->completed_at = $locked->completed_at;
                 }

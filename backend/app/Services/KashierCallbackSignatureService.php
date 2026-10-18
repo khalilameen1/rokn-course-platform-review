@@ -8,13 +8,11 @@ use Illuminate\Support\Facades\Log;
 
 final readonly class KashierCallbackSignatureService
 {
-    public function __construct(private KashierConfigurationService $configuration)
-    {
-    }
+    public function __construct(private KashierConfigurationService $configuration) {}
 
     /**
-     * @param list<mixed> $headerCandidates
-     * @param array<string,mixed> $params
+     * @param  list<mixed>  $headerCandidates
+     * @param  array<string,mixed>  $params
      */
     public function validate(
         array $headerCandidates,
@@ -49,7 +47,7 @@ final readonly class KashierCallbackSignatureService
             $signatureSource['signature'] ?? null,
         ], static fn ($candidate): bool => is_scalar($candidate) && (string) $candidate !== ''));
 
-        if (!empty($params['signatureKeys']) && is_array($params['signatureKeys'])) {
+        if (! empty($params['signatureKeys']) && is_array($params['signatureKeys'])) {
             $queryString = $this->signatureKeysQuery($params['signatureKeys'], $signatureSource);
             if ($queryString !== null) {
                 $expected = hash_hmac('sha256', $queryString, $secret, false);
@@ -87,15 +85,15 @@ final readonly class KashierCallbackSignatureService
         $pairs = [];
         foreach ($signatureKeys as $key) {
             if (
-                !is_string($key)
+                ! is_string($key)
                 || $key === ''
-                || !array_key_exists($key, $source)
-                || (!is_scalar($source[$key]) && $source[$key] !== null)
+                || ! array_key_exists($key, $source)
+                || (! is_scalar($source[$key]) && $source[$key] !== null)
             ) {
                 return null;
             }
             $value = $source[$key];
-            $pairs[] = rawurlencode($key) . '=' . rawurlencode($value === null ? '' : (string) $value);
+            $pairs[] = rawurlencode($key).'='.rawurlencode($value === null ? '' : (string) $value);
         }
 
         return implode('&', $pairs);

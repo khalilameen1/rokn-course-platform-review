@@ -18,9 +18,7 @@ use Illuminate\View\View;
 
 final class ModeratorController extends Controller
 {
-    public function __construct(private readonly AdminModeratorAuthoringService $authoring)
-    {
-    }
+    public function __construct(private readonly AdminModeratorAuthoringService $authoring) {}
 
     public function index(): View
     {
@@ -77,7 +75,7 @@ final class ModeratorController extends Controller
         ], [
             'confirm_email.required' => 'اكتب بريد الحساب لتأكيد إعادة الضبط',
         ]);
-        if (!hash_equals(
+        if (! hash_equals(
             strtolower(trim((string) $moderator->email)),
             strtolower(trim((string) $request->input('confirm_email')))
         )) {
@@ -96,7 +94,7 @@ final class ModeratorController extends Controller
     private function validated(Request $request, ?User $moderator = null): array
     {
         $isEdit = $moderator !== null;
-        $manageCredentials = !$isEdit || $request->boolean('manage_credentials');
+        $manageCredentials = ! $isEdit || $request->boolean('manage_credentials');
 
         return $request->validate([
             'name_ar' => ['required', 'string', 'max:255'],

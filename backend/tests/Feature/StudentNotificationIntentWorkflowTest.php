@@ -12,6 +12,7 @@ use App\Services\StudentNotificationService;
 use App\Support\StudentNotificationIntent;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class StudentNotificationIntentWorkflowTest extends TestCase
@@ -37,7 +38,7 @@ final class StudentNotificationIntentWorkflowTest extends TestCase
         self::assertSame('rokn://wallet', $receipt->link);
         self::assertSame('https://cdn.example.test/receipt.png', $receipt->image_url);
         Bus::assertDispatched(SendUserPushNotification::class,
-            fn ($job) => $job->uniqueId() === 'notification:' . $receipt->id);
+            fn ($job) => $job->uniqueId() === 'notification:'.$receipt->id);
         Bus::assertDispatchedTimes(SendUserPushNotification::class, 1);
     }
 
@@ -72,11 +73,11 @@ final class StudentNotificationIntentWorkflowTest extends TestCase
         $service = app(StudentNotificationService::class);
         $user = $this->student();
         $key = str_repeat('key:', 24);
-        $receipt = $service->notifyUser($user, $this->intent(['deliveryKey' => ' ' . $key . ' ']));
+        $receipt = $service->notifyUser($user, $this->intent(['deliveryKey' => ' '.$key.' ']));
         self::assertSame(hash('sha256', $key), $receipt->delivery_key);
         $first = $service->notifyUser($user, $this->intent(['deliveryKey' => null]));
         $second = $service->notifyUser($user, $this->intent(['deliveryKey' => null]));
-        self::assertTrue(\Illuminate\Support\Str::isUuid($first->delivery_key));
+        self::assertTrue(Str::isUuid($first->delivery_key));
         self::assertNotSame($first->delivery_key, $second->delivery_key);
         Bus::assertDispatchedTimes(SendUserPushNotification::class, 3);
     }
@@ -153,7 +154,7 @@ final class StudentNotificationIntentWorkflowTest extends TestCase
     private function student(string $suffix = 'one'): User
     {
         return User::query()->forceCreate([
-            'name' => 'Inbox Student', 'email' => 'inbox-' . $suffix . '@rokn.test',
+            'name' => 'Inbox Student', 'email' => 'inbox-'.$suffix.'@rokn.test',
             'role' => 'client', 'active' => true,
         ]);
     }

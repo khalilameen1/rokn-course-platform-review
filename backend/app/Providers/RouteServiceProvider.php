@@ -151,6 +151,7 @@ class RouteServiceProvider extends ServiceProvider
                 'signedPayload',
             ]);
             $ip = $request->ip() ?: 'unknown';
+
             return [
                 Limit::perMinute(30)->by('store-notification:event:'.$identity),
                 Limit::perMinute(1200)->by('store-notification:ip-minute:'.$ip),
@@ -167,6 +168,7 @@ class RouteServiceProvider extends ServiceProvider
                 'messages.0.id',
             ]);
             $ip = $request->ip() ?: 'unknown';
+
             return [
                 Limit::perMinute(30)->by('whatsapp-webhook:event:'.$identity),
                 Limit::perMinute(600)->by('whatsapp-webhook:ip-minute:'.$ip),
@@ -181,6 +183,7 @@ class RouteServiceProvider extends ServiceProvider
                 if (str_starts_with($action, 'auth-')) {
                     $limits[] = Limit::perMinute(120)->by('web-wallet:'.$action.':ip:'.$request->ip());
                 }
+
                 return $limits;
             });
         }
@@ -239,6 +242,7 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('catalog-search', function (Request $request) {
             $identity = $this->rateLimitIdentity($request);
             $ip = $request->ip() ?: 'unknown';
+
             return [
                 Limit::perMinute(60)->by('catalog-search:minute:'.$identity),
                 Limit::perDay(1500)->by('catalog-search:day:'.$identity),
@@ -250,6 +254,7 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('feedback', function (Request $request) {
             $identity = $this->rateLimitIdentity($request);
             $ip = $request->ip() ?: 'unknown';
+
             return [
                 Limit::perMinute(5)->by('feedback:minute:'.$identity),
                 Limit::perDay(30)->by('feedback:day:'.$identity),
@@ -259,6 +264,7 @@ class RouteServiceProvider extends ServiceProvider
 
         RateLimiter::for('admin-bulk', function (Request $request) {
             $userId = optional($request->user())->getAuthIdentifier() ?: 'guest';
+
             return [
                 Limit::perMinute(6)->by('admin-bulk:minute:'.$userId),
                 Limit::perHour(60)->by('admin-bulk:hour:'.$userId),
@@ -293,7 +299,9 @@ class RouteServiceProvider extends ServiceProvider
     {
         foreach (['state', 'code_challenge', 'code', 'token', 'email', 'device_id'] as $field) {
             $value = $request->input($field, $request->query($field));
-            if (!is_scalar($value)) continue;
+            if (! is_scalar($value)) {
+                continue;
+            }
             $value = strtolower(trim((string) $value));
             if ($value !== '') {
                 return $field.':'.hash('sha256', mb_substr($value, 0, 2048));
@@ -323,7 +331,9 @@ class RouteServiceProvider extends ServiceProvider
     {
         foreach ($fields as $field) {
             $value = data_get($request->all(), $field);
-            if (!is_scalar($value)) continue;
+            if (! is_scalar($value)) {
+                continue;
+            }
             $value = trim((string) $value);
             if ($value !== '') {
                 return hash('sha256', mb_substr($value, 0, 4096));
@@ -361,9 +371,9 @@ class RouteServiceProvider extends ServiceProvider
             $locale = '';
         }
         Route::middleware('web')
-             ->namespace($this->namespace)
-             ->prefix($locale)
-             ->group(base_path('routes/web.php'));
+            ->namespace($this->namespace)
+            ->prefix($locale)
+            ->group(base_path('routes/web.php'));
     }
 
     /**
@@ -376,8 +386,8 @@ class RouteServiceProvider extends ServiceProvider
     protected function mapApiRoutes()
     {
         Route::prefix('api')
-             ->middleware('api')
-             ->namespace($this->namespace.  '\API')
-             ->group(base_path('routes/api.php'));
+            ->middleware('api')
+            ->namespace($this->namespace.'\API')
+            ->group(base_path('routes/api.php'));
     }
 }

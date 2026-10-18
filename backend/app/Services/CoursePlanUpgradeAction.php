@@ -11,10 +11,6 @@ use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
 use App\Models\Order;
 use App\Models\User;
-use App\Services\CourseEntitlementService;
-use App\Services\CourseAccessPlanService;
-use App\Services\FinancialProvenanceService;
-use App\Services\WalletService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -36,159 +32,74 @@ final class CoursePlanUpgradeAction
         $provenance = $this->provenance;
         $holds = $this->holds;
         $plans = $this->plans;
+
         return DB::transaction(function () use (
-                $user,
-                $course,
-                $access,
-                $wallet,
-                $provenance,
-                $holds,
-                $plans,
-                $requestedCode,
-                $clientIdempotencyKey,
-                $expectedPrice,
-                $expectedCourseRevision
-            ): array {
-                User::query()->lockForUpdate()->findOrFail($user->id);
-                $entitlement = $access->entitlementFor((int) $user->id, (int) $course->id);
-                if (!$entitlement['has_learning_access']) {
-                    throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_ACCESS_REQUIRED);
-                }
-                $eligibleEnrollment = $access->activeEnrollmentFor(
+            $user,
+            $course,
+            $access,
+            $wallet,
+            $provenance,
+            $holds,
+            $plans,
+            $requestedCode,
+            $clientIdempotencyKey,
+            $expectedPrice,
+            $expectedCourseRevision
+        ): array {
+            User::query()->lockForUpdate()->findOrFail($user->id);
+            $entitlement = $access->entitlementFor((int) $user->id, (int) $course->id);
+            if (! $entitlement['has_learning_access']) {
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_ACCESS_REQUIRED);
+            }
+            $eligibleEnrollment = $access->activeEnrollmentFor(
+                (int) $user->id,
+                (int) $course->id
+            );
+            $enrollment = $eligibleEnrollment
+                ? CourseEnrollment::query()
+                    ->with(['course', 'order.courseCode', 'accessPlan'])
+                    ->whereKey($eligibleEnrollment->id)
+                    ->lockForUpdate()
+                    ->first()
+                : null;
+            if (
+                ! $enrollment
+                || ! $access->activeCapturedEnrollmentFor(
                     (int) $user->id,
-                    (int) $course->id
-                );
-                $enrollment = $eligibleEnrollment
-                    ? CourseEnrollment::query()
-                        ->with(['course', 'order.courseCode', 'accessPlan'])
-                        ->whereKey($eligibleEnrollment->id)
-                        ->lockForUpdate()
-                        ->first()
-                    : null;
-                if (
-                    !$enrollment
-                    || !$access->activeCapturedEnrollmentFor(
-                        (int) $user->id,
-                        (int) $course->id,
-                        (int) $enrollment->id
-                    )
-                ) {
-                    throw new CourseCheckoutRejected(CourseCheckoutRejected::FULL_TRACK_UPGRADE_NOT_AVAILABLE);
-                }
-                // A section can route to an enrollment on its parent course.
-                // Buyers share the paid-course lock, while authoring takes it
-                // exclusively. The selected capabilities therefore stay tied
-                // to the published revision the learner reviewed.
-                $paidCourse = Course::query()
-                    ->sharedLock()
-                    ->findOrFail($enrollment->course_id);
-                $enrollment->setRelation('course', $paidCourse);
-                $currentPlan = $plans->planForEnrollment($enrollment);
-                $currentTerms = $plans->termsForEnrollment($enrollment);
+                    (int) $course->id,
+                    (int) $enrollment->id
+                )
+            ) {
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::FULL_TRACK_UPGRADE_NOT_AVAILABLE);
+            }
+            // A section can route to an enrollment on its parent course.
+            // Buyers share the paid-course lock, while authoring takes it
+            // exclusively. The selected capabilities therefore stay tied
+            // to the published revision the learner reviewed.
+            $paidCourse = Course::query()
+                ->sharedLock()
+                ->findOrFail($enrollment->course_id);
+            $enrollment->setRelation('course', $paidCourse);
+            $currentPlan = $plans->planForEnrollment($enrollment);
+            $currentTerms = $plans->termsForEnrollment($enrollment);
 
-                if ($clientIdempotencyKey !== null) {
-                    $replayedOrder = Order::query()
-                        ->where('user_id', $user->id)
-                        ->where('checkout_request_key', $clientIdempotencyKey)
-                        ->lockForUpdate()
-                        ->first();
-                    if ($replayedOrder) {
-                        if (!$this->isSameUpgradeReplay(
-                            $replayedOrder,
-                            (int) $paidCourse->id,
-                            $requestedCode,
-                            $expectedPrice
-                        )) {
-                            throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_IDEMPOTENCY_CONFLICT);
-                        }
-                        if (
-                            !$replayedOrder->isFinanciallyEffective()
-                            || $holds->enrollmentHasActiveHold(
-                                $enrollment,
-                                ['course', 'chat', 'plan']
-                            )
-                        ) {
-                            throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_ACCESS_UNDER_REVIEW);
-                        }
-
-                        return [
-                            'already_upgraded' => true,
-                            'idempotent_replay' => true,
-                            'course' => $paidCourse,
-                            'amount' => 0,
-                            'order' => $replayedOrder,
-                            'plan' => $currentPlan,
-                            'plan_terms' => $currentTerms,
-                        ];
-                    }
-                }
-
-                if ($requestedCode !== null && ($currentTerms['code'] ?? null) === $requestedCode) {
-                    return [
-                        'already_upgraded' => true,
-                        'idempotent_replay' => false,
-                        'course' => $paidCourse,
-                        'amount' => 0,
-                        'plan' => $currentPlan,
-                        'plan_terms' => $currentTerms,
-                    ];
-                }
-                if ($expectedCourseRevision !== null
-                    && $expectedCourseRevision !== $this->publishedRevision($paidCourse)) {
-                    throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_TERMS_CHANGED);
-                }
-                $targetPlan = $this->targetPlan(
-                    $paidCourse,
-                    $enrollment,
-                    $plans,
-                    $requestedCode
-                );
-                if (!$targetPlan && $entitlement['chat_available']) {
-                    return [
-                        'already_upgraded' => true,
-                        'idempotent_replay' => false,
-                        'course' => $paidCourse,
-                        'amount' => 0,
-                        'plan' => $currentPlan,
-                        'plan_terms' => $currentTerms,
-                    ];
-                }
-                $price = $this->upgradePrice($paidCourse, $enrollment, $targetPlan, $plans);
-                if ($price === null) {
-                    throw new CourseCheckoutRejected(CourseCheckoutRejected::FULL_TRACK_UPGRADE_NOT_PRICED);
-                }
-                if ($price !== $expectedPrice) {
-                    throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_PRICE_CHANGED);
-                }
-
-                $targetCode = (string) $targetPlan->code;
-                $checkoutKey = $clientIdempotencyKey
-                    ?: sprintf(
-                        'system:course-plan-upgrade:%d:%s:%s',
-                        $enrollment->id,
-                        $targetCode,
-                        Str::orderedUuid()->toString()
-                    );
-                $idempotencyKey = 'course-plan-upgrade:' . hash(
-                    'sha256',
-                    $user->id . '|' . $checkoutKey
-                );
+            if ($clientIdempotencyKey !== null) {
                 $replayedOrder = Order::query()
                     ->where('user_id', $user->id)
-                    ->where('checkout_request_key', $checkoutKey)
+                    ->where('checkout_request_key', $clientIdempotencyKey)
                     ->lockForUpdate()
                     ->first();
                 if ($replayedOrder) {
-                    if (!$this->isSameUpgradeReplay(
+                    if (! $this->isSameUpgradeReplay(
                         $replayedOrder,
                         (int) $paidCourse->id,
-                        $targetCode,
+                        $requestedCode,
                         $expectedPrice
                     )) {
                         throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_IDEMPOTENCY_CONFLICT);
                     }
                     if (
-                        !$replayedOrder->isFinanciallyEffective()
+                        ! $replayedOrder->isFinanciallyEffective()
                         || $holds->enrollmentHasActiveHold(
                             $enrollment,
                             ['course', 'chat', 'plan']
@@ -207,97 +118,183 @@ final class CoursePlanUpgradeAction
                         'plan_terms' => $currentTerms,
                     ];
                 }
+            }
 
-                $originalOrderId = (int) (
-                    $enrollment->access_plan_order_id
-                    ?: $enrollment->order_id
-                    ?: 0
-                );
-                $planSnapshot = $plans->snapshot($targetPlan, now());
-                $order = Order::create([
-                    'user_id' => $user->id,
-                    'course_id' => $paidCourse->id,
-                    'parent_order_id' => $originalOrderId ?: null,
-                    'purpose' => Order::PURPOSE_COURSE_PLAN_UPGRADE,
-                    'access_plan_id' => $targetPlan->id,
-                    'access_plan_snapshot' => $planSnapshot,
-                    'checkout_request_key' => $checkoutKey,
-                    'payment_method' => Order::PAYMENT_METHOD_WALLET_COINS,
-                    'amount' => $price,
-                    'discount_amount' => 0,
-                    'final_amount' => $price,
-                    'status' => Order::STATUS_APPROVED,
-                    'financial_status' => Order::FINANCIAL_SETTLED,
-                    'approved_at' => now(),
-                    'approved_by' => null,
-                    'is_premium_user' => $user->isPremiumUser(),
-                    'notes' => 'Course access-plan upgrade from order #' . $originalOrderId,
-                ]);
-
-                $minimumPaidCoins = max(0, (int) ($planSnapshot['minimum_paid_coins'] ?? 0));
-                $paidFloorRemaining = max(
-                    0,
-                    $minimumPaidCoins - $wallet->coursePaidContribution(
-                        (int) $user->id,
-                        (int) $paidCourse->id
-                    )
-                );
-                // Upgrades charge the difference between the previous plan
-                // and the selected plan from purchased coins only. Reward
-                // coins stay untouched for a later first-course purchase.
-                $walletTransaction = $wallet->debit(
-                    (int) $user->id,
-                    $price,
-                    'course_full_track_upgrade',
-                    $idempotencyKey,
-                    $paidCourse,
-                    [
-                        'requested_course_id' => (int) $course->id,
-                        'enrollment_id' => (int) $enrollment->id,
-                        'base_order_id' => (int) $enrollment->order_id,
-                        'parent_order_id' => $originalOrderId,
-                        'minimum_paid_coins' => $minimumPaidCoins,
-                        'paid_floor_remaining_before_upgrade' => $paidFloorRemaining,
-                    ],
-                    0
-                );
-
-                $order->forceFill([
-                    'wallet_transaction_id' => $walletTransaction->id,
-                    'total_coins' => $price,
-                    'paid_coins' => (int) $walletTransaction->paid_amount,
-                    'reward_coins' => (int) $walletTransaction->reward_amount,
-                ])->save();
-                $provenance->allocateCourseDebit($order, $walletTransaction);
-
-                Bill::create([
-                    'order_id' => $order->id,
-                    'user_id' => $user->id,
-                    'course_id' => $paidCourse->id,
-                    'bill_number' => Bill::numberForOrder((int) $order->id),
-                    'amount' => $price,
-                    'tax_amount' => 0,
-                    'total_amount' => $price,
-                    'payment_status' => Bill::PAYMENT_STATUS_PAID,
-                    'payment_method' => Order::PAYMENT_METHOD_WALLET_COINS,
-                    'due_date' => now(),
-                    'paid_at' => now(),
-                    'notes' => 'Paid course access-plan upgrade via Rokn coins',
-                ]);
-
-                // Keep learning and plan-upgrade order lineage independent.
-                $this->enrollments->applyPlanUpgrade($enrollment, $order, $targetPlan, $planSnapshot);
-
+            if ($requestedCode !== null && ($currentTerms['code'] ?? null) === $requestedCode) {
                 return [
-                    'already_upgraded' => false,
+                    'already_upgraded' => true,
                     'idempotent_replay' => false,
                     'course' => $paidCourse,
-                    'amount' => $price,
-                    'order' => $order,
-                    'plan' => $targetPlan,
-                    'plan_terms' => $planSnapshot,
+                    'amount' => 0,
+                    'plan' => $currentPlan,
+                    'plan_terms' => $currentTerms,
                 ];
-            }, 3);
+            }
+            if ($expectedCourseRevision !== null
+                && $expectedCourseRevision !== $this->publishedRevision($paidCourse)) {
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_TERMS_CHANGED);
+            }
+            $targetPlan = $this->targetPlan(
+                $paidCourse,
+                $enrollment,
+                $plans,
+                $requestedCode
+            );
+            if (! $targetPlan && $entitlement['chat_available']) {
+                return [
+                    'already_upgraded' => true,
+                    'idempotent_replay' => false,
+                    'course' => $paidCourse,
+                    'amount' => 0,
+                    'plan' => $currentPlan,
+                    'plan_terms' => $currentTerms,
+                ];
+            }
+            $price = $this->upgradePrice($paidCourse, $enrollment, $targetPlan, $plans);
+            if ($price === null) {
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::FULL_TRACK_UPGRADE_NOT_PRICED);
+            }
+            if ($price !== $expectedPrice) {
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_PRICE_CHANGED);
+            }
+
+            $targetCode = (string) $targetPlan->code;
+            $checkoutKey = $clientIdempotencyKey
+                ?: sprintf(
+                    'system:course-plan-upgrade:%d:%s:%s',
+                    $enrollment->id,
+                    $targetCode,
+                    Str::orderedUuid()->toString()
+                );
+            $idempotencyKey = 'course-plan-upgrade:'.hash(
+                'sha256',
+                $user->id.'|'.$checkoutKey
+            );
+            $replayedOrder = Order::query()
+                ->where('user_id', $user->id)
+                ->where('checkout_request_key', $checkoutKey)
+                ->lockForUpdate()
+                ->first();
+            if ($replayedOrder) {
+                if (! $this->isSameUpgradeReplay(
+                    $replayedOrder,
+                    (int) $paidCourse->id,
+                    $targetCode,
+                    $expectedPrice
+                )) {
+                    throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_IDEMPOTENCY_CONFLICT);
+                }
+                if (
+                    ! $replayedOrder->isFinanciallyEffective()
+                    || $holds->enrollmentHasActiveHold(
+                        $enrollment,
+                        ['course', 'chat', 'plan']
+                    )
+                ) {
+                    throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_ACCESS_UNDER_REVIEW);
+                }
+
+                return [
+                    'already_upgraded' => true,
+                    'idempotent_replay' => true,
+                    'course' => $paidCourse,
+                    'amount' => 0,
+                    'order' => $replayedOrder,
+                    'plan' => $currentPlan,
+                    'plan_terms' => $currentTerms,
+                ];
+            }
+
+            $originalOrderId = (int) (
+                $enrollment->access_plan_order_id
+                ?: $enrollment->order_id
+                ?: 0
+            );
+            $planSnapshot = $plans->snapshot($targetPlan, now());
+            $order = Order::create([
+                'user_id' => $user->id,
+                'course_id' => $paidCourse->id,
+                'parent_order_id' => $originalOrderId ?: null,
+                'purpose' => Order::PURPOSE_COURSE_PLAN_UPGRADE,
+                'access_plan_id' => $targetPlan->id,
+                'access_plan_snapshot' => $planSnapshot,
+                'checkout_request_key' => $checkoutKey,
+                'payment_method' => Order::PAYMENT_METHOD_WALLET_COINS,
+                'amount' => $price,
+                'discount_amount' => 0,
+                'final_amount' => $price,
+                'status' => Order::STATUS_APPROVED,
+                'financial_status' => Order::FINANCIAL_SETTLED,
+                'approved_at' => now(),
+                'approved_by' => null,
+                'is_premium_user' => $user->isPremiumUser(),
+                'notes' => 'Course access-plan upgrade from order #'.$originalOrderId,
+            ]);
+
+            $minimumPaidCoins = max(0, (int) ($planSnapshot['minimum_paid_coins'] ?? 0));
+            $paidFloorRemaining = max(
+                0,
+                $minimumPaidCoins - $wallet->coursePaidContribution(
+                    (int) $user->id,
+                    (int) $paidCourse->id
+                )
+            );
+            // Upgrades charge the difference between the previous plan
+            // and the selected plan from purchased coins only. Reward
+            // coins stay untouched for a later first-course purchase.
+            $walletTransaction = $wallet->debit(
+                (int) $user->id,
+                $price,
+                'course_full_track_upgrade',
+                $idempotencyKey,
+                $paidCourse,
+                [
+                    'requested_course_id' => (int) $course->id,
+                    'enrollment_id' => (int) $enrollment->id,
+                    'base_order_id' => (int) $enrollment->order_id,
+                    'parent_order_id' => $originalOrderId,
+                    'minimum_paid_coins' => $minimumPaidCoins,
+                    'paid_floor_remaining_before_upgrade' => $paidFloorRemaining,
+                ],
+                0
+            );
+
+            $order->forceFill([
+                'wallet_transaction_id' => $walletTransaction->id,
+                'total_coins' => $price,
+                'paid_coins' => (int) $walletTransaction->paid_amount,
+                'reward_coins' => (int) $walletTransaction->reward_amount,
+            ])->save();
+            $provenance->allocateCourseDebit($order, $walletTransaction);
+
+            Bill::create([
+                'order_id' => $order->id,
+                'user_id' => $user->id,
+                'course_id' => $paidCourse->id,
+                'bill_number' => Bill::numberForOrder((int) $order->id),
+                'amount' => $price,
+                'tax_amount' => 0,
+                'total_amount' => $price,
+                'payment_status' => Bill::PAYMENT_STATUS_PAID,
+                'payment_method' => Order::PAYMENT_METHOD_WALLET_COINS,
+                'due_date' => now(),
+                'paid_at' => now(),
+                'notes' => 'Paid course access-plan upgrade via Rokn coins',
+            ]);
+
+            // Keep learning and plan-upgrade order lineage independent.
+            $this->enrollments->applyPlanUpgrade($enrollment, $order, $targetPlan, $planSnapshot);
+
+            return [
+                'already_upgraded' => false,
+                'idempotent_replay' => false,
+                'course' => $paidCourse,
+                'amount' => $price,
+                'order' => $order,
+                'plan' => $targetPlan,
+                'plan_terms' => $planSnapshot,
+            ];
+        }, 3);
     }
 
     public function targetPlan(
@@ -305,8 +302,7 @@ final class CoursePlanUpgradeAction
         CourseEnrollment $enrollment,
         CourseAccessPlanService $plans,
         ?string $requestedCode = null
-    ): ?CourseAccessPlan
-    {
+    ): ?CourseAccessPlan {
         return $this->upgrades->targetPlan($course, $enrollment, $requestedCode);
     }
 
@@ -315,8 +311,7 @@ final class CoursePlanUpgradeAction
         CourseEnrollment $enrollment,
         ?CourseAccessPlan $targetPlan,
         CourseAccessPlanService $plans
-    ): ?int
-    {
+    ): ?int {
         return $this->upgrades->upgradePrice($course, $enrollment, $targetPlan);
     }
 
@@ -325,14 +320,13 @@ final class CoursePlanUpgradeAction
         int $courseId,
         ?string $targetPlanCode,
         int $expectedPrice
-    ): bool
-    {
+    ): bool {
         if (
             (int) $order->course_id !== $courseId
             || $order->package_id !== null
             || $order->payment_method !== Order::PAYMENT_METHOD_WALLET_COINS
             || $order->status !== Order::STATUS_APPROVED
-            || !$order->isCoursePlanUpgrade()
+            || ! $order->isCoursePlanUpgrade()
         ) {
             return false;
         }
@@ -351,6 +345,4 @@ final class CoursePlanUpgradeAction
             $course->last_published_authoring_version ?: $course->authoring_version
         ));
     }
-
-
 }

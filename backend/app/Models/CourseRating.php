@@ -15,7 +15,7 @@ final class CourseRating extends Model
     public function shouldInvalidateCourseCatalogue(): bool
     {
         return $this->wasRecentlyCreated
-            || !$this->exists
+            || ! $this->exists
             || $this->wasChanged(['rating', 'course_id', 'deleted_at']);
     }
 
@@ -33,7 +33,7 @@ final class CourseRating extends Model
 
     protected static function booted(): void
     {
-        static::saving(function (CourseRating $rating): void {
+        self::saving(function (CourseRating $rating): void {
             if ((int) $rating->rating < 1 || (int) $rating->rating > 5) {
                 throw new \DomainException('Course rating must be between one and five.');
             }

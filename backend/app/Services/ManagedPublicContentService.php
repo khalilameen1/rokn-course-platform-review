@@ -28,7 +28,7 @@ final class ManagedPublicContentService
     public function body(string $page, string $locale): ?string
     {
         $field = self::FIELDS[$page][$locale === 'en' ? 'en' : 'ar'] ?? null;
-        if ($field === null || !DatabaseCapabilities::hasTable('abouts')) {
+        if ($field === null || ! DatabaseCapabilities::hasTable('abouts')) {
             return null;
         }
 

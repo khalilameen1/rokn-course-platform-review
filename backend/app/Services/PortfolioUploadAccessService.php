@@ -12,7 +12,9 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 final readonly class PortfolioUploadAccessService
 {
     public const DENIED_CODE = 'PORTFOLIO_CERTIFICATE_SUBSCRIPTION_REQUIRED';
+
     public const SUBSCRIBE_MESSAGE = 'اشترك في كورس باشتراك يشمل شهادة';
+
     public const UPGRADE_MESSAGE = 'قم بترقية اشتراكك إلى اشتراك يشمل شهادة';
 
     public function __construct(
@@ -32,13 +34,11 @@ final readonly class PortfolioUploadAccessService
         // Theory courses qualify too; no project or issued certificate is required.
         $enrollments = CourseEnrollment::query()->where('user_id', $user->id)->active()
             ->with(['order.courseCode', 'accessPlanOrder', 'accessPlan'])
-            ->get()->filter(fn (CourseEnrollment $enrollment): bool =>
-                (!$enrollment->order_id || $enrollment->order?->isFinanciallyEffective())
-                && (!$enrollment->access_plan_order_id || $enrollment->accessPlanOrder?->isFinanciallyEffective())
-                && !$this->holds->enrollmentHasActiveHold($enrollment, ['course', 'plan'])
+            ->get()->filter(fn (CourseEnrollment $enrollment): bool => (! $enrollment->order_id || $enrollment->order?->isFinanciallyEffective())
+                && (! $enrollment->access_plan_order_id || $enrollment->accessPlanOrder?->isFinanciallyEffective())
+                && ! $this->holds->enrollmentHasActiveHold($enrollment, ['course', 'plan'])
             );
-        $allowed = $enrollments->contains(fn (CourseEnrollment $enrollment): bool =>
-            $this->courseAccess->enrollmentHasCertificateAccess($enrollment)
+        $allowed = $enrollments->contains(fn (CourseEnrollment $enrollment): bool => $this->courseAccess->enrollmentHasCertificateAccess($enrollment)
         );
 
         return [
@@ -52,7 +52,7 @@ final readonly class PortfolioUploadAccessService
     public function assertAllowed(User $user): void
     {
         $decision = $this->decision($user);
-        if (!$decision['can_upload']) {
+        if (! $decision['can_upload']) {
             throw new HttpResponseException(response()->json([
                 'status' => 403,
                 'success' => false,

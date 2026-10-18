@@ -22,7 +22,9 @@ use Tests\TestCase;
 final class CourseAttachmentAuthorizationTest extends TestCase
 {
     private Course $course;
+
     private CoursePdf $original;
+
     private CoursePdf $removable;
 
     protected function setUp(): void
@@ -129,7 +131,9 @@ final class CourseAttachmentAuthorizationTest extends TestCase
     #[DataProvider('nonAuthorRoles')]
     public function test_non_author_cannot_mutate_attachments_or_allocate_a_draft(string $role): void
     {
-        if ($role !== 'guest') $this->signIn($role);
+        if ($role !== 'guest') {
+            $this->signIn($role);
+        }
         $before = $this->authoringSnapshot();
         $fixture = UploadedFile::fake()->createWithContent('replacement.txt', 'Unauthorized replacement');
         $version = ['authoring_version' => 4];
@@ -147,8 +151,11 @@ final class CourseAttachmentAuthorizationTest extends TestCase
 
         foreach ($actions as $action => [$verb, $url, $payload]) {
             $response = $this->json($verb, $url, $payload);
-            if ($role === 'guest') $response->assertRedirect(route('login'));
-            else $response->assertForbidden();
+            if ($role === 'guest') {
+                $response->assertRedirect(route('login'));
+            } else {
+                $response->assertForbidden();
+            }
             self::assertSame($before, $this->authoringSnapshot(), $role.' '.$action.' must have no authoring side effects');
         }
         Http::assertNothingSent();
@@ -182,6 +189,7 @@ final class CourseAttachmentAuthorizationTest extends TestCase
     private function uploadedAttachment(string $path, string $bytes, int $order): CoursePdf
     {
         Storage::disk('attachment-authorization')->put($path, $bytes);
+
         return $this->course->pdfs()->create([
             'title' => $path, 'source_type' => 'upload', 'platform' => 'mobile',
             'file_path' => $path, 'storage_disk' => 'attachment-authorization',

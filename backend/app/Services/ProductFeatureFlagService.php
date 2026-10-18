@@ -38,7 +38,7 @@ final class ProductFeatureFlagService
     private function rows(): ?Collection
     {
         try {
-            if (!DatabaseCapabilities::hasTable('product_feature_flags')) {
+            if (! DatabaseCapabilities::hasTable('product_feature_flags')) {
                 return null;
             }
 
@@ -54,7 +54,7 @@ final class ProductFeatureFlagService
     public function enabled(string $key, int|string|null $subject = null): bool
     {
         $definitions = $this->definitions();
-        if (!array_key_exists($key, $definitions)) {
+        if (! array_key_exists($key, $definitions)) {
             return false;
         }
         if ($key === 'checkout' && (bool) config('operations.disaster_recovery_mode', false)) {
@@ -66,13 +66,13 @@ final class ProductFeatureFlagService
         }
 
         $row = $rows->get($key);
-        if (!$row) {
+        if (! $row) {
             return $definitions[$key]['default_enabled'];
         }
         if ($row->expires_at?->isPast()) {
             return $definitions[$key]['safe_default'];
         }
-        if (!$row->enabled) {
+        if (! $row->enabled) {
             return false;
         }
 
@@ -105,10 +105,10 @@ final class ProductFeatureFlagService
                 : $this->bucket($key, (string) $subject);
             $row = $rows->get($key);
             $expired = $row?->expires_at?->isPast() ?? false;
-            $enabled = !$configurationAvailable
+            $enabled = ! $configurationAvailable
                 ? $definition['safe_default']
                 : ($row
-                ? (!$expired && (bool) $row->enabled)
+                ? (! $expired && (bool) $row->enabled)
                 : $definition['default_enabled']);
             $rollout = $row ? max(0, min(100, (int) $row->rollout_percentage)) : 100;
             $flags[$key] = $enabled && $bucket < $rollout;
@@ -170,10 +170,10 @@ final class ProductFeatureFlagService
             $row = $rows->get($key);
             $expired = $row?->expires_at?->isPast() ?? false;
             $result[$key] = [
-                'enabled' => !$configurationAvailable
+                'enabled' => ! $configurationAvailable
                     ? $definition['safe_default']
                     : ($row
-                    ? (!$expired && (bool) $row->enabled)
+                    ? (! $expired && (bool) $row->enabled)
                     : $definition['default_enabled']),
                 'rollout_percentage' => $row ? (int) $row->rollout_percentage : 100,
                 'owner' => $row?->owner,
@@ -192,7 +192,7 @@ final class ProductFeatureFlagService
 
     public function editorVersion(string $key, ?ProductFeatureFlag $flag): string
     {
-        if (!$flag) {
+        if (! $flag) {
             return hash('sha256', 'product-feature:missing:'.$key);
         }
 

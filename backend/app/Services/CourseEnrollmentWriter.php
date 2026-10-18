@@ -27,8 +27,7 @@ final readonly class CourseEnrollmentWriter
     public function __construct(
         private AiEntitlementBudgetService $aiBudget,
         private CourseAccessPlanService $plans
-    ) {
-    }
+    ) {}
 
     public function lockedFor(int $userId, int $courseId): ?CourseEnrollment
     {
@@ -44,7 +43,7 @@ final readonly class CourseEnrollmentWriter
      * order lineage; re-buying over an existing row starts a fresh AI
      * entitlement cycle and restarts access_granted_at.
      *
-     * @param array<string, mixed> $planSnapshot
+     * @param  array<string, mixed>  $planSnapshot
      */
     public function grantPurchasedPlan(
         ?CourseEnrollment $existing,
@@ -157,7 +156,7 @@ final readonly class CourseEnrollmentWriter
      * Paid plan upgrade of an already active enrollment. Learning lineage
      * (order_id), activity, expiry and the AI budget rows stay untouched.
      *
-     * @param array<string, mixed> $planSnapshot
+     * @param  array<string, mixed>  $planSnapshot
      */
     public function applyPlanUpgrade(
         CourseEnrollment $enrollment,

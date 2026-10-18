@@ -17,7 +17,9 @@ final class PurgeExpiredApiTokens implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 300;
+
     public array $backoff = [60, 300];
 
     public function __construct()
@@ -28,7 +30,7 @@ final class PurgeExpiredApiTokens implements ShouldQueue
     public function handle(): void
     {
         $table = (string) config('multiple-tokens-auth.table', 'api_tokens');
-        if (!Schema::hasTable($table)) {
+        if (! Schema::hasTable($table)) {
             return;
         }
 
@@ -55,9 +57,9 @@ final class PurgeExpiredApiTokens implements ShouldQueue
     private function removeOrphanedPushRegistrations(string $tokenTable, $expired, bool $hasDeviceId): void
     {
         if (
-            !$hasDeviceId
-            || !Schema::hasTable('user_device_tokens')
-            || !Schema::hasColumn('user_device_tokens', 'device_id')
+            ! $hasDeviceId
+            || ! Schema::hasTable('user_device_tokens')
+            || ! Schema::hasColumn('user_device_tokens', 'device_id')
         ) {
             return;
         }
@@ -65,7 +67,7 @@ final class PurgeExpiredApiTokens implements ShouldQueue
         $candidates = $expired
             ->filter(static fn ($row): bool => trim((string) ($row->device_id ?? '')) !== '')
             ->mapWithKeys(static fn ($row): array => [
-                ((int) $row->user_id) . ':' . trim((string) $row->device_id) => [
+                ((int) $row->user_id).':'.trim((string) $row->device_id) => [
                     'user_id' => (int) $row->user_id,
                     'device_id' => trim((string) $row->device_id),
                 ],
@@ -89,7 +91,7 @@ final class PurgeExpiredApiTokens implements ShouldQueue
         $activePairs = $activeQuery
             ->get(['user_id', 'device_id'])
             ->mapWithKeys(static fn ($row): array => [
-                ((int) $row->user_id) . ':' . trim((string) $row->device_id) => true,
+                ((int) $row->user_id).':'.trim((string) $row->device_id) => true,
             ]);
         $orphanedPairs = $candidates->reject(
             static fn (array $pair, string $key): bool => $activePairs->has($key)
@@ -103,7 +105,7 @@ final class PurgeExpiredApiTokens implements ShouldQueue
             ->whereIn('device_id', $orphanedPairs->pluck('device_id')->unique())
             ->get(['id', 'user_id', 'device_id'])
             ->filter(static fn ($row): bool => $orphanedPairs->has(
-                ((int) $row->user_id) . ':' . trim((string) $row->device_id)
+                ((int) $row->user_id).':'.trim((string) $row->device_id)
             ))
             ->pluck('id')
             ->whenNotEmpty(static function ($ids): void {

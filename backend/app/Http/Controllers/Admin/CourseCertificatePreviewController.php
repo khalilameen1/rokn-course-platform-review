@@ -31,7 +31,7 @@ final class CourseCertificatePreviewController extends Controller
         $courseName = UnicodeText::limit(UnicodeText::clean($previewCourse->name_ar, false), 255);
         $hasPassageProjects = $snapshot['certificate_completion_text'] !== '';
 
-        if (!$request->boolean('image')) {
+        if (! $request->boolean('image')) {
             return response()->view('admin.courses.certificate-preview', [
                 'previewCourse' => $previewCourse,
                 'courseName' => $courseName,
@@ -39,7 +39,7 @@ final class CourseCertificatePreviewController extends Controller
             ])->header('Cache-Control', 'private, no-store, max-age=0');
         }
 
-        $certificate = new Certificate();
+        $certificate = new Certificate;
         $certificate->forceFill([
             'public_id' => '00000000-0000-0000-0000-000000000000',
             'course_id' => $previewCourse->id,

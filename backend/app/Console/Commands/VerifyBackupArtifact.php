@@ -18,6 +18,7 @@ final class VerifyBackupArtifact extends Command
         {--snapshot-at= : Provider snapshot completion time in ISO-8601}
         {--provider= : Backup provider name}
         {--evidence= : Signed evidence output path or configured-disk object key}';
+
     protected $description = 'Verify a backup artifact, checkpoint lag and signed operational evidence';
 
     public function handle(RecoveryCheckpointService $checkpoints, RecoveryEvidenceService $evidence): int
@@ -34,15 +35,17 @@ final class VerifyBackupArtifact extends Command
                 throw new RuntimeException('Snapshot completion time cannot be in the future.');
             }
             $path = (string) ($this->option('evidence') ?: config('operations.backup_evidence_path'));
-            if ($artifact === '' || !is_file($artifact) || !is_readable($artifact) || filesize($artifact) < 1) {
+            if ($artifact === '' || ! is_file($artifact) || ! is_readable($artifact) || filesize($artifact) < 1) {
                 throw new RuntimeException('Provide a readable non-empty backup artifact.');
             }
-            if (!preg_match('/\.(?:sql|sql\.gz)$/i', $artifact) || $provider === '') {
+            if (! preg_match('/\.(?:sql|sql\.gz)$/i', $artifact) || $provider === '') {
                 throw new RuntimeException('Only named-provider .sql or .sql.gz artifacts are supported.');
             }
             $this->assertReadableStream($artifact);
             $marker = $checkpoints->status();
-            if (!($marker['ready'] ?? false)) throw new RuntimeException('Recovery marker is not decryptable.');
+            if (! ($marker['ready'] ?? false)) {
+                throw new RuntimeException('Recovery marker is not decryptable.');
+            }
             $checkpointAt = Carbon::parse((string) $marker['checkpoint_at'])->utc();
             if ($checkpointAt->gt($snapshotAt->copy()->addMinutes(5))) {
                 throw new RuntimeException('Snapshot time predates the database checkpoint unexpectedly.');
@@ -65,31 +68,45 @@ final class VerifyBackupArtifact extends Command
             ];
             $evidence->write($path, $payload);
             $this->info('Backup artifact verified. Evidence: '.$path);
+
             return self::SUCCESS;
         } catch (Throwable $exception) {
             $this->error('Backup verification failed: '.$exception->getMessage());
+
             return self::FAILURE;
         }
     }
 
     private function assertReadableStream(string $artifact): void
     {
-        if (!str_ends_with(strtolower($artifact), '.gz')) {
+        if (! str_ends_with(strtolower($artifact), '.gz')) {
             $handle = fopen($artifact, 'rb');
             $sample = is_resource($handle) ? fread($handle, 4096) : false;
-            if (is_resource($handle)) fclose($handle);
-            if (!is_string($sample) || trim($sample) === '') throw new RuntimeException('SQL artifact is unreadable.');
+            if (is_resource($handle)) {
+                fclose($handle);
+            }
+            if (! is_string($sample) || trim($sample) === '') {
+                throw new RuntimeException('SQL artifact is unreadable.');
+            }
+
             return;
         }
         $handle = gzopen($artifact, 'rb');
-        if (!is_resource($handle)) throw new RuntimeException('Compressed artifact cannot be opened.');
+        if (! is_resource($handle)) {
+            throw new RuntimeException('Compressed artifact cannot be opened.');
+        }
         $bytes = 0;
-        while (!gzeof($handle)) {
+        while (! gzeof($handle)) {
             $chunk = gzread($handle, 1024 * 1024);
-            if ($chunk === false) { gzclose($handle); throw new RuntimeException('Compressed artifact failed integrity reading.'); }
+            if ($chunk === false) {
+                gzclose($handle);
+                throw new RuntimeException('Compressed artifact failed integrity reading.');
+            }
             $bytes += strlen($chunk);
         }
         gzclose($handle);
-        if ($bytes < 1) throw new RuntimeException('Compressed artifact expands to no data.');
+        if ($bytes < 1) {
+            throw new RuntimeException('Compressed artifact expands to no data.');
+        }
     }
 }

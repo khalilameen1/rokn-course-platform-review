@@ -21,17 +21,15 @@ final class PublicPortfolioService
         private readonly PortfolioShareIdentityService $shareIdentity,
         private readonly PortfolioModerationService $moderation,
         private readonly PortfolioReviewReadService $reviews
-    ) {
-    }
+    ) {}
 
     public function find(
         string $slug,
         ?int $projectPage = null,
         ?int $projectsPerPage = null
-    ): ?array
-    {
+    ): ?array {
         $user = $this->userForSlug($slug);
-        if (!$user) {
+        if (! $user) {
             return null;
         }
 
@@ -39,7 +37,7 @@ final class PublicPortfolioService
         // public result no longer depends on the draft being approved.
         $this->moderation->reconcile($user, $this->reviews->snapshot($user));
         $live = $this->reviews->livePublication($user);
-        if (!$live) {
+        if (! $live) {
             return null;
         }
         $publication = $live['publication'];
@@ -60,13 +58,13 @@ final class PublicPortfolioService
     /** One approved project with its own share URL (Behance-style project page). */
     public function project(string $slug, string $projectPublicId): ?array
     {
-        if (!Str::isUuid($projectPublicId)) {
+        if (! Str::isUuid($projectPublicId)) {
             return null;
         }
         $portfolio = $this->find($slug);
         $project = collect($portfolio['projects'] ?? [])
             ->first(fn (array $project): bool => strtolower((string) ($project['public_id'] ?? '')) === strtolower($projectPublicId));
-        if (!$portfolio || !$project) {
+        if (! $portfolio || ! $project) {
             return null;
         }
 
@@ -83,17 +81,18 @@ final class PublicPortfolioService
     public function mediaForPortfolio(string $slug, string $mediaPublicId, string $revision = '', string $hash = ''): ?PortfolioMedia
     {
         $user = $this->userForSlug($slug);
-        if (!$user || !Str::isUuid($mediaPublicId)) return null;
+        if (! $user || ! Str::isUuid($mediaPublicId)) {
+            return null;
+        }
         $live = $this->reviews->livePublication($user);
-        if (!$live
+        if (! $live
             || (string) $live['publication']['revision'] !== $revision
-            || !hash_equals($live['publication']['hash'], $hash)) {
+            || ! hash_equals($live['publication']['hash'], $hash)) {
             return null;
         }
         foreach ($live['projects'] as $entry) {
             $approved = array_column($entry['content']['media'], 'public_id');
-            $media = $entry['item']->mediaFiles->first(fn (PortfolioMedia $media): bool =>
-                $media->public_id === $mediaPublicId && in_array($mediaPublicId, $approved, true));
+            $media = $entry['item']->mediaFiles->first(fn (PortfolioMedia $media): bool => $media->public_id === $mediaPublicId && in_array($mediaPublicId, $approved, true));
             if ($media) {
                 return $media;
             }
@@ -135,8 +134,8 @@ final class PublicPortfolioService
     public function adminPreviewMedia(User $user, string $mediaPublicId, string $revision = '', string $hash = ''): ?PortfolioMedia
     {
         $snapshot = $this->reviews->snapshot($user->fresh());
-        if ((string) $snapshot['revision'] !== $revision || !hash_equals($snapshot['hash'], $hash)
-            || !Str::isUuid($mediaPublicId)) {
+        if ((string) $snapshot['revision'] !== $revision || ! hash_equals($snapshot['hash'], $hash)
+            || ! Str::isUuid($mediaPublicId)) {
             return null;
         }
 
@@ -159,7 +158,7 @@ final class PublicPortfolioService
         if (
             $slug === ''
             || strlen($slug) > 100
-            || !$this->shareIdentity->isValidUnlistedSlug($slug)
+            || ! $this->shareIdentity->isValidUnlistedSlug($slug)
         ) {
             return null;
         }
@@ -179,7 +178,7 @@ final class PublicPortfolioService
         ?int $projectPage,
         ?int $projectsPerPage
     ): array {
-        $profile = (new User())->setRawAttributes($profileContent);
+        $profile = (new User)->setRawAttributes($profileContent);
         $projectPagination = null;
         if ($projectPage !== null || $projectsPerPage !== null) {
             $perPage = max(1, min(100, $projectsPerPage ?? 24));
@@ -216,20 +215,19 @@ final class PublicPortfolioService
         ];
     }
 
-
     /** Public share payloads use public slugs/UUIDs, never database keys. */
     private function projectPayload(array $entry, string $slug, bool $adminPreview, array $mediaQuery): array
     {
         $content = $entry['content'];
         /** @var PortfolioItem $live */
         $live = $entry['item'];
-        $item = (new PortfolioItem())->setRawAttributes((array) ($content['item'] ?? []));
+        $item = (new PortfolioItem)->setRawAttributes((array) ($content['item'] ?? []));
         $coverId = (int) $live->cover_media_id;
         $media = [];
         $cover = null;
         foreach ((array) ($content['media'] ?? []) as $raw) {
             $payload = is_array($raw) ? $this->mediaPayload($raw, $slug, (int) $live->user_id, $adminPreview, $mediaQuery) : null;
-            if (!$payload) {
+            if (! $payload) {
                 continue;
             }
             $media[] = $payload;
@@ -245,7 +243,7 @@ final class PublicPortfolioService
 
         return [
             'public_id' => $publicId !== '' ? $publicId : null,
-            'url' => !$adminPreview && $publicId !== '' ? RoknPublicUrl::portfolioProject($slug, $publicId) : null,
+            'url' => ! $adminPreview && $publicId !== '' ? RoknPublicUrl::portfolioProject($slug, $publicId) : null,
             'title' => (string) $item->title,
             'description' => $item->description,
             'role' => $item->role,
@@ -263,7 +261,7 @@ final class PublicPortfolioService
     {
         $publicId = (string) ($raw['public_id'] ?? '');
         $type = (string) ($raw['file_type'] ?? '');
-        if (!Str::isUuid($publicId) || !in_array($type, ['image', 'video'], true)) {
+        if (! Str::isUuid($publicId) || ! in_array($type, ['image', 'video'], true)) {
             return null;
         }
         // These are Rokn delivery routes, NOT signed CDN URLs. The controller
@@ -271,7 +269,7 @@ final class PublicPortfolioService
         $base = $adminPreview
             ? route('admin.portfolio-preview.media', ['user' => $ownerId, 'mediaId' => $publicId])
             : RoknPublicUrl::portfolioMedia($slug, $publicId);
-        $url = $base . '?' . http_build_query($mediaQuery);
+        $url = $base.'?'.http_build_query($mediaQuery);
         $width = (int) ($raw['width'] ?? 0);
         $height = (int) ($raw['height'] ?? 0);
 
@@ -286,7 +284,7 @@ final class PublicPortfolioService
             $payload['image_url'] = $url;
         } else {
             $payload['video_url'] = $url;
-            $payload['poster_url'] = $adminPreview ? null : $base . '?' . http_build_query($mediaQuery + ['variant' => 'poster']);
+            $payload['poster_url'] = $adminPreview ? null : $base.'?'.http_build_query($mediaQuery + ['variant' => 'poster']);
         }
 
         return $payload;
@@ -298,7 +296,7 @@ final class PublicPortfolioService
         foreach ($projects as $project) {
             $candidates = array_merge($project['cover'] ? [$project['cover']] : [], $project['media'] ?? []);
             foreach ($candidates as $media) {
-                if (($media['file_type'] ?? null) === 'image' && !empty($media['image_url'])) {
+                if (($media['file_type'] ?? null) === 'image' && ! empty($media['image_url'])) {
                     return [
                         'url' => $media['image_url'],
                         'width' => $media['width'],

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Models\Order;
 use App\Models\Bill;
+use App\Models\Order;
 use App\Models\PaymentMethod;
 use App\Services\CourseEntitlementService;
 use Illuminate\Http\JsonResponse;
@@ -16,13 +16,10 @@ final class CourseAuthorizationController extends Controller
 {
     public function __construct(
         private readonly CourseEntitlementService $courseAccess
-    ) {
-    }
+    ) {}
 
     /**
      * Get active payment methods.
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
     public function getPaymentMethods(): JsonResponse
     {
@@ -40,20 +37,17 @@ final class CourseAuthorizationController extends Controller
             'status' => 200,
             'success' => true,
             'message' => 'تم تحميل طرق الدفع',
-            'data' => $paymentMethods
+            'data' => $paymentMethods,
         ]);
     }
 
     /**
      * Check if user has access to a course.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
      */
     public function checkAccess(Request $request): JsonResponse
     {
         $request->validate([
-            'course_id' => 'required|exists:courses,id'
+            'course_id' => 'required|exists:courses,id',
         ]);
 
         $user = auth('api')->user();
@@ -85,17 +79,14 @@ final class CourseAuthorizationController extends Controller
                     'id' => $enrollment->id,
                     'enrolled_at' => $enrollment->enrolled_at,
                     'expires_at' => $enrollment->expires_at,
-                    'access_granted_at' => $enrollment->access_granted_at
-                ] : null
-            ]
+                    'access_granted_at' => $enrollment->access_granted_at,
+                ] : null,
+            ],
         ]);
     }
 
     /**
      * Get user's course purchase orders.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
      */
     public function myCourseOrders(Request $request): JsonResponse
     {
@@ -119,6 +110,7 @@ final class CourseAuthorizationController extends Controller
                 'data' => [
                     'orders' => $orders->map(function ($order) {
                         $course = $order->course;
+
                         return [
                             'id' => $order->id,
                             'course' => $course ? [
@@ -153,22 +145,22 @@ final class CourseAuthorizationController extends Controller
                             'reversed_at' => $order->reversed_at,
                             'course_code' => $order->courseCode ? [
                                 'code' => $order->courseCode->code,
-                                'type' => $order->courseCode->type
+                                'type' => $order->courseCode->type,
                             ] : null,
                             'coupon' => $order->coupon ? [
                                 'code' => $order->coupon->code,
                                 'discount_type' => $order->coupon->discount_type,
-                                'discount_value' => $order->coupon->discount_value
+                                'discount_value' => $order->coupon->discount_value,
                             ] : null,
                             'payment_screenshot' => $order->payment_screenshot_url,
                             'notes' => $order->notes,
                             'approved_at' => $order->approved_at,
                             'approved_by' => $order->approvedBy ? [
                                 'id' => $order->approvedBy->id,
-                                'name' => $order->approvedBy->name
+                                'name' => $order->approvedBy->name,
                             ] : null,
                             'created_at' => $order->created_at,
-                            'updated_at' => $order->updated_at
+                            'updated_at' => $order->updated_at,
                         ];
                     }),
                     'pagination' => [
@@ -177,13 +169,14 @@ final class CourseAuthorizationController extends Controller
                         'per_page' => $orders->perPage(),
                         'total' => $orders->total(),
                         'from' => $orders->firstItem(),
-                        'to' => $orders->lastItem()
-                    ]
-                ]
+                        'to' => $orders->lastItem(),
+                    ],
+                ],
             ]);
         } catch (\Exception $e) {
             $this->rethrowExpectedRequestException($e);
             report($e);
+
             return response()->json([
                 'status' => 500,
                 'success' => false,
@@ -195,9 +188,6 @@ final class CourseAuthorizationController extends Controller
 
     /**
      * Get user's billing history.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
      */
     public function myBills(Request $request): JsonResponse
     {
@@ -228,15 +218,15 @@ final class CourseAuthorizationController extends Controller
                                     'id' => $bill->order->course->id,
                                     'title' => $bill->order->course->name_ar,
                                     'title_en' => $bill->order->course->name_en,
-                                    'image' => $bill->order->course->image
+                                    'image' => $bill->order->course->image,
                                 ] : null,
                                 'payment_method' => $bill->order->payment_method,
                                 'payment_screenshot' => $bill->order->payment_screenshot_url,
                                 'course_code' => $bill->order->courseCode ? [
-                                    'code' => $bill->order->courseCode->code
+                                    'code' => $bill->order->courseCode->code,
                                 ] : null,
                                 'coupon' => $bill->order->coupon ? [
-                                    'code' => $bill->order->coupon->code
+                                    'code' => $bill->order->coupon->code,
                                 ] : null,
                                 'status' => $bill->order->status,
                                 'financial_status' => $bill->order->financial_status,
@@ -252,7 +242,7 @@ final class CourseAuthorizationController extends Controller
                             'paid_at' => $bill->paid_at,
                             'notes' => $bill->notes,
                             'created_at' => $bill->created_at,
-                            'updated_at' => $bill->updated_at
+                            'updated_at' => $bill->updated_at,
                         ];
                     }),
                     'pagination' => [
@@ -261,13 +251,14 @@ final class CourseAuthorizationController extends Controller
                         'per_page' => $bills->perPage(),
                         'total' => $bills->total(),
                         'from' => $bills->firstItem(),
-                        'to' => $bills->lastItem()
-                    ]
-                ]
+                        'to' => $bills->lastItem(),
+                    ],
+                ],
             ]);
         } catch (\Exception $e) {
             $this->rethrowExpectedRequestException($e);
             report($e);
+
             return response()->json([
                 'status' => 500,
                 'success' => false,
@@ -331,6 +322,4 @@ final class CourseAuthorizationController extends Controller
                 return ucfirst((string) $status);
         }
     }
-
-
 }

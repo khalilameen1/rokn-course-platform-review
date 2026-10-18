@@ -13,9 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 final readonly class AdminPathAuthoringService
 {
-    public function __construct(private AdminPathReadService $read)
-    {
-    }
+    public function __construct(private AdminPathReadService $read) {}
 
     /** @param array<string,mixed> $data @param Closure(Path):void $complete */
     public function create(array $data, Closure $complete): Path
@@ -26,7 +24,9 @@ final readonly class AdminPathAuthoringService
             $this->assertSelectable($selected, $courses);
             $path = Path::query()->create($this->titles($data));
             $path->interests()->sync($data['interest_ids'] ?? []);
-            foreach ($courses as $course) $course->update(['path_id' => $path->id]);
+            foreach ($courses as $course) {
+                $course->update(['path_id' => $path->id]);
+            }
             $complete($path);
 
             return $path;
@@ -45,7 +45,7 @@ final readonly class AdminPathAuthoringService
                 ->orderBy('id')->lockForUpdate()->get();
             $path = Path::query()->whereKey($id)->lockForUpdate()->firstOrFail();
             $this->assertSelectable($selected, $courses);
-            if (!hash_equals($this->read->editorVersion($path), $expected)) {
+            if (! hash_equals($this->read->editorVersion($path), $expected)) {
                 throw ValidationException::withMessages([
                     'editor_version' => "عدّل شخص آخر هذا المسار\nأعد تحميل الصفحة قبل الحفظ",
                 ]);
@@ -66,7 +66,9 @@ final readonly class AdminPathAuthoringService
     {
         return DB::transaction(function () use ($id): bool {
             $path = Path::query()->whereKey($id)->lockForUpdate()->firstOrFail();
-            if ($path->courses()->exists()) return false;
+            if ($path->courses()->exists()) {
+                return false;
+            }
             $path->interests()->detach();
             $path->delete();
 

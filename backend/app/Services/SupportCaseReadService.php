@@ -21,11 +21,11 @@ final class SupportCaseReadService
                 ->where('scan_status', 'sanitized')
                 ->orderBy('id'),
             'messages' => fn ($query) => $query
-            ->where('visibility', SupportCaseMessage::VISIBILITY_CUSTOMER)
-            ->with(['attachments' => fn ($attachments) => $attachments
-                ->where('scan_status', 'sanitized')
-                ->orderBy('id')])
-            ->orderBy('id'),
+                ->where('visibility', SupportCaseMessage::VISIBILITY_CUSTOMER)
+                ->with(['attachments' => fn ($attachments) => $attachments
+                    ->where('scan_status', 'sanitized')
+                    ->orderBy('id')])
+                ->orderBy('id'),
         ]);
 
         return [
@@ -63,10 +63,11 @@ final class SupportCaseReadService
         FeedbackAttachment $attachment
     ): array {
         $expiresAt = now()->addMinutes(15);
+
         return [
             'id' => (string) $attachment->id,
-            'name' => 'support-' . strtoupper(substr((string) $report->public_id, -8))
-                . '-' . $attachment->id . '.jpg',
+            'name' => 'support-'.strtoupper(substr((string) $report->public_id, -8))
+                .'-'.$attachment->id.'.jpg',
             'mime' => (string) ($attachment->mime_type ?: 'image/jpeg'),
             'size' => max(0, (int) $attachment->size_bytes),
             'width' => $attachment->width ? (int) $attachment->width : null,

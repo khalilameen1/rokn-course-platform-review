@@ -15,12 +15,12 @@ use Illuminate\Validation\ValidationException;
 final class AdminPackageAuthoringService
 {
     /** @param array<string,mixed> $validated
-     *  @param Closure(Package):void $complete Receipt completion in the same transaction.
+     * @param  Closure(Package):void  $complete  Receipt completion in the same transaction.
      */
     public function create(array $validated, Closure $complete): Package
     {
         return DB::transaction(function () use ($validated, $complete): Package {
-            $package = new Package();
+            $package = new Package;
             $package->fill($this->fields($validated) + ['sort_order' => 100]);
             $this->assertPurchasableWhenActive($package);
             $package->save();
@@ -61,7 +61,7 @@ final class AdminPackageAuthoringService
 
     private function assertPurchasableWhenActive(Package $package): void
     {
-        if ($package->is_active && !$package->hasPurchasableChannel()) {
+        if ($package->is_active && ! $package->hasPurchasableChannel()) {
             throw ValidationException::withMessages([
                 'channels' => ['فعّل كاشير أو اربط منتجًا مفعّلًا في أحد المتجرين قبل إظهار الباقة'],
             ]);
@@ -70,7 +70,7 @@ final class AdminPackageAuthoringService
 
     private function assertCurrentVersion(Package $package, string $version, string $operation): void
     {
-        if (!hash_equals(PackageEditorVersion::for($package), $version)) {
+        if (! hash_equals(PackageEditorVersion::for($package), $version)) {
             throw ValidationException::withMessages([
                 'editor_version' => "تغيّرت الباقة منذ فتح الصفحة\nأعد تحميلها قبل {$operation}",
             ]);
@@ -79,6 +79,6 @@ final class AdminPackageAuthoringService
 
     private function fields(array $validated): array
     {
-        return Arr::only($validated, (new Package())->getFillable());
+        return Arr::only($validated, (new Package)->getFillable());
     }
 }

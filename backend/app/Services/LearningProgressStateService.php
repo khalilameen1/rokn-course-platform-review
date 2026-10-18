@@ -27,7 +27,7 @@ final class LearningProgressStateService
             fn (int $id): bool => $completed->has($id)
         )->count();
         $next = $learningSections->first(
-            fn (CourseSection $section): bool => !$completed->has((int) $section->id)
+            fn (CourseSection $section): bool => ! $completed->has((int) $section->id)
         );
 
         return [

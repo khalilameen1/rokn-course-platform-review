@@ -16,14 +16,13 @@ final class ProjectSubmissionFileRetentionService
     public function __construct(
         private readonly StoredFileDeletionService $files,
         private readonly CourseAccessPlanService $plans
-    ) {
-    }
+    ) {}
 
     public function purgeIfEligible(ProjectSubmission $submission, bool $expiredTerminalFailure = false): bool
     {
         $purge = DB::transaction(function () use ($submission, $expiredTerminalFailure): array {
             $locked = ProjectSubmission::query()->lockForUpdate()->find($submission->id);
-            if (!$locked || !$this->eligible($locked, $expiredTerminalFailure)) {
+            if (! $locked || ! $this->eligible($locked, $expiredTerminalFailure)) {
                 return ['changed' => false, 'files' => []];
             }
 
@@ -113,8 +112,11 @@ final class ProjectSubmissionFileRetentionService
                 && $submission->review_status === ProjectSubmission::STATUS_PASSED
                 && data_get($submission->submission_metadata, 'ai_feedback.status') === 'unavailable'
                 && $submission->updated_at?->lte($cutoff);
-            if ($submission && $this->purgeIfEligible($submission, (bool) $expiredFailure)) $purged++;
+            if ($submission && $this->purgeIfEligible($submission, (bool) $expiredFailure)) {
+                $purged++;
+            }
         }
+
         return $purged;
     }
 
@@ -188,32 +190,41 @@ final class ProjectSubmissionFileRetentionService
             $paths[] = ['disk' => $defaultDisk, 'path' => (string) $submission->submission_file];
         }
         foreach ((array) data_get($metadata, 'files', []) as $file) {
-            if (!is_array($file) || trim((string) ($file['path'] ?? '')) === '') continue;
+            if (! is_array($file) || trim((string) ($file['path'] ?? '')) === '') {
+                continue;
+            }
             $paths[] = [
                 'disk' => trim((string) ($file['storage_disk'] ?? $defaultDisk)) ?: $defaultDisk,
                 'path' => (string) $file['path'],
             ];
         }
+
         return $paths;
     }
 
     private function eligible(ProjectSubmission $submission, bool $expiredTerminalFailure): bool
     {
-        if ($submission->review_status === ProjectSubmission::STATUS_NEEDS_RESUBMISSION) return true;
-        if ($submission->review_status !== ProjectSubmission::STATUS_PASSED) return false;
+        if ($submission->review_status === ProjectSubmission::STATUS_NEEDS_RESUBMISSION) {
+            return true;
+        }
+        if ($submission->review_status !== ProjectSubmission::STATUS_PASSED) {
+            return false;
+        }
 
         $snapshot = ProjectSubmissionEvaluationSnapshot::fromSubmission($submission);
         $terms = $snapshot ? data_get($snapshot, 'access.terms') : null;
         $status = (string) data_get($submission->submission_metadata, 'ai_feedback.status', '');
         // Old or malformed entitlement snapshots cannot prove pass_only.
         // Fail closed unless the report lifecycle itself is terminal.
-        if (!is_array($terms)) {
+        if (! is_array($terms)) {
             return in_array($status, ['ready', 'not_applicable'], true)
                 || ($expiredTerminalFailure && $status === 'unavailable');
         }
         $reportEnabled = is_array($terms)
             && (bool) $this->plans->publicPayloadFromTerms($terms)['project_report_enabled'];
-        if (!$reportEnabled) return true;
+        if (! $reportEnabled) {
+            return true;
+        }
 
         return in_array($status, ['ready', 'not_applicable'], true)
             || ($expiredTerminalFailure && $status === 'unavailable');
@@ -225,9 +236,12 @@ final class ProjectSubmissionFileRetentionService
         foreach ($paths as $file) {
             $disk = trim((string) ($file['disk'] ?? ''));
             $path = ltrim(trim((string) ($file['path'] ?? '')), '/');
-            if ($disk === '' || $path === '') continue;
-            $unique[$disk . "\0" . $path] = compact('disk', 'path');
+            if ($disk === '' || $path === '') {
+                continue;
+            }
+            $unique[$disk."\0".$path] = compact('disk', 'path');
         }
+
         return array_values($unique);
     }
 }

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Order;
-use Carbon\CarbonInterface;
 use App\Support\BusinessClock;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -95,7 +95,7 @@ final class PaymentChannelReportService
             ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') <> 'test_purchase' THEN COALESCE(gateway_net_amount, COALESCE(gateway_gross_amount, final_amount, 0) - COALESCE(gateway_fee_amount, 0)) ELSE 0 END) as estimated_net_amount")
             ->groupBy('payment_method', 'report_currency')
             ->get()
-            ->keyBy(fn (Order $row): string => $row->payment_method . ':' . strtoupper((string) $row->report_currency));
+            ->keyBy(fn (Order $row): string => $row->payment_method.':'.strtoupper((string) $row->report_currency));
 
         $rows = collect();
         foreach ($this->labels() as $method => $label) {
@@ -104,6 +104,7 @@ final class PaymentChannelReportService
             );
             if ($matching->isEmpty()) {
                 $rows->push($this->row($method, $label, 'EGP', null));
+
                 continue;
             }
 

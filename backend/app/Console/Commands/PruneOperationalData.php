@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Models\PortfolioItem;
 use App\Models\AiInputAttachment;
+use App\Models\PortfolioItem;
 use App\Models\User;
 use App\Services\BunnyMediaRegistry;
 use App\Services\ProjectSubmissionFileRetentionService;
+use App\Services\StoredFileDeletionService;
 use App\Support\PublicDiskUrl;
 use Illuminate\Console\Command;
 use Illuminate\Database\Query\Builder;
@@ -22,6 +23,7 @@ final class PruneOperationalData extends Command
     protected $signature = 'data:prune-operational
         {--limit=5000 : Rows deleted per chunk}
         {--max-seconds=600 : Stop starting new chunks after this many seconds (0 = one chunk per table)}';
+
     protected $description = 'Bound privacy-sensitive and high-volume operational tables without touching financial ledgers.';
 
     private float $deadline = 0.0;
@@ -162,11 +164,11 @@ final class PruneOperationalData extends Command
      * chunk always runs; later chunks stop at the run's time budget so one
      * large backlog cannot hold the overlap lock or starve later tables.
      *
-     * @param callable(Builder):Builder $scope
+     * @param  callable(Builder):Builder  $scope
      */
     private function deleteByIds(string $table, callable $scope, int $limit): int
     {
-        if (!Schema::hasTable($table)) {
+        if (! Schema::hasTable($table)) {
             return 0;
         }
 
@@ -189,7 +191,7 @@ final class PruneOperationalData extends Command
 
     private function pseudonymizeVisitors(int $limit): void
     {
-        if (!Schema::hasTable('visitors')) {
+        if (! Schema::hasTable('visitors')) {
             return;
         }
 
@@ -214,7 +216,9 @@ final class PruneOperationalData extends Command
 
     private function pruneAiInputs(int $limit): int
     {
-        if (!Schema::hasTable('ai_input_attachments')) return 0;
+        if (! Schema::hasTable('ai_input_attachments')) {
+            return 0;
+        }
         $candidateIds = DB::table('ai_input_attachments')
             ->where(function (Builder $query): void {
                 $query->where(function (Builder $ready): void {
@@ -234,23 +238,29 @@ final class PruneOperationalData extends Command
             try {
                 $row = DB::transaction(function () use ($candidateId): ?AiInputAttachment {
                     $candidate = AiInputAttachment::query()->find($candidateId);
-                    if (!$candidate) return null;
+                    if (! $candidate) {
+                        return null;
+                    }
                     // Keep lock ordering aligned with claim/account deletion.
                     User::query()->whereKey($candidate->user_id)->lockForUpdate()->first();
                     $candidate = AiInputAttachment::query()->lockForUpdate()->find($candidateId);
-                    if (!$candidate) return null;
+                    if (! $candidate) {
+                        return null;
+                    }
                     $recovering = $candidate->status === AiInputAttachment::DELETING
                         && $candidate->updated_at?->lte(now()->subMinutes(15));
                     $abandonedAllocation = $candidate->status === AiInputAttachment::ALLOCATING
                         && $candidate->updated_at?->lte(now()->subMinutes(15));
                     if (
-                        !$recovering
-                        && !$abandonedAllocation
+                        ! $recovering
+                        && ! $abandonedAllocation
                         && (
                             $candidate->status !== AiInputAttachment::READY
                             || $candidate->created_at?->gt(now()->subDay())
                         )
-                    ) return null;
+                    ) {
+                        return null;
+                    }
 
                     $ownerExists = match ((string) $candidate->owner_type) {
                         'course_chat_turn' => DB::table('course_chat_turns')->where('id', $candidate->owner_id)->exists(),
@@ -258,21 +268,26 @@ final class PruneOperationalData extends Command
                         'project_feedback_message' => DB::table('project_feedback_messages')->where('id', $candidate->owner_id)->exists(),
                         default => false,
                     };
-                    if ($candidate->owner_id !== null && $ownerExists) return null;
+                    if ($candidate->owner_id !== null && $ownerExists) {
+                        return null;
+                    }
                     $candidate->forceFill(['status' => AiInputAttachment::DELETING])->save();
+
                     return $candidate->fresh();
                 }, 3);
-                if (!$row) continue;
+                if (! $row) {
+                    continue;
+                }
 
                 $otherReference = AiInputAttachment::query()
                     ->where('id', '<>', $row->id)
                     ->where('storage_disk', $row->storage_disk)
                     ->where('storage_path', $row->storage_path)
                     ->exists();
-                if (!$otherReference) {
+                if (! $otherReference) {
                     $disk = Storage::disk((string) $row->storage_disk);
                     if ($disk->exists((string) $row->storage_path)
-                        && !$disk->delete((string) $row->storage_path)) {
+                        && ! $disk->delete((string) $row->storage_path)) {
                         continue;
                     }
                 }
@@ -297,14 +312,15 @@ final class PruneOperationalData extends Command
                 report($exception);
             }
         }
+
         return $deleted;
     }
 
     private function prunePortfolioDrafts(int $limit, BunnyMediaRegistry $mediaRegistry): int
     {
         if (
-            !Schema::hasTable('portfolio_items')
-            || !Schema::hasColumn('portfolio_items', 'expected_media_count')
+            ! Schema::hasTable('portfolio_items')
+            || ! Schema::hasColumn('portfolio_items', 'expected_media_count')
         ) {
             return 0;
         }
@@ -324,12 +340,16 @@ final class PruneOperationalData extends Command
         foreach ($ids as $id) {
             $deleted += DB::transaction(function () use ($id, $mediaRegistry): int {
                 $observed = PortfolioItem::query()->find($id);
-                if (!$observed) return 0;
+                if (! $observed) {
+                    return 0;
+                }
                 $user = User::query()->whereKey($observed->user_id)->lockForUpdate()->first();
-                if (!$user) return 0;
+                if (! $user) {
+                    return 0;
+                }
                 $item = $user->portfolioItems()->lockForUpdate()->find($id);
                 if (
-                    !$item
+                    ! $item
                     || $item->is_public
                     || $item->deletion_started_at
                     || $item->updated_at?->isAfter(now()->subDays(max(
@@ -349,11 +369,11 @@ final class PruneOperationalData extends Command
                             1,
                             false
                         );
-                        if (!$candidate) {
+                        if (! $candidate) {
                             throw new \RuntimeException('Unable to persist draft video cleanup.');
                         }
                     } elseif ($media->file_type === 'image' && $media->file_path) {
-                        if (!$mediaRegistry->queueStorageCleanup(
+                        if (! $mediaRegistry->queueStorageCleanup(
                             $media->file_path,
                             'portfolio_draft_abandoned'
                         )) {
@@ -363,22 +383,24 @@ final class PruneOperationalData extends Command
                     $media->delete();
                 }
                 $item->delete();
+
                 return 1;
             }, 3);
         }
+
         return $deleted;
     }
 
     private function pruneCertificateLeaseArtifacts(int $limit): int
     {
-        if (!Schema::hasTable('certificates') || !Schema::hasColumn('certificates', 'image_path')) {
+        if (! Schema::hasTable('certificates') || ! Schema::hasColumn('certificates', 'image_path')) {
             return 0;
         }
         $disk = Storage::disk((string) config('certificate.disk', 'public'));
         $deleted = 0;
         foreach (array_slice($disk->files('certificates'), 0, $limit) as $path) {
             if (
-                !preg_match(
+                ! preg_match(
                     '#^certificates/certificate_[a-f0-9-]{36}_[a-f0-9]{32}\.png$#i',
                     $path
                 )
@@ -387,14 +409,17 @@ final class PruneOperationalData extends Command
             ) {
                 continue;
             }
-            if ($disk->delete($path)) $deleted++;
+            if ($disk->delete($path)) {
+                $deleted++;
+            }
         }
+
         return $deleted;
     }
 
     private function pruneStudentNotifications(int $limit): int
     {
-        if (!Schema::hasTable('student_notifications')) {
+        if (! Schema::hasTable('student_notifications')) {
             return 0;
         }
 
@@ -443,7 +468,7 @@ final class PruneOperationalData extends Command
             if (
                 is_string($path)
                 && str_starts_with($path, 'student-notifications/')
-                && !isset($referencedAssets[$path])
+                && ! isset($referencedAssets[$path])
             ) {
                 Storage::disk('public')->delete($path);
             }
@@ -453,8 +478,8 @@ final class PruneOperationalData extends Command
     private function pruneNotificationAssets(int $limit): int
     {
         if (
-            !Schema::hasTable('student_notifications')
-            || !Schema::hasColumn('student_notifications', 'image_url')
+            ! Schema::hasTable('student_notifications')
+            || ! Schema::hasColumn('student_notifications', 'image_url')
         ) {
             return 0;
         }
@@ -484,8 +509,8 @@ final class PruneOperationalData extends Command
         $paths = [];
         foreach (['student_notifications', 'notification_campaigns'] as $table) {
             if (
-                !Schema::hasTable($table)
-                || !Schema::hasColumns($table, ['id', 'image_url'])
+                ! Schema::hasTable($table)
+                || ! Schema::hasColumns($table, ['id', 'image_url'])
             ) {
                 continue;
             }
@@ -513,7 +538,7 @@ final class PruneOperationalData extends Command
 
     private function pruneSupportCases(int $limit): int
     {
-        if (!Schema::hasTable('feedback_reports') || !Schema::hasColumn('feedback_reports', 'retention_until')) {
+        if (! Schema::hasTable('feedback_reports') || ! Schema::hasColumn('feedback_reports', 'retention_until')) {
             return 0;
         }
         $ids = DB::table('feedback_reports')
@@ -521,14 +546,17 @@ final class PruneOperationalData extends Command
             ->whereNotNull('retention_until')
             ->where('retention_until', '<=', now())
             ->orderBy('id')->limit($limit)->pluck('id');
-        if ($ids->isEmpty()) return 0;
+        if ($ids->isEmpty()) {
+            return 0;
+        }
 
         $attachments = Schema::hasTable('feedback_attachments')
             ? DB::table('feedback_attachments')->whereIn('feedback_report_id', $ids)->get(['disk', 'path'])
             : collect();
         $deleted = DB::transaction(fn (): int => DB::table('feedback_reports')->whereIn('id', $ids)->delete());
-        $attachments->each(fn (object $attachment) => app(\App\Services\StoredFileDeletionService::class)
+        $attachments->each(fn (object $attachment) => app(StoredFileDeletionService::class)
             ->deleteOrQueue((string) $attachment->disk, (string) $attachment->path));
+
         return $deleted;
     }
 }

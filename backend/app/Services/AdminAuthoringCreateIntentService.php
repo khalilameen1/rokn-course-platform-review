@@ -15,6 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 final class AdminAuthoringCreateIntentService
 {
     private const TABLE = 'admin_authoring_create_intents';
+
     public const CLAIM_ATTRIBUTE = 'rokn.authoring.claimed_create_intent';
 
     /**
@@ -24,7 +25,7 @@ final class AdminAuthoringCreateIntentService
      * owns. This keeps the lookup bound to the same actor and course while a
      * browser still holds file inputs that cannot survive a page reload.
      *
-     * @param array<string, string|int> $parents
+     * @param  array<string, string|int>  $parents
      * @return array{state: string, resource_id?: string, payload?: array<string, mixed>}
      */
     public function resourceReceipt(
@@ -34,7 +35,7 @@ final class AdminAuthoringCreateIntentService
         array $parents,
         string $resourceType
     ): array {
-        if (!$request->user() || !Str::isUuid($intentId) || !Schema::hasTable(self::TABLE)) {
+        if (! $request->user() || ! Str::isUuid($intentId) || ! Schema::hasTable(self::TABLE)) {
             return ['state' => 'absent'];
         }
 
@@ -44,7 +45,9 @@ final class AdminAuthoringCreateIntentService
             'parent_scope' => $this->parentScope($parents),
             'intent_id' => $intentId,
         ])->first();
-        if (!$row) return ['state' => 'absent'];
+        if (! $row) {
+            return ['state' => 'absent'];
+        }
 
         $state = (string) $row->status;
         if ($state !== 'completed') {
@@ -55,7 +58,9 @@ final class AdminAuthoringCreateIntentService
         }
 
         $payload = json_decode((string) ($row->response_body ?? ''), true);
-        if (!is_array($payload)) return ['state' => 'superseded'];
+        if (! is_array($payload)) {
+            return ['state' => 'superseded'];
+        }
 
         return [
             'state' => 'completed',
@@ -67,7 +72,9 @@ final class AdminAuthoringCreateIntentService
     public function claim(Request $request): array|Response|null
     {
         $identity = $this->identity($request);
-        if (!$identity || !Schema::hasTable(self::TABLE)) return null;
+        if (! $identity || ! Schema::hasTable(self::TABLE)) {
+            return null;
+        }
 
         $fingerprint = $this->fingerprint($request);
         try {
@@ -77,14 +84,21 @@ final class AdminAuthoringCreateIntentService
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            if ($inserted) return $identity + ['request_fingerprint' => $fingerprint];
+            if ($inserted) {
+                return $identity + ['request_fingerprint' => $fingerprint];
+            }
 
             $existing = DB::table(self::TABLE)->where($identity)->first();
-            if (!$existing) return null;
+            if (! $existing) {
+                return null;
+            }
 
             $samePayload = hash_equals((string) $existing->request_fingerprint, $fingerprint);
             if ((string) $existing->status === 'completed') {
-                if (!$samePayload) return $this->changedPayloadResponse($request);
+                if (! $samePayload) {
+                    return $this->changedPayloadResponse($request);
+                }
+
                 return $this->replay($request, $existing);
             }
 
@@ -92,23 +106,27 @@ final class AdminAuthoringCreateIntentService
             // attempt, not a lock. The browser deliberately keeps the same
             // intent while the editor corrects its fields.
             if ((string) $existing->status === 'failed') {
-                if (!$samePayload && !empty($existing->resource_id)) {
+                if (! $samePayload && ! empty($existing->resource_id)) {
                     return $this->changedPayloadResponse($request);
                 }
                 $reclaimed = DB::table(self::TABLE)
                     ->where($identity)
                     ->where('status', 'failed')
                     ->update($this->processingValues($fingerprint, $existing));
-                if ($reclaimed === 1) return $identity + ['request_fingerprint' => $fingerprint];
+                if ($reclaimed === 1) {
+                    return $identity + ['request_fingerprint' => $fingerprint];
+                }
             }
 
-            if (!$samePayload) return $this->changedPayloadResponse($request);
+            if (! $samePayload) {
+                return $this->changedPayloadResponse($request);
+            }
 
             // Integrated create controllers commit the domain rows and the
             // completed receipt in one transaction. A stale processing row
             // therefore means that transaction never committed and is safe to
             // lease again.
-            $staleBefore = !empty($existing->resource_id) || $request->allFiles() === []
+            $staleBefore = ! empty($existing->resource_id) || $request->allFiles() === []
                 ? now()->subMinutes(5)
                 : now()->subMinutes(65);
             if (
@@ -120,7 +138,9 @@ final class AdminAuthoringCreateIntentService
                     ->where('status', 'processing')
                     ->where('updated_at', '<', $staleBefore)
                     ->update(['updated_at' => now()]);
-                if ($reclaimed === 1) return $identity + ['request_fingerprint' => $fingerprint];
+                if ($reclaimed === 1) {
+                    return $identity + ['request_fingerprint' => $fingerprint];
+                }
             }
 
             return $this->rejectedResponse(
@@ -131,6 +151,7 @@ final class AdminAuthoringCreateIntentService
             );
         } catch (\Throwable $exception) {
             report($exception);
+
             // Once the ledger exists, executing without a claim is less safe
             // than asking the editor to retry: the same click could otherwise
             // allocate two resources while the database is degraded.
@@ -164,7 +185,9 @@ final class AdminAuthoringCreateIntentService
         string|int $resourceId
     ): void {
         $identity = $this->completionIdentity($request);
-        if (!$identity || !Schema::hasTable(self::TABLE) || !$this->supportsReplayColumns()) return;
+        if (! $identity || ! Schema::hasTable(self::TABLE) || ! $this->supportsReplayColumns()) {
+            return;
+        }
         DB::table(self::TABLE)
             ->where($identity)
             ->whereIn('status', ['processing', 'failed'])
@@ -201,20 +224,25 @@ final class AdminAuthoringCreateIntentService
 
     public function settleFromResponse(Request $request, Response $response, ?array $intent): void
     {
-        if (!$intent || !Schema::hasTable(self::TABLE)) return;
+        if (! $intent || ! Schema::hasTable(self::TABLE)) {
+            return;
+        }
 
         $success = $response->getStatusCode() >= 200
             && $response->getStatusCode() < 400
-            && !$request->session()->has('errors')
-            && !$request->session()->has('error');
-        if (!$success) {
+            && ! $request->session()->has('errors')
+            && ! $request->session()->has('error');
+        if (! $success) {
             $this->markFailed($intent, 'response_rejected');
+
             return;
         }
 
         try {
             $row = DB::table(self::TABLE)->where($intent)->first();
-            if (!$row || (string) $row->status === 'completed') return;
+            if (! $row || (string) $row->status === 'completed') {
+                return;
+            }
 
             $location = $response->headers->get('Location');
             $contentType = $response->headers->get('Content-Type');
@@ -225,7 +253,7 @@ final class AdminAuthoringCreateIntentService
                 $kind,
                 $response->getStatusCode(),
                 $location,
-                !$location && is_string($body) && ($kind === 'json' || strlen($body) <= 262144)
+                ! $location && is_string($body) && ($kind === 'json' || strlen($body) <= 262144)
                     ? $body
                     : null,
                 $contentType,
@@ -239,7 +267,9 @@ final class AdminAuthoringCreateIntentService
 
     public function fail(Request $request, ?array $intent, string $reason = 'controller_exception'): void
     {
-        if (!$intent) return;
+        if (! $intent) {
+            return;
+        }
         $this->markFailed($intent, $reason);
     }
 
@@ -254,7 +284,9 @@ final class AdminAuthoringCreateIntentService
         string|int|null $resourceId
     ): void {
         $identity = $this->completionIdentity($request);
-        if (!$identity || !Schema::hasTable(self::TABLE)) return;
+        if (! $identity || ! Schema::hasTable(self::TABLE)) {
+            return;
+        }
 
         $values = [
             'status' => 'completed',
@@ -283,10 +315,13 @@ final class AdminAuthoringCreateIntentService
     private function markFailed(array $intent, string $reason): void
     {
         try {
-            if (!Schema::hasTable(self::TABLE)) return;
+            if (! Schema::hasTable(self::TABLE)) {
+                return;
+            }
             $query = DB::table(self::TABLE)->where($intent)->where('status', 'processing');
-            if (!$this->supportsReplayColumns()) {
+            if (! $this->supportsReplayColumns()) {
                 $query->delete();
+
                 return;
             }
             $query->update([
@@ -314,9 +349,10 @@ final class AdminAuthoringCreateIntentService
         }
         if (is_string($body)) {
             $response = response($body, $status);
-            if (!empty($receipt->response_content_type)) {
+            if (! empty($receipt->response_content_type)) {
                 $response->headers->set('Content-Type', (string) $receipt->response_content_type);
             }
+
             return $response;
         }
         if ($location !== '') {
@@ -343,6 +379,7 @@ final class AdminAuthoringCreateIntentService
             return redirect()->route($indexRoute, $request->route()?->parameters() ?? [])
                 ->with('success', 'تم الحفظ بالفعل');
         }
+
         return redirect()->back()->with('success', 'تم الحفظ بالفعل');
     }
 
@@ -358,7 +395,7 @@ final class AdminAuthoringCreateIntentService
     {
         $current = $this->identity($request);
         $claimed = $request->attributes->get(self::CLAIM_ATTRIBUTE);
-        if (!is_array($claimed)) {
+        if (! is_array($claimed)) {
             return $current;
         }
         foreach (['actor_id', 'route_name', 'intent_id'] as $field) {
@@ -373,11 +410,17 @@ final class AdminAuthoringCreateIntentService
     /** @return array<string, mixed>|null */
     private function identity(Request $request): ?array
     {
-        if (strtoupper($request->method()) !== 'POST' || !$request->user()) return null;
+        if (strtoupper($request->method()) !== 'POST' || ! $request->user()) {
+            return null;
+        }
         $intent = trim((string) $request->input('authoring_request_id'));
-        if (!Str::isUuid($intent)) return null;
+        if (! Str::isUuid($intent)) {
+            return null;
+        }
         $routeName = (string) ($request->route()?->getName() ?: $request->path());
-        if (!str_ends_with($routeName, '.store')) return null;
+        if (! str_ends_with($routeName, '.store')) {
+            return null;
+        }
 
         $parents = $request->route()?->parameters() ?? [];
 
@@ -418,9 +461,16 @@ final class AdminAuthoringCreateIntentService
 
     private function canonicalize(mixed $value): mixed
     {
-        if (!is_array($value)) return $value;
-        if (!array_is_list($value)) ksort($value);
-        foreach ($value as $key => $item) $value[$key] = $this->canonicalize($item);
+        if (! is_array($value)) {
+            return $value;
+        }
+        if (! array_is_list($value)) {
+            ksort($value);
+        }
+        foreach ($value as $key => $item) {
+            $value[$key] = $this->canonicalize($item);
+        }
+
         return $value;
     }
 
@@ -433,9 +483,16 @@ final class AdminAuthoringCreateIntentService
                 'sha256' => hash_file('sha256', $value->getRealPath()),
             ];
         }
-        if (!is_array($value)) return null;
-        if (!array_is_list($value)) ksort($value);
-        foreach ($value as $key => $item) $value[$key] = $this->fileFingerprint($item);
+        if (! is_array($value)) {
+            return null;
+        }
+        if (! array_is_list($value)) {
+            ksort($value);
+        }
+        foreach ($value as $key => $item) {
+            $value[$key] = $this->fileFingerprint($item);
+        }
+
         return $value;
     }
 

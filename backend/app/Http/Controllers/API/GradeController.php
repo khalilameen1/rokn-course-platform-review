@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\GradeResource;
 use App\Http\Resources\BaseCourseResource;
+use App\Http\Resources\GradeResource;
 use App\Models\Grade;
 use App\Services\ApiResponseService;
 use App\Services\CourseCatalogueQueryService;
@@ -20,8 +20,7 @@ final class GradeController extends Controller
         private readonly ApiResponseService $responses,
         private readonly CourseCatalogueQueryService $catalogue,
         private readonly CourseDurationService $duration
-    ) {
-    }
+    ) {}
 
     public function index(Request $request): JsonResponse
     {

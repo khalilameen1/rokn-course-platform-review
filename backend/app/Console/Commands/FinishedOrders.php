@@ -6,7 +6,6 @@ use App\Models\Order;
 use App\Traits\NotifyUsers;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Http\Request;
 
 class FinishedOrders extends Command
 {
@@ -44,15 +43,15 @@ class FinishedOrders extends Command
         $orders = Order::where([['finish_at', Carbon::now()->format('Y-m-d H:i:00')], ['status_id', 8]])->get();
         foreach ($orders as $order) {
             $info = [
-                'message' => app('request')->header('locale') === "en" ? 'Order Time End' : 'تم انتهاء وقت الطلب'];
+                'message' => app('request')->header('locale') === 'en' ? 'Order Time End' : 'تم انتهاء وقت الطلب'];
             if ($order->user->access_token && $order->user->device_os == 'ios') {
                 NotifyUsers::sendIos([$order->user->access_token], $info);
-            } elseif($order->user->access_token && $order->user->device_os == 'android') {
+            } elseif ($order->user->access_token && $order->user->device_os == 'android') {
                 NotifyUsers::sendAndroid([$order->user->access_token], $info);
             }
             if ($order->provider->access_token && $order->provider->device_os == 'ios') {
                 NotifyUsers::sendIos([$order->provider->access_token], $info);
-            } elseif($order->provider->access_token && $order->provider->device_os == 'android') {
+            } elseif ($order->provider->access_token && $order->provider->device_os == 'android') {
                 NotifyUsers::sendAndroid([$order->provider->access_token], $info);
             }
         }

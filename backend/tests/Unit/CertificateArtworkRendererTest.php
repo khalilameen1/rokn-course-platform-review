@@ -12,7 +12,7 @@ use Tests\TestCase;
 
 final class CertificateArtworkRendererTest extends TestCase
 {
-    private const PAPER = 0xfcfcfa;
+    private const PAPER = 0xFCFCFA;
 
     protected function setUp(): void
     {
@@ -44,14 +44,14 @@ final class CertificateArtworkRendererTest extends TestCase
         $image = $this->decode($bytes);
         try {
             foreach ([[0, 0], [2799, 0], [2799, 1899], [1400, 1200]] as [$x, $y]) {
-                self::assertSame(self::PAPER, imagecolorat($image, $x, $y) & 0xffffff);
+                self::assertSame(self::PAPER, imagecolorat($image, $x, $y) & 0xFFFFFF);
             }
             self::assertGreaterThan(100, $this->inkPixels($image, 1268, 224, 264, 88), 'The original wordmark must be visible.');
-            self::assertGreaterThan(1000, $this->colorPixels($image, 1268, 224, 264, 88, 0x2c69db), 'The wordmark must use Rokn brand blue.');
+            self::assertGreaterThan(1000, $this->colorPixels($image, 1268, 224, 264, 88, 0x2C69DB), 'The wordmark must use Rokn brand blue.');
             self::assertGreaterThan(80, $this->inkPixels($image, 1148, 1414, 504, 168), 'The Arabic signature must be visible.');
             self::assertGreaterThan(500, $this->inkPixels($image, 500, 1380, 240, 240), 'The QR must not be empty.');
             self::assertGreaterThan(80, $this->inkPixels($image, 900, 1700, 1000, 64), 'The credential identifier must be visible.');
-            self::assertSame(0xb9c1c9, imagecolorat($image, 1400, 1256) & 0xffffff);
+            self::assertSame(0xB9C1C9, imagecolorat($image, 1400, 1256) & 0xFFFFFF);
         } finally {
             imagedestroy($image);
         }
@@ -65,8 +65,8 @@ final class CertificateArtworkRendererTest extends TestCase
         ]), $this->destination()));
         $current = $this->decode($renderer->render($this->certificate(), $this->destination()));
         try {
-            self::assertGreaterThan(1000, $this->colorPixels($old, 1268, 160, 264, 88, 0x101c2d));
-            self::assertSame(0xdce0e3, imagecolorat($old, 1400, 1256) & 0xffffff);
+            self::assertGreaterThan(1000, $this->colorPixels($old, 1268, 160, 264, 88, 0x101C2D));
+            self::assertSame(0xDCE0E3, imagecolorat($old, 1400, 1256) & 0xFFFFFF);
             self::assertGreaterThan(
                 $this->inkPixels($old, 700, 1700, 1400, 64),
                 $this->inkPixels($current, 700, 1700, 1400, 64),
@@ -94,8 +94,8 @@ final class CertificateArtworkRendererTest extends TestCase
         try {
             self::assertGreaterThan(1000, $this->inkPixels($image, 224, 444, 2352, 660));
             self::assertSame(0, $this->inkPixels($image, 0, 420, 212, 720), 'The learner must not overflow the left margin.');
-            self::assertSame(0, $this->colorPixels($image, 2588, 420, 212, 720, 0x101c2d), 'The learner must not overflow the right margin.');
-            self::assertSame(0, $this->colorPixels($image, 2588, 420, 212, 720, 0x2c69db), 'The course must not overflow the right margin.');
+            self::assertSame(0, $this->colorPixels($image, 2588, 420, 212, 720, 0x101C2D), 'The learner must not overflow the right margin.');
+            self::assertSame(0, $this->colorPixels($image, 2588, 420, 212, 720, 0x2C69DB), 'The course must not overflow the right margin.');
             self::assertSame(0, $this->inkPixels($image, 224, 1150, 2352, 100), 'The statement must stay above the footer.');
         } finally {
             imagedestroy($image);
@@ -235,7 +235,7 @@ final class CertificateArtworkRendererTest extends TestCase
 
     private function certificate(array $attributes = []): Certificate
     {
-        return (new Certificate())->forceFill(array_replace([
+        return (new Certificate)->forceFill(array_replace([
             'public_id' => '00000000-0000-4000-8000-000000000000',
             'holder_name' => 'أحمد حسن',
             'course_name' => 'مبادئ التسويق',
@@ -256,6 +256,7 @@ final class CertificateArtworkRendererTest extends TestCase
     {
         $image = imagecreatefromstring($bytes);
         self::assertInstanceOf(\GdImage::class, $image);
+
         return $image;
     }
 
@@ -264,11 +265,12 @@ final class CertificateArtworkRendererTest extends TestCase
         $count = 0;
         for ($y = $top; $y < $top + $height; $y += 2) {
             for ($x = $left; $x < $left + $width; $x += 2) {
-                if ((imagecolorat($image, $x, $y) & 0xffffff) !== self::PAPER) {
+                if ((imagecolorat($image, $x, $y) & 0xFFFFFF) !== self::PAPER) {
                     $count++;
                 }
             }
         }
+
         return $count;
     }
 
@@ -277,9 +279,12 @@ final class CertificateArtworkRendererTest extends TestCase
         $count = 0;
         for ($y = $top; $y < $top + $height; $y++) {
             for ($x = $left; $x < $left + $width; $x++) {
-                if ((imagecolorat($image, $x, $y) & 0xffffff) === $color) $count++;
+                if ((imagecolorat($image, $x, $y) & 0xFFFFFF) === $color) {
+                    $count++;
+                }
             }
         }
+
         return $count;
     }
 
@@ -290,6 +295,7 @@ final class CertificateArtworkRendererTest extends TestCase
         ob_start();
         try {
             imagepng($crop);
+
             return hash('sha256', (string) ob_get_contents());
         } finally {
             ob_end_clean();

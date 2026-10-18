@@ -4,17 +4,18 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API;
 
-use App\Support\StudentNotificationIntent;
-
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CoinEarningMethodResource;
 use App\Models\CoinEarningMethod;
 use App\Models\Setting;
+use App\Models\User;
 use App\Models\UserCoinTaskAttempt;
 use App\Services\AcquisitionRewardTombstoneService;
 use App\Services\StudentNotificationService;
 use App\Services\WalletService;
 use App\Services\WhatsAppLinkService;
+use App\Support\BusinessClock;
+use App\Support\StudentNotificationIntent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,8 +26,7 @@ final class CoinEarningMethodController extends Controller
     public function __construct(
         private readonly AcquisitionRewardTombstoneService $tombstones,
         private readonly StudentNotificationService $notifications
-    ) {
-    }
+    ) {}
 
     public function index(): JsonResponse
     {
@@ -56,7 +56,7 @@ final class CoinEarningMethodController extends Controller
                 return $method->completed_by_learner || ($method->hasUsableDestination() && $hasCapacity);
             })
             ->values();
-        $setting = Setting::first() ?? new Setting();
+        $setting = Setting::first() ?? new Setting;
         $user = auth('api')->user();
 
         $earnings = collect();
@@ -93,7 +93,7 @@ final class CoinEarningMethodController extends Controller
                 $state = 'claimed';
             } elseif ($attempt && (
                 $attempt->claim_available_at?->isFuture()
-                || ($method->action_key === 'link_whatsapp' && !$whatsAppVerified)
+                || ($method->action_key === 'link_whatsapp' && ! $whatsAppVerified)
             )) {
                 $state = 'started';
             } elseif ($attempt) {
@@ -123,8 +123,8 @@ final class CoinEarningMethodController extends Controller
         $user = auth('api')->user();
         $actionUrl = $method->resolvedActionUrl();
         if (
-            !$method->isLearnerTask()
-            || !$method->hasClaimCapacity()
+            ! $method->isLearnerTask()
+            || ! $method->hasClaimCapacity()
         ) {
             return $this->error('المهمة غير متاحة', 404, 'task_unavailable');
         }
@@ -168,7 +168,7 @@ final class CoinEarningMethodController extends Controller
 
         [$attempt, $alreadyClaimed] = DB::transaction(function () use ($user, $method): array {
             // Two fast taps must resolve to one immutable attempt on every DB driver.
-            \App\Models\User::query()->lockForUpdate()->findOrFail($user->id);
+            User::query()->lockForUpdate()->findOrFail($user->id);
 
             $attempt = UserCoinTaskAttempt::firstOrCreate(
                 ['user_id' => $user->id, 'coin_earning_method_id' => $method->id],
@@ -233,6 +233,7 @@ final class CoinEarningMethodController extends Controller
         }
         if ($this->tombstones->userHasConsumedMethod($user, $method)) {
             $freshUser = $user->fresh();
+
             return response()->json([
                 'status' => 200,
                 'success' => true,
@@ -248,7 +249,7 @@ final class CoinEarningMethodController extends Controller
         try {
             $result = DB::transaction(function () use ($user, $method, $walletService): array {
                 // Serializes two rapid claim taps even before an attempt row exists.
-                \App\Models\User::query()->lockForUpdate()->findOrFail($user->id);
+                User::query()->lockForUpdate()->findOrFail($user->id);
 
                 $attempt = UserCoinTaskAttempt::query()
                     ->where('user_id', $user->id)
@@ -279,29 +280,29 @@ final class CoinEarningMethodController extends Controller
                     $methodQuery->lockForUpdate();
                 }
                 $lockedMethod = $methodQuery->findOrFail($method->id);
-                if ($lockedMethod->trashed() || !$lockedMethod->isLearnerTask()) {
+                if ($lockedMethod->trashed() || ! $lockedMethod->isLearnerTask()) {
                     throw new \DomainException('task_unavailable');
                 }
                 if (
                     $lockedMethod->action_key === 'link_whatsapp'
-                    && !$user->whatsappConnection()
+                    && ! $user->whatsappConnection()
                         ->verified()
                         ->exists()
                 ) {
                     throw new \DomainException('whatsapp_not_verified');
                 }
-                if (!$lockedMethod->hasClaimCapacity()) {
+                if (! $lockedMethod->hasClaimCapacity()) {
                     throw new \DomainException('task_quota_reached');
                 }
 
-                if ($lockedMethod->requires_external_visit && !$attempt) {
+                if ($lockedMethod->requires_external_visit && ! $attempt) {
                     throw new \DomainException('task_not_started');
                 }
                 if ($attempt?->claim_available_at?->isFuture()) {
                     throw new \DomainException('claim_not_ready');
                 }
 
-                if (!$attempt) {
+                if (! $attempt) {
                     $attempt = UserCoinTaskAttempt::create([
                         'public_id' => (string) Str::uuid(),
                         'user_id' => $user->id,
@@ -321,10 +322,10 @@ final class CoinEarningMethodController extends Controller
                     [
                         'action_key' => $lockedMethod->action_key,
                         'campaign_key' => $lockedMethod->campaign_key,
-                        'reward_timezone' => \App\Support\BusinessClock::timezoneName(),
+                        'reward_timezone' => BusinessClock::timezoneName(),
                     ]
                 );
-                if (!$transaction) {
+                if (! $transaction) {
                     throw new \DomainException('reward_balance_full');
                 }
 
@@ -348,12 +349,12 @@ final class CoinEarningMethodController extends Controller
                         notificationType: StudentNotificationService::TYPE_COINS_CLAIMED,
                         titleAr: 'وصلت مكافأتك',
                         titleEn: 'Coins Claimed',
-                        messageAr: 'أضفنا ' . $transaction->amount . " عملة إلى محفظتك\nافتح المحفظة لمعرفة التفاصيل",
-                        messageEn: $transaction->amount . ' coins have been added to your wallet',
+                        messageAr: 'أضفنا '.$transaction->amount." عملة إلى محفظتك\nافتح المحفظة لمعرفة التفاصيل",
+                        messageEn: $transaction->amount.' coins have been added to your wallet',
                         link: null,
                         notifiableType: CoinEarningMethod::class,
                         notifiableId: $lockedMethod->id,
-                        deliveryKey: 'coins-claimed:' . $user->id . ':' . $lockedMethod->id,
+                        deliveryKey: 'coins-claimed:'.$user->id.':'.$lockedMethod->id,
                         templateVariables: [
                             'coins' => (int) $transaction->amount,
                             'task' => (string) ($lockedMethod->title_ar ?: $lockedMethod->title_en),
@@ -369,6 +370,7 @@ final class CoinEarningMethodController extends Controller
             });
         } catch (\DomainException $exception) {
             $code = $exception->getMessage();
+
             return $this->error(
                 match ($code) {
                     'task_not_started' => 'لم تبدأ المهمة بعد',

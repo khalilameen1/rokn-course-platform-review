@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\DB;
 final class AiConsentService
 {
     public const VERSION = 'third-party-ai-v1';
+
     public const REQUIRED = 'ai_consent_required';
+
     public const REQUIRED_MESSAGE = 'لاستخدام الاستفسارات ومراجعة المشاريع، حدّث التطبيق ووافق على مشاركة ما ترسله مع خدمة الذكاء الاصطناعي';
 
     public function accepted(int $userId): bool
@@ -23,6 +25,7 @@ final class AiConsentService
     public function payload(User $user): array
     {
         $accepted = $this->accepted((int) $user->id);
+
         return [
             'version' => self::VERSION,
             'accepted' => $accepted,
@@ -44,6 +47,7 @@ final class AiConsentService
                     : null,
             ])->save();
         }, 3);
+
         return $this->payload($user);
     }
 }

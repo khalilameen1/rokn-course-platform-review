@@ -19,8 +19,7 @@ final readonly class KashierNotificationFlowService
         private KashierProviderOrderService $providerOrders,
         private PaymentApiResponseService $responses,
         private KashierCallbackSignatureService $signatures
-    ) {
-    }
+    ) {}
 
     public function callback(Request $request): View
     {
@@ -33,7 +32,7 @@ final readonly class KashierNotificationFlowService
             'transaction_id' => $transactionId,
         ] = $this->notification($request);
 
-        if (!$this->providerOrders->isValidReference($orderRef)) {
+        if (! $this->providerOrders->isValidReference($orderRef)) {
             Log::warning('Kashier callback rejected: missing or invalid order reference');
 
             return view('payment.result', [
@@ -51,8 +50,8 @@ final readonly class KashierNotificationFlowService
         ]);
 
         if (
-            !$this->evidence->isCaptureStatus($paymentStatus)
-            && !$hasSignatureCandidate
+            ! $this->evidence->isCaptureStatus($paymentStatus)
+            && ! $hasSignatureCandidate
         ) {
             return $this->handleUnsignedCallbackFailure(
                 $params,
@@ -62,7 +61,7 @@ final readonly class KashierNotificationFlowService
             );
         }
 
-        if (!$isValidSignature) {
+        if (! $isValidSignature) {
             Log::warning('Kashier callback: invalid signature', [
                 'order_ref' => $orderRef,
                 'payment_status' => $paymentStatus,
@@ -82,7 +81,7 @@ final readonly class KashierNotificationFlowService
 
         $order = Order::byOrderRef($orderRef)->with(['user', 'package'])->first();
 
-        if (!$order) {
+        if (! $order) {
             Log::warning('Kashier callback: order not found', [
                 'order_ref' => $orderRef,
                 'payment_status' => $paymentStatus,
@@ -116,7 +115,7 @@ final readonly class KashierNotificationFlowService
             'transaction_id' => $transactionId,
         ] = $this->notification($request);
 
-        if (!$this->providerOrders->isValidReference($orderRef)) {
+        if (! $this->providerOrders->isValidReference($orderRef)) {
             Log::warning('Kashier webhook rejected: missing or invalid order reference');
 
             return $this->responses->make(
@@ -136,8 +135,8 @@ final readonly class KashierNotificationFlowService
         ]);
 
         if (
-            !$this->evidence->isCaptureStatus($paymentStatus)
-            && !$hasSignatureCandidate
+            ! $this->evidence->isCaptureStatus($paymentStatus)
+            && ! $hasSignatureCandidate
         ) {
             Log::warning('Kashier webhook: unsigned failure notification', [
                 'order_ref' => $orderRef,
@@ -147,7 +146,7 @@ final readonly class KashierNotificationFlowService
             return $this->responses->make(true, 'Unsigned failure ignored', [], 202);
         }
 
-        if (!$isValidSignature) {
+        if (! $isValidSignature) {
             Log::warning('Kashier webhook: invalid signature', [
                 'order_ref' => $orderRef,
                 'payment_status' => $paymentStatus,
@@ -163,7 +162,7 @@ final readonly class KashierNotificationFlowService
 
         $order = Order::byOrderRef($orderRef)->with(['user', 'package'])->first();
 
-        if (!$order) {
+        if (! $order) {
             Log::warning('Kashier webhook: order not found', [
                 'order_ref' => $orderRef,
                 'payment_status' => $paymentStatus,
@@ -183,7 +182,7 @@ final readonly class KashierNotificationFlowService
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     private function handleUnsignedCallbackFailure(
         array $params,
@@ -226,7 +225,7 @@ final readonly class KashierNotificationFlowService
                         ]);
                     }
 
-                    if (!$order->isFinanciallyEffective()) {
+                    if (! $order->isFinanciallyEffective()) {
                         return view('payment.result', [
                             'success' => false,
                             'order_ref' => $orderRef,
@@ -298,7 +297,7 @@ final readonly class KashierNotificationFlowService
      * Apply one signed provider observation. Callback and webhook differ only
      * in presentation; all financial transitions happen here.
      *
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      * @return array{state: string, order: Order, order_ref: string, transaction_id: ?string}
      */
     private function applySignedNotification(
@@ -335,8 +334,8 @@ final readonly class KashierNotificationFlowService
             return $this->notificationResult('settled', $order, $orderRef, $order->transaction_id);
         }
 
-        if (!$isCapture) {
-            if (!$this->evidence->isFailureStatus($paymentStatus)) {
+        if (! $isCapture) {
+            if (! $this->evidence->isFailureStatus($paymentStatus)) {
                 return $this->notificationResult('pending', $order, $orderRef, $transactionId);
             }
 
@@ -374,7 +373,7 @@ final readonly class KashierNotificationFlowService
             if ($this->evidence->transactionIdConflicts($order, $transactionId)) {
                 return $this->notificationResult('conflict', $order, $orderRef, $transactionId);
             }
-            if (!$order->isFinanciallyEffective()) {
+            if (! $order->isFinanciallyEffective()) {
                 return $this->notificationResult('capture_review', $order, $orderRef, $transactionId);
             }
 

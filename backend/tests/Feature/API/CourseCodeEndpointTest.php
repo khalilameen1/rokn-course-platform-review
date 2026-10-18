@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\API;
 
+use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -48,7 +49,7 @@ class CourseCodeEndpointTest extends ApiTestCase
         $this->assertDatabaseHas('orders', [
             'user_id' => $this->user->id,
             'course_id' => $this->courseId,
-            'payment_method' => \App\Models\Order::PAYMENT_METHOD_COURSE_CODE,
+            'payment_method' => Order::PAYMENT_METHOD_COURSE_CODE,
             'final_amount' => 0,
         ]);
     }

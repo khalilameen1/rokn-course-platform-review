@@ -78,7 +78,9 @@ final class AdminNotificationTemplateOwnershipTest extends TestCase
                         'missing-image' => null,
                         default => $image,
                     },
-                    static function (): never { self::fail('Changed replay must not complete a receipt.'); }
+                    static function (): never {
+                        self::fail('Changed replay must not complete a receipt.');
+                    }
                 );
                 self::fail('A create identity must not accept a different payload.');
             } catch (ValidationException $error) {

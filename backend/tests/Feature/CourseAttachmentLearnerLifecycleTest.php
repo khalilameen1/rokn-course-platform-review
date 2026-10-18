@@ -23,7 +23,9 @@ final class CourseAttachmentLearnerLifecycleTest extends TestCase
     use RefreshDatabase;
 
     private Course $course;
+
     private CoursePdf $original;
+
     private CourseStagedAuthoringService $revisions;
 
     protected function setUp(): void
@@ -43,7 +45,7 @@ final class CourseAttachmentLearnerLifecycleTest extends TestCase
         $publishing = Mockery::mock(CoursePublishingService::class);
         $publishing->shouldReceive('audit')->andReturn(['ready' => true, 'issues' => []]);
         $this->revisions = $this->app->makeWith(CourseStagedAuthoringService::class, ['publishing' => $publishing]);
-        $this->course = (new Course())->forceFill([
+        $this->course = (new Course)->forceFill([
             'tenant_id' => 1, 'name_ar' => 'كورس الملفات', 'description_ar' => 'وصف',
             'price' => 0, 'is_coming_soon' => false, 'is_catalog_visible' => true,
             'authoring_version' => 4, 'last_published_authoring_version' => 4,
@@ -57,12 +59,12 @@ final class CourseAttachmentLearnerLifecycleTest extends TestCase
             'section_type' => 'lesson', 'sectionable_type' => Lesson::class,
             'sectionable_id' => $lesson->id, 'order' => 1,
         ]);
-        $user = (new User())->forceFill([
+        $user = (new User)->forceFill([
             'name_ar' => 'متعلم', 'email' => 'learner-files@example.test',
             'role' => 'client', 'active' => true,
         ]);
         $user->save();
-        (new CourseEnrollment())->forceFill([
+        (new CourseEnrollment)->forceFill([
             'tenant_id' => 1,
             'course_id' => $this->course->id, 'user_id' => $user->id,
             'is_active' => true, 'expires_at' => now()->addDay(),

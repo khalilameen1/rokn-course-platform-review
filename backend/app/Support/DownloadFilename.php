@@ -18,12 +18,14 @@ final class DownloadFilename
         $name = preg_replace('/\s+/u', ' ', $name) ?? '';
         $name = trim($name, " .\t\n\r\0\x0B");
         $name = UnicodeText::limit($name, 180);
-        if ($name === '') $name = $fallback;
+        if ($name === '') {
+            $name = $fallback;
+        }
 
         $extension = strtolower(trim((string) $requiredExtension, ". \t\n\r\0\x0B"));
         $extension = preg_match('/^[a-z0-9]{1,8}$/', $extension) === 1 ? $extension : '';
-        if ($extension !== '' && !str_ends_with(strtolower($name), '.' . $extension)) {
-            $name = rtrim($name, '.') . '.' . $extension;
+        if ($extension !== '' && ! str_ends_with(strtolower($name), '.'.$extension)) {
+            $name = rtrim($name, '.').'.'.$extension;
         }
 
         return $name;
@@ -32,7 +34,7 @@ final class DownloadFilename
     public static function disposition(string $filename): string
     {
         $extension = pathinfo($filename, PATHINFO_EXTENSION);
-        $fallback = 'rokn-file' . ($extension !== '' ? '.' . strtolower($extension) : '');
+        $fallback = 'rokn-file'.($extension !== '' ? '.'.strtolower($extension) : '');
 
         return HeaderUtils::makeDisposition(
             HeaderUtils::DISPOSITION_ATTACHMENT,

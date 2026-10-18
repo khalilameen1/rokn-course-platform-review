@@ -32,7 +32,7 @@ final class ProviderInvoiceReportService
 
             return [
                 'key' => $key, 'label' => $label, 'invoices' => $records->count(),
-                'actual_egp' => $records->isNotEmpty() && !$amounts->containsStrict(null)
+                'actual_egp' => $records->isNotEmpty() && ! $amounts->containsStrict(null)
                     ? round((float) $amounts->sum(), 4) : null,
                 'known_egp' => round((float) $amounts->filter(fn ($amount) => $amount !== null)->sum(), 4),
                 'missing_fx' => $amounts->filter(fn ($amount) => $amount === null)->count(),

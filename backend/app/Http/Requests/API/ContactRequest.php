@@ -2,9 +2,8 @@
 
 namespace App\Http\Requests\API;
 
-use App\Http\Requests\API\FormRequest;
-use Illuminate\Support\Str;
 use App\Support\UnicodeText;
+use Illuminate\Support\Str;
 
 class ContactRequest extends FormRequest
 {
@@ -20,7 +19,9 @@ class ContactRequest extends FormRequest
         if ($this->input('phone') !== null) {
             $normalized['phone'] = UnicodeText::identifier($this->input('phone'));
         }
-        if ($normalized !== []) $this->merge($normalized);
+        if ($normalized !== []) {
+            $this->merge($normalized);
+        }
 
         if ($this->filled('client_request_id')) {
             return;

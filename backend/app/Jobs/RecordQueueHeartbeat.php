@@ -67,7 +67,7 @@ final class RecordQueueHeartbeat implements ShouldQueue
             $configured = explode(',', $configured);
         }
 
-        if (!is_array($configured)) {
+        if (! is_array($configured)) {
             return [];
         }
 

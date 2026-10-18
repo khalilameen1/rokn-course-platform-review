@@ -21,7 +21,7 @@ final class PortfolioShareIdentityService
             /** @var User $locked */
             $locked = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
             $slug = trim((string) $locked->portfolio_slug);
-            if (!$this->isValidUnlistedSlug($slug)) {
+            if (! $this->isValidUnlistedSlug($slug)) {
                 $slug = $this->freshSlug();
                 $locked->forceFill(['portfolio_slug' => $slug])->save();
             }
@@ -43,7 +43,7 @@ final class PortfolioShareIdentityService
     {
         for ($attempt = 0; $attempt < 8; $attempt++) {
             $slug = 'rokn-'.Str::lower(Str::random(24));
-            if (!User::withTrashed()->where('portfolio_slug', $slug)->exists()) {
+            if (! User::withTrashed()->where('portfolio_slug', $slug)->exists()) {
                 return $slug;
             }
         }

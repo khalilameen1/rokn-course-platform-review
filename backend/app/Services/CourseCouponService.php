@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Exceptions\CourseCheckoutRejected;
-use App\Support\UnicodeText;
-
 use App\Models\Coupon;
 use App\Models\CouponRedemption;
+use App\Support\UnicodeText;
 
 final class CourseCouponService
 {
@@ -43,7 +42,7 @@ final class CourseCouponService
             $query->lockForUpdate();
         }
         $coupon = $query->first();
-        if (!$coupon || !$coupon->isAvailableAt(now())) {
+        if (! $coupon || ! $coupon->isAvailableAt(now())) {
             throw new CourseCheckoutRejected(CourseCheckoutRejected::COUPON_INVALID);
         }
         if ($coupon->course_id !== null && (int) $coupon->course_id !== $courseId) {

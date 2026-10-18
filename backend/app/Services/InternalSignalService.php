@@ -32,7 +32,7 @@ final class InternalSignalService
             throw new \InvalidArgumentException('Internal signals require a type and stable identity.');
         }
 
-        $signalKey = hash('sha256', $type . '|' . $identity);
+        $signalKey = hash('sha256', $type.'|'.$identity);
 
         $normalizedPayload = $this->normalize($payload);
         $encoded = json_encode(
@@ -58,14 +58,14 @@ final class InternalSignalService
             );
         } catch (QueryException $exception) {
             $signal = InternalSignal::query()->where('signal_key', $signalKey)->first();
-            if (!$signal) {
+            if (! $signal) {
                 throw $exception;
             }
         }
 
         if (
-            !hash_equals((string) $signal->payload_fingerprint, $fingerprint)
-            || !hash_equals((string) $signal->type, $type)
+            ! hash_equals((string) $signal->payload_fingerprint, $fingerprint)
+            || ! hash_equals((string) $signal->type, $type)
         ) {
             throw new \UnexpectedValueException('Internal signal identity was reused for a different payload.');
         }
@@ -107,5 +107,4 @@ final class InternalSignalService
 
         return $payload;
     }
-
 }

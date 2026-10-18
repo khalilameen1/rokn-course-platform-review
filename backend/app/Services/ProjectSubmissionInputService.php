@@ -15,8 +15,7 @@ final readonly class ProjectSubmissionInputService
     public function __construct(
         private AiInputAttachmentService $attachments,
         private ProjectSubmissionFilePolicy $files
-    ) {
-    }
+    ) {}
 
     /** @return array{0:?string,1:list<UploadedFile>} */
     public function normalize(?string $text, ?array $files): array
@@ -41,7 +40,7 @@ final readonly class ProjectSubmissionInputService
         $fileFacts = [];
         foreach ($files as $file) {
             $fileHash = hash_file('sha256', $file->getRealPath());
-            if (!is_string($fileHash)) {
+            if (! is_string($fileHash)) {
                 throw new \RuntimeException('Unable to fingerprint the project attachment.');
             }
             $fileFacts[] = [
@@ -61,7 +60,7 @@ final readonly class ProjectSubmissionInputService
     public function assertAllowedFileTypes(Project $project, array $files): void
     {
         foreach ($files as $file) {
-            if (!$this->files->acceptsType($project, $file)) {
+            if (! $this->files->acceptsType($project, $file)) {
                 throw ValidationException::withMessages([
                     'submission_files' => ['أحد الملفات بصيغة غير متاحة لهذا المشروع'],
                 ]);

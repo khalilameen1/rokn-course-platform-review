@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Middleware\RequireProductFeature;
+use App\Models\CourseAccessPlan;
 use App\Models\Lesson;
 use App\Models\Order;
 use App\Models\Package;
-use App\Models\CourseAccessPlan;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Services\CourseAccessPlanService;
@@ -31,7 +31,7 @@ final class AccessPlanSnapshotMysqlConstraintTest extends TestCase
             env('ROKN_REQUIRE_MYSQL_CONTRACT_TEST'),
             FILTER_VALIDATE_BOOL
         );
-        if (!$required) {
+        if (! $required) {
             self::markTestSkipped('MySQL enforces the production JSON CHECK constraints.');
         }
 
@@ -196,7 +196,7 @@ final class AccessPlanSnapshotMysqlConstraintTest extends TestCase
             (int) $user->id,
             $fixture['price'],
             'package_purchase',
-            'mysql-contract:package-credit:' . $packageOrder->id,
+            'mysql-contract:package-credit:'.$packageOrder->id,
             $packageOrder,
             ['package_id' => (int) $package->id],
             WalletTransaction::BUCKET_PAID
@@ -207,13 +207,13 @@ final class AccessPlanSnapshotMysqlConstraintTest extends TestCase
             (int) $user->id,
             45,
             'test_reward_refill',
-            'mysql-contract:reward-credit:' . $packageOrder->id,
+            'mysql-contract:reward-credit:'.$packageOrder->id,
             null,
             [],
             WalletTransaction::BUCKET_REWARD
         );
 
-        $checkoutKey = 'mysql-contract:course-purchase:' . bin2hex(random_bytes(12));
+        $checkoutKey = 'mysql-contract:course-purchase:'.bin2hex(random_bytes(12));
         $request = [
             'course_id' => $fixture['course_id'],
             'access_plan_code' => 'mentor',

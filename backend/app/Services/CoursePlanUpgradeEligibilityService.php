@@ -28,21 +28,27 @@ final readonly class CoursePlanUpgradeEligibilityService
     public function targetPlan(Course $course, CourseEnrollment $enrollment,
         ?string $requestedCode = null, ?string $requiredFeature = null): ?CourseAccessPlan
     {
-        if ($this->legacyPaidEnrollment($enrollment)) return null;
+        if ($this->legacyPaidEnrollment($enrollment)) {
+            return null;
+        }
         $available = $this->higherPlans($course, $this->plans->termsForEnrollment($enrollment) ?? []);
         if ($this->holds->enrollmentHasActiveHold($enrollment, ['course', 'chat', 'plan'])) {
             throw new CourseCheckoutRejected(CourseCheckoutRejected::COURSE_ACCESS_UNDER_REVIEW);
         }
         if ($requestedCode !== null) {
             $target = $available->firstWhere('code', $requestedCode);
-            if (!$target) throw new CourseCheckoutRejected(CourseCheckoutRejected::FULL_TRACK_UPGRADE_NOT_AVAILABLE);
-            if ($requiredFeature !== null && !$this->supportsFeature($course, $target, $requiredFeature, $enrollment)) {
+            if (! $target) {
+                throw new CourseCheckoutRejected(CourseCheckoutRejected::FULL_TRACK_UPGRADE_NOT_AVAILABLE);
+            }
+            if ($requiredFeature !== null && ! $this->supportsFeature($course, $target, $requiredFeature, $enrollment)) {
                 throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FEATURE_UNAVAILABLE);
             }
         } else {
             $target = $this->availablePlans($course, $enrollment, $requiredFeature)->first();
         }
-        if ($target) $this->plans->assertPurchasableEconomics($target);
+        if ($target) {
+            $this->plans->assertPurchasableEconomics($target);
+        }
 
         return $target;
     }
@@ -50,20 +56,28 @@ final readonly class CoursePlanUpgradeEligibilityService
     /** Only actionable, published offers; this method never grants or charges. */
     public function availablePlans(Course $course, CourseEnrollment $enrollment, ?string $feature = null): Collection
     {
-        if (!$course->isPublishedForLearning() || !$enrollment->isActive()
+        if (! $course->isPublishedForLearning() || ! $enrollment->isActive()
             || $this->legacyPaidEnrollment($enrollment)
-            || $this->holds->enrollmentHasActiveHold($enrollment, ['course', 'chat', 'plan'])) return collect();
+            || $this->holds->enrollmentHasActiveHold($enrollment, ['course', 'chat', 'plan'])) {
+            return collect();
+        }
 
         return $this->higherPlans($course, $this->plans->termsForEnrollment($enrollment) ?? [])
             ->filter(function (CourseAccessPlan $plan) use ($course, $enrollment, $feature): bool {
-                if ($feature !== null && !$this->supportsFeature($course, $plan, $feature, $enrollment)) return false;
+                if ($feature !== null && ! $this->supportsFeature($course, $plan, $feature, $enrollment)) {
+                    return false;
+                }
                 try {
                     $this->plans->assertPurchasableEconomics($plan);
+
                     return $this->upgradePrice($course, $enrollment, $plan) !== null;
                 } catch (ValidationException $exception) {
                     return false;
                 } catch (\DomainException $exception) {
-                    if ($exception->getMessage() !== 'full_track_upgrade_paid_floor_unfunded') throw $exception;
+                    if ($exception->getMessage() !== 'full_track_upgrade_paid_floor_unfunded') {
+                        throw $exception;
+                    }
+
                     return false;
                 }
             })->values();
@@ -71,12 +85,16 @@ final readonly class CoursePlanUpgradeEligibilityService
 
     public function upgradePrice(Course $course, CourseEnrollment $enrollment, ?CourseAccessPlan $targetPlan): ?int
     {
-        if (!$course->isPublishedForLearning() || !$targetPlan) return null;
+        if (! $course->isPublishedForLearning() || ! $targetPlan) {
+            return null;
+        }
         $current = $this->plans->termsForEnrollment($enrollment);
         $difference = max(0, (int) $targetPlan->price_coins - (int) ($current['price_coins'] ?? 0));
         $remainingPaidFloor = max(0, (int) $targetPlan->minimum_paid_coins
             - $this->wallet->coursePaidContribution((int) $enrollment->user_id, (int) $course->id));
-        if ($remainingPaidFloor > $difference) throw new CourseCheckoutRejected(CourseCheckoutRejected::FULL_TRACK_UPGRADE_PAID_FLOOR_UNFUNDED);
+        if ($remainingPaidFloor > $difference) {
+            throw new CourseCheckoutRejected(CourseCheckoutRejected::FULL_TRACK_UPGRADE_PAID_FLOOR_UNFUNDED);
+        }
 
         return $difference;
     }
@@ -124,7 +142,7 @@ final readonly class CoursePlanUpgradeEligibilityService
 
     private function legacyPaidEnrollment(CourseEnrollment $enrollment): bool
     {
-        return !$this->plans->termsForEnrollment($enrollment) && $enrollment->order
+        return ! $this->plans->termsForEnrollment($enrollment) && $enrollment->order
             && $enrollment->order->payment_method !== Order::PAYMENT_METHOD_COURSE_CODE;
     }
 

@@ -24,8 +24,7 @@ final class SocialAuthProviderRegistry
         private readonly GoogleService $google,
         private readonly TikTokService $tiktok,
         private readonly AppleService $apple
-    ) {
-    }
+    ) {}
 
     /** @return Collection<int, string> */
     public function declared(): Collection
@@ -140,7 +139,7 @@ final class SocialAuthProviderRegistry
         ?string $appleRawNonce = null,
         ?string $appleAuthorizationCode = null
     ): array {
-        if (!$this->isReady($provider)) {
+        if (! $this->isReady($provider)) {
             throw new SocialProviderUnavailableException('Social provider is not configured.');
         }
 
@@ -181,7 +180,7 @@ final class SocialAuthProviderRegistry
 
     public function browserStartUrl(string $provider): string
     {
-        if (!$this->browserAvailable()->contains($provider)) {
+        if (! $this->browserAvailable()->contains($provider)) {
             throw new RuntimeException('Social provider is not available for browser login.');
         }
 
@@ -197,7 +196,7 @@ final class SocialAuthProviderRegistry
 
     public function browserCallbackUrl(string $provider): string
     {
-        if (!$this->browserDeclared()->contains($provider)) {
+        if (! $this->browserDeclared()->contains($provider)) {
             throw new RuntimeException('Social provider does not support browser login.');
         }
 
@@ -221,6 +220,6 @@ final class SocialAuthProviderRegistry
         return is_array($parts)
             && strtolower((string) ($parts['scheme'] ?? '')) === 'https'
             && trim((string) ($parts['host'] ?? '')) !== ''
-            && !isset($parts['user'], $parts['pass'], $parts['query'], $parts['fragment']);
+            && ! isset($parts['user'], $parts['pass'], $parts['query'], $parts['fragment']);
     }
 }

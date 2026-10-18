@@ -30,7 +30,7 @@ final class CommercialAttributionBoundaryTest extends TestCase
             CourseFinancialLedgerReportService::class,
         ] as $service) {
             $this->app->bind($service, static function () use ($service): never {
-                throw new \LogicException('Attribution must not resolve ' . $service);
+                throw new \LogicException('Attribution must not resolve '.$service);
             });
         }
         DB::connection()->enableQueryLog();
@@ -102,7 +102,7 @@ final class CommercialAttributionBoundaryTest extends TestCase
             ], [
                 'cash_gross_egp' => 0.0, 'cash_net_known_egp' => 0.0,
                 'cash_gross_complete' => true, 'cash_net_complete' => true,
-            ], Order::PAYMENT_METHOD_GOOGLE_PLAY . '_test'],
+            ], Order::PAYMENT_METHOD_GOOGLE_PLAY.'_test'],
         ];
     }
 
@@ -195,7 +195,7 @@ final class CommercialAttributionBoundaryTest extends TestCase
 
     private function source(array $overrides = []): Order
     {
-        return (new Order())->forceFill(array_replace([
+        return (new Order)->forceFill(array_replace([
             'id' => 99, 'payment_method' => Order::PAYMENT_METHOD_KASHIER,
             'financial_status' => Order::FINANCIAL_SETTLED,
             'gateway_currency' => 'EGP', 'gateway_gross_amount' => 100,
@@ -206,16 +206,18 @@ final class CommercialAttributionBoundaryTest extends TestCase
 
     private function allocation(?Order $source, int $coins, int $lotCoins, array $metadata = []): WalletDebitAllocation
     {
-        $lot = (new WalletCreditLot())->forceFill(['original_amount' => $lotCoins, 'metadata' => $metadata]);
+        $lot = (new WalletCreditLot)->forceFill(['original_amount' => $lotCoins, 'metadata' => $metadata]);
         $lot->setRelation('sourceOrder', $source);
-        return (new WalletDebitAllocation())->forceFill(['amount' => $coins])->setRelation('creditLot', $lot);
+
+        return (new WalletDebitAllocation)->forceFill(['amount' => $coins])->setRelation('creditLot', $lot);
     }
 
     private function cash(Collection $allocations, int $paidCoins, bool $complete = true): array
     {
         // Mutable order counters deliberately disagree: attribution consumes
         // already-validated wallet evidence, never those cached price fields.
-        $order = (new Order())->forceFill(['id' => 1, 'paid_coins' => 9999, 'total_coins' => 9999]);
+        $order = (new Order)->forceFill(['id' => 1, 'paid_coins' => 9999, 'total_coins' => 9999]);
+
         return app(CourseCashAttributionService::class)->forOrders(
             collect([$order]),
             collect([1 => $allocations]),

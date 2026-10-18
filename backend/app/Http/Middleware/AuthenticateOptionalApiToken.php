@@ -20,9 +20,7 @@ use Illuminate\Http\Request;
  */
 final readonly class AuthenticateOptionalApiToken
 {
-    public function __construct(private ApiResponseService $responses)
-    {
-    }
+    public function __construct(private ApiResponseService $responses) {}
 
     public function handle(Request $request, Closure $next): mixed
     {
@@ -30,7 +28,7 @@ final readonly class AuthenticateOptionalApiToken
             return $next($request);
         }
 
-        if (!auth('api')->user()) {
+        if (! auth('api')->user()) {
             return $this->responses->error(
                 "انتهت جلسة الدخول\nسجّل الدخول مرة أخرى",
                 401,

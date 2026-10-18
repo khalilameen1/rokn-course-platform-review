@@ -24,7 +24,7 @@ final class UnicodeText
             ' ',
             $text
         ) ?? $text;
-        if (!$multiline) {
+        if (! $multiline) {
             $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
         }
 
@@ -55,7 +55,9 @@ final class UnicodeText
     {
         if (function_exists('grapheme_strlen')) {
             $length = grapheme_strlen($value);
-            if ($length !== false) return $length;
+            if ($length !== false) {
+                return $length;
+            }
         }
         if (preg_match_all('/\X/u', $value, $matches) !== false) {
             return count($matches[0]);
@@ -66,11 +68,17 @@ final class UnicodeText
 
     public static function limit(string $value, int $maximum): string
     {
-        if ($maximum <= 0) return '';
-        if (self::graphemeLength($value) <= $maximum) return $value;
+        if ($maximum <= 0) {
+            return '';
+        }
+        if (self::graphemeLength($value) <= $maximum) {
+            return $value;
+        }
         if (function_exists('grapheme_substr')) {
             $limited = grapheme_substr($value, 0, $maximum);
-            if ($limited !== false) return $limited;
+            if ($limited !== false) {
+                return $limited;
+            }
         }
         if (preg_match_all('/\X/u', $value, $matches) !== false) {
             return implode('', array_slice($matches[0], 0, $maximum));
@@ -81,7 +89,9 @@ final class UnicodeText
 
     private static function validUtf8(string $value): string
     {
-        if (mb_check_encoding($value, 'UTF-8')) return $value;
+        if (mb_check_encoding($value, 'UTF-8')) {
+            return $value;
+        }
         $repaired = function_exists('iconv')
             ? iconv('UTF-8', 'UTF-8//IGNORE', $value)
             : false;

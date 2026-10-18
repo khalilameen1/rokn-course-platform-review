@@ -5,15 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Auth\Totp;
+use App\Support\DatabaseCapabilities;
 use Closure;
 use Illuminate\Http\Request;
-use App\Support\DatabaseCapabilities;
 
 final class RequireAdminMfa
 {
-    public function __construct(private readonly Totp $totp)
-    {
-    }
+    public function __construct(private readonly Totp $totp) {}
 
     public function handle(Request $request, Closure $next)
     {
@@ -25,7 +23,7 @@ final class RequireAdminMfa
             403
         );
 
-        if (!DatabaseCapabilities::hasColumns('users', [
+        if (! DatabaseCapabilities::hasColumns('users', [
             'admin_totp_secret',
             'admin_totp_confirmed_at',
             'admin_totp_last_used_step',
@@ -48,7 +46,7 @@ final class RequireAdminMfa
             abort(503, 'Administrative MFA cannot be verified.');
         }
 
-        if (!$user->admin_totp_confirmed_at || $secret === '') {
+        if (! $user->admin_totp_confirmed_at || $secret === '') {
             return redirect()->route('admin.mfa.setup');
         }
 

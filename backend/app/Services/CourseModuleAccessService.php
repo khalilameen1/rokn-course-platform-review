@@ -15,15 +15,13 @@ final class CourseModuleAccessService
 {
     public function __construct(
         private CourseEntitlementService $courseAccess
-    )
-    {
-    }
+    ) {}
 
     public function hasCourseAccess(User $user, Course $course): bool
     {
         if (
-            !$user->exists
-            || !(bool) $user->active
+            ! $user->exists
+            || ! (bool) $user->active
             || $user->trashed()
         ) {
             return false;
@@ -61,7 +59,7 @@ final class CourseModuleAccessService
     /** Resolve the opaque owner claim after the controller validates its signature. */
     public function userFromOwnerClaim(mixed $claim): ?User
     {
-        if (!is_string($claim) || $claim === '') {
+        if (! is_string($claim) || $claim === '') {
             return null;
         }
 

@@ -70,12 +70,18 @@ final class ProjectSubmissionEvaluationSnapshotTest extends TestCase
     {
         foreach ([3, 4] as $version) {
             $snapshot = $this->snapshot();
-            if ($version === 3) $snapshot = $this->legacy($snapshot);
+            if ($version === 3) {
+                $snapshot = $this->legacy($snapshot);
+            }
             foreach (['requirements', 'terms', 'extra'] as $change) {
                 $changed = $this->reorderObjects($snapshot);
-                if ($change === 'requirements') $changed['project']['requirements_text'] = 'Different assignment';
-                elseif ($change === 'terms') $changed['access']['terms']['price_coins'] = 101;
-                else $changed['project']['unexpected'] = 'injected fact';
+                if ($change === 'requirements') {
+                    $changed['project']['requirements_text'] = 'Different assignment';
+                } elseif ($change === 'terms') {
+                    $changed['access']['terms']['price_coins'] = 101;
+                } else {
+                    $changed['project']['unexpected'] = 'injected fact';
+                }
                 self::assertNull($this->read($changed), "version {$version}, {$change}");
             }
         }
@@ -102,7 +108,9 @@ final class ProjectSubmissionEvaluationSnapshotTest extends TestCase
     {
         foreach ([3, 4] as $version) {
             $snapshot = $this->snapshot();
-            if ($version === 3) $snapshot = $this->legacy($snapshot);
+            if ($version === 3) {
+                $snapshot = $this->legacy($snapshot);
+            }
             $snapshot['access']['terms']['projects_enabled'] = false;
             self::assertNull($this->read($this->reorderObjects($snapshot)), "version {$version}");
         }
@@ -110,32 +118,35 @@ final class ProjectSubmissionEvaluationSnapshotTest extends TestCase
 
     private function read(array $snapshot): ?array
     {
-        $submission = new ProjectSubmission();
+        $submission = new ProjectSubmission;
         $submission->forceFill(['project_id' => 7, 'evaluation_snapshot' => $snapshot]);
+
         return ProjectSubmissionEvaluationSnapshot::fromSubmission($submission);
     }
 
     private function snapshot(?array $terms = null): array
     {
-        $project = new Project();
+        $project = new Project;
         $project->setRawAttributes(['id' => 7, 'requirements_text_ar' => 'نفذ شعار <svg>شجرة</svg>',
             'requirements_text_en' => 'Draw a tree', 'updated_at' => '2026-09-06 00:00:00']);
-        $course = new Course();
+        $course = new Course;
         $course->setRawAttributes(['id' => 3, 'name_ar' => 'كورس التصميم', 'name_en' => 'Design']);
-        $section = new CourseSection();
+        $section = new CourseSection;
         $section->setRawAttributes(['id' => 8, 'course_id' => 3, 'title' => 'Project',
             'title_ar' => 'المشروع', 'title_en' => 'Project']);
         $section->setRelation('course', $course);
-        $enrollment = new CourseEnrollment();
+        $enrollment = new CourseEnrollment;
         $enrollment->setRawAttributes(['id' => 9, 'access_plan_id' => 12]);
+
         return ProjectSubmissionEvaluationSnapshot::capture($project, $section, $enrollment, $terms ?? $this->terms());
     }
 
     private function terms(): array
     {
-        $plan = new CourseAccessPlan();
+        $plan = new CourseAccessPlan;
         $plan->forceFill(['id' => 12, 'code' => 'basic', 'name_ar' => 'تعلم', 'price_coins' => 100,
             'project_feedback_level' => 'pass_only', 'max_output_tokens' => 320]);
+
         return app(CourseAccessPlanService::class)->snapshot($plan);
     }
 
@@ -147,29 +158,39 @@ final class ProjectSubmissionEvaluationSnapshotTest extends TestCase
         $snapshot['access']['terms']['version'] = 5;
         unset($snapshot['access']['terms']['projects_enabled']);
         $snapshot['fingerprint'] = $this->legacyDigest($snapshot);
+
         return $snapshot;
     }
 
     private function legacyDigest(array $snapshot): string
     {
         unset($snapshot['fingerprint']);
+
         return hash('sha256', json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 
     private function reorderObjects(array $value): array
     {
         foreach ($value as $key => $child) {
-            if (is_array($child)) $value[$key] = $this->reorderObjects($child);
+            if (is_array($child)) {
+                $value[$key] = $this->reorderObjects($child);
+            }
         }
+
         return array_is_list($value) ? $value : array_reverse($value, true);
     }
 
     private function mysqlObjectOrder(array $value): array
     {
         foreach ($value as $key => $child) {
-            if (is_array($child)) $value[$key] = $this->mysqlObjectOrder($child);
+            if (is_array($child)) {
+                $value[$key] = $this->mysqlObjectOrder($child);
+            }
         }
-        if (!array_is_list($value)) uksort($value, static fn ($a, $b): int => strlen($a) <=> strlen($b) ?: strcmp($a, $b));
+        if (! array_is_list($value)) {
+            uksort($value, static fn ($a, $b): int => strlen($a) <=> strlen($b) ?: strcmp($a, $b));
+        }
+
         return $value;
     }
 }

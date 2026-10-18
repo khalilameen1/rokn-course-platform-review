@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API;
 
+use App\Exceptions\AiPlanLimitReachedException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\API\SendProjectFeedbackMessageRequest;
 use App\Http\Requests\API\SubmitProjectRequest;
@@ -15,24 +16,27 @@ use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Services\CourseAccessPlanService;
 use App\Services\CourseEntitlementService;
-use App\Services\CourseSectionAccessService;
 use App\Services\CourseRevisionLearnerReadService;
 use App\Services\CourseRevisionResolver;
+use App\Services\CourseSectionAccessService;
 use App\Services\ProjectAttachmentDownloadService;
 use App\Services\ProjectFeedbackThreadService;
 use App\Services\ProjectReportRetryService;
-use App\Services\ProjectSubmissionEvaluationService;
-use App\Services\ProjectSubmissionOrchestrator;
-use App\Services\ProjectSubmissionFilePolicy;
-use App\Services\ProjectSubmissionPresenter;
 use App\Services\ProjectSubmissionEvaluationScheduler;
+use App\Services\ProjectSubmissionEvaluationService;
+use App\Services\ProjectSubmissionFilePolicy;
+use App\Services\ProjectSubmissionOrchestrator;
+use App\Services\ProjectSubmissionPresenter;
 use App\Support\DownloadFilename;
 use App\Support\UploadBudget;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Validation\ValidationException;
 use League\Flysystem\FilesystemException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -52,24 +56,25 @@ final class ProjectController extends Controller
         private ProjectSubmissionOrchestrator $submissionOrchestrator,
         private ProjectSubmissionEvaluationService $evaluations,
         private ProjectSubmissionFilePolicy $filePolicy
-    ) {
-    }
+    ) {}
 
     public function show($projectId): JsonResponse
     {
         try {
             $user = auth('api')->user();
-            if (!$user) {
+            if (! $user) {
                 return $this->error('سجّل الدخول أولًا', 401);
             }
 
             $project = Project::with(['section.course', 'section.module'])->findOrFail($projectId);
-            if ($revisionChanged = $this->revisionChangedResponse($project)) return $revisionChanged;
+            if ($revisionChanged = $this->revisionChangedResponse($project)) {
+                return $revisionChanged;
+            }
             $courseId = (int) optional($project->section)->course_id;
             if (
-                !$courseId
-                || !$project->section
-                || !$this->sectionAccess->canAccessSection($user, $project->section)
+                ! $courseId
+                || ! $project->section
+                || ! $this->sectionAccess->canAccessSection($user, $project->section)
             ) {
                 return $this->error('هذا المشروع غير متاح لحسابك', 403);
             }
@@ -136,11 +141,12 @@ final class ProjectController extends Controller
                     'latest_submission' => $latestSubmissionPayload,
                 ],
             ]);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+        } catch (ModelNotFoundException $exception) {
             return $this->error('المشروع غير متاح', 404);
         } catch (\Throwable $exception) {
             $this->rethrowExpectedRequestException($exception);
             report($exception);
+
             return $this->error('تعذّر تحميل المشروع', 500);
         }
     }
@@ -156,7 +162,7 @@ final class ProjectController extends Controller
         );
         try {
             $user = auth('api')->user();
-            if (!$user) {
+            if (! $user) {
                 return $this->error('سجّل الدخول أولًا', 401);
             }
 
@@ -164,7 +170,9 @@ final class ProjectController extends Controller
 
             $project = Project::with('section')->findOrFail($projectId);
             $project->loadMissing('section.course');
-            if ($revisionChanged = $this->revisionChangedResponse($project, true)) return $revisionChanged;
+            if ($revisionChanged = $this->revisionChangedResponse($project, true)) {
+                return $revisionChanged;
+            }
             $files = array_values(array_filter([
                 ...($request->file('submission_files', []) ?: []),
                 $request->file('submission_file'),
@@ -219,7 +227,7 @@ final class ProjectController extends Controller
                 return $revisionChanged;
             }
             throw $exception;
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             return response()->json([
                 'status' => 422,
                 'success' => false,
@@ -235,10 +243,11 @@ final class ProjectController extends Controller
                 'message' => "تغيّر محتوى المشروع أثناء الإرسال\nأعد المحاولة",
                 'data' => null,
             ], 409);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+        } catch (ModelNotFoundException $exception) {
             return $this->error('المشروع غير متاح', 404);
         } catch (FilesystemException $exception) {
             report($exception);
+
             return response()->json([
                 'status' => 503,
                 'success' => false,
@@ -249,6 +258,7 @@ final class ProjectController extends Controller
         } catch (\Throwable $exception) {
             $this->rethrowExpectedRequestException($exception);
             report($exception);
+
             return $this->error('تعذّر إرسال المشروع', 500);
         }
     }
@@ -257,7 +267,9 @@ final class ProjectController extends Controller
     public function lookupSubmission(Request $request, int $project): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user) return $this->error('سجّل الدخول أولًا', 401);
+        if (! $user) {
+            return $this->error('سجّل الدخول أولًا', 401);
+        }
         $validated = $request->validate([
             'client_submission_id' => ['required', 'string', 'max:100'],
         ]);
@@ -269,7 +281,7 @@ final class ProjectController extends Controller
             ->first();
         // MySQL's case-insensitive collation must not turn a different opaque
         // client key into an acknowledgement of this upload.
-        if (!$submission || !hash_equals((string) $submission->idempotency_key, $key)) {
+        if (! $submission || ! hash_equals((string) $submission->idempotency_key, $key)) {
             return $this->error('التسليم غير موجود', 404);
         }
 
@@ -288,7 +300,7 @@ final class ProjectController extends Controller
     public function submissionStatus(ProjectSubmission $submission): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user || $submission->user_id !== $user->id) {
+        if (! $user || $submission->user_id !== $user->id) {
             return $this->error('التسليم غير متاح', 404);
         }
 
@@ -305,7 +317,7 @@ final class ProjectController extends Controller
     public function feedbackThread(ProjectFeedbackThread $thread): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user || (int) $thread->user_id !== (int) $user->id) {
+        if (! $user || (int) $thread->user_id !== (int) $user->id) {
             return $this->error('محادثة المشروع غير متاحة', 404);
         }
 
@@ -320,7 +332,7 @@ final class ProjectController extends Controller
     public function sendFeedbackMessage(SendProjectFeedbackMessageRequest $request, ProjectFeedbackThread $thread): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user || (int) $thread->user_id !== (int) $user->id) {
+        if (! $user || (int) $thread->user_id !== (int) $user->id) {
             return $this->error('محادثة المشروع غير متاحة', 404);
         }
 
@@ -334,7 +346,7 @@ final class ProjectController extends Controller
                 (string) $validated['client_request_id'],
                 array_values($validated['attachment_ids'] ?? [])
             );
-        } catch (\App\Exceptions\AiPlanLimitReachedException $exception) {
+        } catch (AiPlanLimitReachedException $exception) {
             return response()->json([
                 'status' => 422,
                 'success' => false,
@@ -342,7 +354,7 @@ final class ProjectController extends Controller
                 'message' => 'انتهى حد مناقشة المشاريع في اشتراكك',
                 'data' => null,
             ], 422);
-        } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
+        } catch (AuthorizationException $exception) {
             return $this->error('الردود غير متاحة لهذا المشروع', 403);
         } catch (\UnexpectedValueException $exception) {
             return response()->json([
@@ -365,7 +377,7 @@ final class ProjectController extends Controller
     public function uploadFeedbackAttachment(UploadProjectFeedbackAttachmentRequest $request, ProjectFeedbackThread $thread): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user || (int) $thread->user_id !== (int) $user->id) {
+        if (! $user || (int) $thread->user_id !== (int) $user->id) {
             return $this->error('محادثة المشروع غير متاحة', 404);
         }
         $validated = $request->validated();
@@ -403,6 +415,7 @@ final class ProjectController extends Controller
             ], 409);
         }
         $attachment = $result['attachment'];
+
         return response()->json([
             'status' => 200,
             'success' => true,
@@ -427,7 +440,7 @@ final class ProjectController extends Controller
         if (
             $signedUserId <= 0
             || $signedUserId !== (int) $attachment->user_id
-            || !User::query()->whereKey($signedUserId)->where('active', true)->exists()
+            || ! User::query()->whereKey($signedUserId)->where('active', true)->exists()
         ) {
             abort(404);
         }
@@ -441,10 +454,11 @@ final class ProjectController extends Controller
     public function showInputAttachment(AiInputAttachment $attachment): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user || !$this->downloads->belongsTo($attachment, (int) $user->id)) {
+        if (! $user || ! $this->downloads->belongsTo($attachment, (int) $user->id)) {
             abort(404);
         }
         $expiresAt = now()->addMinutes(30);
+
         return response()->json([
             'status' => 200,
             'success' => true,
@@ -467,13 +481,13 @@ final class ProjectController extends Controller
     public function retryEvaluation(ProjectSubmission $submission): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user || (int) $submission->user_id !== (int) $user->id) {
+        if (! $user || (int) $submission->user_id !== (int) $user->id) {
             return $this->error('التسليم غير متاح', 404);
         }
 
         try {
             $submission = $this->evaluations->retryEvaluation($submission, $user);
-        } catch (\Illuminate\Validation\ValidationException) {
+        } catch (ValidationException) {
             // A concurrent retry can already own this submission. Return its
             // current state rather than making the client upload it again.
             $submission->refresh();
@@ -483,7 +497,7 @@ final class ProjectController extends Controller
 
         return response()->json([
             'status' => $unavailable ? 409 : 202,
-            'success' => !$unavailable,
+            'success' => ! $unavailable,
             'code' => $unavailable ? 'project_review_retry_unavailable' : null,
             'message' => $unavailable
                 ? "لم تكتمل المراجعة\nتسليمك محفوظ"
@@ -495,7 +509,7 @@ final class ProjectController extends Controller
     public function retryInitialReport(ProjectSubmission $submission): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user || (int) $submission->user_id !== (int) $user->id) {
+        if (! $user || (int) $submission->user_id !== (int) $user->id) {
             return $this->error('التسليم غير متاح', 404);
         }
 
@@ -514,7 +528,7 @@ final class ProjectController extends Controller
             return response()->json([
                 'status' => 409,
                 'success' => false,
-                'code' => 'project_report_retry_' . $retry['state'],
+                'code' => 'project_report_retry_'.$retry['state'],
                 'message' => $retry['state'] === 'not_terminal'
                     ? 'التقرير قيد التحديث بالفعل'
                     : 'تعذّرت إعادة التقرير بأمان',
@@ -543,9 +557,14 @@ final class ProjectController extends Controller
     private function revisionChangedResponse(Project $project, bool $submissionAdmissionClosed = false): ?JsonResponse
     {
         $course = $project->section?->course;
-        if (!$course || !$course->is_coming_soon) return null;
+        if (! $course || ! $course->is_coming_soon) {
+            return null;
+        }
         $revision = $this->revisionResolver->activeArchiveForCourse($course);
-        if (!$revision) return null;
+        if (! $revision) {
+            return null;
+        }
+
         return DB::transaction(function () use ($project, $revision, $submissionAdmissionClosed): JsonResponse {
             // Resolve mapping, ownership and version from one publication.
             // Otherwise a second publish can move the mapped project into an
@@ -559,7 +578,7 @@ final class ProjectController extends Controller
             // A chain can end at an intermediate archive when a later publish
             // deletes/retypes the project. Only a surviving canonical owner is a
             // draft-review destination; this identity does not grant access to it.
-            if (!$currentSection || (int) $currentSection->course_id !== (int) $canonical->id) {
+            if (! $currentSection || (int) $currentSection->course_id !== (int) $canonical->id) {
                 $currentProject = null;
                 $currentSection = null;
             }
@@ -586,7 +605,7 @@ final class ProjectController extends Controller
         }, 3);
     }
 
-    /** @param array{disk:\Illuminate\Filesystem\FilesystemAdapter,path:string,name:string,mime:string} $file */
+    /** @param array{disk:FilesystemAdapter,path:string,name:string,mime:string} $file */
     private function downloadResponse(array $file): Response
     {
         return $file['disk']->download($file['path'], $file['name'], [

@@ -6,10 +6,12 @@ namespace Tests\Feature\API;
 
 use App\Http\Middleware\AppFrontNameSpace;
 use App\Http\Middleware\WebsiteVisitorCount;
+use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -20,10 +22,15 @@ use Tests\TestCase;
 abstract class ApiTestCase extends TestCase
 {
     protected User $user;
+
     protected int $gradeId;
+
     protected int $courseId;
+
     protected int $moduleId;
+
     protected int $sectionId;
+
     protected int $pathId;
 
     protected function setUp(): void
@@ -1117,7 +1124,7 @@ abstract class ApiTestCase extends TestCase
             'payment_methods', 'categories', 'portfolios', 'portfolio_video_uploads', 'portfolio_media', 'portfolio_items', 'saved_folder_lessons', 'saved_sections', 'wallet_transactions', 'reward_rules', 'user_reward_checkins', 'user_daily_learning_activities', 'playback_sessions', 'lesson_media_states', 'lesson_watch_evidence', 'lessons', 'saved_folders',
             'student_notifications', 'classification_user', 'classifications', 'paths', 'certificates',
             'course_pdfs', 'project_submissions', 'course_codes', 'bills', 'orders',
-            'course_enrollments', 'course_access_plans', 'attachments', 'course_sections', 'course_modules', 'projects', 'course_ratings', 'course_teacher', 'classification_course', 'courses', 'grades', 'profile_update_receipts', 'users', 'settings'
+            'course_enrollments', 'course_access_plans', 'attachments', 'course_sections', 'course_modules', 'projects', 'course_ratings', 'course_teacher', 'classification_course', 'courses', 'grades', 'profile_update_receipts', 'users', 'settings',
         ];
 
         foreach ($tables as $table) {
@@ -1198,7 +1205,7 @@ abstract class ApiTestCase extends TestCase
             'title_ar' => 'قسم 1',
             'title_en' => 'Section 1',
             'section_type' => 'lesson',
-            'sectionable_type' => \App\Models\Lesson::class,
+            'sectionable_type' => Lesson::class,
             'sectionable_id' => 10,
             'order' => 1,
             'sort_order' => 1,
@@ -1214,7 +1221,7 @@ abstract class ApiTestCase extends TestCase
             'updated_at' => now(),
         ]);
 
-        $this->user = new User();
+        $this->user = new User;
         $this->user->name = 'API Test User';
         $this->user->phone = '01234567890';
         $this->user->email = 'test@rokn.com';
@@ -1226,7 +1233,7 @@ abstract class ApiTestCase extends TestCase
         $this->user->save();
 
         DB::table('wallet_transactions')->insert([
-            'public_id' => (string) \Illuminate\Support\Str::uuid(),
+            'public_id' => (string) Str::uuid(),
             'user_id' => $this->user->id,
             'direction' => 'credit',
             'category' => 'opening_balance',

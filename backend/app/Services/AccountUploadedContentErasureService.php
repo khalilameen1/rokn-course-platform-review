@@ -29,7 +29,7 @@ final class AccountUploadedContentErasureService
         $storedFiles = [];
         $profileImage = trim((string) $user->getRawOriginal('profile_image'));
 
-        if ($profileImage !== '' && !filter_var($profileImage, FILTER_VALIDATE_URL)) {
+        if ($profileImage !== '' && ! filter_var($profileImage, FILTER_VALIDATE_URL)) {
             $storedFiles[] = ['disk' => 'public', 'path' => ltrim($profileImage, '/')];
         }
 
@@ -62,7 +62,9 @@ final class AccountUploadedContentErasureService
                         }
                     }
                     foreach ((array) data_get($submission->submission_metadata, 'files', []) as $file) {
-                        if (!is_array($file) || trim((string) ($file['path'] ?? '')) === '') continue;
+                        if (! is_array($file) || trim((string) ($file['path'] ?? '')) === '') {
+                            continue;
+                        }
                         $storedFiles[] = [
                             'disk' => trim((string) ($file['storage_disk'] ?? ''))
                                 ?: $submission->submission_disk,
@@ -84,12 +86,12 @@ final class AccountUploadedContentErasureService
 
         if (Schema::hasTable('certificates') && Schema::hasColumn('certificates', 'image_path')) {
             $certificateFiles = DB::table('certificates')
-                    ->where('user_id', $userId)
-                    ->whereNotNull('image_path')
-                    ->where('image_path', '!=', 'pending')
-                    ->pluck('image_path')
-                    ->filter()
-                    ->all();
+                ->where('user_id', $userId)
+                ->whereNotNull('image_path')
+                ->where('image_path', '!=', 'pending')
+                ->pluck('image_path')
+                ->filter()
+                ->all();
             foreach ($certificateFiles as $certificatePath) {
                 foreach (array_unique([(string) config('certificate.disk', 'public'), 'public']) as $disk) {
                     $storedFiles[] = ['disk' => $disk, 'path' => (string) $certificatePath];

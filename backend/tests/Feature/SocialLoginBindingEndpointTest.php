@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\API\SignController;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\GoogleService;
 use App\Services\SocialOAuthAttemptService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -35,7 +37,7 @@ final class SocialLoginBindingEndpointTest extends TestCase
 
     public function test_browser_completion_creates_one_account_and_replays_the_same_native_session(): void
     {
-        $this->app->bind(\App\Http\Controllers\API\SignController::class,
+        $this->app->bind(SignController::class,
             static fn () => throw new \LogicException('Browser completion must not call a sibling controller.'));
         $this->verifiedGoogle();
         $payload = $this->completionPayload();
@@ -111,7 +113,7 @@ final class SocialLoginBindingEndpointTest extends TestCase
         ), '=');
         $completionCode = str_repeat('c', 64);
         $deviceId = (string) Str::uuid();
-        $attempts = app(\App\Services\SocialOAuthAttemptService::class);
+        $attempts = app(SocialOAuthAttemptService::class);
         $attempt = $attempts->begin(
             str_repeat('s', 64),
             'google',
@@ -121,15 +123,16 @@ final class SocialLoginBindingEndpointTest extends TestCase
         $attempts->issueCompletion(
             $attempt,
             $completionCode,
-            \Illuminate\Support\Facades\Crypt::encryptString('provider-token')
+            Crypt::encryptString('provider-token')
         );
 
         $verificationCalls = 0;
-        $this->mock(\App\Services\GoogleService::class)->shouldReceive('verify')->twice()
+        $this->mock(GoogleService::class)->shouldReceive('verify')->twice()
             ->andReturnUsing(function () use (&$verificationCalls): array {
                 if (++$verificationCalls === 1) {
-                    throw new \Illuminate\Http\Client\ConnectionException('Temporary provider outage');
+                    throw new ConnectionException('Temporary provider outage');
                 }
+
                 return [
                     'id' => 'retryable-google-identity',
                     'name' => 'Retry learner',
@@ -183,6 +186,7 @@ final class SocialLoginBindingEndpointTest extends TestCase
         $attempts = app(SocialOAuthAttemptService::class);
         $attempt = $attempts->begin(Str::random(64), 'google', 'rokn://auth', $challenge);
         $attempts->issueCompletion($attempt, $code, Crypt::encryptString('provider-token'));
+
         return ['code' => $code, 'code_verifier' => $verifier,
             'device_id' => (string) Str::uuid(), 'device_os' => 'android'];
     }

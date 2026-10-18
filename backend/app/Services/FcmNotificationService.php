@@ -8,24 +8,25 @@ use App\Models\User;
 use App\Models\UserDeviceToken;
 use App\Support\AuthoredDisplayText;
 use App\Support\RoknLocale;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Kreait\Firebase\Contract\Messaging;
-use Kreait\Firebase\Messaging\CloudMessage;
-use Kreait\Firebase\Messaging\Notification;
-use Kreait\Firebase\Exception\Messaging\NotFound;
 use Kreait\Firebase\Exception\Messaging\ApiConnectionFailed;
 use Kreait\Firebase\Exception\Messaging\AuthenticationError;
 use Kreait\Firebase\Exception\Messaging\InvalidArgument;
 use Kreait\Firebase\Exception\Messaging\InvalidMessage;
+use Kreait\Firebase\Exception\Messaging\NotFound;
 use Kreait\Firebase\Exception\Messaging\QuotaExceeded;
 use Kreait\Firebase\Exception\Messaging\ServerError;
 use Kreait\Firebase\Exception\Messaging\ServerUnavailable;
 use Kreait\Firebase\Exception\MessagingException;
+use Kreait\Firebase\Messaging\CloudMessage;
+use Kreait\Firebase\Messaging\Notification;
 
 class FcmNotificationService
 {
     public const CIRCUIT_KEY = 'fcm:circuit-open';
+
     private const FAILURE_KEY = 'fcm:circuit-failures';
 
     /**
@@ -46,7 +47,7 @@ class FcmNotificationService
         array $extraData = []
     ): array {
         $type = (string) ($extraData['notification_type'] ?? '');
-        if (!NotificationDeliveryPolicy::allowsPush($user, $type)) {
+        if (! NotificationDeliveryPolicy::allowsPush($user, $type)) {
             return ['accepted' => false, 'retryable' => false, 'unknown' => false, 'failure_code' => 'preference_disabled'];
         }
         $deviceToken = trim((string) $tokenRecord->device_token);
@@ -62,6 +63,7 @@ class FcmNotificationService
         } catch (\Throwable $exception) {
             self::recordFailure('binding');
             Log::warning('FCM messaging service unavailable', ['exception' => $exception::class]);
+
             return ['accepted' => false, 'retryable' => true, 'unknown' => false, 'failure_code' => 'provider_unavailable'];
         }
 
@@ -78,18 +80,24 @@ class FcmNotificationService
             'message_ar' => $messageAr,
             'message_en' => $messageEn,
         ];
-        if ($link !== null) $data['link'] = $link;
+        if ($link !== null) {
+            $data['link'] = $link;
+        }
         foreach ($extraData as $key => $value) {
-            if (!is_string($key) || !preg_match('/^[a-z][a-z0-9_]{0,63}$/', $key)) continue;
-            if (is_scalar($value) && $value !== '') $data[$key] = (string) $value;
+            if (! is_string($key) || ! preg_match('/^[a-z][a-z0-9_]{0,63}$/', $key)) {
+                continue;
+            }
+            if (is_scalar($value) && $value !== '') {
+                $data[$key] = (string) $value;
+            }
         }
 
         $image = trim((string) ($extraData['image_url'] ?? ''));
-        if (!filter_var($image, FILTER_VALIDATE_URL) || !str_starts_with(strtolower($image), 'https://')) {
+        if (! filter_var($image, FILTER_VALIDATE_URL) || ! str_starts_with(strtolower($image), 'https://')) {
             $image = '';
         }
         $channel = trim((string) ($extraData['channel_id'] ?? 'rokn-updates'));
-        if (!in_array($channel, ['rokn-learning', 'rokn-offers', 'rokn-updates'], true)) {
+        if (! in_array($channel, ['rokn-learning', 'rokn-offers', 'rokn-updates'], true)) {
             $channel = 'rokn-updates';
         }
         $message = CloudMessage::withTarget('token', $deviceToken)
@@ -111,6 +119,7 @@ class FcmNotificationService
         try {
             $messaging->send($message);
             self::recordSuccess();
+
             return ['accepted' => true, 'retryable' => false, 'unknown' => false, 'failure_code' => null];
         } catch (NotFound $exception) {
             return ['accepted' => false, 'retryable' => false, 'unknown' => false, 'failure_code' => 'token_unregistered'];
@@ -120,10 +129,12 @@ class FcmNotificationService
                 'token_id' => $tokenRecord->id,
                 'exception' => $exception::class,
             ]);
+
             return ['accepted' => false, 'retryable' => false, 'unknown' => false, 'failure_code' => 'payload_invalid'];
         } catch (AuthenticationError $exception) {
             self::recordFailure('authentication');
             Log::error('FCM credentials rejected.', ['exception' => $exception::class]);
+
             return ['accepted' => false, 'retryable' => false, 'unknown' => false, 'failure_code' => 'provider_authentication'];
         } catch (ApiConnectionFailed $exception) {
             // The socket may have failed after FCM accepted the request. FCM
@@ -135,6 +146,7 @@ class FcmNotificationService
                 'token_id' => $tokenRecord->id,
                 'exception' => $exception::class,
             ]);
+
             return ['accepted' => false, 'retryable' => false, 'unknown' => true, 'failure_code' => 'provider_outcome_unknown'];
         } catch (QuotaExceeded|ServerError|ServerUnavailable $exception) {
             self::recordFailure('provider_temporary');
@@ -143,6 +155,7 @@ class FcmNotificationService
                 'token_id' => $tokenRecord->id,
                 'exception' => $exception::class,
             ]);
+
             return ['accepted' => false, 'retryable' => true, 'unknown' => false, 'failure_code' => 'provider_unavailable'];
         } catch (MessagingException $exception) {
             self::recordFailure('messaging');
@@ -151,6 +164,7 @@ class FcmNotificationService
                 'token_id' => $tokenRecord->id,
                 'exception' => $exception::class,
             ]);
+
             return ['accepted' => false, 'retryable' => true, 'unknown' => false, 'failure_code' => 'provider_rejected_temporarily'];
         } catch (\Throwable $exception) {
             self::recordFailure('unexpected');
@@ -159,6 +173,7 @@ class FcmNotificationService
                 'token_id' => $tokenRecord->id,
                 'exception' => $exception::class,
             ]);
+
             return ['accepted' => false, 'retryable' => false, 'unknown' => true, 'failure_code' => 'provider_outcome_unknown'];
         }
     }
@@ -214,5 +229,4 @@ class FcmNotificationService
             // Push delivery remains successful when monitoring state is unavailable.
         }
     }
-
 }

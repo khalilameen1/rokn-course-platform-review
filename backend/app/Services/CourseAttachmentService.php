@@ -88,7 +88,7 @@ final class CourseAttachmentService
         $path = ltrim(str_replace('\\', '/', trim($inputPath)), '/');
         if (
             $diskName === ''
-            || !is_array(config("filesystems.disks.{$diskName}"))
+            || ! is_array(config("filesystems.disks.{$diskName}"))
             || $path === ''
             || preg_match('~(^|/)\.\.?(/|$)~', $path) === 1
         ) {
@@ -96,7 +96,7 @@ final class CourseAttachmentService
         }
 
         $disk = Storage::disk($diskName);
-        if (!$disk->exists($path)) {
+        if (! $disk->exists($path)) {
             return null;
         }
         if ($mime === '') {

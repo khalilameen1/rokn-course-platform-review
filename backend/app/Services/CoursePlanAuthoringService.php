@@ -47,7 +47,9 @@ final readonly class CoursePlanAuthoringService
             foreach ($plans as $plan) {
                 $tier = (array) ($policy[$plan->code] ?? []);
                 $template = (array) $templates->get($plan->code, []);
-                if ($tier === [] || $template === []) continue;
+                if ($tier === [] || $template === []) {
+                    continue;
+                }
 
                 $values = $this->definitions->applyAiPolicy($plan->getAttributes(), $tier, $template);
                 // A global capacity change is also a commercial change for
@@ -96,14 +98,14 @@ final readonly class CoursePlanAuthoringService
     public function syncAdminPlans(
         Course $course,
         array $input
-    ): void
-    {
+    ): void {
         $allowedCodes = [CourseAccessPlan::BASIC, CourseAccessPlan::GUIDED, CourseAccessPlan::MENTOR];
         $base = max(0, (int) ($course->price ?? 0));
         $globalPolicy = $this->definitions->globalAiPolicy();
         $policyDefaults = collect($this->definitions->defaults($base))
             ->map(function (array $definition) use ($globalPolicy): array {
                 $tier = (array) ($globalPolicy[$definition['code']] ?? []);
+
                 return $tier === []
                     ? $definition
                     : $this->definitions->applyAiPolicy($definition, $tier, $definition);
@@ -172,8 +174,7 @@ final readonly class CoursePlanAuthoringService
         ?CourseAccessPlan $existingPlan,
         string $code,
         int $position
-    ): array
-    {
+    ): array {
         $allowedFeedback = CourseAccessPlan::PROJECT_FEEDBACK_LEVELS;
         $allowedModels = array_values(array_filter(config('openrouter.allowed_models', [])));
         $financialValue = static function (
@@ -183,19 +184,19 @@ final readonly class CoursePlanAuthoringService
             return max(0, (float) ($row[$field] ?? $fallback));
         };
         $model = trim((string) ($row['model_override'] ?? ''));
-        if ($model !== '' && !in_array($model, $allowedModels, true)) {
+        if ($model !== '' && ! in_array($model, $allowedModels, true)) {
             throw ValidationException::withMessages([
                 "access_plans.{$code}.model_override" => ['النموذج خارج قائمة الخادم المعتمدة.'],
             ]);
         }
         $feedback = (string) ($row['project_feedback_level'] ?? 'pass_only');
-        if (!in_array($feedback, $allowedFeedback, true)) {
+        if (! in_array($feedback, $allowedFeedback, true)) {
             $feedback = 'pass_only';
         }
-        $chatEnabled = !empty($row['chat_enabled']);
-        $chatAttachmentsEnabled = $chatEnabled && !empty($row['chat_attachments_enabled']);
+        $chatEnabled = ! empty($row['chat_enabled']);
+        $chatAttachmentsEnabled = $chatEnabled && ! empty($row['chat_attachments_enabled']);
         $projectAttachmentsEnabled = $feedback === 'enhanced'
-            && !empty($row['project_followup_attachments_enabled']);
+            && ! empty($row['project_followup_attachments_enabled']);
         $minimumPaidCoins = max(0, (int) ($row['minimum_paid_coins'] ?? 0));
         $chatBudget = $financialValue('ai_budget_usd');
         $chatReserve = $financialValue('request_reserve_usd');
@@ -303,12 +304,12 @@ final readonly class CoursePlanAuthoringService
             'model_override' => $model !== '' ? $model : null,
             'project_feedback_level' => $feedback,
             'project_output_enabled' => $feedback === 'enhanced'
-                && !empty($row['project_output_enabled']),
+                && ! empty($row['project_output_enabled']),
             'projects_enabled' => $code !== CourseAccessPlan::BASIC,
             'certificate_enabled' => $code !== CourseAccessPlan::BASIC
-                && (!array_key_exists('certificate_enabled', $row) || !empty($row['certificate_enabled'])),
+                && (! array_key_exists('certificate_enabled', $row) || ! empty($row['certificate_enabled'])),
             'delivery_cost_usd' => $deliveryCost,
-            'is_active' => !empty($row['is_active']),
+            'is_active' => ! empty($row['is_active']),
             'sort_order' => ($position + 1) * 10,
         ];
     }

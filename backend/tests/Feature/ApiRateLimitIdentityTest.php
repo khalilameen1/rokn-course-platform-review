@@ -52,7 +52,7 @@ final class ApiRateLimitIdentityTest extends TestCase
         }
         $request = Request::create('/api/v1/courses', $method, server: $server);
         if ($userId !== null) {
-            $user = new User();
+            $user = new User;
             $user->id = $userId;
             $request->setUserResolver(static fn () => $user);
         }

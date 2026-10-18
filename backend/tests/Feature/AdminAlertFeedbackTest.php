@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\MessageBag;
+use Illuminate\Support\ViewErrorBag;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -57,9 +59,9 @@ final class AdminAlertFeedbackTest extends TestCase
             'admin.includes.alert'
         ));
 
-        $errors = (new \Illuminate\Support\ViewErrorBag())->put(
+        $errors = (new ViewErrorBag)->put(
             'default',
-            new \Illuminate\Support\MessageBag(['name' => 'الاسم مطلوب'])
+            new MessageBag(['name' => 'الاسم مطلوب'])
         );
         $response = $this->withSession([
             'success' => 'تم الحفظ',

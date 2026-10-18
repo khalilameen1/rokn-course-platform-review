@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -29,7 +30,7 @@ final class TrackedAuthoringUploadRetryTest extends TestCase
         Queue::fake();
         Http::preventStrayRequests();
         Storage::fake('public');
-        $admin = new User();
+        $admin = new User;
         $admin->forceFill([
             'name_ar' => 'مدير', 'email' => 'upload-retry-admin@example.test',
             'role' => 'admin', 'active' => true,
@@ -101,7 +102,7 @@ final class TrackedAuthoringUploadRetryTest extends TestCase
         $owner = $this->owner('coupons', $payload['authoring_request_id']);
         $path = $owner->allPhotos()->sole()->path;
         if ($legacyPath) {
-            $legacy = 'coupons/' . basename($path);
+            $legacy = 'coupons/'.basename($path);
             if ($legacy !== $path) {
                 self::assertTrue(Storage::disk('public')->move($path, $legacy));
                 $owner->allPhotos()->sole()->update(['path' => $legacy]);
@@ -148,7 +149,7 @@ final class TrackedAuthoringUploadRetryTest extends TestCase
         $this->postImage('coupons', $payload, $fixture)->assertRedirect(route('admin.coupons.index'));
         $owner = $this->owner('coupons', $payload['authoring_request_id']);
         $featured = $owner->allPhotos()->sole();
-        $identity = 'admin-coupon|' . $payload['authoring_request_id'] . '|' . hash_file('sha256', $fixture->getRealPath());
+        $identity = 'admin-coupon|'.$payload['authoring_request_id'].'|'.hash_file('sha256', $fixture->getRealPath());
         self::assertSame($featured->id, $owner->storeImage($fixture, 'coupons', 'featured', $identity)->id);
 
         $gallery = $owner->storeImage($fixture, 'coupons', 'gallery', $identity);
@@ -201,7 +202,7 @@ final class TrackedAuthoringUploadRetryTest extends TestCase
         self::assertSame([$path], $disk->allFiles($kind));
         self::assertSame('completed', DB::table('admin_authoring_create_intents')->value('status'));
         $this->postImage($kind, [...$payload, 'name_ar' => 'بيانات مختلفة'], $fixture)->assertStatus(409);
-        $changedImage = UploadedFile::fake()->createWithContent('image.png', file_get_contents($fixture->getPathname()) . 'different image');
+        $changedImage = UploadedFile::fake()->createWithContent('image.png', file_get_contents($fixture->getPathname()).'different image');
         $this->postImage($kind, $payload, $changedImage)->assertStatus(409);
         self::assertSame(1, DB::table($kind)->where('authoring_request_id', $payload['authoring_request_id'])->count());
         Http::assertNothingSent();
@@ -214,7 +215,7 @@ final class TrackedAuthoringUploadRetryTest extends TestCase
         return $class::query()->where('authoring_request_id', $intentId)->sole();
     }
 
-    private function postImage(string $kind, array $payload, UploadedFile $fixture): \Illuminate\Testing\TestResponse
+    private function postImage(string $kind, array $payload, UploadedFile $fixture): TestResponse
     {
         return $this->post(route('admin.'.$kind.'.store'), [
             ...$payload,

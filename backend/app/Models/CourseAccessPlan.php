@@ -12,13 +12,19 @@ final class CourseAccessPlan extends Model
     use InvalidatesCourseCatalogue;
 
     public const BASIC = 'basic';
+
     public const GUIDED = 'guided';
+
     public const MENTOR = 'mentor';
+
     public const CODES = [self::BASIC, self::GUIDED, self::MENTOR];
 
     public const FEEDBACK_PASS_ONLY = 'pass_only';
+
     public const FEEDBACK_REPORT = 'report';
+
     public const FEEDBACK_ENHANCED = 'enhanced';
+
     public const PROJECT_FEEDBACK_LEVELS = [
         self::FEEDBACK_PASS_ONLY,
         self::FEEDBACK_REPORT,
@@ -68,12 +74,19 @@ final class CourseAccessPlan extends Model
         'sort_order' => 'integer',
     ];
 
-    public function course() { return $this->belongsTo(Course::class); }
-    public function enrollments() { return $this->hasMany(CourseEnrollment::class, 'access_plan_id'); }
+    public function course()
+    {
+        return $this->belongsTo(Course::class);
+    }
+
+    public function enrollments()
+    {
+        return $this->hasMany(CourseEnrollment::class, 'access_plan_id');
+    }
 
     protected static function booted(): void
     {
-        static::updating(function (CourseAccessPlan $plan): void {
+        self::updating(function (CourseAccessPlan $plan): void {
             if ($plan->isDirty(['course_id', 'code'])) {
                 throw new \LogicException(
                     'An access plan cannot be moved or renamed after its contract is created.'

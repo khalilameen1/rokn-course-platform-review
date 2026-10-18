@@ -17,13 +17,16 @@ use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;
 
-final class DeleteAccountFile implements ShouldQueue, ShouldBeUnique
+final class DeleteAccountFile implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 10;
+
     public int $timeout = 90;
+
     public int $uniqueFor = 14400;
+
     public array $backoff = [30, 60, 120, 300, 600, 1200, 1800, 3600];
 
     public function __construct(public int $deletionId)
@@ -33,14 +36,14 @@ final class DeleteAccountFile implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'account-file-deletion:' . $this->deletionId;
+        return 'account-file-deletion:'.$this->deletionId;
     }
 
     public function handle(StoredFileReferenceService $references): void
     {
         $deletion = DB::transaction(function (): ?AccountFileDeletion {
             $row = AccountFileDeletion::query()->lockForUpdate()->find($this->deletionId);
-            if (!$row || in_array($row->status, [
+            if (! $row || in_array($row->status, [
                 AccountFileDeletion::STATUS_COMPLETED,
                 AccountFileDeletion::STATUS_SKIPPED,
             ], true)) {
@@ -48,6 +51,7 @@ final class DeleteAccountFile implements ShouldQueue, ShouldBeUnique
             }
             if ($row->available_at?->isFuture()) {
                 $this->release(max(1, now()->diffInSeconds($row->available_at)));
+
                 return null;
             }
             $row->forceFill([
@@ -55,10 +59,11 @@ final class DeleteAccountFile implements ShouldQueue, ShouldBeUnique
                 'attempts' => $row->attempts + 1,
                 'last_error' => null,
             ])->save();
+
             return $row;
         });
 
-        if (!$deletion) {
+        if (! $deletion) {
             return;
         }
 
@@ -75,10 +80,11 @@ final class DeleteAccountFile implements ShouldQueue, ShouldBeUnique
                     'available_at' => null,
                     'last_error' => 'path_is_referenced',
                 ])->save();
+
                 return;
             }
             $disk = Storage::disk((string) $deletion->disk);
-            if ($disk->exists($path) && !$disk->delete($path)) {
+            if ($disk->exists($path) && ! $disk->delete($path)) {
                 throw new RuntimeException('Storage refused the deletion.');
             }
 
@@ -108,10 +114,10 @@ final class DeleteAccountFile implements ShouldQueue, ShouldBeUnique
                 AccountFileDeletion::STATUS_SKIPPED,
             ])
             ->update([
-            'status' => AccountFileDeletion::STATUS_FAILED,
-            'available_at' => now()->addHour(),
-            'last_error' => class_basename($exception),
-            'updated_at' => now(),
+                'status' => AccountFileDeletion::STATUS_FAILED,
+                'available_at' => now()->addHour(),
+                'last_error' => class_basename($exception),
+                'updated_at' => now(),
             ]);
     }
 }

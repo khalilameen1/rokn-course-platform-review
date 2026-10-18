@@ -13,9 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 final class StudentAccountStateService
 {
-    public function __construct(private readonly DeviceLoginService $devices)
-    {
-    }
+    public function __construct(private readonly DeviceLoginService $devices) {}
 
     public function resetDevice(User $user, string $expectedPolicy, string $stateVersion): void
     {
@@ -30,7 +28,7 @@ final class StudentAccountStateService
             }
             $locked = User::query()->students()->whereKey($user->id)->lockForUpdate()->firstOrFail();
             if (trim((string) $locked->locked_device_id) === ''
-                || !hash_equals(StudentEditorVersion::device($locked), $stateVersion)) {
+                || ! hash_equals(StudentEditorVersion::device($locked), $stateVersion)) {
                 throw ValidationException::withMessages([
                     'state_version' => ["تغيّرت جلسات الطالب بالفعل\nأعد تحميل الصفحة"],
                 ]);
@@ -49,15 +47,14 @@ final class StudentAccountStateService
         bool $expected,
         string $expectedVersion,
         bool $active
-    ): User
-    {
+    ): User {
         return DB::transaction(function () use ($user, $expected, $expectedVersion, $active): User {
             $locked = User::query()->students()->whereKey($user->id)
                 ->lockForUpdate()->firstOrFail();
 
             if (
                 (bool) $locked->active !== $expected
-                || !hash_equals($this->editorVersion($locked), $expectedVersion)
+                || ! hash_equals($this->editorVersion($locked), $expectedVersion)
             ) {
                 throw ValidationException::withMessages([
                     'expected_active' => ["تغيّرت حالة الحساب بالفعل\nأعد تحميل الصفحة"],
@@ -76,7 +73,7 @@ final class StudentAccountStateService
                 'api_token' => $active ? $locked->getRawOriginal('api_token') : null,
             ])->save();
 
-            if (!$active) {
+            if (! $active) {
                 $locked->purgeApiTokens();
                 $locked->deviceTokens()->delete();
             }

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Jobs\RecordQueueHeartbeat;
-use App\Models\OperationalIncident;
 use App\Models\InternalSignal;
+use App\Models\OperationalIncident;
 use App\Models\OutboxEvent;
 use App\Models\ProjectFeedbackMessage;
 use App\Models\StudentNotification;
@@ -69,7 +69,7 @@ final class OperationalRuntimeService
      */
     public function reconcileIncidents(): array
     {
-        if (!Schema::hasTable('operational_incidents')) {
+        if (! Schema::hasTable('operational_incidents')) {
             return ['alerts' => [], 'resolved' => []];
         }
         $detected = collect($this->detect($this->snapshot()))->keyBy('code');
@@ -87,9 +87,9 @@ final class OperationalRuntimeService
                 $escalated = $wasOpen
                     && $this->severityRank((string) $item['severity'])
                         > $this->severityRank((string) $incident->severity);
-                $shouldAlert = !$wasOpen
+                $shouldAlert = ! $wasOpen
                     || $escalated
-                    || !$incident->last_alerted_at
+                    || ! $incident->last_alerted_at
                     || $incident->last_alerted_at->lte($repeatAfter);
 
                 $incident->fill([
@@ -151,7 +151,7 @@ final class OperationalRuntimeService
         };
 
         $scheduler = $snapshot['scheduler'];
-        if (!$scheduler['healthy']) {
+        if (! $scheduler['healthy']) {
             $age = $scheduler['age_seconds'];
             $add(
                 'scheduler.stale',
@@ -163,13 +163,13 @@ final class OperationalRuntimeService
             );
         }
         foreach ($snapshot['queues'] as $queue => $state) {
-            if (!$state['healthy']) {
+            if (! $state['healthy']) {
                 $age = $state['heartbeat_age_seconds'];
                 $add(
-                    'queue.' . preg_replace('/[^a-z0-9_-]/i', '_', (string) $queue) . '.stale',
+                    'queue.'.preg_replace('/[^a-z0-9_-]/i', '_', (string) $queue).'.stale',
                     'queue',
                     $age === null || $age >= 600 ? 'critical' : 'warning',
-                    'عامل طابور ' . $queue . ' لا ينفذ مهامًا حديثة',
+                    'عامل طابور '.$queue.' لا ينفذ مهامًا حديثة',
                     max(1, (int) ($state['size'] ?? 0)),
                     ['queue' => $queue, 'size' => $state['size'], 'age_seconds' => $age]
                 );
@@ -182,10 +182,10 @@ final class OperationalRuntimeService
             $size = $state['size'];
             if ($size !== null && $size > $limit) {
                 $add(
-                    'queue.' . preg_replace('/[^a-z0-9_-]/i', '_', (string) $queue) . '.backlog',
+                    'queue.'.preg_replace('/[^a-z0-9_-]/i', '_', (string) $queue).'.backlog',
                     'queue',
                     $size >= $limit * 2 ? 'critical' : 'warning',
-                    'طابور ' . $queue . ' ينمو أسرع من الاستهلاك',
+                    'طابور '.$queue.' ينمو أسرع من الاستهلاك',
                     (int) $size,
                     ['queue' => $queue, 'size' => $size, 'limit' => $limit]
                 );
@@ -229,17 +229,19 @@ final class OperationalRuntimeService
                 default => $snapshot['payment_callbacks'],
             };
             $count = (int) ($source[$key] ?? 0);
-            if ($count <= 0) continue;
-            $affected = (int) ($source[$key . '_affected'] ?? $count);
+            if ($count <= 0) {
+                continue;
+            }
+            $affected = (int) ($source[$key.'_affected'] ?? $count);
             $add(
-                $category . '.' . $key,
+                $category.'.'.$key,
                 $category,
                 $count >= 20 || in_array($key, ['failed', 'expired_reservations'], true)
                     ? 'critical'
                     : 'warning',
                 $summary,
                 $affected,
-                ['count' => $count, 'oldest_at' => $source[$key . '_oldest_at'] ?? null]
+                ['count' => $count, 'oldest_at' => $source[$key.'_oldest_at'] ?? null]
             );
         }
 
@@ -249,7 +251,10 @@ final class OperationalRuntimeService
     /** @return array<string, mixed> */
     private function failedJobs(): array
     {
-        if (!Schema::hasTable('failed_jobs')) return ['failed_jobs' => 0, 'recent' => []];
+        if (! Schema::hasTable('failed_jobs')) {
+            return ['failed_jobs' => 0, 'recent' => []];
+        }
+
         return [
             'failed_jobs' => (int) DB::table('failed_jobs')->count(),
             'failed_jobs_oldest_at' => DB::table('failed_jobs')->min('failed_at'),
@@ -276,8 +281,11 @@ final class OperationalRuntimeService
     /** @return array<string, mixed> */
     private function outbox(): array
     {
-        if (!Schema::hasTable('outbox_events')) return ['failed' => 0, 'blocked' => 0, 'pending' => 0];
+        if (! Schema::hasTable('outbox_events')) {
+            return ['failed' => 0, 'blocked' => 0, 'pending' => 0];
+        }
         $base = DB::table('outbox_events');
+
         return [
             'pending' => (clone $base)->where('status', OutboxEvent::STATUS_PENDING)->count(),
             'processing' => (clone $base)->where('status', OutboxEvent::STATUS_PROCESSING)->count(),
@@ -301,7 +309,7 @@ final class OperationalRuntimeService
     /** @return array<string, mixed> */
     private function internalSignals(): array
     {
-        if (!Schema::hasTable('internal_signals')) {
+        if (! Schema::hasTable('internal_signals')) {
             return ['stale_internal' => 0, 'pending' => 0, 'processing' => 0];
         }
 
@@ -384,11 +392,12 @@ final class OperationalRuntimeService
             $result['failed_campaigns_affected'] = (int) (clone $failed)
                 ->selectRaw(
                     'COALESCE(SUM(CASE WHEN recipients_count > inbox_count '
-                    . 'THEN recipients_count - inbox_count ELSE 0 END), 0) AS affected'
+                    .'THEN recipients_count - inbox_count ELSE 0 END), 0) AS affected'
                 )
                 ->value('affected');
             $result['failed_campaigns_oldest_at'] = (clone $failed)->min('failed_at');
         }
+
         return $result;
     }
 
@@ -401,8 +410,8 @@ final class OperationalRuntimeService
     {
         $grammar = $query->getGrammar();
         $row = $query->selectRaw(
-            'COUNT(*) AS aggregate_count, COUNT(DISTINCT ' . $grammar->wrap('user_id') . ') AS affected_count, '
-            . 'MIN(' . $grammar->wrap($oldestColumn) . ') AS oldest_value'
+            'COUNT(*) AS aggregate_count, COUNT(DISTINCT '.$grammar->wrap('user_id').') AS affected_count, '
+            .'MIN('.$grammar->wrap($oldestColumn).') AS oldest_value'
         )->first();
 
         return [
@@ -422,8 +431,8 @@ final class OperationalRuntimeService
             'failed_certificates_affected' => 0,
         ];
         if (
-            !Schema::hasTable('certificates')
-            || !Schema::hasColumns('certificates', [
+            ! Schema::hasTable('certificates')
+            || ! Schema::hasColumns('certificates', [
                 'recovery_attempts',
                 'recovery_failed_at',
             ])
@@ -478,6 +487,7 @@ final class OperationalRuntimeService
             $result['expired_reservations_affected'] = (clone $expired)->distinct()->count('user_id');
             $result['expired_reservations_oldest_at'] = (clone $expired)->min('reservation_expires_at');
         }
+
         return $result;
     }
 
@@ -525,10 +535,11 @@ final class OperationalRuntimeService
                 });
             $result['failed_bunny'] += (clone $failedStorage)->count();
             $oldestStorage = (clone $failedStorage)->min('last_attempt_at');
-            if ($oldestStorage && (!$result['failed_bunny_oldest_at'] || $oldestStorage < $result['failed_bunny_oldest_at'])) {
+            if ($oldestStorage && (! $result['failed_bunny_oldest_at'] || $oldestStorage < $result['failed_bunny_oldest_at'])) {
                 $result['failed_bunny_oldest_at'] = $oldestStorage;
             }
         }
+
         return $result;
     }
 
@@ -557,7 +568,9 @@ final class OperationalRuntimeService
             $query = DB::table('payment_reconciliation_findings')->where('state', 'open');
             $review += (clone $query)->count();
             $candidate = (clone $query)->min('first_seen_at');
-            if ($candidate && (!$oldest || $candidate < $oldest)) $oldest = $candidate;
+            if ($candidate && (! $oldest || $candidate < $oldest)) {
+                $oldest = $candidate;
+            }
         }
         $reconciliationStale = 0;
         $reconciliationFailed = 0;
@@ -572,14 +585,14 @@ final class OperationalRuntimeService
                 30,
                 (int) config('operations.payment_reconciliation_stale_minutes', 45)
             ));
-            if ($startedAt && (!$completedAt || $completedAt < $startedAt) && $startedAt <= $cutoff) {
+            if ($startedAt && (! $completedAt || $completedAt < $startedAt) && $startedAt <= $cutoff) {
                 $reconciliationStale = 1;
                 $reconciliationOldest = $startedAt;
             } elseif ($completedAt && $completedAt <= $cutoff) {
                 $reconciliationStale = 1;
                 $reconciliationOldest = $completedAt;
             }
-            if ($checkpoint?->last_error_at && (!$completedAt || $checkpoint->last_error_at > $completedAt)) {
+            if ($checkpoint?->last_error_at && (! $completedAt || $checkpoint->last_error_at > $completedAt)) {
                 $reconciliationFailed = 1;
                 $reconciliationOldest = $checkpoint->last_error_at;
             }
@@ -624,6 +637,7 @@ final class OperationalRuntimeService
     {
         try {
             $value = Cache::get($key);
+
             return is_string($value) && $value !== '' ? Carbon::parse($value) : null;
         } catch (Throwable) {
             return null;
@@ -641,7 +655,7 @@ final class OperationalRuntimeService
             'rate_limit_spike_affected' => 0,
             'top_routes' => [],
         ];
-        if (!Schema::hasTable('rate_limit_events')) {
+        if (! Schema::hasTable('rate_limit_events')) {
             return $empty;
         }
 

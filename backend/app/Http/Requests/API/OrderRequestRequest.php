@@ -2,8 +2,6 @@
 
 namespace App\Http\Requests\API;
 
-use App\Http\Requests\API\FormRequest;
-
 class OrderRequestRequest extends FormRequest
 {
     /**

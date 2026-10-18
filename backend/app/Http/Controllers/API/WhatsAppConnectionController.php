@@ -4,17 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API;
 
-use App\Support\StudentNotificationIntent;
-
 use App\Http\Controllers\Controller;
 use App\Jobs\SendWhatsAppMessage;
-use App\Support\DurableJobDispatch;
 use App\Models\CoinEarningMethod;
 use App\Models\User;
 use App\Models\UserWhatsAppConnection;
 use App\Services\ApiResponseService;
 use App\Services\StudentNotificationService;
 use App\Services\WhatsAppLinkService;
+use App\Support\DurableJobDispatch;
+use App\Support\StudentNotificationIntent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,8 +24,7 @@ final class WhatsAppConnectionController extends Controller
         private readonly ApiResponseService $responses,
         private readonly WhatsAppLinkService $links,
         private readonly StudentNotificationService $notifications
-    ) {
-    }
+    ) {}
 
     public function show(): JsonResponse
     {
@@ -55,11 +53,11 @@ final class WhatsAppConnectionController extends Controller
         // the same high-entropy token in the configured webhook URL so the
         // production integration is actually callable.
         $provided = $request->header('X-WhatsApp-Webhook-Secret');
-        if (!is_string($provided) || trim($provided) === '') {
+        if (! is_string($provided) || trim($provided) === '') {
             $provided = $request->query('token');
         }
         $providedSecret = is_string($provided) ? trim($provided) : '';
-        if ($providedSecret === '' || !hash_equals($configuredSecret, $providedSecret)) {
+        if ($providedSecret === '' || ! hash_equals($configuredSecret, $providedSecret)) {
             return $this->responses->error(
                 'Unauthorized',
                 401,
@@ -119,12 +117,12 @@ final class WhatsAppConnectionController extends Controller
                             notificationType: StudentNotificationService::TYPE_WHATSAPP_CONNECTED,
                             titleAr: 'تم ربط واتساب',
                             titleEn: 'WhatsApp Connected',
-                            messageAr: 'أضفنا ' . $result['earned_coins'] . " عملة ركن إلى رصيدك\nافتح المحفظة لمعرفة التفاصيل",
-                            messageEn: $result['earned_coins'] . ' Rokn coins were added to your wallet.',
+                            messageAr: 'أضفنا '.$result['earned_coins']." عملة ركن إلى رصيدك\nافتح المحفظة لمعرفة التفاصيل",
+                            messageEn: $result['earned_coins'].' Rokn coins were added to your wallet.',
                             link: null,
                             notifiableType: $method ? CoinEarningMethod::class : null,
                             notifiableId: $method?->id,
-                            deliveryKey: 'whatsapp-linked:' . $result['user']->id,
+                            deliveryKey: 'whatsapp-linked:'.$result['user']->id,
                             templateVariables: ['coins' => (int) $result['earned_coins']]
                         )
                     );
@@ -163,7 +161,7 @@ final class WhatsAppConnectionController extends Controller
             // write without sending a second, differently-worded receipt.
             $this->sendReply(
                 $sender,
-                'تم ربط حسابك وإضافة ' . $result['earned_coins'] . ' عملة ركن'
+                'تم ربط حسابك وإضافة '.$result['earned_coins'].' عملة ركن'
             );
         } elseif ($result['matched']) {
             $this->sendReply($sender, 'تم ربط حسابك');
@@ -191,7 +189,7 @@ final class WhatsAppConnectionController extends Controller
         /** @var User $user */
         $user = auth('api')->user();
         $connection = $user->whatsappConnection;
-        if (!$connection?->verified_at) {
+        if (! $connection?->verified_at) {
             return $this->responses->error('اربط واتساب من مهمة العملات أولًا', 409);
         }
         $optIn = (bool) $validated['marketing_opt_in'];
@@ -212,7 +210,7 @@ final class WhatsAppConnectionController extends Controller
     /** @return array<string, mixed>|null */
     private function present(?UserWhatsAppConnection $connection): ?array
     {
-        if (!$connection) {
+        if (! $connection) {
             return null;
         }
 

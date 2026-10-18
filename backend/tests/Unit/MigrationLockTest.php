@@ -15,12 +15,13 @@ final class MigrationLockTest extends TestCase
         $drift = [];
         foreach ((array) $lock['migrations'] as $name => $checksum) {
             $path = $root.'/database/migrations/'.$name;
-            if (!is_file($path)) {
+            if (! is_file($path)) {
                 $drift[] = "missing: {$name}";
+
                 continue;
             }
             $normalized = str_replace(["\r\n", "\r"], "\n", (string) file_get_contents($path));
-            if (!hash_equals((string) $checksum, hash('sha256', $normalized))) {
+            if (! hash_equals((string) $checksum, hash('sha256', $normalized))) {
                 $drift[] = "edited: {$name}";
             }
         }

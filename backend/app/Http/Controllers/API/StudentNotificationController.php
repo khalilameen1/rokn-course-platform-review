@@ -14,15 +14,14 @@ use App\Services\ApiResponseService;
 use App\Services\StudentHomeNotificationReadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 final class StudentNotificationController extends Controller
 {
     public function __construct(
         private readonly ApiResponseService $responses,
         private readonly StudentHomeNotificationReadService $homeNotifications,
-    )
-    {
-    }
+    ) {}
 
     public function getAll(Request $request): JsonResponse
     {
@@ -37,7 +36,7 @@ final class StudentNotificationController extends Controller
         try {
             /** @var User|null $user */
             $user = auth('api')->user();
-            if (!$user) {
+            if (! $user) {
                 return $this->responses->error('سجّل الدخول أولًا', 401);
             }
 
@@ -53,7 +52,9 @@ final class StudentNotificationController extends Controller
             }
 
             $home = ($validated['surface'] ?? null) === 'home';
-            if ($home) $this->homeNotifications->constrainCandidates($query);
+            if ($home) {
+                $this->homeNotifications->constrainCandidates($query);
+            }
 
             $useCursor = ($validated['pagination_mode'] ?? null) === 'cursor';
             $notifications = $useCursor
@@ -84,8 +85,7 @@ final class StudentNotificationController extends Controller
                 $resources = StudentNotificationResource::collection(
                     $notifications->getCollection()
                         ->filter(fn (StudentNotification $row): bool => isset($cards[$row->id]))
-                        ->map(fn (StudentNotification $row): StudentNotificationResource =>
-                            (new StudentNotificationResource($row))->withHomeCourse($cards[$row->id]))
+                        ->map(fn (StudentNotification $row): StudentNotificationResource => (new StudentNotificationResource($row))->withHomeCourse($cards[$row->id]))
                         ->values()
                 );
             } else {
@@ -93,6 +93,7 @@ final class StudentNotificationController extends Controller
                 // All Home eligibility reads must finish before that happens.
                 $resources = StudentNotificationResource::collection($notifications);
             }
+
             return $this->responses->success(
                 $resources,
                 'تم تحميل الإشعارات',
@@ -112,14 +113,14 @@ final class StudentNotificationController extends Controller
         try {
             /** @var User|null $user */
             $user = auth('api')->user();
-            if (!$user) {
+            if (! $user) {
                 return $this->responses->error('سجّل الدخول أولًا', 401);
             }
 
             $notification = StudentNotification::where('id', $id)
                 ->where('user_id', $user->id)
                 ->first();
-            if (!$notification) {
+            if (! $notification) {
                 return $this->responses->error('الإشعار غير متاح', 404);
             }
 
@@ -144,7 +145,7 @@ final class StudentNotificationController extends Controller
         try {
             /** @var User|null $user */
             $user = auth('api')->user();
-            if (!$user) {
+            if (! $user) {
                 return $this->responses->error('سجّل الدخول أولًا', 401);
             }
 
@@ -153,7 +154,7 @@ final class StudentNotificationController extends Controller
                 ->where('user_id', $user->id)
                 ->with('notifiable')
                 ->first();
-            if (!$notification) {
+            if (! $notification) {
                 return $this->responses->error('الإشعار غير متاح', 404);
             }
             $this->preparePresentationRelations(collect([$notification]));
@@ -175,7 +176,7 @@ final class StudentNotificationController extends Controller
         try {
             /** @var User|null $user */
             $user = auth('api')->user();
-            if (!$user) {
+            if (! $user) {
                 return $this->responses->error('سجّل الدخول أولًا', 401);
             }
 
@@ -201,7 +202,7 @@ final class StudentNotificationController extends Controller
         }
     }
 
-    private function preparePresentationRelations(\Illuminate\Support\Collection $notifications): void
+    private function preparePresentationRelations(Collection $notifications): void
     {
         // Single-item mutation endpoints pass collect([$model]), which is a
         // base collection and has no loadMorph(). Normalize once so list and

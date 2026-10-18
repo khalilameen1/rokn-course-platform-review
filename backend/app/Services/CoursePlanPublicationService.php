@@ -46,7 +46,9 @@ final class CoursePlanPublicationService
         $archiveOffers = $liveOffers->all();
         $archiveSorts = array_fill_keys($live->pluck('sort_order')->all(), true);
         foreach ($draftOffers as $code => $offer) {
-            if (isset($archiveOffers[$code])) continue;
+            if (isset($archiveOffers[$code])) {
+                continue;
+            }
             // A legacy course may acquire its first plans in this revision.
             // Keep the isolated draft identity, but not an active offer that
             // would falsely describe a tier available before this publication.
@@ -88,8 +90,9 @@ final class CoursePlanPublicationService
     private function reserveAccessPlanSort(array &$occupied): int
     {
         for ($sort = 65535; $sort >= 0; $sort--) {
-            if (!isset($occupied[$sort])) {
+            if (! isset($occupied[$sort])) {
                 $occupied[$sort] = true;
+
                 return $sort;
             }
         }

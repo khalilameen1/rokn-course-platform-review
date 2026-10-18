@@ -9,8 +9,8 @@ use App\Models\CourseEnrollment;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Services\CertificateEligibilityService;
-use App\Services\CoursePresentationService;
 use App\Services\CourseLearningHealthService;
+use App\Services\CoursePresentationService;
 use App\Services\CurriculumCompletionService;
 use App\Services\LearningDashboardService;
 use App\Services\StudentProgressSummaryService;
@@ -87,7 +87,7 @@ final class ProjectCompletionTruthTest extends ApiTestCase
             'submitted_at' => now()->subMinute(),
             'reviewed_at' => now(),
         ]);
-        if (!$passed) {
+        if (! $passed) {
             DB::table('student_section_progress')->insert([
                 'user_id' => $this->user->id,
                 'course_section_id' => $projectSectionId,
@@ -122,7 +122,7 @@ final class ProjectCompletionTruthTest extends ApiTestCase
 
         self::assertSame($passed, $actual, $boundary);
         // Reading an authoritative result must not manufacture a progress row.
-        self::assertSame(!$passed, DB::table('student_section_progress')
+        self::assertSame(! $passed, DB::table('student_section_progress')
             ->where('user_id', $this->user->id)
             ->where('course_section_id', $projectSectionId)
             ->exists());

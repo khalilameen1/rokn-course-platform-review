@@ -15,8 +15,7 @@ final class ClassificationController extends Controller
     public function index(
         CourseCatalogueQueryService $catalogue,
         ApiResponseService $responses
-    ): JsonResponse
-    {
+    ): JsonResponse {
         $revision = $catalogue->revision();
 
         return $responses->success(

@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\About;
 use App\Support\AdminEditorVersion;
+use App\Support\AdminSingletonLock;
+use Illuminate\Contracts\View\Factory;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use App\Support\AdminSingletonLock;
+use Illuminate\View\View;
 
 class AboutsController extends Controller
 {
@@ -19,15 +22,16 @@ class AboutsController extends Controller
 
     private function aboutForDisplay(): About
     {
-        return About::query()->first() ?? new About();
+        return About::query()->first() ?? new About;
     }
 
     /**
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @return Factory|View
      */
     public function privacy()
     {
         $about = $this->aboutForDisplay();
+
         return view('admin.abouts.privacy', [
             'about' => $about,
             'editorVersion' => $this->editorVersion($about),
@@ -35,11 +39,12 @@ class AboutsController extends Controller
     }
 
     /**
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @return Factory|View
      */
     public function policy()
     {
         $about = $this->aboutForDisplay();
+
         return view('admin.abouts.policy', [
             'about' => $about,
             'editorVersion' => $this->editorVersion($about),
@@ -49,14 +54,15 @@ class AboutsController extends Controller
     public function about()
     {
         $about = $this->aboutForDisplay();
+
         return view('admin.abouts.about', [
             'about' => $about,
             'editorVersion' => $this->editorVersion($about),
         ]);
     }
+
     /**
-     * @param Request $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function update(Request $request)
     {
@@ -74,8 +80,8 @@ class AboutsController extends Controller
         DB::transaction(function () use ($validated, $editorVersion): void {
             AdminSingletonLock::acquire('abouts');
             $about = About::query()->lockForUpdate()->first();
-            $snapshot = $about ?? new About();
-            if (!hash_equals($this->editorVersion($snapshot), $editorVersion)) {
+            $snapshot = $about ?? new About;
+            if (! hash_equals($this->editorVersion($snapshot), $editorVersion)) {
                 throw ValidationException::withMessages([
                     'editor_version' => "تغيّر النص المنشور منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
                 ]);

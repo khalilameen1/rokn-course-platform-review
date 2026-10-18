@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Jobs\DeleteAccountFile;
 use App\Data\NotificationAuthoringInput;
+use App\Jobs\DeleteAccountFile;
 use App\Jobs\SendStudentNotification;
 use App\Models\AccountFileDeletion;
 use App\Models\NotificationCampaign;
@@ -134,8 +134,8 @@ final class AdminNotificationImageRetryTest extends ApiTestCase
         $path = PublicDiskUrl::pathFrom($campaign->image_url);
         self::assertNotNull($path);
         if ($legacyPath) {
-            $identity = ($individual ? 'notification-user|' : 'notification-campaign|') . $campaign->delivery_key;
-            $oldPath = 'student-notifications/' . hash('sha256', $identity . '|' . hash('sha256', $this->imageBytes())) . '.png';
+            $identity = ($individual ? 'notification-user|' : 'notification-campaign|').$campaign->delivery_key;
+            $oldPath = 'student-notifications/'.hash('sha256', $identity.'|'.hash('sha256', $this->imageBytes())).'.png';
             if ($path !== $oldPath) {
                 self::assertTrue($disk->move($path, $oldPath));
                 $campaign->forceFill(['image_url' => PublicDiskUrl::from($oldPath)])->save();
@@ -156,7 +156,7 @@ final class AdminNotificationImageRetryTest extends ApiTestCase
         $withoutImage = $this->imageRequest($intentId, individual: $individual);
         $withoutImage->files->remove('image');
         self::assertSame($campaign->id, $this->author($withoutImage)->id);
-        $changedImage = $this->imageRequest($intentId, $this->imageBytes() . 'different content', $individual);
+        $changedImage = $this->imageRequest($intentId, $this->imageBytes().'different content', $individual);
         try {
             $this->author($changedImage);
             self::fail('The same authoring identity cannot adopt a different image.');
@@ -172,7 +172,7 @@ final class AdminNotificationImageRetryTest extends ApiTestCase
             'intent_id' => $intentId, 'status' => 'completed',
             'resource_type' => NotificationCampaign::class, 'resource_id' => (string) $campaign->id,
         ]);
-        if (!$legacyPath) {
+        if (! $legacyPath) {
             $cleanup = AccountFileDeletion::query()->firstOrFail();
             $cleanup->forceFill(['available_at' => now()->subMinute()])->save();
             (new DeleteAccountFile((int) $cleanup->id))->handle(app(StoredFileReferenceService::class));

@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 final class CourseCodeRedemptionOwnershipTest extends ApiTestCase
@@ -58,8 +59,8 @@ final class CourseCodeRedemptionOwnershipTest extends ApiTestCase
         self::assertSame(Order::FINANCIAL_SETTLED, $order->financial_status);
         self::assertSame(0.0, (float) $order->final_amount);
         self::assertNull($order->coupon_code);
-        self::assertSame('Course code grant #' . $this->code()->id, $order->notes);
-        self::assertSame('Course code grant #' . $this->code()->id, $bill->notes);
+        self::assertSame('Course code grant #'.$this->code()->id, $order->notes);
+        self::assertSame('Course code grant #'.$this->code()->id, $bill->notes);
         self::assertSame(0.0, (float) $bill->total_amount);
         self::assertSame(Bill::PAYMENT_STATUS_PAID, $bill->payment_status);
         self::assertSame((int) $order->id, (int) $bill->order_id);
@@ -69,7 +70,7 @@ final class CourseCodeRedemptionOwnershipTest extends ApiTestCase
         self::assertSame(1, (int) $this->code()->used_count);
         self::assertSame($balance, (int) $this->user->fresh()->wallet_coins);
         self::assertSame($walletEntries, DB::table('wallet_transactions')->count());
-        self::assertSame('course-enrolled:order:' . $order->id, StudentNotification::query()->sole()->delivery_key);
+        self::assertSame('course-enrolled:order:'.$order->id, StudentNotification::query()->sole()->delivery_key);
         Bus::assertDispatchedTimes(SendUserPushNotification::class, 1);
     }
 
@@ -211,7 +212,7 @@ final class CourseCodeRedemptionOwnershipTest extends ApiTestCase
     public function test_receipt_failure_rolls_back_the_whole_grant_and_retry_succeeds_once(): void
     {
         $failOnce = true;
-        Event::listen('eloquent.creating: ' . Bill::class, static function () use (&$failOnce): void {
+        Event::listen('eloquent.creating: '.Bill::class, static function () use (&$failOnce): void {
             if ($failOnce) {
                 $failOnce = false;
                 throw new \RuntimeException('bill unavailable');
@@ -331,12 +332,12 @@ final class CourseCodeRedemptionOwnershipTest extends ApiTestCase
     public function test_missing_and_retired_codes_are_rejected_without_financial_writes(): void
     {
         foreach (['check', 'redeem'] as $action) {
-            $this->postJson('/api/v1/course-codes/' . $action, ['code' => 'MISSING'])
+            $this->postJson('/api/v1/course-codes/'.$action, ['code' => 'MISSING'])
                 ->assertNotFound()->assertJsonPath('success', false);
         }
         $this->code()->update(['type' => 'multiple_lessons']);
         foreach (['check', 'redeem'] as $action) {
-            $this->postJson('/api/v1/course-codes/' . $action, ['code' => 'TESTCODE'])
+            $this->postJson('/api/v1/course-codes/'.$action, ['code' => 'TESTCODE'])
                 ->assertStatus(410)->assertJsonPath('code', 'legacy_partial_code_retired');
         }
         $this->assertNoGrantWrites();
@@ -372,7 +373,7 @@ final class CourseCodeRedemptionOwnershipTest extends ApiTestCase
         return CourseCode::query()->where('code', 'TESTCODE')->firstOrFail();
     }
 
-    private function redeem(): \Illuminate\Testing\TestResponse
+    private function redeem(): TestResponse
     {
         return $this->postJson('/api/v1/course-codes/redeem', ['code' => 'TESTCODE', 'course_id' => $this->courseId]);
     }

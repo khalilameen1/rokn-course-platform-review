@@ -188,19 +188,25 @@ final class ProjectRevisionLineageTest extends TestCase
         $firstCurrentSection = $this->publish($course);
         $locks = [];
         $this->observeSelects(function (Builder $query) use (&$locks): void {
-            if ($query->lock !== null) $locks[] = [$query->from, $query->lock];
+            if ($query->lock !== null) {
+                $locks[] = [$query->from, $query->lock];
+            }
         });
         $injected = false;
         $nextSection = null;
         Event::listen('eloquent.retrieved: '.Project::class, function (Project $project) use (
             $course, $firstCurrentSection, &$locks, &$injected, &$nextSection
         ): void {
-            if ($injected || (int) $project->id !== (int) $firstCurrentSection->sectionable_id) return;
+            if ($injected || (int) $project->id !== (int) $firstCurrentSection->sectionable_id) {
+                return;
+            }
             $injected = true;
             // Mapping selected project 42 but its section is not loaded yet.
             // A publisher without a conflicting read lock can move 42 into an
             // archive here. With the lock, schedule publication after the read.
-            if (!in_array(['courses', false], $locks, true)) $nextSection = $this->publish($course);
+            if (! in_array(['courses', false], $locks, true)) {
+                $nextSection = $this->publish($course);
+            }
         });
         $this->actingAs($student, 'api');
         $url = '/api/v1/projects/'.$source->id;
@@ -214,8 +220,11 @@ final class ProjectRevisionLineageTest extends TestCase
             ->assertJsonPath('data.current_section_id', (int) $expectedSection->id)
             ->assertJsonPath('data.published_revision', (int) $course->fresh()->last_published_authoring_version);
         self::assertSame([['courses', false]], $locks, 'A lineage read needs only the short shared course lock, never a learner lock.');
-        if ($method === 'POST') $response->assertJsonPath('data.submission_admission_closed', true);
-        else $response->assertJsonMissingPath('data.submission_admission_closed');
+        if ($method === 'POST') {
+            $response->assertJsonPath('data.submission_admission_closed', true);
+        } else {
+            $response->assertJsonMissingPath('data.submission_admission_closed');
+        }
 
         $nextSection ??= $this->publish($course);
         $this->getJson($url)->assertStatus(409)
@@ -234,7 +243,9 @@ final class ProjectRevisionLineageTest extends TestCase
         ];
         $locks = [];
         $this->observeSelects(function (Builder $query) use (&$locks): void {
-            if ($query->lock !== null) $locks[] = [$query->from, $query->lock];
+            if ($query->lock !== null) {
+                $locks[] = [$query->from, $query->lock];
+            }
         });
         $interleaved = false;
         $lookupAtPublication = null;
@@ -251,17 +262,23 @@ final class ProjectRevisionLineageTest extends TestCase
         ): void {
             if ($interleaved || (int) $section->sectionable_id !== (int) $source->id
                 || $section->sectionable_type !== Project::class
-                || !in_array(['users', true], $locks, true)) return;
+                || ! in_array(['users', true], $locks, true)) {
+                return;
+            }
             $interleaved = true;
             // SQLite does not enforce row locks. This controlled scheduler
             // publishes here only when no requested course lock excludes it;
             // otherwise publication waits until the HTTP admission completes.
-            if (!in_array(['courses', false], $locks, true)) $publishAndLookup();
+            if (! in_array(['courses', false], $locks, true)) {
+                $publishAndLookup();
+            }
         });
 
         $this->actingAs($student, 'api');
         $original = $this->postJson('/api/v1/projects/'.$source->id.'/submissions', $input);
-        if ($lookupAtPublication === null) $publishAndLookup();
+        if ($lookupAtPublication === null) {
+            $publishAndLookup();
+        }
         self::assertTrue($interleaved);
         self::assertFalse(
             $lookupAtPublication === 404 && $original->status() === 202,
@@ -281,10 +298,12 @@ final class ProjectRevisionLineageTest extends TestCase
         $published = false;
         $captured = false;
         Event::listen('eloquent.retrieved: '.Project::class, function (Project $project) use ($source, &$captured): void {
-            if ((int) $project->id === (int) $source->id) $captured = true;
+            if ((int) $project->id === (int) $source->id) {
+                $captured = true;
+            }
         });
         DB::connection()->beforeStartingTransaction(function () use ($course, &$published, &$captured): void {
-            if (!$published && $captured) {
+            if (! $published && $captured) {
                 $published = true;
                 // The upload/controller already captured the old project.
                 // Publish before admission begins, not inside its rollback
@@ -308,7 +327,9 @@ final class ProjectRevisionLineageTest extends TestCase
         [$student, $course, $source] = $this->fixture();
         $locks = [];
         $this->observeSelects(function (Builder $query) use (&$locks): void {
-            if ($query->lock !== null) $locks[] = [$query->from, $query->lock];
+            if ($query->lock !== null) {
+                $locks[] = [$query->from, $query->lock];
+            }
         });
         $result = app(CourseCompletionService::class)->complete($student, (int) $course->id, (int) $source->section->id);
         self::assertSame(409, $result['status']);
@@ -331,7 +352,9 @@ final class ProjectRevisionLineageTest extends TestCase
         LessonMediaState::query()->create(['lesson_id' => $lesson->id, 'duration_seconds' => 60, 'status' => 'ready']);
         $locks = [];
         $this->observeSelects(function (Builder $query) use (&$locks): void {
-            if ($query->lock !== null) $locks[] = [$query->from, $query->lock];
+            if ($query->lock !== null) {
+                $locks[] = [$query->from, $query->lock];
+            }
         });
         $this->actingAs($student, 'api');
         $url = '/api/v1/courses/'.$course->id.'/sections/'.$section->id.'/complete';
@@ -359,7 +382,8 @@ final class ProjectRevisionLineageTest extends TestCase
     private function observeSelects(\Closure $observe): void
     {
         $connection = DB::connection();
-        $connection->setQueryGrammar(new class($connection, $observe) extends SQLiteGrammar {
+        $connection->setQueryGrammar(new class($connection, $observe) extends SQLiteGrammar
+        {
             public function __construct(Connection $connection, private \Closure $observe)
             {
                 parent::__construct($connection);
@@ -368,6 +392,7 @@ final class ProjectRevisionLineageTest extends TestCase
             public function compileSelect(Builder $query)
             {
                 ($this->observe)($query);
+
                 return parent::compileSelect($query);
             }
         });
@@ -391,13 +416,13 @@ final class ProjectRevisionLineageTest extends TestCase
     /** @return array{User,Course,Project,CourseEnrollment} */
     private function fixture(): array
     {
-        $student = new User();
+        $student = new User;
         $student->forceFill([
             'name_ar' => 'طالب المشروع', 'email' => Str::uuid().'@example.test',
             'role' => 'client', 'active' => true,
         ])->save();
         app(AiConsentService::class)->record($student, true);
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1, 'name_ar' => 'كورس المشروع', 'description_ar' => 'وصف الكورس',
             'price' => 800, 'is_coming_soon' => false, 'is_catalog_visible' => true,
@@ -412,11 +437,12 @@ final class ProjectRevisionLineageTest extends TestCase
             'course_id' => $course->id, 'module_id' => $module->id, 'title_ar' => 'المشروع',
             'sectionable_type' => Project::class, 'sectionable_id' => $project->id, 'order' => 1,
         ]);
-        $enrollment = new CourseEnrollment();
+        $enrollment = new CourseEnrollment;
         $enrollment->forceFill([
             'tenant_id' => 1, 'user_id' => $student->id, 'course_id' => $course->id, 'is_active' => true,
             'enrolled_at' => now(), 'access_granted_at' => now(),
         ])->save();
+
         return [$student, $course, $project, $enrollment];
     }
 
@@ -441,6 +467,7 @@ final class ProjectRevisionLineageTest extends TestCase
             ])->save();
         }
         $revisions->publish($draft->fresh(), (int) $draft->fresh()->authoring_version, true);
+
         return $section;
     }
 }

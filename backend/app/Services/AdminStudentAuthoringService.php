@@ -19,12 +19,11 @@ final class AdminStudentAuthoringService
     public function __construct(
         private readonly StoredFileUploadService $uploads,
         private readonly StoredFileDeletionService $cleanup
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array{name:string,email:string,phone:string} $data Validated profile fields.
-     * @param Closure(User):void $complete Checkpoint and complete the create receipt in this transaction.
+     * @param  array{name:string,email:string,phone:string}  $data  Validated profile fields.
+     * @param  Closure(User):void  $complete  Checkpoint and complete the create receipt in this transaction.
      */
     public function create(array $data, string $requestId, ?UploadedFile $image, Closure $complete): User
     {
@@ -34,13 +33,15 @@ final class AdminStudentAuthoringService
         if ($image !== null) {
             $identity = 'admin-student|'.strtolower($requestId).'|'.hash_file('sha256', $image->getRealPath());
             $imagePath = $this->uploads->storeTrackedUpload($image, 'users', 'public', 60, $identity);
-            if ($imagePath === '') throw new \RuntimeException('Student image storage failed');
+            if ($imagePath === '') {
+                throw new \RuntimeException('Student image storage failed');
+            }
         }
         try {
             return DB::transaction(function () use ($data, $requestId, $imagePath, $complete): User {
                 $user = User::withTrashed()->where('authoring_request_id', $requestId)->lockForUpdate()->first();
-                if (!$user) {
-                    $user = new User();
+                if (! $user) {
+                    $user = new User;
                     $user->forceFill([
                         'name' => $data['name'], 'email' => strtolower(trim($data['email'])),
                         'phone' => trim($data['phone']), 'authoring_request_id' => $requestId,
@@ -59,7 +60,9 @@ final class AdminStudentAuthoringService
                 return $user;
             }, 3);
         } catch (\Throwable $exception) {
-            if ($imagePath !== null) $this->cleanup->deleteOrQueue('public', $imagePath);
+            if ($imagePath !== null) {
+                $this->cleanup->deleteOrQueue('public', $imagePath);
+            }
             throw $exception;
         }
     }
@@ -69,7 +72,7 @@ final class AdminStudentAuthoringService
     {
         DB::transaction(function () use ($userId, $data, $editorVersion): void {
             $user = User::query()->students()->whereKey($userId)->lockForUpdate()->firstOrFail();
-            if (!hash_equals(StudentEditorVersion::for($user), $editorVersion)) {
+            if (! hash_equals(StudentEditorVersion::for($user), $editorVersion)) {
                 throw ValidationException::withMessages([
                     'editor_version' => ["تغيّرت بيانات الطالب منذ فتح الصفحة\nأعد تحميلها قبل الحفظ"],
                 ]);
@@ -79,7 +82,7 @@ final class AdminStudentAuthoringService
                 'name' => $data['name'], 'email' => $email, 'phone' => trim($data['phone']),
                 'profile_revision' => (int) $user->profile_revision + 1,
             ];
-            if (!hash_equals(strtolower(trim((string) $user->email)), $email)) {
+            if (! hash_equals(strtolower(trim((string) $user->email)), $email)) {
                 $updates['email_verified_at'] = null;
             }
             $user->forceFill($updates)->save();

@@ -77,7 +77,9 @@ final class AdminPackageAuthoringOwnershipTest extends TestCase
         $writer = app(AdminPackageAuthoringService::class);
         $noChannel = array_replace($this->fields(), ['direct_enabled' => false]);
         try {
-            $writer->create($noChannel, static function (): never { self::fail('No receipt for an unpurchasable active product.'); });
+            $writer->create($noChannel, static function (): never {
+                self::fail('No receipt for an unpurchasable active product.');
+            });
             self::fail('An active product needs a payment channel.');
         } catch (ValidationException $error) {
             self::assertArrayHasKey('channels', $error->errors());
@@ -107,8 +109,11 @@ final class AdminPackageAuthoringOwnershipTest extends TestCase
         $writer->update($package->id, ['price' => 150], $stale);
         foreach (['update', 'delete'] as $operation) {
             try {
-                if ($operation === 'update') $writer->update($package->id, ['price' => 90], $stale);
-                else $writer->deleteIfUnused($package->id, $stale);
+                if ($operation === 'update') {
+                    $writer->update($package->id, ['price' => 90], $stale);
+                } else {
+                    $writer->deleteIfUnused($package->id, $stale);
+                }
                 self::fail('Stale financial editors cannot write.');
             } catch (ValidationException $error) {
                 self::assertArrayHasKey('editor_version', $error->errors());

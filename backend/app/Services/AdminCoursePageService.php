@@ -33,8 +33,7 @@ final readonly class AdminCoursePageService
         private CertificateTextTemplateService $certificateTemplates,
         private AdminCourseOutlinePresenter $outline,
         private AdminCoursePdfPresenter $pdfPresenter
-    ) {
-    }
+    ) {}
 
     /** @param array<string, mixed> $filters @return array<string, mixed> */
     public function index(array $filters, bool $administrator): array
@@ -52,7 +51,7 @@ final readonly class AdminCoursePageService
 
         $this->applyState($query, (string) $filters['state'], $administrator);
         $this->applySearch($query, (string) ($filters['search'] ?? ''));
-        if (!empty($filters['classification_id'])) {
+        if (! empty($filters['classification_id'])) {
             $query->whereHas(
                 'classifications',
                 fn ($classifications) => $classifications->whereKey((int) $filters['classification_id'])
@@ -264,9 +263,10 @@ final readonly class AdminCoursePageService
             $query->where(fn (Builder $current) => $current
                 ->where('is_coming_soon', true)
                 ->orWhere('is_catalog_visible', true));
+
             return;
         }
-        if (!$administrator || $state !== 'archived') {
+        if (! $administrator || $state !== 'archived') {
             return;
         }
 

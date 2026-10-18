@@ -19,7 +19,9 @@ final class StudentNotificationPresentationService
     {
         $title = UnicodeText::clean($course->title);
         $image = $this->safeImageUrl($course->image);
-        if ($title === '' || $image === null) return null;
+        if ($title === '' || $image === null) {
+            return null;
+        }
 
         return ['id' => (int) $course->id, 'title' => mb_substr($title, 0, 240), 'image_url' => $image];
     }
@@ -40,8 +42,8 @@ final class StudentNotificationPresentationService
         $courseBound = in_array($notification->notifiable_type, [Course::class, Lesson::class], true);
         $courseUnavailable = $courseBound
             && (
-                !$course
-                || !$course->isPublishedForLearning()
+                ! $course
+                || ! $course->isPublishedForLearning()
             );
         if ($courseUnavailable) {
             $course = null;
@@ -58,7 +60,7 @@ final class StudentNotificationPresentationService
             ? $fallbackActionEn
             : (trim((string) $notification->action_label_en) ?: $fallbackActionEn);
         $explicitImage = $this->safeImageUrl($notification->image_url);
-        $explicitLink = !$courseUnavailable && trim((string) $notification->link) !== ''
+        $explicitLink = ! $courseUnavailable && trim((string) $notification->link) !== ''
             ? $notification->link
             : null;
         if ($courseUnavailable) {
@@ -162,8 +164,9 @@ final class StudentNotificationPresentationService
         }
 
         $base = rtrim((string) config('app.url'), '/');
+
         return str_starts_with(strtolower($base), 'https://')
-            ? $base . '/' . ltrim($image, '/')
+            ? $base.'/'.ltrim($image, '/')
             : null;
     }
 }

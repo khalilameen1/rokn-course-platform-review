@@ -43,7 +43,7 @@ final class WebhookDestinationPolicy
         }
 
         foreach ($addresses as $address) {
-            if (!$this->isPublicAddress($address)) {
+            if (! $this->isPublicAddress($address)) {
                 throw new InvalidArgumentException('Webhook host resolved to a private or reserved address.');
             }
         }
@@ -60,7 +60,7 @@ final class WebhookDestinationPolicy
 
     private function isReservedName(string $host): bool
     {
-        if (!str_contains($host, '.')) {
+        if (! str_contains($host, '.')) {
             return true;
         }
 

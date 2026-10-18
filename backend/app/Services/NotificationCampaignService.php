@@ -8,14 +8,13 @@ use App\Jobs\SendStudentNotification;
 use App\Models\NotificationCampaign;
 use App\Models\StudentNotification;
 use App\Support\DurableJobDispatch;
-use Illuminate\Support\Facades\DB;
 use App\Support\NotificationCampaignIntent;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 final class NotificationCampaignService
 {
-    public function __construct(private readonly StudentNotificationPresentationService $presentation)
-    {
-    }
+    public function __construct(private readonly StudentNotificationPresentationService $presentation) {}
 
     public function queue(NotificationCampaignIntent $intent): bool
     {
@@ -37,7 +36,7 @@ final class NotificationCampaignService
         $actionLabelEn = $presentation['action_label_en'];
 
         $requestedAt = $intent->scheduledAt
-            ? \Illuminate\Support\Carbon::instance($intent->scheduledAt)->utc()
+            ? Carbon::instance($intent->scheduledAt)->utc()
             : now();
         $allowedAt = NotificationDeliveryPolicy::nextAllowedAt($intent->notificationType, $requestedAt);
         $scheduledAt = $allowedAt->isAfter(now()->addSeconds(30)) ? $allowedAt : null;
@@ -71,10 +70,11 @@ final class NotificationCampaignService
             $campaignValues
         );
 
-        if (!$campaign->wasRecentlyCreated) {
-            if (!$this->sameImmutablePayload($campaign, $campaignValues, $intent)) {
+        if (! $campaign->wasRecentlyCreated) {
+            if (! $this->sameImmutablePayload($campaign, $campaignValues, $intent)) {
                 throw new \DomainException('notification_delivery_key_payload_mismatch');
             }
+
             return false;
         }
 
@@ -97,12 +97,13 @@ final class NotificationCampaignService
                     ->update([
                         'status' => NotificationCampaign::STATUS_FAILED,
                         'failed_at' => now(),
-                        'failure_code' => 'queue_' . substr(hash('sha256', $exception::class), 0, 12),
+                        'failure_code' => 'queue_'.substr(hash('sha256', $exception::class), 0, 12),
                         'updated_at' => now(),
                     ]);
                 report($exception);
             }
         });
+
         return true;
     }
 
@@ -142,7 +143,7 @@ final class NotificationCampaignService
                 ->update([
                     'status' => NotificationCampaign::STATUS_FAILED,
                     'failed_at' => now(),
-                    'failure_code' => 'queue_' . substr(hash('sha256', $exception::class), 0, 12),
+                    'failure_code' => 'queue_'.substr(hash('sha256', $exception::class), 0, 12),
                     'updated_at' => now(),
                 ]);
             throw $exception;
@@ -209,8 +210,7 @@ final class NotificationCampaignService
         NotificationCampaign $campaign,
         array $expected,
         NotificationCampaignIntent $intent
-    ): bool
-    {
+    ): bool {
         foreach ([
             'notification_type', 'audience', 'notifiable_type', 'title_ar', 'title_en',
             'message_ar', 'message_en',

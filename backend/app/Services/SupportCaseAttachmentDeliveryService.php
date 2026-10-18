@@ -16,7 +16,7 @@ final class SupportCaseAttachmentDeliveryService
         $storage = Storage::disk((string) $attachment->disk);
         abort_unless($storage->exists((string) $attachment->path), 410);
         $bytes = $storage->get((string) $attachment->path);
-        if ($attachment->sha256 && !hash_equals((string) $attachment->sha256, hash('sha256', $bytes))) {
+        if ($attachment->sha256 && ! hash_equals((string) $attachment->sha256, hash('sha256', $bytes))) {
             $attachment->update(['scan_status' => 'corrupt']);
             abort(410);
         }

@@ -2,8 +2,8 @@
 
 namespace App\Providers;
 
+use App\Auth\ApiTokenGuard;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
 
 class AuthServiceProvider extends ServiceProvider
@@ -27,7 +27,7 @@ class AuthServiceProvider extends ServiceProvider
         $this->registerPolicies();
 
         Auth::extend('rokn-tokens', function ($app, $name, array $config) {
-            return new \App\Auth\ApiTokenGuard(
+            return new ApiTokenGuard(
                 $app['auth']->createUserProvider($config['provider'] ?? 'users'),
                 $app['request']
             );

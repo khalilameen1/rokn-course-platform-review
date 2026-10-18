@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\Course;
 use App\Models\CourseCode;
 use App\Models\Lesson;
 use App\Support\BusinessClock;
@@ -18,11 +19,9 @@ final class AdminCourseCodeReadService
 {
     public const PDF_LIMIT = 500;
 
-    public function __construct(private readonly AdminContentInventoryReadService $inventory)
-    {
-    }
+    public function __construct(private readonly AdminContentInventoryReadService $inventory) {}
 
-    /** @return Collection<int, \App\Models\Course> Original courses, including not-yet-published ones. */
+    /** @return Collection<int, Course> Original courses, including not-yet-published ones. */
     public function courseOptions(): Collection
     {
         return $this->inventory->courses()->orderBy('name_ar')->orderBy('id')->get();
@@ -39,10 +38,14 @@ final class AdminCourseCodeReadService
             $query->where('name', 'like', '%'.UnicodeText::clean($filters['name'], false).'%');
         }
         foreach (['type', 'course_id', 'lesson_id'] as $field) {
-            if (filled($filters[$field] ?? null)) $query->where($field, $filters[$field]);
+            if (filled($filters[$field] ?? null)) {
+                $query->where($field, $filters[$field]);
+            }
         }
         foreach (['start_date', 'expiry_date'] as $field) {
-            if (!filled($filters[$field] ?? null)) continue;
+            if (! filled($filters[$field] ?? null)) {
+                continue;
+            }
             [$from, $to] = BusinessClock::localDayRangeUtc($filters[$field]);
             $query->where($field, '>=', $from)->where($field, '<', $to);
         }
@@ -58,7 +61,8 @@ final class AdminCourseCodeReadService
 
     /**
      * Includes the header and streams bounded database chunks, not the entire campaign.
-     * @param array<string, mixed> $filters
+     *
+     * @param  array<string, mixed>  $filters
      * @return Generator<int, array<int, mixed>>
      */
     public function csvRows(array $filters): Generator
@@ -91,7 +95,8 @@ final class AdminCourseCodeReadService
 
     /**
      * One extra row lets the HTTP adapter reject oversized exports without loading them all.
-     * @param array<string, mixed> $filters
+     *
+     * @param  array<string, mixed>  $filters
      * @return Collection<int, object>
      */
     public function pdfRows(array $filters): Collection

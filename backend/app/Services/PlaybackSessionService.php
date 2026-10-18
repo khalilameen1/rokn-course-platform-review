@@ -24,7 +24,7 @@ final class PlaybackSessionService
 
         return DB::transaction(function () use ($user, $lessonId, $sample, $sessionId): array {
             $session = PlaybackSession::query()->lockForUpdate()->find($sessionId);
-            if (!$session || (int) $session->user_id !== (int) $user->id || (int) $session->lesson_id !== $lessonId) {
+            if (! $session || (int) $session->user_id !== (int) $user->id || (int) $session->lesson_id !== $lessonId) {
                 return ['accepted' => false, 'reason' => 'invalid_session'];
             }
             if ($session->ended_at !== null) {
@@ -52,10 +52,10 @@ final class PlaybackSessionService
 
             $position = max(0, (int) ($sample['position_seconds'] ?? 0));
             $eventType = (string) ($sample['event_type'] ?? 'heartbeat');
-            $isCompleted = !empty($sample['is_completed']) || $eventType === 'complete';
+            $isCompleted = ! empty($sample['is_completed']) || $eventType === 'complete';
             $isTerminal = $isCompleted
                 || $eventType === 'stop'
-                || ($eventType === 'error' && !empty($sample['is_terminal']));
+                || ($eventType === 'error' && ! empty($sample['is_terminal']));
             $endReason = $isTerminal
                 ? $this->endReason($eventType, $isCompleted, $sample['end_reason'] ?? null)
                 : null;

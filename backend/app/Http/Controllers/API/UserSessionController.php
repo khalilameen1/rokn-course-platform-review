@@ -83,7 +83,7 @@ final class UserSessionController extends Controller
         // Revocation is a desired-state operation. If the first successful
         // response was lost, retrying it must not turn that success into a
         // permanent 404 in the devices screen.
-        if (!$session) {
+        if (! $session) {
             return response()->json([
                 'status' => 200,
                 'success' => true,
@@ -138,7 +138,7 @@ final class UserSessionController extends Controller
     {
         /** @var ApiToken|null $current */
         $current = $request->attributes->get('rokn_api_token');
-        if (!$current || empty($current->session_id)) {
+        if (! $current || empty($current->session_id)) {
             return response()->json([
                 'status' => 409,
                 'success' => false,

@@ -12,9 +12,7 @@ use ZipArchive;
 /** Screens out empty input only; relevance and grading belong to evaluation. */
 final readonly class ProjectSubmissionEffortGuard
 {
-    public function __construct(private AiInputAttachmentService $attachments)
-    {
-    }
+    public function __construct(private AiInputAttachmentService $attachments) {}
 
     /** @param list<UploadedFile> $files */
     public function assess(?string $text, array $files): string
@@ -35,7 +33,7 @@ final readonly class ProjectSubmissionEffortGuard
         }
 
         return mb_strlen($plainText) >= (int) config('projects.minimum_text_length', 10)
-            && !$this->isObviousGaming($plainText)
+            && ! $this->isObviousGaming($plainText)
             ? ProjectSubmission::EFFORT_VALID
             : ProjectSubmission::EFFORT_INVALID;
     }
@@ -44,35 +42,44 @@ final readonly class ProjectSubmissionEffortGuard
     {
         $mime = (string) $this->attachments->canonicalMime($file);
         if (str_starts_with($mime, 'image/')) {
-            return !$this->isBlankImage($file);
+            return ! $this->isBlankImage($file);
         }
 
         $path = $file->getRealPath();
-        if (!is_string($path) || $path === '' || !is_readable($path)) {
+        if (! is_string($path) || $path === '' || ! is_readable($path)) {
             return false;
         }
 
         if ($mime === 'text/plain') {
             $body = file_get_contents($path, false, null, 0, 65536);
-            if (!is_string($body)) return false;
+            if (! is_string($body)) {
+                return false;
+            }
             $body = UnicodeText::clean($body);
 
             return UnicodeText::graphemeLength($body) >= (int) config('projects.minimum_text_length', 10)
-                && !$this->isObviousGaming($body);
+                && ! $this->isObviousGaming($body);
         }
 
         if ($mime === 'application/pdf') {
             $handle = fopen($path, 'rb');
-            if ($handle === false) return false;
+            if ($handle === false) {
+                return false;
+            }
             try {
                 $head = fread($handle, 262144);
-                if (!is_string($head) || !str_starts_with($head, '%PDF-')) return false;
+                if (! is_string($head) || ! str_starts_with($head, '%PDF-')) {
+                    return false;
+                }
                 $size = max(0, (int) filesize($path));
-                if ($size > 16384) fseek($handle, -16384, SEEK_END);
-                else rewind($handle);
+                if ($size > 16384) {
+                    fseek($handle, -16384, SEEK_END);
+                } else {
+                    rewind($handle);
+                }
                 $tail = fread($handle, 16384);
 
-                if (!is_string($tail) || preg_match('/%%EOF\s*\z/s', $tail) !== 1) {
+                if (! is_string($tail) || preg_match('/%%EOF\s*\z/s', $tail) !== 1) {
                     return false;
                 }
 
@@ -93,7 +100,7 @@ final readonly class ProjectSubmissionEffortGuard
                     return false;
                 }
                 $xref = fread($handle, 2048);
-                if (!is_string($xref)) {
+                if (! is_string($xref)) {
                     return false;
                 }
                 $xref = ltrim($xref);
@@ -112,9 +119,13 @@ final readonly class ProjectSubmissionEffortGuard
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'application/vnd.openxmlformats-officedocument.presentationml.presentation',
         ], true)) {
-            if (!class_exists(ZipArchive::class)) return false;
-            $archive = new ZipArchive();
-            if ($archive->open($path) !== true) return false;
+            if (! class_exists(ZipArchive::class)) {
+                return false;
+            }
+            $archive = new ZipArchive;
+            if ($archive->open($path) !== true) {
+                return false;
+            }
             try {
                 $mainEntry = $mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
                     ? 'word/document.xml'
@@ -128,7 +139,9 @@ final readonly class ProjectSubmissionEffortGuard
                     $name = (string) $archive->getNameIndex($index);
                     if (preg_match('#^(?:word|ppt)/media/[^/]+$#', $name) === 1) {
                         $stat = $archive->statIndex($index);
-                        if ((int) ($stat['size'] ?? 0) > 0) return true;
+                        if ((int) ($stat['size'] ?? 0) > 0) {
+                            return true;
+                        }
                     }
                     if (preg_match('#^(?:word/document|ppt/slides/slide[0-9]+)\.xml$#', $name) !== 1) {
                         continue;
@@ -152,20 +165,27 @@ final readonly class ProjectSubmissionEffortGuard
     private function isObviousGaming(string $text): bool
     {
         $normalized = mb_strtolower(trim((string) preg_replace('/[^\p{L}\p{N}]+/u', ' ', $text)));
-        if ($normalized === '') return true;
+        if ($normalized === '') {
+            return true;
+        }
 
         $compact = str_replace(' ', '', $normalized);
-        if (preg_match('/^(.)\1{5,}$/u', $compact)) return true;
-        if (preg_match('/^(?:asdf|qwer|zxcv|hjkl|1234|abcd)+$/iu', $compact)) return true;
+        if (preg_match('/^(.)\1{5,}$/u', $compact)) {
+            return true;
+        }
+        if (preg_match('/^(?:asdf|qwer|zxcv|hjkl|1234|abcd)+$/iu', $compact)) {
+            return true;
+        }
 
         $words = array_values(array_filter(preg_split('/\s+/u', $normalized) ?: []));
+
         return count($words) >= 3 && count(array_unique($words)) === 1;
     }
 
     private function isBlankImage(UploadedFile $file): bool
     {
         // Missing image tooling is treated forgivingly, never as a student failure.
-        if (!function_exists('imagecreatefromstring')) {
+        if (! function_exists('imagecreatefromstring')) {
             return false;
         }
 
@@ -201,6 +221,7 @@ final readonly class ProjectSubmissionEffortGuard
         $height = imagesy($image);
         if ($width < 2 || $height < 2) {
             imagedestroy($image);
+
             return true;
         }
 

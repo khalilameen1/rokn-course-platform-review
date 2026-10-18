@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Support\StudentNotificationIntent;
-
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\PaymentReconciliationFinding;
 use App\Models\User;
+use App\Support\StudentNotificationIntent;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -19,18 +18,17 @@ final readonly class KashierOrderSettlementService
         private OrderLifecycleService $orderLifecycle,
         private KashierGatewayEvidenceService $evidence,
         private readonly StudentNotificationService $notifications,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, mixed> $gatewayResponse
+     * @param  array<string, mixed>  $gatewayResponse
      */
     public function flagApprovedTransactionConflict(
         Order $order,
         ?string $transactionId,
         array $gatewayResponse
     ): bool {
-        if ($order->status !== Order::STATUS_APPROVED || !$this->evidence->transactionIdConflicts($order, $transactionId)) {
+        if ($order->status !== Order::STATUS_APPROVED || ! $this->evidence->transactionIdConflicts($order, $transactionId)) {
             return false;
         }
 
@@ -40,7 +38,7 @@ final readonly class KashierOrderSettlementService
             $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
             if (
                 $locked->status !== Order::STATUS_APPROVED
-                || !$this->evidence->transactionIdConflicts($locked, $transactionId)
+                || ! $this->evidence->transactionIdConflicts($locked, $transactionId)
             ) {
                 return false;
             }
@@ -64,7 +62,7 @@ final readonly class KashierOrderSettlementService
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function recordFinancialReversal(
         Order $order,
@@ -79,13 +77,17 @@ final readonly class KashierOrderSettlementService
                 : $this->evidence->reversalEvents($params);
             if ($events !== []) {
                 foreach ($events as $event) {
-                    if (!is_array($event)) continue;
+                    if (! is_array($event)) {
+                        continue;
+                    }
                     $eventStatus = strtoupper(trim((string) ($event['payment_status'] ?? '')));
                     $eventType = $this->evidence->reversalType($eventStatus);
-                    if ($eventType === null) continue;
+                    if ($eventType === null) {
+                        continue;
+                    }
                     $eventIdentity = trim((string) ($event['provider_event_id'] ?? ''));
                     if ($eventIdentity === '') {
-                        $eventIdentity = 'evidence:' . trim((string) (
+                        $eventIdentity = 'evidence:'.trim((string) (
                             $event['evidence_fingerprint'] ?? hash('sha256', json_encode($event))
                         ));
                     }
@@ -117,7 +119,7 @@ final readonly class KashierOrderSettlementService
             'PARTIAL_REFUND',
             'PARTIALLY_REFUNDED',
         ], true) ? 'partial_refund' : $type;
-        $reason = 'Kashier reported payment status ' . $normalizedStatus . '.';
+        $reason = 'Kashier reported payment status '.$normalizedStatus.'.';
         $providerEventId = trim((string) (
             $params['eventId']
             ?? $params['event_id']
@@ -133,13 +135,13 @@ final readonly class KashierOrderSettlementService
         $externalEventId = $providerEventId !== ''
             ? $providerEventId
             : ($transactionId !== null
-                ? 'transaction-status:' . hash(
+                ? 'transaction-status:'.hash(
                     'sha256',
-                    $eventStatus . '|' . $transactionId
+                    $eventStatus.'|'.$transactionId
                 )
                 : null);
-        $eventKey = 'kashier:' . $eventStatus . ':'
-            . hash('sha256', $eventIdentity);
+        $eventKey = 'kashier:'.$eventStatus.':'
+            .hash('sha256', $eventIdentity);
 
         if (in_array($normalizedStatus, ['PARTIAL_REFUND', 'PARTIALLY_REFUNDED'], true)) {
             $this->orderLifecycle->flagExternalFinancialReview(
@@ -159,7 +161,6 @@ final readonly class KashierOrderSettlementService
             $order,
             $type,
             $reason,
-            $normalizedStatus,
             $transactionId,
             $params,
             $externalEventId,
@@ -193,7 +194,7 @@ final readonly class KashierOrderSettlementService
     }
 
     /**
-     * @param array<string, mixed> $gatewayResponse
+     * @param  array<string, mixed>  $gatewayResponse
      */
     public function fulfillOrder(Order $order, ?string $transactionId, array $gatewayResponse): Order
     {
@@ -209,7 +210,7 @@ final readonly class KashierOrderSettlementService
      * Local settlement only. Keep the user lock before the order lock and all
      * identity/evidence checks in this same transaction as wallet fulfillment.
      *
-     * @param array<string, mixed> $gatewayResponse
+     * @param  array<string, mixed>  $gatewayResponse
      * @return array{order: Order, user: User, late_capture: bool, notify: bool}
      */
     private function captureLockedOrder(Order $order, ?string $transactionId, array $gatewayResponse): array
@@ -222,7 +223,7 @@ final readonly class KashierOrderSettlementService
         }
 
         if ($order->status === Order::STATUS_APPROVED) {
-            if ($transactionId === null && !$order->transaction_id) {
+            if ($transactionId === null && ! $order->transaction_id) {
                 $order = $this->flagCaptureForReview(
                     $order,
                     'capture_transaction_missing',
@@ -272,8 +273,8 @@ final readonly class KashierOrderSettlementService
 
         if (
             $order->payment_method !== Order::PAYMENT_METHOD_KASHIER
-            || !$order->package_id
-            || !$order->package
+            || ! $order->package_id
+            || ! $order->package
             || $order->packageCoinAmount() <= 0
             || (float) $order->final_amount <= 0
         ) {
@@ -292,10 +293,11 @@ final readonly class KashierOrderSettlementService
                 'financial_status' => $order->financial_status,
                 'transaction_id' => $transactionId,
             ]);
+
             return $this->captureResult($order, $lockedUser);
         }
 
-        if (!in_array($order->status, [
+        if (! in_array($order->status, [
             Order::STATUS_PENDING,
             Order::STATUS_CANCELLED,
             Order::STATUS_REJECTED,
@@ -491,13 +493,13 @@ final readonly class KashierOrderSettlementService
                         notificationType: StudentNotificationService::TYPE_PACKAGE_PURCHASED,
                         titleAr: 'تم شحن رصيدك',
                         titleEn: 'Package Purchased',
-                        messageAr: 'أضفنا ' . $order->packageCoinAmount()
-                            . " عملة إلى محفظتك\nالرصيد جاهز للاستخدام",
-                        messageEn: 'Package purchased successfully. ' . $order->packageCoinAmount() . ' coins added to your wallet.',
+                        messageAr: 'أضفنا '.$order->packageCoinAmount()
+                            ." عملة إلى محفظتك\nالرصيد جاهز للاستخدام",
+                        messageEn: 'Package purchased successfully. '.$order->packageCoinAmount().' coins added to your wallet.',
                         link: null,
                         notifiableType: Package::class,
                         notifiableId: $order->package_id,
-                        deliveryKey: 'package-purchased:order:' . $order->id,
+                        deliveryKey: 'package-purchased:order:'.$order->id,
                         templateVariables: ['coins' => $order->packageCoinAmount()]
                     )
                 );
@@ -512,7 +514,7 @@ final readonly class KashierOrderSettlementService
     /**
      * Record a signed failure without overwriting a terminal successful state.
      *
-     * @param array<string, mixed>|null $gatewayResponse
+     * @param  array<string, mixed>|null  $gatewayResponse
      */
     public function cancelPendingOrder(Order $order, ?array $gatewayResponse = null): Order
     {
@@ -574,7 +576,7 @@ final readonly class KashierOrderSettlementService
             $order,
             $reason,
             'Kashier capture requires financial review.',
-            'kashier:capture-review:' . hash('sha256', implode('|', [
+            'kashier:capture-review:'.hash('sha256', implode('|', [
                 (string) $order->id,
                 $reason,
                 (string) $transactionId,

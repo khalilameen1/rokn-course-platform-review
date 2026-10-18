@@ -18,7 +18,7 @@ final class AdminModeratorAuthoringService
     public function create(array $validated, Closure $complete): User
     {
         return DB::transaction(function () use ($validated, $complete): User {
-            $moderator = new User();
+            $moderator = new User;
             $moderator->forceFill($this->profileFields($validated) + [
                 'email' => strtolower(trim((string) $validated['email'])),
                 'password' => Hash::make((string) $validated['password']),
@@ -35,7 +35,7 @@ final class AdminModeratorAuthoringService
     {
         DB::transaction(function () use ($id, $validated, $editorVersion): void {
             $moderator = User::query()->whereKey($id)->where('role', 'moderator')->lockForUpdate()->firstOrFail();
-            if (!hash_equals(ModeratorEditorVersion::for($moderator), $editorVersion)) {
+            if (! hash_equals(ModeratorEditorVersion::for($moderator), $editorVersion)) {
                 throw ValidationException::withMessages([
                     'editor_version' => ["تغيّرت بيانات مسؤول المحتوى منذ فتح الصفحة\nأعد تحميلها قبل الحفظ"],
                 ]);
@@ -49,7 +49,7 @@ final class AdminModeratorAuthoringService
                 if (array_key_exists('email', $validated)) {
                     $email = strtolower(trim((string) $validated['email']));
                     $updates['email'] = $email;
-                    if (!hash_equals(strtolower(trim((string) $moderator->email)), $email)) {
+                    if (! hash_equals(strtolower(trim((string) $moderator->email)), $email)) {
                         $updates['email_verified_at'] = null;
                     }
                 }

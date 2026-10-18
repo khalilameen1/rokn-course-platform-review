@@ -13,7 +13,7 @@ class SocialGroup extends Model
 
     public function course(): BelongsTo
     {
-        return $this->belongsTo(Course::class,'list_id', 'id');
+        return $this->belongsTo(Course::class, 'list_id', 'id');
     }
 
     public function getTitleAttribute()

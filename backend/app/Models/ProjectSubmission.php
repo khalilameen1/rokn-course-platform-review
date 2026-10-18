@@ -9,11 +9,15 @@ use Illuminate\Database\Eloquent\Model;
 class ProjectSubmission extends Model
 {
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_PASSED = 'passed';
+
     public const STATUS_NEEDS_RESUBMISSION = 'needs_resubmission';
 
     public const EFFORT_VALID = 'valid';
+
     public const EFFORT_INVALID = 'invalid';
+
     public const EFFORT_UNKNOWN = 'unknown';
 
     protected $fillable = [

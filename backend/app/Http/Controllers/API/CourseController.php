@@ -25,8 +25,7 @@ final class CourseController extends Controller
         private readonly CourseLeaderboardService $leaderboard,
         private readonly CourseReadService $courseReads,
         private readonly CoursePresentationService $coursePresentation
-    ) {
-    }
+    ) {}
 
     public function listCourses(Request $request): JsonResponse
     {
@@ -86,7 +85,7 @@ final class CourseController extends Controller
                 (int) $courseId
             );
 
-            if (!$read['enrollment']) {
+            if (! $read['enrollment']) {
                 return $this->responses->error(
                     'هذا الكورس غير متاح لحسابك',
                     403
@@ -130,7 +129,7 @@ final class CourseController extends Controller
                     )->resolve($request);
                 }
             );
-            if (!$snapshot['changed']) {
+            if (! $snapshot['changed']) {
                 return $this->responses->success(
                     $snapshot['data'],
                     'تم تحميل تفاصيل الكورس'
@@ -161,7 +160,7 @@ final class CourseController extends Controller
         try {
             /** @var User|null $user */
             $user = auth('api')->user();
-            if (!$user) {
+            if (! $user) {
                 return $this->responses->error('سجّل الدخول أولًا', 401);
             }
 

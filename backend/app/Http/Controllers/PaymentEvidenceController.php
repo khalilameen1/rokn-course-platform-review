@@ -49,5 +49,4 @@ final class PaymentEvidenceController extends Controller
             ]
         );
     }
-
 }

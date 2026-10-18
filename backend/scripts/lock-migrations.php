@@ -35,9 +35,9 @@ $entries = (array) ($locked['migrations'] ?? []);
 
 $problems = [];
 foreach ($entries as $name => $checksum) {
-    if (!array_key_exists($name, $current)) {
+    if (! array_key_exists($name, $current)) {
         $problems[] = "missing locked migration: {$name}";
-    } elseif (!hash_equals((string) $checksum, $current[$name])) {
+    } elseif (! hash_equals((string) $checksum, $current[$name])) {
         $problems[] = "edited locked migration: {$name} (add a new migration instead)";
     }
 }

@@ -18,7 +18,7 @@ final class RecoveryCheckpointService
     /** @return array<string,mixed> */
     public function checkpoint(): array
     {
-        if (!Schema::hasTable('recovery_markers')) {
+        if (! Schema::hasTable('recovery_markers')) {
             throw new RuntimeException('Recovery marker schema is missing.');
         }
         $keyId = trim((string) config('operations.recovery_encryption_key_id'));
@@ -31,7 +31,7 @@ final class RecoveryCheckpointService
                 ->where('scope', self::SCOPE)
                 ->lockForUpdate()
                 ->first();
-            if (!$marker) {
+            if (! $marker) {
                 if ((bool) config('operations.disaster_recovery_mode', false)) {
                     throw new RuntimeException('A recovery deployment may not create a marker missing from its backup.');
                 }
@@ -77,11 +77,11 @@ final class RecoveryCheckpointService
     public function status(): array
     {
         try {
-            if (!Schema::hasTable('recovery_markers')) {
+            if (! Schema::hasTable('recovery_markers')) {
                 return ['ready' => false, 'generation' => null, 'checkpoint_at' => null, 'reason' => 'schema_missing'];
             }
             $marker = DB::table('recovery_markers')->where('scope', self::SCOPE)->first();
-            if (!$marker) {
+            if (! $marker) {
                 return ['ready' => false, 'generation' => null, 'checkpoint_at' => null, 'reason' => 'marker_missing'];
             }
             $this->assertDecryptable($marker, trim((string) config('operations.recovery_encryption_key_id')));
@@ -94,17 +94,18 @@ final class RecoveryCheckpointService
             ];
         } catch (Throwable $exception) {
             report($exception);
+
             return ['ready' => false, 'generation' => null, 'checkpoint_at' => null, 'reason' => 'marker_unreadable'];
         }
     }
 
     private function assertDecryptable(object $marker, string $expectedKeyId): void
     {
-        if ($expectedKeyId === '' || !hash_equals((string) $marker->encryption_key_id, $expectedKeyId)) {
+        if ($expectedKeyId === '' || ! hash_equals((string) $marker->encryption_key_id, $expectedKeyId)) {
             throw new RuntimeException('Recovery encryption key identifier does not match the database marker.');
         }
         $probe = Crypt::decryptString((string) $marker->encrypted_probe);
-        if (!hash_equals((string) $marker->probe_hash, hash('sha256', $probe))) {
+        if (! hash_equals((string) $marker->probe_hash, hash('sha256', $probe))) {
             throw new RuntimeException('Recovery encryption probe failed integrity verification.');
         }
     }

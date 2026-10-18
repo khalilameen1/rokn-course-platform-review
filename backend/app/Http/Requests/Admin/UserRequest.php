@@ -2,10 +2,10 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\User;
 use App\Support\UnicodeText;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use App\Models\User;
 
 class UserRequest extends FormRequest
 {
@@ -38,7 +38,7 @@ class UserRequest extends FormRequest
     {
         $routeUser = $this->route('user');
         $userId = is_object($routeUser) ? $routeUser->getKey() : $routeUser;
-        if (!$userId && $this->isMethod('post')) {
+        if (! $userId && $this->isMethod('post')) {
             $userId = User::withTrashed()
                 ->where('authoring_request_id', (string) $this->input('authoring_request_id'))
                 ->value('id');

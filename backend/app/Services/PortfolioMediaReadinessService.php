@@ -12,8 +12,7 @@ final class PortfolioMediaReadinessService
     public function __construct(
         private BunnyService $bunny,
         private BunnyDeliveryService $delivery
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{
@@ -52,11 +51,11 @@ final class PortfolioMediaReadinessService
                 return $result;
             }
 
-            if ($media->file_type !== 'video' || !$media->file_path) {
+            if ($media->file_type !== 'video' || ! $media->file_path) {
                 return $result;
             }
 
-            $cacheKey = 'portfolio:video-state:' . hash('sha256', (string) $media->file_path);
+            $cacheKey = 'portfolio:video-state:'.hash('sha256', (string) $media->file_path);
             if ($refresh) {
                 $inspection = $this->bunny->inspectRemoteVideo((string) $media->file_path);
                 Cache::put($cacheKey, $inspection, now()->addSeconds(45));
@@ -78,7 +77,7 @@ final class PortfolioMediaReadinessService
             }
 
             $details = $inspection['details'] ?? null;
-            if (($inspection['state'] ?? null) !== 'ok' || !is_array($details)) {
+            if (($inspection['state'] ?? null) !== 'ok' || ! is_array($details)) {
                 return $result;
             }
 
@@ -90,7 +89,7 @@ final class PortfolioMediaReadinessService
             }
             // Progress and resolution metadata must not promote a still
             // processing, JIT-only or unknown GET status to custom-player ready.
-            if (!BunnyService::providerVideoStatusIsPlayable($providerStatus)) {
+            if (! BunnyService::providerVideoStatusIsPlayable($providerStatus)) {
                 return $result;
             }
 

@@ -26,7 +26,7 @@ final class RequireProductFeature
         }
 
         $subject = $this->features->subjectForRequest($request);
-        if (!$this->features->enabled($feature, $subject)) {
+        if (! $this->features->enabled($feature, $subject)) {
             return response()->json([
                 'status' => 503,
                 'success' => false,

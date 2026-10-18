@@ -29,13 +29,13 @@ class PlaybackOperationsController extends Controller
             $locked = PlaybackSession::query()
                 ->lockForUpdate()
                 ->find($playbackSession->getKey());
-            if (!$locked) {
+            if (! $locked) {
                 return 'missing';
             }
             if ($locked->ended_at) {
                 return 'already_ended';
             }
-            if (!$operations->isStale($locked)) {
+            if (! $operations->isStale($locked)) {
                 return 'still_active';
             }
 

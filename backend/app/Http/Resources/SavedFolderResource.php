@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Services\BunnyDeliveryService;
 use App\Support\PublicDiskUrl;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class SavedFolderResource extends JsonResource
@@ -11,14 +12,14 @@ class SavedFolderResource extends JsonResource
     /**
      * Transform the resource into an array.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  Request  $request
      * @return array
      */
     public function toArray($request)
     {
         return [
-            'id' => (int)$this->id,
-            'name' => (string)$this->name,
+            'id' => (int) $this->id,
+            'name' => (string) $this->name,
             'image' => $this->resolveFolderImage(),
             'lessons_count' => (int) ($this->lessons_count ?? 0),
             'created_at' => $this->created_at?->toIso8601String(),
@@ -51,7 +52,7 @@ class SavedFolderResource extends JsonResource
             }
 
             if ($firstLesson->relationLoaded('course') && $firstLesson->course && $firstLesson->course->image) {
-                return (string)$firstLesson->course->image;
+                return (string) $firstLesson->course->image;
             }
         }
 
@@ -61,8 +62,12 @@ class SavedFolderResource extends JsonResource
     private function publicLessonImage(mixed $value): ?string
     {
         $value = trim((string) $value);
-        if ($value === '') return null;
-        if (str_starts_with(strtolower($value), 'https://')) return $value;
+        if ($value === '') {
+            return null;
+        }
+        if (str_starts_with(strtolower($value), 'https://')) {
+            return $value;
+        }
         if (str_starts_with(ltrim($value, '/'), 'storage/')) {
             return PublicDiskUrl::from($value);
         }

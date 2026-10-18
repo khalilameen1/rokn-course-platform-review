@@ -4,29 +4,32 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Support\NotificationRecipientSelector;
+use App\Models\Course;
 use App\Models\NotificationCampaign;
 use App\Models\NotificationCampaignRecipient;
-use App\Models\Course;
+use App\Support\DurableJobDispatch;
+use App\Support\NotificationRecipientSelector;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use App\Support\DurableJobDispatch;
+use Illuminate\Support\Facades\Log;
 
-class SendStudentNotification implements ShouldQueue, ShouldBeUnique
+class SendStudentNotification implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected string $deliveryKey;
 
     public int $tries = 3;
+
     public int $timeout = 120;
+
     public int $uniqueFor = 900;
+
     public array $backoff = [15, 60, 180];
 
     public function __construct(string $deliveryKey)
@@ -53,8 +56,9 @@ class SendStudentNotification implements ShouldQueue, ShouldBeUnique
             $campaign = NotificationCampaign::query()
                 ->where('delivery_key', $this->deliveryKey)
                 ->firstOrFail();
-            if (!$this->courseStillDeliverable($campaign)) {
+            if (! $this->courseStillDeliverable($campaign)) {
                 $this->finishWithdrawnCourseCampaign();
+
                 return;
             }
 
@@ -88,7 +92,7 @@ class SendStudentNotification implements ShouldQueue, ShouldBeUnique
             );
             $queuedRecipientsCount = 0;
 
-            if (!$campaign->selection_finished_at) {
+            if (! $campaign->selection_finished_at) {
                 $query->where('id', '>', (int) $campaign->selection_cursor);
                 $query->select('id')->orderBy('id')->chunkById(500, function ($students) use ($campaign): void {
                     $now = now();
@@ -150,16 +154,16 @@ class SendStudentNotification implements ShouldQueue, ShouldBeUnique
                 'explicit_user_ids_count' => count($userIds),
                 'excluded_user_ids_count' => count($excludeUserIds),
                 'queued_recipients_count' => $queuedRecipientsCount,
-                'audience'          => $audience,
-                'course_id'         => $courseId,
-                'notifiable_type'   => $campaign->notifiable_type,
-                'notifiable_id'     => $campaign->notifiable_id,
-                'delivery_key'      => $this->deliveryKey,
+                'audience' => $audience,
+                'course_id' => $courseId,
+                'notifiable_type' => $campaign->notifiable_type,
+                'notifiable_id' => $campaign->notifiable_id,
+                'delivery_key' => $this->deliveryKey,
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to send student notifications', [
-                'delivery_key'      => $this->deliveryKey,
-                'exception'         => $e::class,
+                'delivery_key' => $this->deliveryKey,
+                'exception' => $e::class,
                 'error_fingerprint' => hash('sha256', $e->getMessage()),
             ]);
 
@@ -178,20 +182,24 @@ class SendStudentNotification implements ShouldQueue, ShouldBeUnique
             ->update([
                 'status' => NotificationCampaign::STATUS_FAILED,
                 'failed_at' => now(),
-                'failure_code' => 'coordinator_' . substr(hash('sha256', $exception::class), 0, 12),
-        ]);
+                'failure_code' => 'coordinator_'.substr(hash('sha256', $exception::class), 0, 12),
+            ]);
         Log::error('SendStudentNotification job failed', [
-            'delivery_key'      => $this->deliveryKey,
-            'exception'         => $exception::class,
+            'delivery_key' => $this->deliveryKey,
+            'exception' => $exception::class,
             'error_fingerprint' => hash('sha256', $exception->getMessage()),
         ]);
     }
 
     private function courseStillDeliverable(NotificationCampaign $campaign): bool
     {
-        if (!$campaign->course_id) return true;
+        if (! $campaign->course_id) {
+            return true;
+        }
         $course = Course::query()->find((int) $campaign->course_id);
-        if (!$course || !$course->isPublishedForLearning()) return false;
+        if (! $course || ! $course->isPublishedForLearning()) {
+            return false;
+        }
 
         return $campaign->canDeliverHiddenCourse()
             || (bool) $course->is_catalog_visible;
@@ -218,7 +226,7 @@ class SendStudentNotification implements ShouldQueue, ShouldBeUnique
     }
 
     /**
-     * @param array<int, mixed> $userIds
+     * @param  array<int, mixed>  $userIds
      * @return array<int>
      */
     private function normalizeUserIds(array $userIds): array
@@ -231,7 +239,9 @@ class SendStudentNotification implements ShouldQueue, ShouldBeUnique
     /** @param array<int> $userIds */
     private function dispatchChunk(array $userIds): void
     {
-        if ($userIds === []) return;
+        if ($userIds === []) {
+            return;
+        }
         DurableJobDispatch::now(new DeliverStudentNotificationChunk(
             $userIds,
             $this->deliveryKey
@@ -259,7 +269,9 @@ class SendStudentNotification implements ShouldQueue, ShouldBeUnique
                 ->whereKey($campaign->id)
                 ->lockForUpdate()
                 ->first();
-            if (!$freshCampaign) return;
+            if (! $freshCampaign) {
+                return;
+            }
             $inbox = NotificationCampaignRecipient::query()
                 ->where('notification_campaign_id', $campaign->id)
                 ->where('status', NotificationCampaignRecipient::STATUS_INBOX)
@@ -283,5 +295,4 @@ class SendStudentNotification implements ShouldQueue, ShouldBeUnique
             ])->save();
         }, 3);
     }
-
 }

@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Traits\HasTranslate;
+use Illuminate\Database\Eloquent\Model;
+
 class Bank extends Model
 {
-	use HasTranslate;
+    use HasTranslate;
     //
 }

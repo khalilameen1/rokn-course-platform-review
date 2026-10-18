@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Lesson extends Model
 {
-    use HasFactory, ResolvesLocalizedAttributes, InvalidatesCourseCatalogue;
+    use HasFactory, InvalidatesCourseCatalogue, ResolvesLocalizedAttributes;
+
     //	id	list_id	title	description	video_link	file_link1	file_link2	created_at	updated_at
     protected $fillable = [
         'list_id',
@@ -29,7 +30,7 @@ class Lesson extends Model
         'priority',
         'file_link2',
         'created_at',
-        'updated_at'
+        'updated_at',
     ];
 
     /**
@@ -37,7 +38,7 @@ class Lesson extends Model
      */
     public function getTitleAttribute()
     {
-        if (!array_key_exists('title_ar', $this->attributes) && !array_key_exists('title_en', $this->attributes)) {
+        if (! array_key_exists('title_ar', $this->attributes) && ! array_key_exists('title_en', $this->attributes)) {
             return $this->attributes['title'] ?? null;
         }
 
@@ -49,7 +50,7 @@ class Lesson extends Model
      */
     public function getDescriptionAttribute()
     {
-        if (!array_key_exists('description_ar', $this->attributes) && !array_key_exists('description_en', $this->attributes)) {
+        if (! array_key_exists('description_ar', $this->attributes) && ! array_key_exists('description_en', $this->attributes)) {
             return $this->attributes['description'] ?? null;
         }
 
@@ -58,16 +59,15 @@ class Lesson extends Model
 
     /**
      * Check if this lesson uses Bunny.net for video
-     *
-     * @return bool
      */
     public function usesBunnyVideo(): bool
     {
-        return $this->video_source_type === 'bunny' && !empty($this->bunny_video_id);
+        return $this->video_source_type === 'bunny' && ! empty($this->bunny_video_id);
     }
 
-    public function course(){
-         return $this->belongsTo('App\Models\Course','list_id','id');
+    public function course()
+    {
+        return $this->belongsTo('App\Models\Course', 'list_id', 'id');
     }
 
     /** Only lessons that still belong to a live, top-level learning graph. */
@@ -102,7 +102,7 @@ class Lesson extends Model
     /** A lesson is playable only when its loaded authoritative generation is ready. */
     public function hasReadyMediaState(): bool
     {
-        if (!$this->usesBunnyVideo() || !$this->relationLoaded('mediaState')) {
+        if (! $this->usesBunnyVideo() || ! $this->relationLoaded('mediaState')) {
             return false;
         }
 
@@ -123,6 +123,4 @@ class Lesson extends Model
     {
         return $this->hasMany(PlaybackSession::class);
     }
-
 }
-

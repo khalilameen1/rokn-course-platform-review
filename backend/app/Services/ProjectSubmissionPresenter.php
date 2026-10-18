@@ -19,8 +19,7 @@ final readonly class ProjectSubmissionPresenter
         private AiFailurePolicy $failurePolicy,
         private ProjectSubmissionEvaluationService $evaluations,
         private ProjectReportRetryService $reportRetries
-    ) {
-    }
+    ) {}
 
     /** @return array<string,mixed> */
     public function present(ProjectSubmission $submission, bool $includeThreadTranscript = true): array
@@ -140,9 +139,9 @@ final readonly class ProjectSubmissionPresenter
         ProjectFeedbackThread $thread,
         array $contract,
         string $reportStatus
-    ): array
-    {
+    ): array {
         $replyContract = $this->feedbackThreads->activeReplyContract($thread);
+
         return [
             'id' => (string) $thread->public_id,
             'feedback_level' => $replyContract

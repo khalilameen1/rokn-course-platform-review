@@ -31,7 +31,7 @@ return [
                 // Apple Root CA - G3, published by Apple PKI. Operators may
                 // append a replacement root during a documented rotation.
                 '63343abfb89a6a03ebb57e9b3f5fa7be7c4f5c756f3017b3a8c488c3653e9179,'
-                . (string) env('APPLE_STORE_ROOT_CERTIFICATE_SHA256', '')
+                .(string) env('APPLE_STORE_ROOT_CERTIFICATE_SHA256', '')
             )
         ))),
     ],

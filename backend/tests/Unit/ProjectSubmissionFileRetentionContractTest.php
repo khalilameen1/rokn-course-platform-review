@@ -18,7 +18,7 @@ final class ProjectSubmissionFileRetentionContractTest extends TestCase
         self::assertStringContainsString("'submission_text' => null", $service);
         self::assertStringContainsString("'submission_file' => null", $service);
         self::assertStringContainsString("'submission_metadata' => \$retained", $service);
-        self::assertStringContainsString("AiInputAttachment::OWNER_PROJECT_SUBMISSION", $service);
+        self::assertStringContainsString('AiInputAttachment::OWNER_PROJECT_SUBMISSION', $service);
         self::assertStringNotContainsString('UserProjectEvaluation', $service);
         self::assertStringContainsString('deleteOrQueue', $service);
     }

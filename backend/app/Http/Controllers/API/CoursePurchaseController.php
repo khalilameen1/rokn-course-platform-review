@@ -4,32 +4,27 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API;
 
-use App\Support\StudentNotificationIntent;
-
 use App\Exceptions\CourseCheckoutRejected;
 use App\Exceptions\FinancialProvenanceException;
 use App\Exceptions\InsufficientWalletBalanceException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\API\CourseAuthorizationRequest;
 use App\Http\Requests\API\CoursePurchaseQuoteRequest;
-use App\Models\Bill;
 use App\Models\Course;
-use App\Models\CourseEnrollment;
-use App\Models\CouponRedemption;
-use App\Models\Order;
 use App\Models\Package;
-use App\Models\Setting;
 use App\Services\CourseAccessPlanService;
 use App\Services\CourseCheckoutQuoteService;
 use App\Services\CourseCouponService;
+use App\Services\CoursePromotionPolicy;
+use App\Services\CoursePurchaseAction;
 use App\Services\FinancialAnomalyService;
 use App\Services\FinancialProvenanceService;
 use App\Services\PackageChannelPricingService;
 use App\Services\StudentNotificationService;
 use App\Services\WalletService;
+use App\Support\StudentNotificationIntent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 final class CoursePurchaseController extends Controller
@@ -37,9 +32,7 @@ final class CoursePurchaseController extends Controller
     public function __construct(
         private readonly PackageChannelPricingService $packagePricing,
         private readonly StudentNotificationService $notifications
-    )
-    {
-    }
+    ) {}
 
     /**
      * Legacy purchase quote kept for the shipped course-details screen. The
@@ -130,8 +123,7 @@ final class CoursePurchaseController extends Controller
         FinancialAnomalyService $financialRisk,
         CourseAccessPlanService $planService,
         CourseCouponService $coupons
-    ): JsonResponse
-    {
+    ): JsonResponse {
         $user = auth('api')->user();
         $course = Course::findOrFail($request->course_id);
         $requestedPlanCode = strtolower(trim((string) $request->input('access_plan_code')));
@@ -144,7 +136,7 @@ final class CoursePurchaseController extends Controller
             ? $request->integer('expected_course_revision')
             : null;
         try {
-            $result = app(\App\Services\CoursePurchaseAction::class)->execute(
+            $result = app(CoursePurchaseAction::class)->execute(
                 $user, $course, $requestedPlanCode, $clientIdempotencyKey,
                 $expectedPrice, $expectedCourseRevision, $requestedCouponCode
             );
@@ -217,6 +209,7 @@ final class CoursePurchaseController extends Controller
             ], 400);
         } catch (FinancialProvenanceException $exception) {
             report($exception);
+
             return response()->json([
                 'status' => 409,
                 'success' => false,
@@ -250,8 +243,7 @@ final class CoursePurchaseController extends Controller
                     'coupon_invalid' => 'الكود غير صحيح أو انتهت صلاحيته',
                     'course_price_changed' => "تغير السعر\nراجع الإجمالي قبل الشراء",
                     'course_terms_changed' => "تغيّرت تفاصيل الفئة\nراجعها قبل الشراء",
-                    'course_purchase_not_effective', 'course_access_under_review' =>
-                        "هذه العملية قيد المراجعة\nلم يُخصم رصيد جديد",
+                    'course_purchase_not_effective', 'course_access_under_review' => "هذه العملية قيد المراجعة\nلم يُخصم رصيد جديد",
                     default => 'هذا الكورس غير متاح للشراء الآن',
                 },
                 'data' => null,
@@ -259,6 +251,7 @@ final class CoursePurchaseController extends Controller
         } catch (\Throwable $exception) {
             $this->rethrowExpectedRequestException($exception);
             report($exception);
+
             return response()->json([
                 'status' => 500,
                 'success' => false,
@@ -288,7 +281,7 @@ final class CoursePurchaseController extends Controller
             ], 409);
         }
 
-        if (!$result['already_enrolled']) {
+        if (! $result['already_enrolled']) {
             try {
                 $this->notifications->notifyUser(
                     $user->fresh(),
@@ -296,12 +289,12 @@ final class CoursePurchaseController extends Controller
                         notificationType: StudentNotificationService::TYPE_COURSE_ENROLLED,
                         titleAr: 'الكورس جاهز',
                         titleEn: 'Course unlocked',
-                        messageAr: $course->name_ar . "\nابدأ أول مقطع الآن",
-                        messageEn: 'You can now start: ' . $course->name_en,
-                        link: '/course/' . $course->id,
+                        messageAr: $course->name_ar."\nابدأ أول مقطع الآن",
+                        messageEn: 'You can now start: '.$course->name_en,
+                        link: '/course/'.$course->id,
                         notifiableType: Course::class,
                         notifiableId: $course->id,
-                        deliveryKey: 'course-enrolled:order:' . ($result['order']?->id ?? $result['enrollment']->id),
+                        deliveryKey: 'course-enrolled:order:'.($result['order']?->id ?? $result['enrollment']->id),
                         templateVariables: ['course' => (string) ($course->name_ar ?: $course->name_en)]
                     )
                 );
@@ -327,7 +320,7 @@ final class CoursePurchaseController extends Controller
             (int) $user->id,
             (int) $course->id
         );
-        $financialReviewRequired = !$financialRisk->allowsVariableCostFeatures(
+        $financialReviewRequired = ! $financialRisk->allowsVariableCostFeatures(
             $result['enrollment']->fresh()
         );
 
@@ -373,7 +366,7 @@ final class CoursePurchaseController extends Controller
     /** @return array{cap:int,used:int,remaining:int} */
     private function rewardContribution(WalletService $wallet, int $userId, int $courseId, int $targetPrice): array
     {
-        return app(\App\Services\CoursePromotionPolicy::class)->allowance($userId, $courseId, $targetPrice);
+        return app(CoursePromotionPolicy::class)->allowance($userId, $courseId, $targetPrice);
     }
 
     private function publishedRevision(Course $course): int

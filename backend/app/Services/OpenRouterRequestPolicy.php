@@ -42,7 +42,7 @@ final class OpenRouterRequestPolicy
         ?string $reasoningEffort = null
     ): array {
         $allowed = array_values(array_filter(config('openrouter.allowed_models', [])));
-        if ($allowed === [] || !in_array($model, $allowed, true)) {
+        if ($allowed === [] || ! in_array($model, $allowed, true)) {
             throw new AiProviderUnavailableException(
                 false,
                 'AI model is not in the production allowlist.',
@@ -118,8 +118,7 @@ final class OpenRouterRequestPolicy
         // anyway can make an otherwise healthy provider reject the request
         // before generation starts. Keep sampling control for models that
         // support it instead of weakening every model to the same payload.
-        if (collect($models)->every(fn (string $candidate): bool =>
-            $this->supportsTemperature($candidate)
+        if (collect($models)->every(fn (string $candidate): bool => $this->supportsTemperature($candidate)
         )) {
             $payload['temperature'] = max(0, min(1.2, $temperature));
         }
@@ -171,14 +170,19 @@ final class OpenRouterRequestPolicy
     {
         foreach ($messages as $message) {
             $content = is_array($message) ? ($message['content'] ?? null) : null;
-            if (!is_array($content)) continue;
+            if (! is_array($content)) {
+                continue;
+            }
             foreach ($content as $part) {
-                if (!is_array($part) || ($part['type'] ?? null) !== 'file') continue;
+                if (! is_array($part) || ($part['type'] ?? null) !== 'file') {
+                    continue;
+                }
                 if (str_starts_with((string) data_get($part, 'file.file_data'), 'data:application/pdf;')) {
                     return true;
                 }
             }
         }
+
         return false;
     }
 
@@ -276,10 +280,10 @@ final class OpenRouterRequestPolicy
     {
         $normalized = strtolower(trim($model));
 
-        return !str_starts_with($normalized, 'openai/gpt-5')
-            && !$this->isClaudeFive($normalized)
-            && !$this->isGeminiThreeEightFlash($normalized)
-            && !preg_match('/^openai\/(?:o1|o3|o4)(?:-|$)/', $normalized);
+        return ! str_starts_with($normalized, 'openai/gpt-5')
+            && ! $this->isClaudeFive($normalized)
+            && ! $this->isGeminiThreeEightFlash($normalized)
+            && ! preg_match('/^openai\/(?:o1|o3|o4)(?:-|$)/', $normalized);
     }
 
     private function isGeminiThreeEightFlash(string $model): bool

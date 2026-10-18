@@ -14,7 +14,6 @@ class NewOrder
      *
      * @return void
      */
-
     public $order;
 
     public function __construct($order)

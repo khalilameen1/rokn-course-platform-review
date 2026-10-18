@@ -13,8 +13,7 @@ final readonly class ModeratorHomeReadService
     public function __construct(
         private AdminContentInventoryReadService $inventory,
         private CoursePublishingService $publishing
-    ) {
-    }
+    ) {}
 
     /** @param array<string,mixed> $queryParameters @return array<string,mixed> */
     public function read(array $queryParameters = [], int $page = 1): array

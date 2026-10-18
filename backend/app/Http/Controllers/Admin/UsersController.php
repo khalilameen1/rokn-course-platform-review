@@ -8,22 +8,24 @@ use App\Models\DesignSetting;
 use App\Models\User;
 use App\Models\UserNote;
 use App\Services\AdminAuthoringCreateIntentService;
+use App\Services\AdminStudentAuthoringService;
+use App\Services\AdminStudentNoteService;
 use App\Services\AdminStudentReadService;
 use App\Services\StudentAccountStateService;
 use App\Support\CsvCell;
 use App\Support\StudentEditorVersion;
-use Symfony\Component\HttpFoundation\StreamedResponse;
-use App\Services\AdminStudentAuthoringService;
-use App\Services\AdminStudentNoteService;
+use Illuminate\Contracts\View\Factory;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class UsersController extends Controller
 {
     public function __construct(
         private readonly AdminStudentAuthoringService $authoring,
         private readonly AdminStudentNoteService $notes
-    ) {
-    }
+    ) {}
 
     /**
      * Get design settings for the views
@@ -32,8 +34,9 @@ class UsersController extends Controller
     {
         return DesignSetting::getDefaultSettings();
     }
+
     /**
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @return Factory|View
      */
     public function index(Request $request, AdminStudentReadService $students)
     {
@@ -47,7 +50,6 @@ class UsersController extends Controller
             ['designSettings' => $this->getDesignSettings()]
         ));
     }
-
 
     /** Streamed CSV of the current list filters (UTF-8 BOM so Excel reads Arabic). */
     public function export(Request $request, AdminStudentReadService $students): StreamedResponse
@@ -77,18 +79,17 @@ class UsersController extends Controller
     }
 
     /**
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @return Factory|View
      */
     public function create()
     {
         $designSettings = $this->getDesignSettings();
+
         return view('admin.users.create', compact('designSettings'));
     }
 
-
     /**
-     * @param UserRequest $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function store(UserRequest $request, AdminAuthoringCreateIntentService $createIntents)
     {
@@ -108,17 +109,14 @@ class UsersController extends Controller
         return redirect()->route('admin.users.index')->with('success', 'تمت الإضافة بنجاح ');
     }
 
-
     /**
-     * @param User $user
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @return Factory|View
      */
     public function show(
         User $user,
         Request $request,
         AdminStudentReadService $students
-    )
-    {
+    ) {
         $this->assertStudent($user);
 
         return view('admin.users.show', array_merge(
@@ -128,22 +126,19 @@ class UsersController extends Controller
     }
 
     /**
-     * @param User $user
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @return Factory|View
      */
     public function edit(User $user)
     {
         $this->assertStudent($user);
         $designSettings = $this->getDesignSettings();
         $editorVersion = StudentEditorVersion::for($user);
+
         return view('admin.users.edit', compact('user', 'designSettings', 'editorVersion'));
     }
 
-
     /**
-     * @param UserRequest $request
-     * @param User $user
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function update(UserRequest $request, User $user)
     {
@@ -157,17 +152,14 @@ class UsersController extends Controller
         return redirect()->route('admin.users.show', $user->id)->with('success', 'تم التعديل بنجاح');
     }
 
-
     /**
-     * @param User $user
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function deactive(
         Request $request,
         User $user,
         StudentAccountStateService $accounts
-    )
-    {
+    ) {
         abort_if(in_array(strtolower((string) $user->role), ['admin', 'moderator', 'teacher'], true), 403);
         $validated = $request->validate([
             'expected_active' => ['required', 'boolean'],
@@ -177,8 +169,9 @@ class UsersController extends Controller
             $user,
             (bool) $validated['expected_active'],
             (string) $validated['state_version'],
-            !(bool) $validated['expected_active']
+            ! (bool) $validated['expected_active']
         );
+
         return redirect()->back()->with('success', $user->active ? 'تم التفعيل بنجاح' : 'تم التعطيل بنجاح');
     }
 
@@ -189,8 +182,7 @@ class UsersController extends Controller
         Request $request,
         User $user,
         AdminAuthoringCreateIntentService $createIntents
-    )
-    {
+    ) {
         $validated = $request->validate([
             'note' => 'required|string|max:1000',
             'authoring_request_id' => 'required|uuid',
@@ -215,7 +207,7 @@ class UsersController extends Controller
      */
     public function deleteNote(UserNote $note, Request $request)
     {
-        if (!$this->notes->delete((int) $note->id, (int) $request->user()->id, $request->user()->role === 'admin')) {
+        if (! $this->notes->delete((int) $note->id, (int) $request->user()->id, $request->user()->role === 'admin')) {
             return redirect()->back()->with('error', 'غير مصرح لك بحذف هذه الملاحظة');
         }
 
@@ -229,8 +221,7 @@ class UsersController extends Controller
         Request $request,
         User $user,
         StudentAccountStateService $accounts
-    )
-    {
+    ) {
         $validated = $request->validate([
             'state_version' => ['required', 'string', 'size:64'],
             'expected_policy' => ['required', 'string'],

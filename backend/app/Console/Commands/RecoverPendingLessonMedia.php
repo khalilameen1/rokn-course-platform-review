@@ -29,8 +29,9 @@ final class RecoverPendingLessonMedia extends Command
 
     public function handle(): int
     {
-        if (!$this->schemaIsReady()) {
+        if (! $this->schemaIsReady()) {
             $this->error('Lesson media tables are not ready. Run migrations first.');
+
             return self::FAILURE;
         }
 

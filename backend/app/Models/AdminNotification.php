@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Traits\HasPhoto;
 use App\Traits\HasTranslate;
+use Illuminate\Database\Eloquent\Model;
 
 class AdminNotification extends Model
 {
-    use HasTranslate, HasPhoto;
+    use HasPhoto, HasTranslate;
 
     public const SURFACES = [
         'guest_prompt' => 'قبل تسجيل الدخول',
@@ -67,8 +67,9 @@ class AdminNotification extends Model
         }
 
         $base = rtrim((string) config('app.url'), '/');
+
         return str_starts_with(strtolower($base), 'https://')
-            ? $base . '/' . ltrim($image, '/')
+            ? $base.'/'.ltrim($image, '/')
             : null;
     }
 

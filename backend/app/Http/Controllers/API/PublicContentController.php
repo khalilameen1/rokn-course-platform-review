@@ -8,10 +8,10 @@ use App\Http\Controllers\Controller;
 use App\Services\ApiResponseService;
 use App\Services\ManagedPublicContentService;
 use App\Services\PublicAppSettingsService;
+use App\Support\RoknLocale;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Lang;
-use App\Support\RoknLocale;
 
 final class PublicContentController extends Controller
 {

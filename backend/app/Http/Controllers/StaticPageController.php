@@ -16,8 +16,7 @@ class StaticPageController extends Controller
     public function __construct(
         private readonly ManagedPublicContentService $managedContent,
         private readonly PublicAppSettingsService $publicSettings
-    ) {
-    }
+    ) {}
 
     public function about(Request $request): View
     {
@@ -38,7 +37,7 @@ class StaticPageController extends Controller
     {
         return $this->renderPage($request, 'static.terms', 'terms');
     }
-    
+
     public function returnsPolicy(Request $request): View
     {
         return $this->renderPage($request, 'static.returns');

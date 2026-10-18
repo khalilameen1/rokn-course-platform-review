@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature\API;
 
-use App\Models\User;
+use App\Models\CourseEnrollment;
+use App\Models\InternalSignal;
 use App\Models\Lesson;
 use App\Models\PlaybackSession;
+use App\Models\Project;
 use App\Models\ProjectSubmission;
-use App\Models\InternalSignal;
-use App\Services\LearningEvidenceService;
-use App\Services\LearningAchievementSignalService;
+use App\Models\User;
 use App\Services\InternalSignalHandler;
+use App\Services\LearningAchievementSignalService;
+use App\Services\LearningEvidenceService;
 use App\Services\ProjectSubmissionEvaluationScheduler;
 use App\Services\ProjectSubmissionReviewService;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +40,7 @@ class StudentElearningFlowTest extends ApiTestCase
             'course_id' => $this->courseId,
             'title' => 'مشروع العبور',
             'section_type' => 'project',
-            'sectionable_type' => \App\Models\Project::class,
+            'sectionable_type' => Project::class,
             'sectionable_id' => $projectId,
             'order' => 2,
             'created_at' => now(),
@@ -230,7 +232,7 @@ class StudentElearningFlowTest extends ApiTestCase
     {
         DB::table('lessons')->where('id', 10)->update(['duration_minutes' => 0]);
         DB::table('course_sections')->where('id', $this->sectionId)->update([
-            'sectionable_type' => \App\Models\Lesson::class,
+            'sectionable_type' => Lesson::class,
             'sectionable_id' => 10,
             'section_type' => 'lesson',
         ]);
@@ -390,7 +392,7 @@ class StudentElearningFlowTest extends ApiTestCase
 
         // 3. Student redeems a course code to gain full access
         $redeemResponse = $this->actingAs($student, 'api')->postJson('/api/v1/course-codes/redeem', [
-            'code' => 'TESTCODE'
+            'code' => 'TESTCODE',
         ]);
         $redeemResponse->assertStatus(200)
             ->assertJsonPath('success', true);
@@ -399,19 +401,19 @@ class StudentElearningFlowTest extends ApiTestCase
         $this->assertDatabaseHas('course_enrollments', [
             'user_id' => $student->id,
             'course_id' => $this->courseId,
-            'is_active' => 1
+            'is_active' => 1,
         ]);
 
         $this->assertDatabaseHas('orders', [
             'user_id' => $student->id,
             'course_id' => $this->courseId,
-            'status' => 'approved'
+            'status' => 'approved',
         ]);
 
         // 4. The player sends server-timed evidence before completing a lesson.
         DB::table('lessons')->where('id', 10)->update(['duration_minutes' => 1]);
         DB::table('course_sections')->where('id', $this->sectionId)->update([
-            'sectionable_type' => \App\Models\Lesson::class,
+            'sectionable_type' => Lesson::class,
             'sectionable_id' => 10,
             'section_type' => 'lesson',
         ]);
@@ -509,7 +511,7 @@ class StudentElearningFlowTest extends ApiTestCase
 
         // 1. Create a study folder to organize saved lessons
         $createFolderResponse = $this->actingAs($student, 'api')->postJson('/api/v1/saved-folders', [
-            'name' => 'مفضلاتي في الرياضيات'
+            'name' => 'مفضلاتي في الرياضيات',
         ]);
         $createFolderResponse->assertStatus(201)
             ->assertJsonPath('success', true);
@@ -519,7 +521,7 @@ class StudentElearningFlowTest extends ApiTestCase
 
         // 2. Save a lesson into the newly created folder
         $saveLessonResponse = $this->actingAs($student, 'api')->postJson("/api/v1/saved-folders/{$folderId}/lessons", [
-            'lesson_id' => 10
+            'lesson_id' => 10,
         ]);
         $saveLessonResponse->assertStatus(200);
 
@@ -530,7 +532,7 @@ class StudentElearningFlowTest extends ApiTestCase
         // A scholarship grants the course's basic plan as a receipt. The
         // fixture's basic plan is certificate-enabled, so portfolio storage
         // opens with it; no manual plan upgrade is needed.
-        $enrollment = \App\Models\CourseEnrollment::query()
+        $enrollment = CourseEnrollment::query()
             ->where('user_id', $student->id)->where('course_id', $this->courseId)->firstOrFail();
         self::assertSame('basic', $enrollment->access_plan_snapshot['code']);
 
@@ -546,7 +548,7 @@ class StudentElearningFlowTest extends ApiTestCase
         $this->assertDatabaseHas('portfolio_items', [
             'id' => $portfolioId,
             'user_id' => $student->id,
-            'title' => 'مشروع التخرج في البرمجة'
+            'title' => 'مشروع التخرج في البرمجة',
         ]);
 
         // Retrieve user portfolio list
@@ -555,7 +557,7 @@ class StudentElearningFlowTest extends ApiTestCase
 
         // 4. Student updates classification interests (API requires at least one valid classification_id)
         $updateInterestsResponse = $this->actingAs($student, 'api')->postJson('/api/v1/user/interests', [
-            'classification_ids' => [1]
+            'classification_ids' => [1],
         ]);
         $updateInterestsResponse->assertStatus(200);
     }

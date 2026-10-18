@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class CourseCodeUsage extends Model
 {
@@ -14,7 +14,7 @@ class CourseCodeUsage extends Model
         'user_id',
         'used_at',
         'ip_address',
-        'user_agent'
+        'user_agent',
     ];
 
     protected $casts = [
@@ -37,4 +37,3 @@ class CourseCodeUsage extends Model
         return $this->belongsTo(User::class);
     }
 }
-

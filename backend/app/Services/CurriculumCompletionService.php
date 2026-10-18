@@ -21,8 +21,7 @@ final class CurriculumCompletionService
         private readonly CourseSectionSequenceService $sectionSequence,
         private readonly CourseRevisionLearnerReadService $revisionReads,
         private readonly CourseAccessPlanService $plans
-    ) {
-    }
+    ) {}
 
     public function markCompleted(
         int $userId,
@@ -36,7 +35,7 @@ final class CurriculumCompletionService
             // avoids a shared-to-exclusive upgrade deadlock when section
             // completion calls this while holding the course in share mode.
             $course = Course::query()->whereKey($courseId)->sharedLock()->first();
-            if (!$course) {
+            if (! $course) {
                 return null;
             }
 
@@ -50,7 +49,7 @@ final class CurriculumCompletionService
 
             // Rolling-deploy compatibility: version the signal immediately;
             // persistence starts as soon as the additive migration is present.
-            if (!Schema::hasColumns('course_enrollments', [
+            if (! Schema::hasColumns('course_enrollments', [
                 'completed_curriculum_revision',
                 'curriculum_completed_at',
             ])) {
@@ -62,14 +61,14 @@ final class CurriculumCompletionService
                 ->where('course_id', $courseId)
                 ->lockForUpdate()
                 ->first();
-            if (!$enrollment) {
+            if (! $enrollment) {
                 return null;
             }
 
             $earnedRevision = (int) ($enrollment->completed_curriculum_revision ?? 0);
             $projectsEnabled = $this->plans->projectsEnabledForEnrollment($enrollment);
             $watchOnlyCompletion = $enrollment->completed_with_projects === false;
-            if ($earnedRevision > 0 && !($watchOnlyCompletion && $projectsEnabled)) {
+            if ($earnedRevision > 0 && ! ($watchOnlyCompletion && $projectsEnabled)) {
                 return $earnedRevision;
             }
 
@@ -95,7 +94,7 @@ final class CurriculumCompletionService
             ];
             if (Schema::hasColumn('course_enrollments', 'completed_with_projects')) {
                 $completion['completed_with_projects'] = $projectsEnabled;
-            } elseif (!$projectsEnabled) {
+            } elseif (! $projectsEnabled) {
                 // A rolling deployment may not mistake watching for completing
                 // the practical curriculum before its additive scope column exists.
                 return null;
@@ -108,7 +107,7 @@ final class CurriculumCompletionService
 
     public function earnedRevision(CourseEnrollment $enrollment): ?int
     {
-        if (!Schema::hasColumn('course_enrollments', 'completed_curriculum_revision')) {
+        if (! Schema::hasColumn('course_enrollments', 'completed_curriculum_revision')) {
             return null;
         }
 
@@ -123,18 +122,17 @@ final class CurriculumCompletionService
      * Resolve a dashboard page without repeating the same schema probe for
      * every enrollment.
      *
-     * @param Collection<int,CourseEnrollment> $enrollments
+     * @param  Collection<int,CourseEnrollment>  $enrollments
      * @return Collection<int,int> keyed by enrollment id
      */
     public function earnedRevisions(Collection $enrollments): Collection
     {
-        if (!Schema::hasColumn('course_enrollments', 'completed_curriculum_revision')) {
+        if (! Schema::hasColumn('course_enrollments', 'completed_curriculum_revision')) {
             return collect();
         }
 
         return $enrollments
-            ->filter(fn (CourseEnrollment $enrollment): bool =>
-                (int) ($enrollment->completed_curriculum_revision ?? 0) > 0
+            ->filter(fn (CourseEnrollment $enrollment): bool => (int) ($enrollment->completed_curriculum_revision ?? 0) > 0
                     && $enrollment->completed_with_projects !== false
             )
             ->mapWithKeys(fn (CourseEnrollment $enrollment): array => [

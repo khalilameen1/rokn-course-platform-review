@@ -6,10 +6,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\FeedbackAttachment;
-use App\Services\SupportCaseAttachmentDeliveryService;
 use App\Models\FeedbackReport;
 use App\Models\SupportCaseMessage;
 use App\Models\User;
+use App\Services\SupportCaseAttachmentDeliveryService;
 use App\Services\SupportCaseCompensationService;
 use App\Services\SupportCaseService;
 use App\Support\BusinessClock;
@@ -92,20 +92,21 @@ final class FeedbackController extends Controller
             ->concat($feedback->messages->flatMap(fn (SupportCaseMessage $message) => $message->attachments))
             ->unique('id')
             ->each(function (FeedbackAttachment $attachment): void {
-            $available = $attachment->scan_status === 'sanitized';
-            if ($available) {
-                try {
-                    $available = Storage::disk($attachment->disk)->exists($attachment->path);
-                } catch (\Throwable) {
-                    $available = false;
+                $available = $attachment->scan_status === 'sanitized';
+                if ($available) {
+                    try {
+                        $available = Storage::disk($attachment->disk)->exists($attachment->path);
+                    } catch (\Throwable) {
+                        $available = false;
+                    }
                 }
-            }
-            $attachment->setAttribute('is_available', $available);
+                $attachment->setAttribute('is_available', $available);
             });
         $admins = User::query()->where('role', 'admin')->orderBy('name')->get(['id', 'name']);
         $compensableCoins = (int) $feedback->user_id === (int) $feedback->order?->user_id
             ? $compensation->remainingCompensableCoins($feedback->order)
             : 0;
+
         return view('admin.feedback.show', compact('feedback', 'admins', 'compensableCoins'));
     }
 
@@ -149,6 +150,7 @@ final class FeedbackController extends Controller
             'resolution_kind' => ['nullable', Rule::in(['fixed', 'guidance', 'compensated', 'not_reproducible', 'duplicate'])],
         ]);
         $cases->updateState($feedback, $validated, $request->user()?->id);
+
         return back()->with('success', 'تم تحديث الحالة');
     }
 
@@ -171,6 +173,7 @@ final class FeedbackController extends Controller
             $validated['client_request_id'],
             (int) $validated['version']
         );
+
         return back()->with('success', $validated['visibility'] === 'internal' ? 'تم حفظ الملاحظة الداخلية' : 'تم إرسال الرد');
     }
 
@@ -184,12 +187,15 @@ final class FeedbackController extends Controller
             'amount' => 'required|integer|min:1|max:100000000',
             'note' => 'required|string|min:8|max:1000',
         ]);
-        if (!$feedback->order_id) return back()->with('error', 'اربط البلاغ بطلب موثّق أولًا');
+        if (! $feedback->order_id) {
+            return back()->with('error', 'اربط البلاغ بطلب موثّق أولًا');
+        }
         try {
             $compensation->compensate($feedback, $validated, $request->user()?->id);
         } catch (\DomainException|\InvalidArgumentException $exception) {
             return back()->withInput()->with('error', "لا يمكن إضافة هذا التعويض\nتحقق من أن المبلغ لا يتجاوز الحد المتاح");
         }
+
         return back()->with('success', 'أُضيفت العملات إلى محفظة الطالب وربط التعويض بالبلاغ');
     }
 
@@ -197,10 +203,10 @@ final class FeedbackController extends Controller
         FeedbackReport $feedback,
         FeedbackAttachment $attachment,
         SupportCaseAttachmentDeliveryService $delivery
-    ): Response
-    {
+    ): Response {
         abort_unless((int) $attachment->feedback_report_id === (int) $feedback->id, 404);
         $bytes = $delivery->bytes($attachment);
+
         return response($bytes, 200, [
             'Content-Type' => 'image/jpeg',
             'Content-Disposition' => 'inline; filename="'.$feedback->public_id.'.jpg"',

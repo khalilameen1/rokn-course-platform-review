@@ -7,8 +7,8 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\LessonMediaState;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
@@ -26,8 +26,7 @@ final class MediaReconciliationService
         private BunnyService $bunny,
         private MediaHealthService $health,
         private BunnyDeliveryService $delivery
-    ) {
-    }
+    ) {}
 
     /** @return array<string, mixed> */
     public function reconcileCourse(
@@ -86,7 +85,7 @@ final class MediaReconciliationService
     ): array {
         $lesson->loadMissing(['course.photo', 'mediaState']);
         $course = $lesson->course;
-        if (!$course) {
+        if (! $course) {
             return [
                 'lesson_id' => (int) $lesson->id,
                 'playback_status' => 'failed',
@@ -104,7 +103,7 @@ final class MediaReconciliationService
     }
 
     /**
-     * @param array<int, array<string, mixed>> $courseIssues
+     * @param  array<int, array<string, mixed>>  $courseIssues
      * @return array<string, mixed>
      */
     private function inspectLesson(
@@ -116,11 +115,12 @@ final class MediaReconciliationService
         $issues = $courseIssues;
         $state = $lesson->mediaState;
 
-        if (!$lesson->usesBunnyVideo()) {
+        if (! $lesson->usesBunnyVideo()) {
             $issues[] = $this->issue('missing_secure_source', 'quarantined', 'lesson', (int) $lesson->id);
             if ($persist) {
                 $state = $this->health->probe($lesson);
             }
+
             return $this->completeLessonResult($lesson, $state, $issues, $persist);
         }
 
@@ -192,17 +192,17 @@ final class MediaReconciliationService
             $issues[] = $this->issue('thumbnail_unverified', 'attention', 'lesson', (int) $lesson->id);
         } elseif ($fetchManifest && $thumbnail !== '') {
             $signedThumbnail = $this->delivery->storageUrl($thumbnail, 600);
-            if (!$signedThumbnail || !$this->imageIsReadable($signedThumbnail)) {
+            if (! $signedThumbnail || ! $this->imageIsReadable($signedThumbnail)) {
                 $issues[] = $this->issue('thumbnail_delivery_unavailable', 'attention', 'lesson', (int) $lesson->id);
             }
         }
 
         $source = $this->delivery->videoPlayback((string) $lesson->bunny_video_id);
-        if (!$source || trim((string) ($source['url'] ?? '')) === '') {
+        if (! $source || trim((string) ($source['url'] ?? '')) === '') {
             $issues[] = $this->issue('signed_manifest_unavailable', 'quarantined', 'lesson', (int) $lesson->id);
         } elseif ($fetchManifest) {
             $manifestResult = $this->manifestIsReadable((string) $source['url']);
-            if (!$manifestResult['ready']) {
+            if (! $manifestResult['ready']) {
                 $issues[] = $this->issue(
                     (string) $manifestResult['code'],
                     $playbackStatus === 'ready' ? 'attention' : 'quarantined',
@@ -237,9 +237,10 @@ final class MediaReconciliationService
                     ? 'provider_media_missing'
                     : $inspectionState,
             ]);
+
             return $state;
         }
-        if (!$details) {
+        if (! $details) {
             $state->forceFill([
                 'status' => $state->status ?: 'unknown',
                 'last_error_code' => match ($inspectionState) {
@@ -249,6 +250,7 @@ final class MediaReconciliationService
                     default => 'provider_unreachable',
                 },
             ]);
+
             return $state;
         }
 
@@ -260,7 +262,7 @@ final class MediaReconciliationService
         $ready = BunnyService::providerVideoStatusIsPlayable($providerStatus);
         $failed = BunnyService::providerVideoStatusIsFailure($providerStatus);
         $qualities = $resolutions
-            ->map(fn ($value) => str_ends_with($value, 'p') ? $value : $value . 'p')
+            ->map(fn ($value) => str_ends_with($value, 'p') ? $value : $value.'p')
             ->filter(fn ($value) => in_array($value, ['1080p', '720p', '480p', '360p'], true))
             ->prepend('auto')
             ->unique()
@@ -290,7 +292,7 @@ final class MediaReconciliationService
     }
 
     /**
-     * @param array<int, array<string, mixed>> $issues
+     * @param  array<int, array<string, mixed>>  $issues
      * @return array<string, mixed>
      */
     private function completeLessonResult(
@@ -337,8 +339,8 @@ final class MediaReconciliationService
                     ->lockForUpdate()
                     ->first();
                 if (
-                    !$currentLesson
-                    || !$currentState
+                    ! $currentLesson
+                    || ! $currentState
                     || strtolower(trim((string) $currentLesson->bunny_video_id)) !== $observedGuid
                     || strtolower(trim((string) $currentState->provider_media_id)) !== $observedGuid
                     || (int) $currentState->probe_generation !== $observedProbeGeneration
@@ -370,7 +372,7 @@ final class MediaReconciliationService
     private function courseIssues(Course $course): array
     {
         $issues = [];
-        if (!$course->photo && trim((string) $course->getRawOriginal('image')) === '') {
+        if (! $course->photo && trim((string) $course->getRawOriginal('image')) === '') {
             $issues[] = $this->issue('course_cover_missing', 'attention', 'course', (int) $course->id);
         }
 
@@ -403,14 +405,14 @@ final class MediaReconciliationService
                 ->withHeaders(['Accept' => 'application/vnd.apple.mpegurl'])
                 ->get($signedUrl);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return ['ready' => false, 'code' => 'manifest_http_error'];
             }
 
             // Own the raw stream so each read uses the remaining deadline,
             // including compressed responses. Never buffer the full document.
             $stream = $response->toPsrResponse()->getBody()->detach();
-            if (!is_resource($stream)) {
+            if (! is_resource($stream)) {
                 throw new \RuntimeException('Manifest stream unavailable');
             }
             if (in_array(strtolower($response->header('Content-Encoding')), ['gzip', 'deflate'], true)) {
@@ -420,20 +422,20 @@ final class MediaReconciliationService
             }
             $body = '';
             // One lookahead byte preserves the existing truncated-line rule.
-            while (strlen($body) < 8193 && !feof($stream)) {
+            while (strlen($body) < 8193 && ! feof($stream)) {
                 $remaining = $deadline - microtime(true);
                 if ($remaining <= 0) {
                     throw new \RuntimeException('Manifest read timed out');
                 }
                 stream_set_timeout($stream, (int) $remaining, (int) (($remaining - (int) $remaining) * 1_000_000));
                 $chunk = fread($stream, 8193 - strlen($body));
-                if ($chunk === false || ($chunk === '' && !feof($stream))) {
+                if ($chunk === false || ($chunk === '' && ! feof($stream))) {
                     throw new \RuntimeException('Manifest read incomplete');
                 }
                 $body .= $chunk;
             }
             $prefix = substr($body, 0, 8192);
-            if (strlen($body) > strlen($prefix) && !str_ends_with($prefix, "\n")) {
+            if (strlen($body) > strlen($prefix) && ! str_ends_with($prefix, "\n")) {
                 $lastCompleteLine = strrpos($prefix, "\n");
                 $prefix = $lastCompleteLine === false
                     ? ''
@@ -475,6 +477,7 @@ final class MediaReconciliationService
 
             if (str_starts_with($line, '#EXT-X-STREAM-INF:')) {
                 $awaitingUri = trim(substr($line, strlen('#EXT-X-STREAM-INF:'))) !== '';
+
                 continue;
             }
             if (str_starts_with($line, '#EXTINF:')) {
@@ -482,6 +485,7 @@ final class MediaReconciliationService
                 $awaitingUri = $duration !== ''
                     && is_numeric($duration)
                     && (float) $duration > 0;
+
                 continue;
             }
             if (str_starts_with($line, '#')) {

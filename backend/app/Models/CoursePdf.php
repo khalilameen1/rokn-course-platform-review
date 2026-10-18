@@ -28,7 +28,7 @@ class CoursePdf extends Model
         'mime_type',
         'file_extension',
         'order',
-        'is_active'
+        'is_active',
     ];
 
     protected $casts = [
@@ -50,7 +50,7 @@ class CoursePdf extends Model
      */
     public function getFullPathAttribute()
     {
-        if (!$this->hasConfiguredStorage()) {
+        if (! $this->hasConfiguredStorage()) {
             throw new \RuntimeException('Course PDF storage is not configured.');
         }
 
@@ -67,7 +67,7 @@ class CoursePdf extends Model
      */
     public function fileExists()
     {
-        if (!$this->hasConfiguredStorage()) {
+        if (! $this->hasConfiguredStorage()) {
             return false;
         }
 
@@ -84,13 +84,13 @@ class CoursePdf extends Model
         }
         $bytes = $this->file_size;
         if ($bytes >= 1073741824) {
-            return number_format($bytes / 1073741824, 2) . ' GB';
+            return number_format($bytes / 1073741824, 2).' GB';
         } elseif ($bytes >= 1048576) {
-            return number_format($bytes / 1048576, 2) . ' MB';
+            return number_format($bytes / 1048576, 2).' MB';
         } elseif ($bytes >= 1024) {
-            return number_format($bytes / 1024, 2) . ' KB';
+            return number_format($bytes / 1024, 2).' KB';
         } else {
-            return $bytes . ' bytes';
+            return $bytes.' bytes';
         }
     }
 
@@ -102,6 +102,7 @@ class CoursePdf extends Model
         if ($this->fileExists()) {
             return Storage::disk($this->storage_disk)->delete($this->file_path);
         }
+
         return false;
     }
 
@@ -110,7 +111,7 @@ class CoursePdf extends Model
         $disk = trim((string) $this->storage_disk);
         $path = trim((string) $this->file_path);
 
-        return !$this->isExternal() && $disk !== '' && $path !== '' && is_array(config("filesystems.disks.{$disk}"));
+        return ! $this->isExternal() && $disk !== '' && $path !== '' && is_array(config("filesystems.disks.{$disk}"));
     }
 
     /**

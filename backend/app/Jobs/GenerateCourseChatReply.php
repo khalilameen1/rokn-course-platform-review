@@ -5,16 +5,16 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Exceptions\AiProviderUnavailableException;
-use App\Models\AiUsageEvent;
-use App\Models\CourseEnrollment;
-use App\Models\CourseChatTurn;
 use App\Models\AiInputAttachment;
+use App\Models\AiUsageEvent;
+use App\Models\CourseChatTurn;
+use App\Models\CourseEnrollment;
 use App\Models\User;
 use App\Services\AiEntitlementBudgetService;
-use App\Services\AiUsageSettlementService;
 use App\Services\AiFailurePolicy;
 use App\Services\AiInputAttachmentService;
 use App\Services\AiStreamCheckpointService;
+use App\Services\AiUsageSettlementService;
 use App\Services\CourseChatTurnService;
 use App\Services\CourseEntitlementService;
 use App\Services\OpenRouterService;
@@ -36,7 +36,7 @@ use Throwable;
  * The HTTP endpoint creates the durable reservation before dispatch. This
  * job owns only the provider call and settlement for that same request id.
  */
-final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
+final class GenerateCourseChatReply implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -44,13 +44,17 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
     // queue retry is enough for a proven pre-generation transient; three full
     // live-chat attempts made a temporary outage look like a two-minute hang.
     public int $tries = 2;
+
     // Provider streaming may consume the configured 45-second HTTP budget.
     // Keep real headroom for attachment preparation and durable landing after
     // the last byte; otherwise the worker can kill a valid paid answer before
     // it is presented and leave the client polling an unknown outcome.
     public int $timeout = 80;
+
     public int $uniqueFor = 1200;
+
     public bool $failOnTimeout = true;
+
     public string $executionId;
 
     /** @param list<array{role:string,content:string}> $messages */
@@ -75,7 +79,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'course-chat:' . $this->turnId;
+        return 'course-chat:'.$this->turnId;
     }
 
     public function handle(
@@ -90,7 +94,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
         AiFailurePolicy $failurePolicy
     ): void {
         $turn = CourseChatTurn::query()->find($this->turnId);
-        if (!$turn) {
+        if (! $turn) {
             return;
         }
         $event = AiUsageEvent::query()
@@ -100,19 +104,22 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
             ->where('feature', 'course_chat')
             ->first();
         if (
-            !$event
+            ! $event
             || (int) $event->course_id !== (int) $turn->course_id
         ) {
             $turns->fail($turn, 'chat_usage_identity_mismatch');
+
             return;
         }
-        if (!User::query()->whereKey($turn->user_id)->where('active', true)->exists()) {
+        if (! User::query()->whereKey($turn->user_id)->where('active', true)->exists()) {
             $budget->release($event, 'account_deleted_before_provider');
             $turns->fail($turn, 'chat_entitlement_unavailable');
+
             return;
         }
         if ($turn->status === CourseChatTurn::COMPLETED) {
             $paidCalls->markPresented($event);
+
             return;
         }
         if (in_array($turn->status, [
@@ -120,19 +127,21 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
             CourseChatTurn::CANCELLED,
         ], true)) {
             $budget->release($event, 'course_chat_turn_closed');
+
             return;
         }
 
         $enrollment = CourseEnrollment::query()->find($this->enrollmentId);
         if (
-            !$enrollment
+            ! $enrollment
             || (int) $enrollment->user_id !== (int) $turn->user_id
-            || !$courseAccess->enrollmentGrantsCourse($enrollment, (int) $turn->course_id)
-            || !$enrollment->isActive()
-            || !$courseAccess->enrollmentAllowsVariableCostFeatures($enrollment)
+            || ! $courseAccess->enrollmentGrantsCourse($enrollment, (int) $turn->course_id)
+            || ! $enrollment->isActive()
+            || ! $courseAccess->enrollmentAllowsVariableCostFeatures($enrollment)
         ) {
             $budget->release($event, 'chat_entitlement_unavailable');
             $turns->fail($turn, 'chat_entitlement_unavailable');
+
             return;
         }
 
@@ -147,6 +156,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
         if ($ownedAttachments->count() !== $expectedAttachmentCount) {
             $budget->release($event, 'chat_attachment_unavailable');
             $turns->fail($turn, 'chat_attachment_unavailable');
+
             return;
         }
         $providerMessages = $this->messages;
@@ -164,6 +174,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
                 report($exception);
                 $budget->release($event, 'chat_attachment_unreadable');
                 $turns->fail($turn, 'chat_attachment_unreadable');
+
                 return;
             }
         }
@@ -174,6 +185,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
             if ($turns->complete($turn, $accepted, $event)) {
                 $paidCalls->markPresented($event->fresh());
             }
+
             return;
         }
         $landedResult = $paidCalls->landedResult($event);
@@ -191,17 +203,20 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
                     $paidCalls->markPresented($settled?->fresh());
                 }
             }
+
             return;
         }
         if ($event->status !== 'reserved') {
             $turns->fail($turn, 'chat_reservation_unavailable');
+
             return;
         }
         // Presentation can fail before the paid request starts without making
         // the provider outcome ambiguous. Mark the turn first, then claim the
         // single provider execution immediately before the HTTP call.
-        if (!$turns->markStreaming($turn)) {
+        if (! $turns->markStreaming($turn)) {
             $budget->release($event, 'course_chat_turn_closed_before_provider');
+
             return;
         }
         $callState = $paidCalls->beginForActiveUser(
@@ -210,15 +225,19 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
         if ($callState === PaidAiCallExecutionService::CONSENT_REQUIRED) {
             $budget->release($event, 'ai_consent_required');
             $turns->fail($turn, 'ai_consent_required');
+
             return;
         }
         if ($callState === PaidAiCallExecutionService::INACTIVE) {
             $budget->release($event, 'account_deleted_before_provider');
             $turns->fail($turn, 'chat_entitlement_unavailable');
+
             return;
         }
         if ($callState !== PaidAiCallExecutionService::START) {
-            if ($callState === PaidAiCallExecutionService::LIVE) return;
+            if ($callState === PaidAiCallExecutionService::LIVE) {
+                return;
+            }
             $fresh = $event->fresh();
             $landed = $paidCalls->landedResult($fresh);
             if (
@@ -239,6 +258,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
                         $paidCalls->markPresented($settled?->fresh());
                     }
                 }
+
                 return;
             }
             $accepted = trim((string) data_get($fresh?->metadata, 'accepted_response', ''));
@@ -247,6 +267,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
                 if ($turns->complete($turn, $accepted, $fresh)) {
                     $paidCalls->markPresented($fresh->fresh());
                 }
+
                 return;
             }
             if (
@@ -262,6 +283,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
                 $settlements->settleUnknown($fresh, $this->requestContext);
                 $turns->fail($turn, 'chat_provider_outcome_unknown');
             }
+
             return;
         }
         $providerResultKnown = false;
@@ -295,7 +317,9 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
                 (int) $turn->user_id,
                 $result
             );
-            if ($landing === PaidAiCallExecutionService::INACTIVE) return;
+            if ($landing === PaidAiCallExecutionService::INACTIVE) {
+                return;
+            }
             if ($landing !== PaidAiCallExecutionService::LANDED) {
                 throw new \RuntimeException('Provider result landing conflict.');
             }
@@ -304,7 +328,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
             $settlement = $settlements->settleForActiveUser(
                 $event, $result, (int) $turn->user_id
             );
-            if (!AiUsageSettlementService::settlementAllowsDelivery($settlement)) {
+            if (! AiUsageSettlementService::settlementAllowsDelivery($settlement)) {
                 return;
             }
             if ($ownedAttachments->isNotEmpty()) {
@@ -327,7 +351,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
                 'provider_code' => $this->safeDiagnosticCode($exception->providerCode),
                 'retry_safe' => $exception->retrySafe,
                 'outcome_unknown' => $exception->outcomeUnknown,
-                'terminal' => !($exception->retrySafe && $this->attempts() < $this->tries),
+                'terminal' => ! ($exception->retrySafe && $this->attempts() < $this->tries),
             ], static fn (mixed $value): bool => $value !== null));
             if ($ownedAttachments->isNotEmpty() && $exception->fileAnnotations !== []) {
                 $attachments->markProcessed($ownedAttachments, $exception->fileAnnotations);
@@ -340,6 +364,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
             if ($exception->outcomeUnknown) {
                 $settlements->settleUnknown($event, $this->requestContext);
                 $turns->fail($turn, 'chat_provider_outcome_unknown');
+
                 return;
             }
 
@@ -353,6 +378,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
                 if ($turns->complete($turn, $accepted, $settled)) {
                     $paidCalls->markPresented($settled->fresh());
                 }
+
                 return;
             }
 
@@ -415,6 +441,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
                     );
                     if (app(CourseChatTurnService::class)->complete($turn, $accepted, $event)) {
                         app(PaidAiCallExecutionService::class)->markPresented($event->fresh());
+
                         return;
                     }
                 } catch (Throwable $recoveryException) {
@@ -428,6 +455,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
             }
 
             app(CourseChatTurnService::class)->fail($turn, 'chat_settlement_recovery_failed');
+
             return;
         }
         $paidCalls = app(PaidAiCallExecutionService::class);
@@ -459,6 +487,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
             } catch (Throwable $recoveryException) {
                 report($recoveryException);
             }
+
             return;
         }
         if (
@@ -475,6 +504,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
             );
             $turns = app(CourseChatTurnService::class);
             $turns->fail($turn, 'chat_provider_outcome_unknown');
+
             return;
         }
         if ($event?->status === 'reserved') {
@@ -483,5 +513,4 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
         $turns = app(CourseChatTurnService::class);
         $turns->fail($turn, 'ai_temporarily_unavailable');
     }
-
 }

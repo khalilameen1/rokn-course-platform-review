@@ -9,15 +9,10 @@ use App\Models\Lesson;
 /** Learner preview projection of already-published media state; never reconstructs it. */
 final class LessonMediaDeliveryService
 {
-    public function __construct(private readonly BunnyDeliveryService $delivery)
-    {
-    }
+    public function __construct(private readonly BunnyDeliveryService $delivery) {}
 
     /**
      * Get video data for a lesson, including signed URLs if using Bunny
-     *
-     * @param Lesson $lesson
-     * @return array
      */
     public function forLesson(Lesson $lesson): array
     {
@@ -28,7 +23,7 @@ final class LessonMediaDeliveryService
             'bunny_video_expires_at' => null,
         ];
 
-        if ($lesson->video_source_type === 'bunny' && !empty($lesson->bunny_video_id)) {
+        if ($lesson->video_source_type === 'bunny' && ! empty($lesson->bunny_video_id)) {
             $state = $lesson->relationLoaded('mediaState')
                 ? $lesson->mediaState
                 : $lesson->mediaState()->first();
@@ -37,7 +32,7 @@ final class LessonMediaDeliveryService
             // or quarantined. The player then surfaced Bunny's raw domain
             // error. Only a coherently reconciled generation is playable.
             if (
-                !$state
+                ! $state
                 || (string) $state->provider_media_id !== (string) $lesson->bunny_video_id
                 || $state->status !== 'ready'
                 || $state->last_reconciled_at === null

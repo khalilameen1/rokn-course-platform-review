@@ -21,7 +21,7 @@ class CourseEnrollmentEndpointTest extends ApiTestCase
         );
 
         self::assertSame(
-            CoursePurchaseController::class . '@authorizeCourse',
+            CoursePurchaseController::class.'@authorizeCourse',
             $route->getActionName()
         );
     }
@@ -41,13 +41,13 @@ class CourseEnrollmentEndpointTest extends ApiTestCase
     public function test_retired_legacy_upgrade_purchase_endpoints_are_absent(): void
     {
         $this->actingAs($this->user, 'api')
-            ->postJson('/api/v1/courses/' . $this->courseId . '/full-track-upgrade', [])
+            ->postJson('/api/v1/courses/'.$this->courseId.'/full-track-upgrade', [])
             ->assertStatus(405);
         $this->actingAs($this->user, 'api')
-            ->getJson('/api/v1/courses/' . $this->courseId . '/chat-upgrade')
+            ->getJson('/api/v1/courses/'.$this->courseId.'/chat-upgrade')
             ->assertNotFound();
         $this->actingAs($this->user, 'api')
-            ->postJson('/api/v1/courses/' . $this->courseId . '/chat-upgrade', [])
+            ->postJson('/api/v1/courses/'.$this->courseId.'/chat-upgrade', [])
             ->assertNotFound();
     }
 

@@ -78,7 +78,7 @@ final class CourseHeroSelectionConcurrencyTest extends TestCase
 
     private function publishedCourse(bool $main, int $version): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'كورس '.str()->uuid(),

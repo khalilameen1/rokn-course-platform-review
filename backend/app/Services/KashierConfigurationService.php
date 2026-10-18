@@ -10,7 +10,7 @@ final readonly class KashierConfigurationService
     public function get(): array
     {
         $mode = strtolower(trim((string) config('kashier.mode')));
-        if (!in_array($mode, ['live', 'test'], true)) {
+        if (! in_array($mode, ['live', 'test'], true)) {
             throw new \RuntimeException('KASHIER_MODE must be explicitly set to live or test.');
         }
 
@@ -22,19 +22,19 @@ final readonly class KashierConfigurationService
         $missing = [];
 
         if ($apiKey === '') {
-            $missing[] = $prefix . '_API_KEY';
+            $missing[] = $prefix.'_API_KEY';
         }
         if ($secretKey === '') {
-            $missing[] = $prefix . '_SECRET_KEY';
+            $missing[] = $prefix.'_SECRET_KEY';
         }
         if ($mid === '') {
-            $missing[] = $prefix . '_MID';
+            $missing[] = $prefix.'_MID';
         }
         if ($baseUrl === '') {
             $missing[] = 'Kashier checkout base URL';
         }
         if ($missing !== []) {
-            throw new \RuntimeException('Missing Kashier configuration: ' . implode(', ', $missing));
+            throw new \RuntimeException('Missing Kashier configuration: '.implode(', ', $missing));
         }
 
         return [

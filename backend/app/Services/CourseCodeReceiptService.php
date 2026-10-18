@@ -22,7 +22,7 @@ final class CourseCodeReceiptService
             if ((int) $order->course_id !== (int) $course->id
                 || $order->payment_method !== Order::PAYMENT_METHOD_COURSE_CODE
                 || $order->status !== Order::STATUS_APPROVED
-                || !in_array($order->financial_status, [
+                || ! in_array($order->financial_status, [
                     null, '', Order::FINANCIAL_PENDING, Order::FINANCIAL_SETTLED,
                 ], true)
                 || (float) $order->final_amount !== 0.0) {
@@ -39,7 +39,7 @@ final class CourseCodeReceiptService
                 'payment_method' => Order::PAYMENT_METHOD_COURSE_CODE,
                 'amount' => 0, 'discount_amount' => 0, 'final_amount' => 0,
                 'status' => Order::STATUS_APPROVED, 'financial_status' => Order::FINANCIAL_SETTLED,
-                'notes' => 'Course code grant #' . $code->id, 'approved_at' => now(),
+                'notes' => 'Course code grant #'.$code->id, 'approved_at' => now(),
             ]);
         }
 
@@ -53,7 +53,7 @@ final class CourseCodeReceiptService
             'payment_status' => Bill::PAYMENT_STATUS_PAID,
             'payment_method' => Order::PAYMENT_METHOD_COURSE_CODE,
             'paid_at' => $bill->paid_at ?: now(),
-            'notes' => 'Course code grant #' . $code->id, 'deleted_at' => null,
+            'notes' => 'Course code grant #'.$code->id, 'deleted_at' => null,
         ])->save();
 
         return $order;

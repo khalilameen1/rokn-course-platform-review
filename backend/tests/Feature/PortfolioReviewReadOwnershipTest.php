@@ -96,7 +96,7 @@ final class PortfolioReviewReadOwnershipTest extends TestCase
 
         $owner->delete();
         self::assertNull($stale->profile_deeplink);
-        self::assertNull((new User())->profile_deeplink);
+        self::assertNull((new User)->profile_deeplink);
     }
 
     public function test_valid_approval_reads_and_certificate_issuance_do_not_consume_a_revision(): void

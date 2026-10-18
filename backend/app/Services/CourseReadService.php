@@ -10,6 +10,7 @@ use App\Models\Lesson;
 use App\Models\User;
 use Closure;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 
@@ -50,7 +51,7 @@ final readonly class CourseReadService
             ];
         $access = $resolution['entitlement'];
         $mayReadPrivateCourse = (bool) ($access['has_learning_access'] ?? false);
-        $course = $this->loadDetailedCourse($courseId, !$mayReadPrivateCourse);
+        $course = $this->loadDetailedCourse($courseId, ! $mayReadPrivateCourse);
 
         $enrollment = (bool) $access['has_learning_access']
             ? $resolution['enrollment']
@@ -71,7 +72,8 @@ final readonly class CourseReadService
 
     /**
      * @template T of array
-     * @param Closure():T $read
+     *
+     * @param  Closure():T  $read
      * @return array{changed:bool,revision:int|null,data:T|null}
      */
     public function readStablePublishedPayload(int $courseId, Closure $read): array
@@ -108,7 +110,7 @@ final readonly class CourseReadService
             'authoring_version',
             'last_published_authoring_version',
         ]);
-        if (!$course) {
+        if (! $course) {
             return null;
         }
 
@@ -122,12 +124,11 @@ final readonly class CourseReadService
         int $courseId,
         bool $publicOnly = false,
         bool $adminPreview = false
-    ): Course
-    {
+    ): Course {
         $query = Course::query();
         if ($publicOnly) {
             $query = $this->catalogue->constrainPublic($query);
-        } elseif (!$adminPreview) {
+        } elseif (! $adminPreview) {
             $query->where('is_coming_soon', false)
                 ->whereHas('sections');
         }
@@ -179,10 +180,10 @@ final readonly class CourseReadService
             ? $resolution['enrollment']
             : null;
 
-        if (!$enrollment) {
+        if (! $enrollment) {
             $course = Course::query()->withCount('sections')->find($courseId);
-            if (!$course || !$course->isPublishedForLearning()) {
-                throw (new \Illuminate\Database\Eloquent\ModelNotFoundException())
+            if (! $course || ! $course->isPublishedForLearning()) {
+                throw (new ModelNotFoundException)
                     ->setModel(Course::class, [$courseId]);
             }
 
@@ -199,8 +200,8 @@ final readonly class CourseReadService
                 ->orderBy('order'),
         ])->where('is_coming_soon', false)->findOrFail($courseId);
 
-        if (!$course->isPublishedForLearning()) {
-            throw (new \Illuminate\Database\Eloquent\ModelNotFoundException())
+        if (! $course->isPublishedForLearning()) {
+            throw (new ModelNotFoundException)
                 ->setModel(Course::class, [$courseId]);
         }
 
@@ -223,7 +224,7 @@ final readonly class CourseReadService
 
         try {
             return (int) Cache::remember(
-                'course:active-enrollments:v1:' . $this->catalogue->revision() . ':' . (int) $course->id,
+                'course:active-enrollments:v1:'.$this->catalogue->revision().':'.(int) $course->id,
                 self::ENROLLMENT_COUNT_TTL_SECONDS,
                 $count
             );

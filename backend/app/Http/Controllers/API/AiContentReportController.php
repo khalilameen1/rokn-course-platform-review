@@ -10,8 +10,8 @@ use App\Models\FeedbackReport;
 use App\Models\ProjectFeedbackMessage;
 use App\Models\User;
 use App\Services\ApiResponseService;
-use App\Services\SupportCaseService;
 use App\Services\SupportCaseReadService;
+use App\Services\SupportCaseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,8 +26,7 @@ final class AiContentReportController extends Controller
         SupportCaseService $cases,
         ApiResponseService $responses,
         SupportCaseReadService $reads
-    ): JsonResponse
-    {
+    ): JsonResponse {
         $data = $request->validate([
             'scope' => ['required', Rule::in(['course_chat', 'project_feedback'])],
             'course_id' => ['required_if:scope,course_chat', 'integer', 'min:1'],
@@ -51,7 +50,7 @@ final class AiContentReportController extends Controller
             } else {
                 $message = ProjectFeedbackMessage::query()->where('public_id', $data['message_id'])
                     ->where('role', 'assistant')->whereHas('thread', fn ($query) => $query
-                        ->where('user_id', $user->id)->where('public_id', $data['thread_id']))
+                    ->where('user_id', $user->id)->where('public_id', $data['thread_id']))
                     ->with('thread')->firstOrFail();
                 $answer = trim((string) $message->body);
                 $courseId = (int) $message->thread->course_id;
@@ -66,7 +65,9 @@ final class AiContentReportController extends Controller
             $requestId = substr($hash, 0, 8).'-'.substr($hash, 8, 4).'-5'.substr($hash, 13, 3)
                 .'-a'.substr($hash, 17, 3).'-'.substr($hash, 20, 12);
             $existing = FeedbackReport::query()->where('client_request_id', $requestId)->first();
-            if ($existing) return $existing;
+            if ($existing) {
+                return $existing;
+            }
             $body = "إبلاغ عن رد بالذكاء الاصطناعي\n"
                 .(trim((string) ($data['reason'] ?? '')) ?: 'رد غير مناسب أو غير دقيق')
                 ."\n\nالرد المبلّغ عنه:\n".mb_substr($answer, 0, 12000);
@@ -81,8 +82,10 @@ final class AiContentReportController extends Controller
             ]);
             $cases->event($report, $user->id, 'created', null, 'new');
             $cases->appendLearnerMessage($report, $user, $body, $requestId);
+
             return $report;
         }, 3);
+
         return $responses->success($reads->customerPayload($report), 'وصل بلاغك لفريق ركن')
             ->header('Cache-Control', 'no-store');
     }

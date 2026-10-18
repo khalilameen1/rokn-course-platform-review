@@ -11,8 +11,8 @@ use GuzzleHttp\Psr7\FnStream;
 use GuzzleHttp\Psr7\Utils;
 use GuzzleHttp\TransferStats;
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -25,8 +25,7 @@ final class OpenRouterService
     public function __construct(
         private readonly OpenRouterRequestPolicy $requests,
         private readonly OpenRouterResponseDecoder $responses
-    ) {
-    }
+    ) {}
 
     public function chat(
         string $model,
@@ -67,7 +66,7 @@ final class OpenRouterService
             );
         }
 
-        if (!extension_loaded('curl')) {
+        if (! extension_loaded('curl')) {
             throw new AiProviderUnavailableException(
                 false,
                 'AI generation requires the cURL extension.',
@@ -150,7 +149,7 @@ final class OpenRouterService
             );
             if (
                 $exception->outcomeUnknown
-                && !($eventStream?->receivedFragments() ?? false)
+                && ! ($eventStream?->receivedFragments() ?? false)
                 && self::failedBeforeSending($transportStats)
             ) {
                 throw self::notSent($exception);
@@ -160,9 +159,11 @@ final class OpenRouterService
             $eventStream?->flush();
         }
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $failureAnnotations = $response->json('error.metadata.file_annotations');
-            if (!is_array($failureAnnotations)) $failureAnnotations = [];
+            if (! is_array($failureAnnotations)) {
+                $failureAnnotations = [];
+            }
             $providerCode = trim((string) $response->json('error.code'));
             $providerCode = $providerCode !== ''
                 ? substr($providerCode, 0, 80)
@@ -210,7 +211,7 @@ final class OpenRouterService
             // Buffered responses (including Laravel HTTP fakes) use the same
             // decoder. Live cURL responses have already delivered each frame.
             try {
-                if (!$eventStream->receivedFragments()) {
+                if (! $eventStream->receivedFragments()) {
                     $eventStream->append($response->body());
                 }
                 $body = $eventStream->finish();
@@ -253,7 +254,7 @@ final class OpenRouterService
 
     private function generationHandler(?OpenRouterEventStream $stream): callable
     {
-        $handler = new CurlHandler(['handle_factory' => new OpenRouterCurlFactory()]);
+        $handler = new CurlHandler(['handle_factory' => new OpenRouterCurlFactory]);
         if ($stream === null) {
             return $handler;
         }
@@ -278,16 +279,19 @@ final class OpenRouterService
             $options['sink'] = FnStream::decorate($body, [
                 'write' => static function (string $chunk) use ($stream, $body, &$isEventStream, &$decoderFailure): int {
                     try {
-                        if (!$isEventStream) {
+                        if (! $isEventStream) {
                             $written = $body->write($chunk);
                             $stream->rejectJsonError((string) $body);
+
                             return $written;
                         }
                         $stream->append($chunk);
                     } catch (Throwable $exception) {
                         $decoderFailure = $exception;
+
                         return 0;
                     }
+
                     // A terminal SSE marker is enough. Do not wait for a
                     // provider to close a keep-alive connection after DONE.
                     return $stream->completed() ? 0 : strlen($chunk);
@@ -323,7 +327,7 @@ final class OpenRouterService
      * A refused connect can surface as a connect timeout (errno 28), so the
      * missing TCP connection, not the error number, is the evidence.
      *
-     * @param array<string,int|float> $transportStats
+     * @param  array<string,int|float>  $transportStats
      */
     private static function failedBeforeSending(array $transportStats): bool
     {
@@ -384,7 +388,7 @@ final class OpenRouterService
     {
         try {
             return Cache::has(self::CIRCUIT_KEY);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Cache failure is already visible in operational health. It must
             // not turn an otherwise usable AI provider into a false outage.
             return false;
@@ -399,7 +403,7 @@ final class OpenRouterService
                 ['reason' => $reason, 'opened_at' => now()->toIso8601String()],
                 now()->addSeconds(max(60, $seconds))
             );
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             Log::warning('OpenRouter circuit could not be opened.', [
                 'reason' => $reason,
                 'exception' => $exception::class,
@@ -411,7 +415,7 @@ final class OpenRouterService
     {
         try {
             Cache::forget(self::CIRCUIT_KEY);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Successful student output is never failed by monitoring state.
         }
     }

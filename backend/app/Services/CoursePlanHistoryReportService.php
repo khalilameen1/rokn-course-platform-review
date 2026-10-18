@@ -16,8 +16,7 @@ final readonly class CoursePlanHistoryReportService
     public function __construct(
         private CourseCashAttributionService $cash,
         private CommercialLearnerSummaryService $summaries,
-    ) {
-    }
+    ) {}
 
     public function emptyMetrics(): array
     {
@@ -38,8 +37,8 @@ final readonly class CoursePlanHistoryReportService
      * The caller supplies period orders and their already-read ledger evidence.
      * Usage contracts may predate the period, so those are queried separately.
      *
-     * @param Collection<int, Order> $orders
-     * @param Collection<string, array<string, mixed>> $plans
+     * @param  Collection<int, Order>  $orders
+     * @param  Collection<string, array<string, mixed>>  $plans
      * @return Collection<string, array<string, mixed>>
      */
     public function forPeriod(
@@ -50,11 +49,10 @@ final readonly class CoursePlanHistoryReportService
         Collection $coinAllocations,
         Collection $plans,
     ): Collection {
-        $groups = $orders->groupBy(fn (Order $order): string =>
-            trim((string) data_get($order->access_plan_snapshot, 'code')) ?: 'unattributed'
+        $groups = $orders->groupBy(fn (Order $order): string => trim((string) data_get($order->access_plan_snapshot, 'code')) ?: 'unattributed'
         );
         foreach ($groups as $code => $planOrders) {
-            if (!$plans->has($code)) {
+            if (! $plans->has($code)) {
                 $plans->put($code, $this->summaries->forRows(collect()) + [
                     'plan_code' => $code,
                     'plan_name' => $code === 'unattributed' ? 'فئة تاريخية غير موثقة'
@@ -63,13 +61,13 @@ final readonly class CoursePlanHistoryReportService
             }
         }
         $ai = $this->historicalAiByPlan($course, $period);
-        if (!$ai['complete'] && !$plans->has('unattributed')) {
+        if (! $ai['complete'] && ! $plans->has('unattributed')) {
             $plans->put('unattributed', $this->summaries->forRows(collect()) + [
                 'plan_code' => 'unattributed', 'plan_name' => 'فئة تاريخية غير موثقة',
             ]);
         }
         foreach (array_keys($ai['plans']) as $code) {
-            if (!$plans->has($code)) {
+            if (! $plans->has($code)) {
                 $plans->put($code, $this->summaries->forRows(collect()) + [
                     'plan_code' => $code, 'plan_name' => $code,
                 ]);
@@ -83,13 +81,12 @@ final readonly class CoursePlanHistoryReportService
             $metrics = $this->emptyMetrics();
             $metrics['students'] = $planOrders->pluck('user_id')->unique()->count();
             foreach (['paid_coins', 'reward_coins'] as $metric) {
-                $metrics[$metric] = (int) $planOrders->sum(fn (Order $order): int =>
-                    (int) data_get($coinAllocations->get((int) $order->id), $metric, 0)
+                $metrics[$metric] = (int) $planOrders->sum(fn (Order $order): int => (int) data_get($coinAllocations->get((int) $order->id), $metric, 0)
                 );
             }
             $metrics['cash_gross_egp'] = $cash['cash_gross_complete'] ? $cash['cash_gross_egp'] : null;
             $metrics['cash_net_egp'] = $cash['cash_net_complete'] ? $cash['cash_net_known_egp'] : null;
-            if (!$planOrders->every(fn (Order $order): bool => (bool) data_get($coinAllocations->get((int) $order->id), 'complete', false))) {
+            if (! $planOrders->every(fn (Order $order): bool => (bool) data_get($coinAllocations->get((int) $order->id), 'complete', false))) {
                 foreach (['paid_coins', 'reward_coins', 'cash_gross_egp', 'cash_net_egp'] as $metric) {
                     $metrics[$metric] = null;
                 }
@@ -107,7 +104,7 @@ final readonly class CoursePlanHistoryReportService
                 }
             }
             $plan['period_metrics'] = $metrics;
-            $plan['historical_attribution_complete'] = !$unattributedPurchases && $ai['complete'];
+            $plan['historical_attribution_complete'] = ! $unattributedPurchases && $ai['complete'];
 
             return $plan;
         });
@@ -131,22 +128,22 @@ final readonly class CoursePlanHistoryReportService
                 && (float) $event->cost_usd >= 0;
             $cached = $source === 'cache_zero_cost' && $event->cost_usd !== null
                 && (float) $event->cost_usd === 0.0;
-            if ($event->status !== 'completed' && !$providerCost) {
+            if ($event->status !== 'completed' && ! $providerCost) {
                 continue;
             }
-            $contract = $contracts->get($event->user_id, collect())->first(fn (Order $order): bool =>
-                $event->access_plan_id !== null
+            $contract = $contracts->get($event->user_id, collect())->first(fn (Order $order): bool => $event->access_plan_id !== null
                 && (int) $order->access_plan_id === (int) $event->access_plan_id
                 && $order->approved_at <= $event->created_at
             );
             $code = trim((string) data_get($contract?->access_plan_snapshot, 'code'));
             if ($code === '') {
                 $complete = false;
+
                 continue;
             }
             $plans[$code] ??= ['ai_requests' => 0, 'ai_tokens' => 0, 'ai_cost_usd' => 0.0];
             if ($event->status === 'completed') {
-                if (!in_array(data_get($event->metadata, 'entitlement_delivered', true), [false, 0, 'false', '0'], true)) {
+                if (! in_array(data_get($event->metadata, 'entitlement_delivered', true), [false, 0, 'false', '0'], true)) {
                     $plans[$code]['ai_requests']++;
                 }
                 $plans[$code]['ai_tokens'] += (int) $event->total_tokens;
@@ -155,7 +152,7 @@ final readonly class CoursePlanHistoryReportService
                 if ($plans[$code]['ai_cost_usd'] !== null) {
                     $plans[$code]['ai_cost_usd'] = round($plans[$code]['ai_cost_usd'] + (float) $event->cost_usd, 6);
                 }
-            } elseif (!$cached) {
+            } elseif (! $cached) {
                 $plans[$code]['ai_cost_usd'] = null;
             }
         }

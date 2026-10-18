@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Http\Requests\Admin\AdminNotificationRequest;
 use App\Jobs\SendUserPushNotification;
 use App\Jobs\SendWhatsAppMessage;
 use App\Models\CoinEarningMethod;
@@ -16,12 +17,13 @@ use App\Models\RewardRule;
 use App\Models\Setting;
 use App\Models\StudentNotification;
 use App\Models\User;
-use App\Services\WelcomeRewardService;
 use App\Services\WelcomeRewardOfferService;
+use App\Services\WelcomeRewardService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
 
 final class EngagementExperienceTest extends TestCase
@@ -65,14 +67,14 @@ final class EngagementExperienceTest extends TestCase
 
     public function test_guest_template_body_can_be_empty_without_weakening_other_templates(): void
     {
-        $request = \App\Http\Requests\Admin\AdminNotificationRequest::create('/admin/templates', 'PUT', ['system_key' => 'guest_registration_prompt']);
+        $request = AdminNotificationRequest::create('/admin/templates', 'PUT', ['system_key' => 'guest_registration_prompt']);
         $rules = $request->rules();
-        self::assertTrue(\Illuminate\Support\Facades\Validator::make(
+        self::assertTrue(Validator::make(
             ['description_ar' => ''], ['description_ar' => $rules['description_ar']]
         )->passes());
         $request->merge(['system_key' => 'new_course']);
         $rules = $request->rules();
-        self::assertFalse(\Illuminate\Support\Facades\Validator::make(
+        self::assertFalse(Validator::make(
             ['description_ar' => ''], ['description_ar' => $rules['description_ar']]
         )->passes());
     }
@@ -84,7 +86,7 @@ final class EngagementExperienceTest extends TestCase
         $method = CoinEarningMethod::query()->where('action_key', 'link_whatsapp')->firstOrFail();
 
         $start = $this->withToken($token)
-            ->postJson('/api/v1/coin-earning-methods/' . $method->id . '/start')
+            ->postJson('/api/v1/coin-earning-methods/'.$method->id.'/start')
             ->assertOk()
             ->assertJsonPath('data.task_state', 'started');
         $actionUrl = (string) $start->json('data.action_url');
@@ -98,20 +100,20 @@ final class EngagementExperienceTest extends TestCase
         // URL carry the shared token. Exercise that production contract here;
         // the header and nested payload variants remain backwards compatible.
         $first = $this->postJson('/api/v1/whatsapp/webhook?token=engagement-test-webhook-secret', [
-                'from' => '201012345678',
-                'message' => $message,
-                'message_id' => 'whatspie-message-1',
-            ])->assertOk()
+            'from' => '201012345678',
+            'message' => $message,
+            'message_id' => 'whatspie-message-1',
+        ])->assertOk()
             ->assertJsonPath('matched', true)
             ->assertJsonPath('already_claimed', false);
         self::assertSame((int) $method->coins_amount, (int) $first->json('coins_added'));
         Queue::assertPushed(SendWhatsAppMessage::class);
 
         $this->postJson('/api/v1/whatsapp/webhook?token=engagement-test-webhook-secret', [
-                'from' => '201012345678',
-                'message' => $message,
-                'message_id' => 'whatspie-message-1',
-            ])->assertOk()
+            'from' => '201012345678',
+            'message' => $message,
+            'message_id' => 'whatspie-message-1',
+        ])->assertOk()
             ->assertJsonPath('matched', true)
             ->assertJsonPath('already_claimed', true)
             ->assertJsonPath('coins_added', 0);
@@ -135,7 +137,7 @@ final class EngagementExperienceTest extends TestCase
     {
         $this->postJson('/api/v1/whatsapp/webhook', [
             'sender' => '201012345678',
-            'message' => ['text' => 'ROKN_LINK_' . str_repeat('a', 48)],
+            'message' => ['text' => 'ROKN_LINK_'.str_repeat('a', 48)],
         ])->assertUnauthorized();
     }
 
@@ -410,7 +412,7 @@ final class EngagementExperienceTest extends TestCase
         self::assertArrayNotHasKey('claim_available_at', $task);
 
         $start = $this->withToken($token)
-            ->postJson('/api/v1/coin-earning-methods/' . $task['id'] . '/start')
+            ->postJson('/api/v1/coin-earning-methods/'.$task['id'].'/start')
             ->assertOk()
             ->assertJsonPath('data.task_state', 'started');
         self::assertSame('المهمة جاهزة', $start->json('message'));
@@ -490,7 +492,7 @@ final class EngagementExperienceTest extends TestCase
             'role' => 'client',
             'active' => true,
             'social_provider' => $provider,
-            'social_id' => $provider . ':' . $email,
+            'social_id' => $provider.':'.$email,
             'wallet_coins' => 0,
             'wallet_purchased_coins' => 0,
             'wallet_reward_coins' => 0,

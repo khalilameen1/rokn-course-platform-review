@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\CourseAuthoringRevision;
+use App\Models\Lesson;
 use App\Models\PaymentMethod;
 use App\Models\WalletTransaction;
+use App\Services\AppReleasePolicyService;
 use App\Services\ArabicSearchNormalizer;
 use App\Services\CertificateTextTemplateService;
-use App\Services\SocialAuthProviderRegistry;
+use App\Services\CourseRevisionResolver;
 use App\Services\RecoveryEvidenceService;
-use App\Services\AppReleasePolicyService;
+use App\Services\SocialAuthProviderRegistry;
 use App\Support\PaymentEvidencePath;
 use App\Support\StorageWriteOptions;
 use Illuminate\Console\Command;
@@ -39,13 +42,13 @@ class ProductionPreflight extends Command
                 ...$this->pendingMigrationFailures(),
                 ...$this->requiredProductSchemaFailures(),
             ];
-            if (!(bool) $this->option('allow-mixed-release')) {
+            if (! (bool) $this->option('allow-mixed-release')) {
                 $failures = [...$failures, ...$this->releaseOverlapFailures()];
             }
         } else {
             $failures = $this->configurationFailures();
 
-            if (!(bool) $this->option('configuration-only')) {
+            if (! (bool) $this->option('configuration-only')) {
                 $failures = [
                     ...$failures,
                     ...$this->pendingMigrationFailures(),
@@ -57,7 +60,7 @@ class ProductionPreflight extends Command
                     ...$this->financialProvenanceFailures(),
                     ...$this->recoveryEvidenceFailures(),
                 ];
-                if (!(bool) $this->option('allow-mixed-release')) {
+                if (! (bool) $this->option('allow-mixed-release')) {
                     $failures = [...$failures, ...$this->releaseOverlapFailures()];
                 }
             }
@@ -70,7 +73,7 @@ class ProductionPreflight extends Command
         if ($failures !== []) {
             $this->error('Rokn production preflight failed:');
             foreach ($failures as $failure) {
-                $this->line(' - ' . $failure);
+                $this->line(' - '.$failure);
             }
 
             return self::FAILURE;
@@ -118,8 +121,8 @@ class ProductionPreflight extends Command
     private function staleCourseSearchCount(): int
     {
         if (
-            !Schema::hasTable('courses')
-            || !Schema::hasColumns('courses', [
+            ! Schema::hasTable('courses')
+            || ! Schema::hasColumns('courses', [
                 'name_ar', 'name_en', 'description_ar', 'description_en',
                 'search_keywords_ar', 'search_keywords_en',
                 'search_title_normalized', 'search_terms_normalized',
@@ -152,11 +155,11 @@ class ProductionPreflight extends Command
                 $course->search_keywords_en,
             ], static fn ($value): bool => trim((string) $value) !== ''));
             if (
-                !hash_equals(
+                ! hash_equals(
                     (string) $course->search_title_normalized,
                     $normalizer->normalize($title)
                 )
-                || !hash_equals(
+                || ! hash_equals(
                     (string) $course->search_terms_normalized,
                     $normalizer->normalize($terms)
                 )
@@ -177,7 +180,7 @@ class ProductionPreflight extends Command
             $ran = array_fill_keys($migrator->getRepository()->getRan(), true);
             $pending = array_values(array_filter(
                 array_keys($files),
-                static fn (string $migration): bool => !isset($ran[$migration])
+                static fn (string $migration): bool => ! isset($ran[$migration])
             ));
 
             return $pending === []
@@ -206,7 +209,7 @@ class ProductionPreflight extends Command
         $failures = [];
         foreach ($readiness['required_channels'] as $channel) {
             $status = $readiness['channels'][$channel] ?? null;
-            if (!(bool) ($status['ready'] ?? false)) {
+            if (! (bool) ($status['ready'] ?? false)) {
                 $failures[] = sprintf(
                     'Mobile release channel %s is not launch-ready (%s). Publish an active release with the correct build identity and official URL.',
                     $channel,
@@ -272,7 +275,7 @@ class ProductionPreflight extends Command
         foreach ($families as $family => $tables) {
             $missing = array_values(array_filter(
                 $tables,
-                static fn (string $table): bool => !Schema::hasTable($table)
+                static fn (string $table): bool => ! Schema::hasTable($table)
             ));
             if ($missing !== []) {
                 $failures[] = sprintf(
@@ -416,12 +419,12 @@ class ProductionPreflight extends Command
             ],
         ];
         foreach ($requiredColumns as $table => $columns) {
-            if (!Schema::hasTable($table)) {
+            if (! Schema::hasTable($table)) {
                 continue;
             }
             $missing = array_values(array_filter(
                 $columns,
-                static fn (string $column): bool => !Schema::hasColumn($table, $column)
+                static fn (string $column): bool => ! Schema::hasColumn($table, $column)
             ));
             if ($missing !== []) {
                 $failures[] = sprintf(
@@ -433,24 +436,24 @@ class ProductionPreflight extends Command
         }
         if (Schema::hasTable('user_device_tokens')
             && Schema::hasColumn('user_device_tokens', 'device_id')
-            && !Schema::hasIndex('user_device_tokens', ['device_id'], 'unique')) {
+            && ! Schema::hasIndex('user_device_tokens', ['device_id'], 'unique')) {
             $failures[] = 'Push installation ownership is not unique. Run the notification delivery migration before release.';
         }
         if (Schema::hasTable('course_checkouts')) {
             foreach (['public_id', 'funding_order_id', 'course_order_id'] as $column) {
-                if (!Schema::hasIndex('course_checkouts', [$column], 'unique')) {
+                if (! Schema::hasIndex('course_checkouts', [$column], 'unique')) {
                     $failures[] = "Course checkout {$column} ownership is not unique. Run the checkout migration before release.";
                 }
             }
         }
         if (Schema::hasTable('certificates')
             && Schema::hasColumns('certificates', ['user_id', 'course_id'])
-            && !Schema::hasIndex('certificates', ['user_id', 'course_id'], 'unique')) {
+            && ! Schema::hasIndex('certificates', ['user_id', 'course_id'], 'unique')) {
             $failures[] = 'Certificate issuance is not unique per learner and course. Run all certificate migrations before release.';
         }
         if (Schema::hasTable('certificates')
             && Schema::hasColumn('certificates', 'public_id')
-            && !Schema::hasIndex('certificates', ['public_id'], 'unique')) {
+            && ! Schema::hasIndex('certificates', ['public_id'], 'unique')) {
             $failures[] = 'Certificate public verification IDs are not unique. Run all certificate migrations before release.';
         }
 
@@ -462,7 +465,7 @@ class ProductionPreflight extends Command
     {
         $failures = [];
         $require = static function (bool $condition, string $message) use (&$failures): void {
-            if (!$condition) {
+            if (! $condition) {
                 $failures[] = $message;
             }
         };
@@ -532,10 +535,10 @@ class ProductionPreflight extends Command
         $publicStorageUrlValid = is_array($publicStorageUrlParts)
             && strtolower((string) ($publicStorageUrlParts['scheme'] ?? '')) === 'https'
             && filled($publicStorageUrlParts['host'] ?? null)
-            && !isset($publicStorageUrlParts['user'])
-            && !isset($publicStorageUrlParts['pass'])
-            && !isset($publicStorageUrlParts['query'])
-            && !isset($publicStorageUrlParts['fragment']);
+            && ! isset($publicStorageUrlParts['user'])
+            && ! isset($publicStorageUrlParts['pass'])
+            && ! isset($publicStorageUrlParts['query'])
+            && ! isset($publicStorageUrlParts['fragment']);
         $feedbackDiskConfig = config('filesystems.disks.feedback');
         $paymentEvidenceDisk = trim((string) config('payment_evidence.disk'));
         $paymentEvidenceDiskConfig = $paymentEvidenceDisk !== ''
@@ -595,7 +598,7 @@ class ProductionPreflight extends Command
             config('demo.seed_enabled') === false,
             'ROKN_SEED_DEMO must be false in production.'
         );
-        $require($appKey !== '' && !str_contains($appKey, 'AAAAAAA'), 'APP_KEY must be a real, non-placeholder key.');
+        $require($appKey !== '' && ! str_contains($appKey, 'AAAAAAA'), 'APP_KEY must be a real, non-placeholder key.');
         $require(
             trim((string) config('operations.recovery_encryption_key_id')) !== '',
             'RECOVERY_ENCRYPTION_KEY_ID must identify the APP_KEY generation used by encrypted production data.'
@@ -605,7 +608,7 @@ class ProductionPreflight extends Command
             'RECOVERY_EVIDENCE_SIGNING_KEY must be a separate stable secret of at least 32 characters.'
         );
         $require(
-            $recoverySigningKey === '' || !hash_equals($appKey, $recoverySigningKey),
+            $recoverySigningKey === '' || ! hash_equals($appKey, $recoverySigningKey),
             'RECOVERY_EVIDENCE_SIGNING_KEY must not reuse APP_KEY.'
         );
         $recoveryEvidenceDriver = is_array($recoveryEvidenceDiskConfig)
@@ -635,11 +638,11 @@ class ProductionPreflight extends Command
         $require(
             str_starts_with($appUrl, 'https://')
                 && $appHost !== ''
-                && !in_array($appHost, ['localhost', 'example.com', 'api.example.com'], true),
+                && ! in_array($appHost, ['localhost', 'example.com', 'api.example.com'], true),
             'APP_URL must be the real public HTTPS API origin.'
         );
         $require(
-            $appDomain !== '' && !in_array($appDomain, ['localhost', 'example.com'], true),
+            $appDomain !== '' && ! in_array($appDomain, ['localhost', 'example.com'], true),
             'APP_DOMAIN must be the real public application domain.'
         );
         $require(
@@ -650,7 +653,7 @@ class ProductionPreflight extends Command
         );
         $require(config('app.timezone') === 'UTC', 'APP_TIMEZONE must be UTC.');
         $require(config('app.business_timezone') === 'Africa/Cairo', 'BUSINESS_TIMEZONE must be Africa/Cairo.');
-        $databaseTimezone = (string) config('database.connections.' . config('database.default') . '.timezone');
+        $databaseTimezone = (string) config('database.connections.'.config('database.default').'.timezone');
         $require(
             in_array($databaseTimezone, ['+00:00', 'UTC'], true),
             'DB_TIMEZONE must be UTC (+00:00).'
@@ -662,16 +665,16 @@ class ProductionPreflight extends Command
             'APP_TRUSTED_HOSTS must contain explicit non-local public hosts, including the APP_URL host.'
         );
         $require(
-            !$requiresAndroidLinks || $this->validAndroidPackage($androidPackage),
+            ! $requiresAndroidLinks || $this->validAndroidPackage($androidPackage),
             'APP_LINK_ANDROID_PACKAGE must be the real Android application ID while an Android release channel is enabled.'
         );
         $require(
-            !$requiresAndroidLinks || ($androidFingerprints !== []
+            ! $requiresAndroidLinks || ($androidFingerprints !== []
                 && collect($androidFingerprints)->every(fn (string $value): bool => $this->validAndroidFingerprint($value))),
             'APP_LINK_ANDROID_SHA256_FINGERPRINTS must contain valid colon-separated SHA-256 signing fingerprints while an Android release channel is enabled.'
         );
         $require(
-            !($requiresAppleLinks || $declaredSocialProviders->contains('apple'))
+            ! ($requiresAppleLinks || $declaredSocialProviders->contains('apple'))
                 || ($appleAppIds !== []
                     && collect($appleAppIds)->every(fn (string $value): bool => $this->validAppleAppId($value))),
             'APP_LINK_APPLE_APP_IDS must contain valid Team-ID and bundle-ID pairs while Apple sign-in or the App Store channel is enabled.'
@@ -681,7 +684,7 @@ class ProductionPreflight extends Command
             'SOCIAL_AUTH_PUBLIC_API_URL must be the real public HTTPS API prefix ending in /api/v1.'
         );
         $require(
-            !$socialPublicApiValid || in_array($socialPublicApiHost, $trustedHosts, true),
+            ! $socialPublicApiValid || in_array($socialPublicApiHost, $trustedHosts, true),
             'APP_TRUSTED_HOSTS must include the SOCIAL_AUTH_PUBLIC_API_URL host.'
         );
         $require(
@@ -737,7 +740,7 @@ class ProductionPreflight extends Command
             'TRUSTED_PROXIES must contain explicit edge IPs/CIDRs, or use * with TRUSTED_PROXIES_ALLOW_DYNAMIC_EDGE=true only on a managed private origin.'
         );
         $require(
-            $redisHost !== '' && !in_array($redisHost, ['127.0.0.1', 'localhost'], true),
+            $redisHost !== '' && ! in_array($redisHost, ['127.0.0.1', 'localhost'], true),
             'REDIS_HOST must point to the shared production Redis service.'
         );
 
@@ -782,8 +785,8 @@ class ProductionPreflight extends Command
                 is_array($whatsAppApiParts)
                     && strtolower((string) ($whatsAppApiParts['scheme'] ?? '')) === 'https'
                     && filled($whatsAppApiParts['host'] ?? null)
-                    && !isset($whatsAppApiParts['user'])
-                    && !isset($whatsAppApiParts['pass']),
+                    && ! isset($whatsAppApiParts['user'])
+                    && ! isset($whatsAppApiParts['pass']),
                 'WHATSPIE_API_URL must be a real HTTPS provider endpoint.'
             );
             $require($this->configured('whatsapp.whatspie.api_key'), 'WHATSPIE_API_KEY is required for WhatsApp replies.');
@@ -837,7 +840,7 @@ class ProductionPreflight extends Command
         );
         $bindingKey = trim((string) config('store_billing.account_binding_key'));
         $require(
-            $bindingKey !== '' && !hash_equals(trim((string) config('app.key')), $bindingKey),
+            $bindingKey !== '' && ! hash_equals(trim((string) config('app.key')), $bindingKey),
             'STORE_BILLING_ACCOUNT_BINDING_KEY must be its own secret; rotating APP_KEY must not orphan in-flight store purchases.'
         );
         $require(
@@ -901,11 +904,11 @@ class ProductionPreflight extends Command
         );
 
         $require(
-            !in_array(config('projects.submission_disk'), ['local', 'public', null, ''], true),
+            ! in_array(config('projects.submission_disk'), ['local', 'public', null, ''], true),
             'PROJECT_SUBMISSION_DISK must be a private shared disk.'
         );
         $require(
-            !in_array(config('certificate.disk'), ['local', 'public', null, ''], true),
+            ! in_array(config('certificate.disk'), ['local', 'public', null, ''], true),
             'CERTIFICATE_DISK must be a shared disk.'
         );
         $require(
@@ -947,27 +950,27 @@ class ProductionPreflight extends Command
         $require(
             $publicDiskDriver !== 's3'
                 || $privateBucket === ''
-                || !hash_equals($privateBucket, $publicBucket),
+                || ! hash_equals($privateBucket, $publicBucket),
             'PUBLIC_AWS_BUCKET must be separate from the private AWS_BUCKET.'
         );
         $require(
             $publicDiskDriver !== 's3'
                 || $privateStorageUrl === ''
-                || !hash_equals(strtolower($privateStorageUrl), strtolower($publicStorageUrl)),
+                || ! hash_equals(strtolower($privateStorageUrl), strtolower($publicStorageUrl)),
             'PUBLIC_AWS_URL must not reuse the private AWS_URL.'
         );
         $require(
-            !in_array($coursePdfDisk, ['', 'local', 'public'], true) && is_array($coursePdfDiskConfig),
+            ! in_array($coursePdfDisk, ['', 'local', 'public'], true) && is_array($coursePdfDiskConfig),
             'COURSE_PDF_DISK must name a configured private shared disk.'
         );
         $require(
-            !is_array($coursePdfDiskConfig)
+            ! is_array($coursePdfDiskConfig)
                 || $coursePdfDriver === 's3'
                 || ($coursePdfDiskConfig['visibility'] ?? null) !== 'public',
             'COURSE_PDF_DISK must not have public visibility.'
         );
         $require(
-            !is_array($coursePdfDiskConfig)
+            ! is_array($coursePdfDiskConfig)
                 || $coursePdfDriver !== 'local'
                 || config('course_pdfs.shared_storage') === true,
             'A local-driver COURSE_PDF_DISK requires COURSE_PDF_SHARED_STORAGE=true and a shared mounted path.'
@@ -1079,7 +1082,7 @@ class ProductionPreflight extends Command
 
             if (Schema::hasTable('course_pdfs')) {
                 $targetDisk = trim((string) config('course_pdfs.disk'));
-                if (!Schema::hasColumn('course_pdfs', 'storage_disk')) {
+                if (! Schema::hasColumn('course_pdfs', 'storage_disk')) {
                     $legacyCount = DB::table('course_pdfs')->count();
                 } else {
                     $legacyCount = DB::table('course_pdfs')
@@ -1126,7 +1129,7 @@ class ProductionPreflight extends Command
                 ['table' => 'portfolio_media', 'column' => 'file_path', 'label' => 'portfolio image'],
                 ['table' => 'lessons', 'column' => 'thumbnail_path', 'label' => 'lesson thumbnail'],
             ] as $asset) {
-                if (!Schema::hasTable($asset['table']) || !Schema::hasColumn($asset['table'], $asset['column'])) {
+                if (! Schema::hasTable($asset['table']) || ! Schema::hasColumn($asset['table'], $asset['column'])) {
                     continue;
                 }
 
@@ -1156,13 +1159,15 @@ class ProductionPreflight extends Command
      * The cleanup worker checks all references before deleting a stored object.
      * Collapse only recorded lesson lineage, never unrelated lessons/courses.
      *
-     * @param list<string> $paths
+     * @param  list<string>  $paths
      */
     private function duplicateLessonThumbnailCount(array $paths): int
     {
-        if ($paths === []) return 0;
-        if (!Schema::hasTable('course_authoring_revisions')
-            || !Schema::hasColumns('course_authoring_revision_entities', [
+        if ($paths === []) {
+            return 0;
+        }
+        if (! Schema::hasTable('course_authoring_revisions')
+            || ! Schema::hasColumns('course_authoring_revision_entities', [
                 'entity_type', 'course_authoring_revision_id', 'source_entity_id',
                 'revision_entity_id', 'learner_root_entity_id', 'carries_learner_state',
             ])) {
@@ -1173,19 +1178,20 @@ class ProductionPreflight extends Command
             ->get(['id', 'thumbnail_path']);
         $draftSources = DB::table('course_authoring_revision_entities as entities')
             ->join('course_authoring_revisions as revisions', 'revisions.id', '=', 'entities.course_authoring_revision_id')
-            ->where('entities.entity_type', \App\Models\Lesson::class)
-            ->where('revisions.status', \App\Models\CourseAuthoringRevision::DRAFT)
+            ->where('entities.entity_type', Lesson::class)
+            ->where('revisions.status', CourseAuthoringRevision::DRAFT)
             ->whereIn('entities.revision_entity_id', $lessons->pluck('id'))
             ->pluck('entities.source_entity_id', 'entities.revision_entity_id');
-        $currentIds = app(\App\Services\CourseRevisionResolver::class)
+        $currentIds = app(CourseRevisionResolver::class)
             ->currentLearnerEntityMap(
-                \App\Models\Lesson::class,
+                Lesson::class,
                 $lessons->pluck('id')->merge($draftSources->values())
             );
 
         return $lessons->groupBy('thumbnail_path')->filter(
             static fn ($group): bool => $group->map(static function ($lesson) use ($draftSources, $currentIds): int {
                 $source = (int) $draftSources->get($lesson->id, $lesson->id);
+
                 return $currentIds[$source] ?? $source;
             })->unique()->count() > 1
         )->count();
@@ -1227,11 +1233,11 @@ class ProductionPreflight extends Command
                             ->timeout(6)
                             ->withoutRedirecting()
                             ->get($redirectUrl);
-                        if (!$this->validAndroidAssociation($association)) {
+                        if (! $this->validAndroidAssociation($association)) {
                             $failures[] = 'The branded app-link redirect does not terminate on the configured Android contract.';
                         }
                     }
-                } elseif (!$this->validAndroidAssociation($association)) {
+                } elseif (! $this->validAndroidAssociation($association)) {
                     $failures[] = 'The branded public host does not serve the configured Android app-link contract.';
                 }
             } catch (Throwable) {
@@ -1247,7 +1253,7 @@ class ProductionPreflight extends Command
                 'pgsql' => (string) (DB::selectOne("SELECT current_setting('TIMEZONE') AS timezone")->timezone ?? ''),
                 default => '',
             };
-            if (!in_array(strtoupper($databaseTimezone), ['+00:00', 'UTC', 'ETC/UTC'], true)) {
+            if (! in_array(strtoupper($databaseTimezone), ['+00:00', 'UTC', 'ETC/UTC'], true)) {
                 $failures[] = 'The live database session timezone is not UTC.';
             }
         } catch (Throwable) {
@@ -1265,7 +1271,9 @@ class ProductionPreflight extends Command
             ]
         ))));
         foreach ($privateDisks as $diskName) {
-            if (!is_array(config("filesystems.disks.{$diskName}"))) continue;
+            if (! is_array(config("filesystems.disks.{$diskName}"))) {
+                continue;
+            }
             $failure = $this->privateStorageProbeFailure(
                 $diskName,
                 "The configured private shared disk {$diskName} is not reachable."
@@ -1283,8 +1291,8 @@ class ProductionPreflight extends Command
             $failures[] = $feedbackFailure;
         }
 
-        $publicProbe = 'preflight/' . bin2hex(random_bytes(8)) . '.txt';
-        $publicToken = 'rokn-public-storage-' . bin2hex(random_bytes(12));
+        $publicProbe = 'preflight/'.bin2hex(random_bytes(8)).'.txt';
+        $publicToken = 'rokn-public-storage-'.bin2hex(random_bytes(12));
         try {
             $public = Storage::disk('public');
             $public->put(
@@ -1294,7 +1302,7 @@ class ProductionPreflight extends Command
             );
             $url = $public->url($publicProbe);
             $response = Http::connectTimeout(3)->timeout(8)->get($url);
-            if (!$response->successful() || !hash_equals($publicToken, $response->body())) {
+            if (! $response->successful() || ! hash_equals($publicToken, $response->body())) {
                 $failures[] = 'The durable public-image disk writes objects but does not deliver them through its public URL.';
             }
         } catch (Throwable) {
@@ -1307,7 +1315,7 @@ class ProductionPreflight extends Command
             }
         }
 
-        $key = 'preflight:' . bin2hex(random_bytes(8));
+        $key = 'preflight:'.bin2hex(random_bytes(8));
         try {
             Cache::put($key, 'ok', 15);
             if (Cache::get($key) !== 'ok') {
@@ -1331,7 +1339,7 @@ class ProductionPreflight extends Command
         $lastFailure = null;
 
         for ($attempt = 1; $attempt <= 3; $attempt++) {
-            $probe = 'preflight/' . bin2hex(random_bytes(8)) . '.txt';
+            $probe = 'preflight/'.bin2hex(random_bytes(8)).'.txt';
             try {
                 $disk = Storage::disk($diskName);
                 $written = $disk->put(
@@ -1349,7 +1357,7 @@ class ProductionPreflight extends Command
                     '[redacted-url]',
                     str_replace(["\r", "\n"], ' ', $exception->getMessage())
                 );
-                $lastFailure = class_basename($exception) . ': ' . substr((string) $detail, 0, 180);
+                $lastFailure = class_basename($exception).': '.substr((string) $detail, 0, 180);
                 Storage::forgetDisk($diskName);
             } finally {
                 try {
@@ -1364,18 +1372,18 @@ class ProductionPreflight extends Command
             }
         }
 
-        return $message . ' [' . ($lastFailure ?? 'unknown') . ']';
+        return $message.' ['.($lastFailure ?? 'unknown').']';
     }
 
     /** @return list<string> */
     private function publishedVideoFailures(): array
     {
-        if (!Schema::hasTable('courses')
-            || !Schema::hasTable('course_sections')
-            || !Schema::hasTable('lessons')
-            || !Schema::hasColumn('courses', 'is_coming_soon')
-            || !Schema::hasColumn('lessons', 'video_source_type')
-            || !Schema::hasColumn('lessons', 'bunny_video_id')) {
+        if (! Schema::hasTable('courses')
+            || ! Schema::hasTable('course_sections')
+            || ! Schema::hasTable('lessons')
+            || ! Schema::hasColumn('courses', 'is_coming_soon')
+            || ! Schema::hasColumn('lessons', 'video_source_type')
+            || ! Schema::hasColumn('lessons', 'bunny_video_id')) {
             return ['Published-video audit cannot run until the current content schema is migrated.'];
         }
 
@@ -1384,7 +1392,7 @@ class ProductionPreflight extends Command
                 ->join('courses', 'courses.id', '=', 'sections.course_id')
                 ->join('lessons', function ($join): void {
                     $join->on('lessons.id', '=', 'sections.sectionable_id')
-                        ->where('sections.sectionable_type', '=', \App\Models\Lesson::class);
+                        ->where('sections.sectionable_type', '=', Lesson::class);
                 })
                 ->where('courses.is_coming_soon', false)
                 ->whereNull('sections.deleted_at')
@@ -1422,7 +1430,7 @@ class ProductionPreflight extends Command
             }
         }
         foreach (['payment_reconciliation_checkpoints', 'payment_reconciliation_findings'] as $table) {
-            if (!Schema::hasTable($table)) {
+            if (! Schema::hasTable($table)) {
                 $releaseFailures[] = implode(' ', [
                     'Payment provider reconciliation tables are missing.',
                     'Run the current forward migrations before release.',
@@ -1431,7 +1439,7 @@ class ProductionPreflight extends Command
                 break;
             }
         }
-        if (!Schema::hasTable('financial_anomalies')) {
+        if (! Schema::hasTable('financial_anomalies')) {
             $releaseFailures[] = 'Financial anomaly isolation is missing. Run the current forward migrations before release.';
         }
 
@@ -1441,7 +1449,7 @@ class ProductionPreflight extends Command
             'financial_entitlement_holds',
         ];
         foreach ($required as $table) {
-            if (!Schema::hasTable($table)) {
+            if (! Schema::hasTable($table)) {
                 return [
                     ...$releaseFailures,
                     'Financial provenance tables are missing. Run migrations and finance:backfill-provenance --apply before release.',
@@ -1449,9 +1457,9 @@ class ProductionPreflight extends Command
             }
         }
         if (
-            !Schema::hasTable('orders')
-            || !Schema::hasTable('wallet_transactions')
-            || !Schema::hasTable('users')
+            ! Schema::hasTable('orders')
+            || ! Schema::hasTable('wallet_transactions')
+            || ! Schema::hasTable('users')
         ) {
             return [
                 ...$releaseFailures,
@@ -1613,9 +1621,9 @@ class ProductionPreflight extends Command
         $hostname = strtolower(trim($hostname));
 
         return $hostname !== ''
-            && !str_contains($hostname, ':')
-            && !str_contains($hostname, '/')
-            && !str_contains($hostname, '@')
+            && ! str_contains($hostname, ':')
+            && ! str_contains($hostname, '/')
+            && ! str_contains($hostname, '@')
             && $this->validPublicHost($hostname);
     }
 
@@ -1625,7 +1633,7 @@ class ProductionPreflight extends Command
         if ($proxy === '' || in_array($proxy, ['*', '0.0.0.0/0', '::/0'], true)) {
             return false;
         }
-        if (!str_contains($proxy, '/')) {
+        if (! str_contains($proxy, '/')) {
             return filter_var($proxy, FILTER_VALIDATE_IP) !== false;
         }
         [$network, $prefix] = array_pad(explode('/', $proxy, 2), 2, null);
@@ -1649,7 +1657,7 @@ class ProductionPreflight extends Command
 
     private function validAndroidAssociation(Response $response): bool
     {
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             return false;
         }
 
@@ -1663,17 +1671,17 @@ class ProductionPreflight extends Command
         )));
         sort($expectedFingerprints);
 
-        if (!$this->validAndroidPackage($expectedPackage) || $expectedFingerprints === []) {
+        if (! $this->validAndroidPackage($expectedPackage) || $expectedFingerprints === []) {
             return false;
         }
 
         foreach ((array) $response->json() as $statement) {
             $target = is_array($statement) ? ($statement['target'] ?? null) : null;
-            if (!is_array($target)
-                || !is_array($statement['relation'] ?? null)
-                || !in_array('delegate_permission/common.handle_all_urls', $statement['relation'], true)
+            if (! is_array($target)
+                || ! is_array($statement['relation'] ?? null)
+                || ! in_array('delegate_permission/common.handle_all_urls', $statement['relation'], true)
                 || ($target['namespace'] ?? null) !== 'android_app'
-                || !hash_equals($expectedPackage, trim((string) ($target['package_name'] ?? '')))) {
+                || ! hash_equals($expectedPackage, trim((string) ($target['package_name'] ?? '')))) {
                 continue;
             }
 
@@ -1703,16 +1711,16 @@ class ProductionPreflight extends Command
         }
 
         $parts = parse_url($url);
-        if (!is_array($parts)) {
+        if (! is_array($parts)) {
             return false;
         }
 
         return strtolower((string) ($parts['scheme'] ?? '')) === 'https'
             && $this->validPublicHost((string) ($parts['host'] ?? ''))
-            && !isset($parts['user'])
-            && !isset($parts['pass'])
-            && !isset($parts['query'])
-            && !isset($parts['fragment'])
+            && ! isset($parts['user'])
+            && ! isset($parts['pass'])
+            && ! isset($parts['query'])
+            && ! isset($parts['fragment'])
             && rtrim((string) ($parts['path'] ?? ''), '/') === '/api/v1';
     }
 
@@ -1724,7 +1732,7 @@ class ProductionPreflight extends Command
     private function validPublicHost(string $host): bool
     {
         $host = strtolower(trim($host));
-        if ($host === '' || str_contains($host, ':') || !str_contains($host, '.')) {
+        if ($host === '' || str_contains($host, ':') || ! str_contains($host, '.')) {
             return false;
         }
 
@@ -1746,7 +1754,7 @@ class ProductionPreflight extends Command
             }
         }
 
-        return !in_array($host, [
+        return ! in_array($host, [
             'localhost',
             'example.com',
             'example.net',

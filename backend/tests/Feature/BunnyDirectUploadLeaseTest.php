@@ -10,8 +10,8 @@ use App\Models\BunnyVideoCleanupCandidate;
 use App\Models\Course;
 use App\Models\User;
 use App\Services\BunnyDirectUploadService;
-use App\Services\BunnyService;
 use App\Services\BunnyMediaRegistry;
+use App\Services\BunnyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -97,7 +97,7 @@ final class BunnyDirectUploadLeaseTest extends TestCase
         $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
         $bunny->shouldReceive('findVideoGuidsByTitleMarker')
             ->once()
-            ->with('[rokn:' . $key . ']')
+            ->with('[rokn:'.$key.']')
             ->andReturn([]);
         $bunny->shouldReceive('createVideo')->once()->andReturn([
             'guid' => $guid,

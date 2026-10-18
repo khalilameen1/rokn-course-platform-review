@@ -18,8 +18,7 @@ final readonly class AdminLevelAuthoringService
     public function __construct(
         private StoredFileUploadService $uploads,
         private StoredFileDeletionService $cleanup
-    ) {
-    }
+    ) {}
 
     /** @param array<string,mixed> $data @param Closure(Level):void $complete */
     public function create(array $data, string $requestId, ?UploadedFile $image, Closure $complete): Level
@@ -40,7 +39,9 @@ final readonly class AdminLevelAuthoringService
                 return $level;
             }, 3);
         } catch (\Throwable $exception) {
-            if ($path !== null) $this->cleanup->deleteOrQueue('public', $path);
+            if ($path !== null) {
+                $this->cleanup->deleteOrQueue('public', $path);
+            }
             throw $exception;
         }
     }
@@ -52,7 +53,7 @@ final readonly class AdminLevelAuthoringService
         try {
             DB::transaction(function () use ($id, $data, $expected, $path): void {
                 $level = Level::query()->whereKey($id)->lockForUpdate()->firstOrFail();
-                if (!hash_equals(LevelEditorVersion::for($level), $expected)) {
+                if (! hash_equals(LevelEditorVersion::for($level), $expected)) {
                     throw ValidationException::withMessages([
                         'editor_version' => "عدّل شخص آخر هذا المستوى\nأعد تحميل الصفحة قبل الحفظ",
                     ]);
@@ -68,7 +69,9 @@ final readonly class AdminLevelAuthoringService
                 }
             }, 3);
         } catch (\Throwable $exception) {
-            if ($path !== null) $this->cleanup->deleteOrQueue('public', $path);
+            if ($path !== null) {
+                $this->cleanup->deleteOrQueue('public', $path);
+            }
             throw $exception;
         }
     }
@@ -78,7 +81,9 @@ final readonly class AdminLevelAuthoringService
     {
         return DB::transaction(function () use ($id): bool {
             $level = Level::query()->whereKey($id)->lockForUpdate()->firstOrFail();
-            if ($level->courses()->exists() || $level->users()->exists()) return false;
+            if ($level->courses()->exists() || $level->users()->exists()) {
+                return false;
+            }
             $legacy = (string) ($level->badge_image ?? '');
             $level->delete();
             $this->retireLegacyImage($legacy);
@@ -89,9 +94,13 @@ final readonly class AdminLevelAuthoringService
 
     private function stageImage(?UploadedFile $image, ?string $identity = null): ?string
     {
-        if ($image === null) return null;
+        if ($image === null) {
+            return null;
+        }
         $path = $this->uploads->storeTrackedUpload($image, 'levels', 'public', 60, $identity);
-        if ($path === '') throw new \RuntimeException('Level badge storage failed');
+        if ($path === '') {
+            throw new \RuntimeException('Level badge storage failed');
+        }
 
         return $path;
     }
@@ -99,7 +108,9 @@ final readonly class AdminLevelAuthoringService
     private function retireLegacyImage(string $path): void
     {
         $path = ltrim(trim($path), '/');
-        if ($path === '' || filter_var($path, FILTER_VALIDATE_URL) || str_starts_with($path, 'assets/')) return;
+        if ($path === '' || filter_var($path, FILTER_VALIDATE_URL) || str_starts_with($path, 'assets/')) {
+            return;
+        }
         $this->cleanup->deleteOrQueue('public', $path);
     }
 

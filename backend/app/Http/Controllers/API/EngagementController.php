@@ -34,16 +34,22 @@ final class EngagementController extends Controller
             'access_plan_code' => ['sometimes', 'required', 'string', 'max:40'],
         ]);
         $context = isset($input['course_id']) || isset($input['access_plan_code']);
-        if ($context && (!isset($input['course_id']) || !isset($input['access_plan_code']))) {
+        if ($context && (! isset($input['course_id']) || ! isset($input['access_plan_code']))) {
             throw ValidationException::withMessages(['course_id' => ['سياق الاشتراك غير مكتمل']]);
         }
         $candidate = DB::transaction(function () use ($user, $input, $context, $quotes, $wallet, $tasks): ?array {
-            if (!$user->active) return null;
+            if (! $user->active) {
+                return null;
+            }
             $terms = null;
             if ($context) {
-                if (!NotificationDeliveryPolicy::allowsInbox($user, 'coin_offer')) return null;
+                if (! NotificationDeliveryPolicy::allowsInbox($user, 'coin_offer')) {
+                    return null;
+                }
                 // Never turn payment recovery into a reward-task detour.
-                if (CourseCheckout::query()->where('user_id', $user->id)->awaitingSettlement()->exists()) return null;
+                if (CourseCheckout::query()->where('user_id', $user->id)->awaitingSettlement()->exists()) {
+                    return null;
+                }
                 try {
                     // Read projection, not CourseCheckoutService::create: no
                     // checkout, order, debit or enrollment is created here.
@@ -52,24 +58,32 @@ final class EngagementController extends Controller
                         'access_plan_code' => $input['access_plan_code'],
                         'mode' => 'purchase', 'channel' => 'direct',
                     ], false, false);
-                } catch (\DomainException | ModelNotFoundException | ValidationException) {
+                } catch (\DomainException|ModelNotFoundException|ValidationException) {
                     return null;
                 }
-                if ($terms['reward_opportunity_coins'] <= 0) return null;
+                if ($terms['reward_opportunity_coins'] <= 0) {
+                    return null;
+                }
             }
             $balances = $terms['wallet'] ?? $wallet->balances($user);
             $method = $tasks->next($user, $wallet->rewardCreditRoom((int) $balances['reward']));
+
             return $method ? ['method' => $method, 'terms' => $terms] : null;
         });
-        if (!$candidate) return $responses->success(null, 'لا توجد رسالة الآن');
+        if (! $candidate) {
+            return $responses->success(null, 'لا توجد رسالة الآن');
+        }
         $method = $candidate['method'];
         $message = $messages->publicMessage('coin_offer', [
             'task' => $method->learnerTitleAr(), 'coins' => (int) $method->coins_amount,
         ]);
-        if (!$message) return $responses->success(null, 'رسائل العملات متوقفة الآن');
+        if (! $message) {
+            return $responses->success(null, 'رسائل العملات متوقفة الآن');
+        }
         $terms = $candidate['terms'];
+
         return $responses->success(array_replace($message, [
-            'campaign_key' => 'coin-offer:' . $method->id,
+            'campaign_key' => 'coin-offer:'.$method->id,
             'task_id' => (string) $method->id,
             'action_key' => (string) $method->action_key,
             'link' => '/wallet',

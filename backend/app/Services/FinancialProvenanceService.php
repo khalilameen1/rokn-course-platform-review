@@ -25,20 +25,19 @@ final readonly class FinancialProvenanceService
     public function __construct(
         private WalletService $wallet,
         private CourseEnrollmentWriter $enrollments
-    ) {
-    }
+    ) {}
 
     public function recordPaidPackageCredit(
         Order $packageOrder,
         WalletTransaction $credit
     ): WalletCreditLot {
-        if (!FinancialProvenanceSchema::available()) {
+        if (! FinancialProvenanceSchema::available()) {
             // Paid credits require complete source attribution.
             throw new FinancialProvenanceException('Financial provenance is not ready.');
         }
 
         if (
-            !$packageOrder->package_id
+            ! $packageOrder->package_id
             || $packageOrder->status !== Order::STATUS_APPROVED
             || (int) $credit->user_id !== (int) $packageOrder->user_id
             || $credit->direction !== WalletTransaction::DIRECTION_CREDIT
@@ -113,12 +112,12 @@ final readonly class FinancialProvenanceService
         if ($paidAmount === 0) {
             return null;
         }
-        if (!FinancialProvenanceSchema::available()) {
+        if (! FinancialProvenanceSchema::available()) {
             throw new FinancialProvenanceException('Financial provenance is not ready.');
         }
         if (
             $originalDebit->direction !== WalletTransaction::DIRECTION_DEBIT
-            || !in_array($originalDebit->category, [
+            || ! in_array($originalDebit->category, [
                 'course_purchase',
                 'course_chat_upgrade',
                 'course_full_track_upgrade',
@@ -127,7 +126,7 @@ final readonly class FinancialProvenanceService
             || $compensation->direction !== WalletTransaction::DIRECTION_CREDIT
             || $compensation->category !== 'course_service_compensation'
             || $compensation->source_type !== Order::class
-            || !$compensation->source_id
+            || ! $compensation->source_id
             || (int) $compensation->user_id !== (int) $originalDebit->user_id
             || $paidAmount > (int) $originalDebit->paid_amount
             || (string) data_get($compensation->metadata, 'refunded_transaction_id')
@@ -155,7 +154,7 @@ final readonly class FinancialProvenanceService
                 ->where('payment_method', Order::PAYMENT_METHOD_WALLET_COINS)
                 ->lockForUpdate()
                 ->first();
-            if (!$courseOrder) {
+            if (! $courseOrder) {
                 throw new FinancialProvenanceException(
                     'Paid compensation is not bound to its course order.'
                 );
@@ -205,14 +204,14 @@ final readonly class FinancialProvenanceService
         if ($paidAmount === 0) {
             return;
         }
-        if (!FinancialProvenanceSchema::available()) {
+        if (! FinancialProvenanceSchema::available()) {
             throw new FinancialProvenanceException('Financial provenance is not ready.');
         }
         if (
-            !$courseOrder->course_id
+            ! $courseOrder->course_id
             || (int) $courseOrder->user_id !== (int) $debit->user_id
             || $debit->direction !== WalletTransaction::DIRECTION_DEBIT
-            || !in_array($debit->category, [
+            || ! in_array($debit->category, [
                 'course_purchase',
                 'course_chat_upgrade',
                 'course_full_track_upgrade',
@@ -241,8 +240,7 @@ final readonly class FinancialProvenanceService
             if ($existing->isNotEmpty()) {
                 if (
                     (int) $existing->sum('amount') !== $paidAmount
-                    || $existing->contains(fn (WalletDebitAllocation $allocation): bool =>
-                        (int) $allocation->course_order_id !== (int) $courseOrder->id
+                    || $existing->contains(fn (WalletDebitAllocation $allocation): bool => (int) $allocation->course_order_id !== (int) $courseOrder->id
                         || (int) $allocation->amount <= 0
                         || $allocation->entitlement_scope !== $entitlementScope
                     )
@@ -307,11 +305,11 @@ final readonly class FinancialProvenanceService
         if (trim($eventKey) === '') {
             throw new \InvalidArgumentException('A package reversal requires its financial event key.');
         }
-        if (!FinancialProvenanceSchema::available()) {
+        if (! FinancialProvenanceSchema::available()) {
             throw new FinancialProvenanceException('Financial provenance is not ready.');
         }
         if (
-            !$packageOrder->package_id
+            ! $packageOrder->package_id
             || $packageOrder->status !== Order::STATUS_APPROVED
         ) {
             throw new FinancialProvenanceException('Only an approved package order can be reversed.');
@@ -324,7 +322,7 @@ final readonly class FinancialProvenanceService
             ->where('source_order_id', $packageOrder->id)
             ->lockForUpdate()
             ->first();
-        if (!$lot) {
+        if (! $lot) {
             // A reversal requires its original paid-credit lot.
             throw new FinancialProvenanceException(
                 'Paid package order has no provenance lot; run the finance backfill.'
@@ -335,7 +333,7 @@ final readonly class FinancialProvenanceService
             ->lockForUpdate()
             ->first();
         if (
-            !$credit
+            ! $credit
             || (int) $lot->user_id !== (int) $packageOrder->user_id
             || (int) $lot->source_order_id !== (int) $packageOrder->id
             || (int) $lot->original_amount !== (int) $packageOrder->package_coins
@@ -379,7 +377,7 @@ final readonly class FinancialProvenanceService
                 (int) $user->id,
                 $recoverable,
                 'package_reversal',
-                'financial-reversal:paid-lot:' . $lot->id . ':' . $reversalCycle,
+                'financial-reversal:paid-lot:'.$lot->id.':'.$reversalCycle,
                 $packageOrder,
                 ['source_order_id' => $packageOrder->id],
                 0
@@ -416,7 +414,7 @@ final readonly class FinancialProvenanceService
                 ->whereNotNull('course_id')
                 ->lockForUpdate()
                 ->first();
-            if (!$courseOrder) {
+            if (! $courseOrder) {
                 continue;
             }
 
@@ -437,7 +435,7 @@ final readonly class FinancialProvenanceService
                 $enrollmentQuery->where('order_id', $courseOrder->id);
             }
             $enrollment = $enrollmentQuery->lockForUpdate()->first();
-            if (!$enrollment && $priorPlanHold?->enrollment_id) {
+            if (! $enrollment && $priorPlanHold?->enrollment_id) {
                 // All lots in one plan debit share the same enrollment hold.
                 $enrollment = CourseEnrollment::query()
                     ->whereKey($priorPlanHold->enrollment_id)
@@ -448,7 +446,7 @@ final readonly class FinancialProvenanceService
             }
 
             // Unrelated replacement entitlements remain active.
-            if (!$enrollment) {
+            if (! $enrollment) {
                 continue;
             }
 
@@ -460,7 +458,7 @@ final readonly class FinancialProvenanceService
                     ->where('course_id', $courseOrder->course_id)
                     ->lockForUpdate()
                     ->first();
-                if (!$parentPlanOrder) {
+                if (! $parentPlanOrder) {
                     throw new FinancialProvenanceException(
                         'Plan upgrade has no valid parent order; reversal requires manual reconciliation.'
                     );
@@ -494,7 +492,7 @@ final readonly class FinancialProvenanceService
                 : null;
             $financialCertificateId = $certificate?->id;
             $certificateRevokedAt = $certificate ? now() : null;
-            if (!$financialCertificateId && $entitlementScope === 'course') {
+            if (! $financialCertificateId && $entitlementScope === 'course') {
                 $financialCertificateId = $priorFinancialHold?->certificate_id;
                 $certificateRevokedAt = $priorFinancialHold?->certificate_revoked_at;
             }
@@ -569,13 +567,13 @@ final readonly class FinancialProvenanceService
         ?int $actorId,
         ?string $note = null
     ): array {
-        if (!in_array($resolution, [
+        if (! in_array($resolution, [
             FinancialEntitlementHold::RESOLUTION_REPAID,
             FinancialEntitlementHold::RESOLUTION_WAIVED,
         ], true)) {
             throw new \InvalidArgumentException('Invalid financial resolution.');
         }
-        if (!FinancialProvenanceSchema::available()) {
+        if (! FinancialProvenanceSchema::available()) {
             throw new FinancialProvenanceException('Financial provenance is not ready.');
         }
 
@@ -608,13 +606,13 @@ final readonly class FinancialProvenanceService
             // retain their original restore key without rewriting ledger rows.
             $reversalCycle = data_get($lot->metadata, 'reversal_cycle');
             if ($reversalCycle !== null && (
-                !is_string($reversalCycle)
-                || !preg_match('/\A[a-f0-9]{64}\z/', $reversalCycle)
+                ! is_string($reversalCycle)
+                || ! preg_match('/\A[a-f0-9]{64}\z/', $reversalCycle)
             )) {
                 throw new FinancialProvenanceException('Invalid package reversal cycle provenance.');
             }
-            $restoreKey = 'financial-resolution:restore-paid-lot:' . $lot->id
-                . ($reversalCycle !== null ? ':' . $reversalCycle : '');
+            $restoreKey = 'financial-resolution:restore-paid-lot:'.$lot->id
+                .($reversalCycle !== null ? ':'.$reversalCycle : '');
             $restoredCoins = 0;
             if ($resolution === FinancialEntitlementHold::RESOLUTION_REPAID) {
                 $restoredCoins = max(0, (int) $lot->recovered_amount);
@@ -658,7 +656,7 @@ final readonly class FinancialProvenanceService
                     ->exists();
                 if (
                     $hold->entitlement_scope === 'course'
-                    && !$hasAnotherHold
+                    && ! $hasAnotherHold
                     && $hold->enrollment_id
                     && $hold->enrollment_deactivated_at
                 ) {
@@ -675,7 +673,7 @@ final readonly class FinancialProvenanceService
                 }
                 if (
                     $hold->entitlement_scope === 'course'
-                    && !$hasAnotherHold
+                    && ! $hasAnotherHold
                     && $hold->certificate_id
                 ) {
                     Certificate::query()
@@ -690,7 +688,7 @@ final readonly class FinancialProvenanceService
                 }
                 if (
                     $hold->entitlement_scope === 'plan'
-                    && !$hasAnotherHold
+                    && ! $hasAnotherHold
                     && $hold->enrollment_id
                     && $hold->plan_reverted_at
                 ) {
@@ -699,7 +697,7 @@ final readonly class FinancialProvenanceService
                         ->where('user_id', $hold->user_id)
                         ->where('course_id', $hold->course_id)
                         ->first();
-                    if (!$planOrder || !$planOrder->parent_order_id) {
+                    if (! $planOrder || ! $planOrder->parent_order_id) {
                         throw new FinancialProvenanceException(
                             'Resolved plan hold has no valid upgrade lineage.'
                         );

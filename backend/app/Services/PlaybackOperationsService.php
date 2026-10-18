@@ -20,15 +20,13 @@ use Throwable;
  */
 final class PlaybackOperationsService
 {
-    public function __construct(private PlaybackMetricsService $metrics)
-    {
-    }
+    public function __construct(private PlaybackMetricsService $metrics) {}
 
     /** @return array<string, mixed> */
     public function snapshot(int $recentLimit = 30): array
     {
         $empty = $this->emptySnapshot();
-        if (!$this->schemaIsReady()) {
+        if (! $this->schemaIsReady()) {
             return $empty;
         }
 
@@ -75,18 +73,19 @@ final class PlaybackOperationsService
             ];
         } catch (Throwable $exception) {
             report($exception);
+
             return $empty;
         }
     }
 
     public function isStale(object $session, ?Carbon $at = null): bool
     {
-        if (!empty($session->ended_at)) {
+        if (! empty($session->ended_at)) {
             return false;
         }
 
         $lastSeen = $session->last_heartbeat_at ?: $session->started_at;
-        if (!$lastSeen) {
+        if (! $lastSeen) {
             return true;
         }
 
@@ -97,7 +96,7 @@ final class PlaybackOperationsService
 
     private function schemaIsReady(): bool
     {
-        if (!Schema::hasTable('playback_sessions')) {
+        if (! Schema::hasTable('playback_sessions')) {
             return false;
         }
 
@@ -107,7 +106,7 @@ final class PlaybackOperationsService
             'last_error_code', 'last_position_seconds', 'duration_seconds',
             'source_protocol',
         ] as $column) {
-            if (!Schema::hasColumn('playback_sessions', $column)) {
+            if (! Schema::hasColumn('playback_sessions', $column)) {
                 return false;
             }
         }
@@ -219,7 +218,7 @@ final class PlaybackOperationsService
     /**
      * Adds editorial labels without selecting a learner or delivery URL.
      *
-     * @param Collection<int, object> $rows
+     * @param  Collection<int, object>  $rows
      * @return Collection<int, array<string, mixed>>
      */
     private function attachLessonLabels(Collection $rows): Collection
@@ -332,7 +331,7 @@ final class PlaybackOperationsService
     /** @return array<string, mixed>|null */
     private function rollupSummary(): ?array
     {
-        if (!Schema::hasTable('playback_metric_rollups')) {
+        if (! Schema::hasTable('playback_metric_rollups')) {
             return null;
         }
 

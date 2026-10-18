@@ -26,9 +26,9 @@ final class CourseCashAttributionService
     }
 
     /**
-     * @param Collection<int, Order> $orders
-     * @param Collection<int, Collection<int, WalletDebitAllocation>> $allocationsByOrder
-     * @param Collection<int, array{total_coins:int,paid_coins:int,reward_coins:int,complete:bool}> $coinAllocationsByOrder
+     * @param  Collection<int, Order>  $orders
+     * @param  Collection<int, Collection<int, WalletDebitAllocation>>  $allocationsByOrder
+     * @param  Collection<int, array{total_coins:int,paid_coins:int,reward_coins:int,complete:bool}>  $coinAllocationsByOrder
      * @return array<string, mixed>
      */
     public function forOrders(
@@ -50,7 +50,7 @@ final class CourseCashAttributionService
                 'paid_coins' => 0,
                 'complete' => false,
             ]);
-            if (!(bool) $coinAllocation['complete']) {
+            if (! (bool) $coinAllocation['complete']) {
                 $reconciliationMissing = true;
             }
             $orderAllocatedCoins = 0;
@@ -64,7 +64,7 @@ final class CourseCashAttributionService
                 }
 
                 if (
-                    !$source
+                    ! $source
                     && (string) data_get($lot?->metadata, 'provenance_type')
                         === 'course_service_compensation'
                 ) {
@@ -75,9 +75,10 @@ final class CourseCashAttributionService
                         'تعويض خدمة بلا تحصيل جديد'
                     );
                     $channels['service_compensation']['paid_coins'] += $coins;
+
                     continue;
                 }
-                if (!$source) {
+                if (! $source) {
                     continue;
                 }
 
@@ -89,11 +90,12 @@ final class CourseCashAttributionService
                     );
                     $channels['unreconciled']['paid_coins'] += $coins;
                     $reconciliationMissing = true;
+
                     continue;
                 }
 
                 if ($source->gateway_settlement_status === 'test_purchase') {
-                    $testChannel = (string) $source->payment_method . '_test';
+                    $testChannel = (string) $source->payment_method.'_test';
                     $channels[$testChannel] ??= $this->emptyChannel(
                         $testChannel,
                         match ($source->payment_method) {
@@ -104,6 +106,7 @@ final class CourseCashAttributionService
                         }
                     );
                     $channels[$testChannel]['paid_coins'] += $coins;
+
                     continue;
                 }
 
@@ -137,6 +140,7 @@ final class CourseCashAttributionService
                     $channels[$method]['gross_complete'] = false;
                     $channels[$method]['net_complete'] = false;
                     $reconciliationMissing = true;
+
                     continue;
                 }
                 if ($sourceCurrency !== 'EGP') {
@@ -148,6 +152,7 @@ final class CourseCashAttributionService
                     $channels[$method]['net_complete'] = false;
                     $channels[$method]['gross_complete'] = false;
                     $reconciliationMissing = true;
+
                     continue;
                 }
                 if ($sourceGrossKnown) {
@@ -195,7 +200,7 @@ final class CourseCashAttributionService
             ),
             'cash_net_known_egp' => round($netKnown, 2),
             'cash_pending_settlement_egp' => round($pendingGross, 2),
-            'cash_net_complete' => $pendingGross < 0.005 && !$reconciliationMissing,
+            'cash_net_complete' => $pendingGross < 0.005 && ! $reconciliationMissing,
             'allocated_paid_coins' => $allocatedCoins,
             'cash_foreign_currency_amounts' => collect($foreignCurrencyAmounts)
                 ->map(fn (float $amount): float => round($amount, 2))
@@ -235,4 +240,5 @@ final class CourseCashAttributionService
             'net_complete' => $complete,
             'foreign_currency_amounts' => [],
         ];
-    }}
+    }
+}

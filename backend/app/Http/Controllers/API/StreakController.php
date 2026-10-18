@@ -12,14 +12,12 @@ final class StreakController extends Controller
 {
     /**
      * Get streak data for the authenticated user.
-     *
-     * @return JsonResponse
      */
     public function index(): JsonResponse
     {
         $user = auth('api')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'status' => 401,
                 'success' => false,

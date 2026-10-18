@@ -14,8 +14,7 @@ final class AdminSidebarDataService
 {
     public function __construct(
         private readonly AdminPermissionMatrix $permissions
-    ) {
-    }
+    ) {}
 
     /** @return array{is_administrator: bool, pending_support_count: int} */
     public function forUser(?User $user): array

@@ -21,12 +21,11 @@ final readonly class AdminDesignSettingsAuthoringService
         private PublicAppSettingsService $publicSettings,
         private StoredFileUploadService $uploads,
         private StoredFileDeletionService $cleanup
-    ) {
-    }
+    ) {}
 
     /** @param array<string,mixed> $validated
-     *  @param array<string,UploadedFile> $files Validated files, keyed by their editor input.
-     *  @param Closure(DesignSetting):void $complete Receipt completion inside the same transaction.
+     * @param  array<string,UploadedFile>  $files  Validated files, keyed by their editor input.
+     * @param  Closure(DesignSetting):void  $complete  Receipt completion inside the same transaction.
      */
     public function save(array $validated, array $files, string $editorVersion, Closure $complete): DesignSetting
     {
@@ -34,7 +33,9 @@ final readonly class AdminDesignSettingsAuthoringService
         $newFiles = [];
         try {
             foreach ($this->uploadFields() as $input => [$attribute, $directory]) {
-                if (!isset($files[$input])) continue;
+                if (! isset($files[$input])) {
+                    continue;
+                }
                 $path = $this->uploads->storeTrackedUpload($files[$input], $directory);
                 $newFiles[$attribute] = $path;
                 $data[$attribute] = PublicDiskUrl::from($path);
@@ -44,7 +45,7 @@ final readonly class AdminDesignSettingsAuthoringService
                 AdminSingletonLock::acquire('design_settings');
                 $locked = DesignSetting::query()->lockForUpdate()->first();
                 $current = $locked ?? DesignSetting::getDefaultSettings();
-                if (!hash_equals(DesignSettingsEditorVersion::for($current), $editorVersion)) {
+                if (! hash_equals(DesignSettingsEditorVersion::for($current), $editorVersion)) {
                     throw ValidationException::withMessages([
                         'editor_version' => ["عدّل شخص آخر إعدادات التصميم\nأعد تحميل الصفحة قبل الحفظ"],
                     ]);
@@ -52,7 +53,9 @@ final readonly class AdminDesignSettingsAuthoringService
                 $oldPaths = [];
                 foreach (array_keys($newFiles) as $attribute) {
                     $oldPath = PublicDiskUrl::pathFrom($current->{$attribute});
-                    if ($oldPath !== null) $oldPaths[] = $oldPath;
+                    if ($oldPath !== null) {
+                        $oldPaths[] = $oldPath;
+                    }
                 }
                 if ($locked) {
                     $locked->update($data);
@@ -70,7 +73,9 @@ final readonly class AdminDesignSettingsAuthoringService
                 return $settings;
             });
         } catch (\Throwable $exception) {
-            foreach ($newFiles as $path) $this->cleanup->deleteOrQueue('public', $path);
+            foreach ($newFiles as $path) {
+                $this->cleanup->deleteOrQueue('public', $path);
+            }
             throw $exception;
         }
     }
@@ -98,7 +103,7 @@ final readonly class AdminDesignSettingsAuthoringService
             'how_platform_works_title_ar', 'how_platform_works_title_en', 'how_platform_works_video_link',
         ]);
         $data['show_how_platform_works'] = (bool) ($validated['show_how_platform_works'] ?? false);
-        if (!empty($data['how_platform_works_video_link'])) {
+        if (! empty($data['how_platform_works_video_link'])) {
             $data['how_platform_works_video_link'] = $this->publicSettings->embedVideoUrl($data['how_platform_works_video_link']);
             if ($data['how_platform_works_video_link'] === null) {
                 throw ValidationException::withMessages([

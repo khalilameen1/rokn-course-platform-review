@@ -15,15 +15,17 @@ use Illuminate\Support\Facades\DB;
 final readonly class AiUsageSettlementService
 {
     public const SETTLEMENT_ACCEPTED = 'accepted';
+
     public const SETTLEMENT_ALREADY_ACCEPTED = 'already_accepted';
+
     public const SETTLEMENT_TERMINAL_CONFLICT = 'terminal_conflict';
+
     public const SETTLEMENT_INACTIVE = 'inactive';
 
     public function __construct(
         private AiProviderExposureService $providerExposure,
         private InternalSignalService $internalSignals
-    ) {
-    }
+    ) {}
 
     public static function settlementAllowsDelivery(string $outcome): bool
     {
@@ -35,7 +37,7 @@ final readonly class AiUsageSettlementService
 
     public function settle(?AiUsageEvent $event, array $providerResult): bool
     {
-        if (!$event) {
+        if (! $event) {
             return false;
         }
         $didSettle = false;
@@ -51,7 +53,7 @@ final readonly class AiUsageSettlementService
             &$exposureEnrollmentId
         ): void {
             $lockedEvent = AiUsageEvent::query()->lockForUpdate()->find($event->id);
-            if (!$lockedEvent) {
+            if (! $lockedEvent) {
                 return;
             }
             if ($lockedEvent->status !== 'reserved') {
@@ -67,12 +69,13 @@ final readonly class AiUsageSettlementService
                     ->where('enrollment_id', $lockedEvent->enrollment_id)
                     ->where('feature', $lockedEvent->feature)
                     ->first();
-            if (!$usage && !$detachedReservation) {
+            if (! $usage && ! $detachedReservation) {
                 $lockedEvent->forceFill([
                     'status' => 'failed',
                     'metadata' => ['reason' => 'missing_entitlement_aggregate'],
                     'completed_at' => now(),
                 ])->save();
+
                 return;
             }
             $providerTotal = max(0, (int) data_get($providerResult, 'usage.total_tokens', 0));
@@ -82,7 +85,7 @@ final readonly class AiUsageSettlementService
             );
             $usageFacts = data_get($providerResult, 'usage', []);
             $providerCostWasReported = data_get($providerResult, 'usage.cost_reported');
-            if (!is_bool($providerCostWasReported)) {
+            if (! is_bool($providerCostWasReported)) {
                 $providerCostWasReported = is_array($usageFacts)
                     && array_key_exists('cost', $usageFacts)
                     && is_numeric($usageFacts['cost']);
@@ -139,7 +142,9 @@ final readonly class AiUsageSettlementService
                 $exposureCount = $exposure['count'];
                 $exposureEnrollmentId = (int) $usage->enrollment_id;
             }
-            if ($usage) $usage->forceFill($usageUpdate)->save();
+            if ($usage) {
+                $usage->forceFill($usageUpdate)->save();
+            }
             $metadata = $eventMetadata;
             // The pre-settlement landing is only a crash-recovery envelope.
             // Keep the bounded replay fields below until presentation, never
@@ -252,8 +257,9 @@ final readonly class AiUsageSettlementService
             $lockedEvent = $event
                 ? AiUsageEvent::query()->lockForUpdate()->find($event->id)
                 : null;
-            if (!$lockedEvent) {
+            if (! $lockedEvent) {
                 $outcome = self::SETTLEMENT_TERMINAL_CONFLICT;
+
                 return;
             }
             // The active-account lock and the metered event must describe the
@@ -261,13 +267,14 @@ final readonly class AiUsageSettlementService
             // active account to start or retain this learner's paid result.
             if ((int) $lockedEvent->user_id !== $userId) {
                 $outcome = self::SETTLEMENT_TERMINAL_CONFLICT;
+
                 return;
             }
             if ($lockedEvent->status === 'completed') {
                 $stored = trim((string) data_get($lockedEvent->metadata, 'accepted_response', ''));
                 $received = trim((string) data_get($providerResult, 'message', ''));
-                $sameProviderRequest = !$lockedEvent->provider_request_id
-                    || !data_get($providerResult, 'provider_request_id')
+                $sameProviderRequest = ! $lockedEvent->provider_request_id
+                    || ! data_get($providerResult, 'provider_request_id')
                     || hash_equals(
                         (string) $lockedEvent->provider_request_id,
                         (string) data_get($providerResult, 'provider_request_id')
@@ -277,17 +284,19 @@ final readonly class AiUsageSettlementService
                     && $sameProviderRequest
                     ? self::SETTLEMENT_ALREADY_ACCEPTED
                     : self::SETTLEMENT_TERMINAL_CONFLICT;
+
                 return;
             }
             if ($lockedEvent->status !== 'reserved') {
                 $outcome = self::SETTLEMENT_TERMINAL_CONFLICT;
+
                 return;
             }
             $transitioned = data_get(
                 $lockedEvent->metadata,
                 'entitlement_transitioned_at'
             ) !== null;
-            if (!$active || $transitioned) {
+            if (! $active || $transitioned) {
                 $providerResult = [
                     'usage' => is_array($providerResult['usage'] ?? null)
                         ? $providerResult['usage'] : [],
@@ -297,7 +306,7 @@ final readonly class AiUsageSettlementService
                 ];
             }
             $settled = $this->settle($lockedEvent, $providerResult);
-            $outcome = !$active
+            $outcome = ! $active
                 ? self::SETTLEMENT_INACTIVE
                 : ($transitioned
                     ? self::SETTLEMENT_TERMINAL_CONFLICT
@@ -316,7 +325,9 @@ final readonly class AiUsageSettlementService
     ): void {
         DB::transaction(function () use ($event, $reason): void {
             $locked = AiUsageEvent::query()->lockForUpdate()->find($event->id);
-            if (!$locked || $locked->status !== 'reserved') return;
+            if (! $locked || $locked->status !== 'reserved') {
+                return;
+            }
             $metadata = is_array($locked->metadata) ? $locked->metadata : [];
             $metadata['provider_call_state'] = 'outcome_unknown';
             $metadata['provider_outcome_reason'] = $reason;
@@ -345,7 +356,9 @@ final readonly class AiUsageSettlementService
         AiUsageEvent $event,
         string $reason
     ): void {
-        if ($event->status !== 'reserved') return;
+        if ($event->status !== 'reserved') {
+            return;
+        }
         $metadata = is_array($event->metadata) ? $event->metadata : [];
         $metadata['provider_call_state'] = 'outcome_unknown';
         $metadata['provider_outcome_reason'] = substr($reason, 0, 120);
@@ -370,26 +383,36 @@ final readonly class AiUsageSettlementService
 
     private function boundedFileAnnotations(mixed $value): array
     {
-        if (!is_array($value)) return [];
+        if (! is_array($value)) {
+            return [];
+        }
         $kept = [];
         $bytes = 0;
         foreach (array_slice($value, 0, 12) as $annotation) {
-            if (!is_array($annotation)) continue;
+            if (! is_array($annotation)) {
+                continue;
+            }
             $encoded = json_encode($annotation, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-            if (!is_string($encoded) || strlen($encoded) > 16384 || $bytes + strlen($encoded) > 65536) {
+            if (! is_string($encoded) || strlen($encoded) > 16384 || $bytes + strlen($encoded) > 65536) {
                 continue;
             }
             $kept[] = $annotation;
             $bytes += strlen($encoded);
         }
+
         return $kept;
     }
 
     private function egpCostSnapshot(int $costMicros): array
     {
-        if (!DatabaseCapabilities::hasColumn('ai_usage_events', 'cost_egp')) return [];
+        if (! DatabaseCapabilities::hasColumn('ai_usage_events', 'cost_egp')) {
+            return [];
+        }
         $fxRate = max(0, (float) (Setting::query()->value('openrouter_usd_to_egp_rate') ?? 0));
-        if ($fxRate <= 0) return [];
+        if ($fxRate <= 0) {
+            return [];
+        }
+
         return [
             'fx_rate_to_egp' => number_format($fxRate, 4, '.', ''),
             'cost_egp' => number_format(($costMicros / 1_000_000) * $fxRate, 6, '.', ''),
@@ -400,7 +423,7 @@ final readonly class AiUsageSettlementService
     {
         $this->internalSignals->record(
             'ai_usage.settled',
-            'event:' . $event->id,
+            'event:'.$event->id,
             ['event_id' => (int) $event->id],
             AiUsageEvent::class,
             (int) $event->id

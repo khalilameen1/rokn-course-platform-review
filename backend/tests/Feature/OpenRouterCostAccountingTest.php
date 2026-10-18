@@ -220,12 +220,12 @@ final class OpenRouterCostAccountingTest extends TestCase
 
             return $request->url() === 'https://openrouter.test/chat'
                 && ($payload['max_tokens'] ?? null) === 100
-                && !array_key_exists('max_completion_tokens', $payload)
+                && ! array_key_exists('max_completion_tokens', $payload)
                 && ($payload['temperature'] ?? null) === 0.2
                 && ($payload['provider']['require_parameters'] ?? null) === true
                 && ($payload['provider']['data_collection'] ?? null) === 'allow'
-                && !array_key_exists('zdr', $payload['provider'])
-                && !array_key_exists('reasoning', $payload);
+                && ! array_key_exists('zdr', $payload['provider'])
+                && ! array_key_exists('reasoning', $payload);
         });
     }
 
@@ -246,8 +246,7 @@ final class OpenRouterCostAccountingTest extends TestCase
             100
         );
 
-        Http::assertSent(static fn ($request): bool =>
-            ($request['provider']['data_collection'] ?? null) === 'deny'
+        Http::assertSent(static fn ($request): bool => ($request['provider']['data_collection'] ?? null) === 'deny'
             && ($request['provider']['zdr'] ?? null) === true
         );
     }
@@ -282,9 +281,9 @@ final class OpenRouterCostAccountingTest extends TestCase
                 'anthropic/claude-sonnet-5',
             ]
                 && ($payload['max_tokens'] ?? null) === 100
-                && !array_key_exists('max_completion_tokens', $payload)
+                && ! array_key_exists('max_completion_tokens', $payload)
                 && ($payload['provider']['require_parameters'] ?? null) === true
-                && !array_key_exists('temperature', $payload)
+                && ! array_key_exists('temperature', $payload)
                 && ($payload['reasoning']['effort'] ?? null) === 'minimal';
         });
     }
@@ -322,7 +321,7 @@ final class OpenRouterCostAccountingTest extends TestCase
             ]
                 && ($payload['reasoning']['effort'] ?? null) === 'none'
                 && ($payload['reasoning']['exclude'] ?? null) === true
-                && !array_key_exists('temperature', $payload);
+                && ! array_key_exists('temperature', $payload);
         });
     }
 
@@ -340,7 +339,7 @@ final class OpenRouterCostAccountingTest extends TestCase
                 100
             );
             self::fail('The provider rejection should be surfaced.');
-        } catch (\App\Exceptions\AiProviderUnavailableException $exception) {
+        } catch (AiProviderUnavailableException $exception) {
             self::assertSame(400, $exception->providerStatus);
             self::assertSame('unsupported_parameter', $exception->providerCode);
             self::assertFalse($exception->outcomeUnknown);
@@ -407,7 +406,7 @@ final class OpenRouterCostAccountingTest extends TestCase
             $payload = $request->data();
 
             return ($payload['models'] ?? null) === ['test/model', 'test/fallback']
-                && !array_key_exists('model', $payload)
+                && ! array_key_exists('model', $payload)
                 && ($payload['provider']['sort'] ?? null) === 'latency'
                 && ($payload['tools'][0]['type'] ?? null) === 'openrouter:web_search'
                 && ($payload['tools'][0]['parameters']['max_results'] ?? null) === 5

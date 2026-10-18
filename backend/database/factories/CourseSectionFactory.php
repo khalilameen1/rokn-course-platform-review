@@ -12,15 +12,15 @@ class CourseSectionFactory extends Factory
     public function definition(): array
     {
         return [
-            'title'           => $this->faker->sentence(3),
-            'title_ar'        => $this->faker->sentence(3),
-            'title_en'        => $this->faker->sentence(3),
-            'course_id'       => null,
-            'module_id'       => null,
-            'section_type'    => 'lesson',
+            'title' => $this->faker->sentence(3),
+            'title_ar' => $this->faker->sentence(3),
+            'title_en' => $this->faker->sentence(3),
+            'course_id' => null,
+            'module_id' => null,
+            'section_type' => 'lesson',
             'sectionable_type' => null,
-            'sectionable_id'  => null,
-            'order'           => 1,
+            'sectionable_id' => null,
+            'order' => 1,
         ];
     }
 

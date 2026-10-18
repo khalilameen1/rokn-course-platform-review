@@ -22,8 +22,7 @@ final readonly class KashierReconciliationService
         private KashierGatewayEvidenceService $evidence,
         private KashierProviderOrderService $providerOrders,
         private OrderLifecycleService $orders
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{checked:int,consistent:int,fulfilled:int,reversed:int,findings:int,unavailable:int,wrapped:bool,cursor:int}
@@ -56,7 +55,7 @@ final readonly class KashierReconciliationService
         $cursor = max((int) $checkpoint->cursor_order_id, $floor ?? 0);
         $sweepLimit = $limit - $pending->count();
         $wrapped = false;
-        $swept = new Collection();
+        $swept = new Collection;
         if ($floor !== null && $sweepLimit > 0) {
             $swept = $this->batchAfter($cursor, $sweepLimit);
             if ($swept->isEmpty() && $cursor > $floor) {
@@ -81,7 +80,7 @@ final readonly class KashierReconciliationService
         $inspected = [];
         foreach ([$pending, $swept] as $lane => $orders) {
             foreach ($orders as $order) {
-                if (!isset($inspected[$order->id])) {
+                if (! isset($inspected[$order->id])) {
                     $inspected[$order->id] = true;
                     $this->inspect($order, $stats);
                 }
@@ -478,6 +477,7 @@ final readonly class KashierReconciliationService
             (string) $providerStatus,
             (string) $transactionId,
         ]));
+
         return DB::transaction(function () use (
             $fingerprint,
             $order,
@@ -544,7 +544,7 @@ final readonly class KashierReconciliationService
             $order,
             $reason,
             'Kashier reconciliation requires financial review.',
-            'kashier:reconcile-review:' . hash('sha256', implode('|', [
+            'kashier:reconcile-review:'.hash('sha256', implode('|', [
                 (string) $order->id,
                 $reason,
             ])),

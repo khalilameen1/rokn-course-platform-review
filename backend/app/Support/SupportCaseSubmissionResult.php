@@ -12,6 +12,5 @@ final readonly class SupportCaseSubmissionResult
         public FeedbackReport $report,
         public bool $replayed,
         public ?string $accessToken
-    ) {
-    }
+    ) {}
 }

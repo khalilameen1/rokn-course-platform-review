@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Requests\API;
 
 use Illuminate\Foundation\Http\FormRequest as LaravelFormRequest;
@@ -11,6 +12,7 @@ abstract class FormRequest extends LaravelFormRequest
      * @return array
      */
     abstract public function rules();
+
     /**
      * Determine if the user is authorized to make this request.
      *

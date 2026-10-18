@@ -43,20 +43,20 @@ class AccountDeletionRequestController extends Controller
             'website.max' => 'تعذر إرسال الطلب',
         ]);
 
-        $reference = 'DEL-' . now()->format('Ymd') . '-' . Str::upper(Str::random(8));
+        $reference = 'DEL-'.now()->format('Ymd').'-'.Str::upper(Str::random(8));
         $email = Str::lower(trim($validated['email']));
         $reason = trim((string) ($validated['reason'] ?? ''));
 
-        $contact = new Contact();
+        $contact = new Contact;
         $contact->forceFill([
             'name' => trim($validated['name']),
             'email' => $email,
             'phone' => trim((string) ($validated['phone'] ?? '')) ?: '-',
             'message' => implode("\n", array_filter([
                 '[ACCOUNT_DELETION_REQUEST]',
-                'Reference: ' . $reference,
-                'Account email: ' . $email,
-                $reason !== '' ? 'User note: ' . $reason : null,
+                'Reference: '.$reference,
+                'Account email: '.$email,
+                $reason !== '' ? 'User note: '.$reason : null,
             ])),
             'read' => false,
             'request_type' => Contact::TYPE_ACCOUNT_DELETION,

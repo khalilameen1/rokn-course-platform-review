@@ -13,13 +13,11 @@ use Illuminate\Validation\ValidationException;
 /** Owns code authoring; redemption remains in CourseCodeRedemptionService. */
 final class AdminCourseCodeAuthoringService
 {
-    public function __construct(private readonly AdminContentInventoryReadService $inventory)
-    {
-    }
+    public function __construct(private readonly AdminContentInventoryReadService $inventory) {}
 
     /**
-     * @param array<string, mixed> $payload Validated fields with dates normalized to UTC.
-     * @param Closure(CourseCode):void $completeIntent Completes once inside the batch transaction.
+     * @param  array<string, mixed>  $payload  Validated fields with dates normalized to UTC.
+     * @param  Closure(CourseCode):void  $completeIntent  Completes once inside the batch transaction.
      */
     public function createBatch(array $payload, int $count, Closure $completeIntent): CourseCode
     {
@@ -78,13 +76,13 @@ final class AdminCourseCodeAuthoringService
     }
 
     /**
-     * @param list<int|string> $ids Validated distinct existing code IDs.
-     * @param array<int|string, string> $versions Version captured for each selected code.
+     * @param  list<int|string>  $ids  Validated distinct existing code IDs.
+     * @param  array<int|string, string>  $versions  Version captured for each selected code.
      * @return array{deleted: int, deactivated: int, changed: int}
      */
     public function bulk(string $action, array $ids, array $versions): array
     {
-        if (!in_array($action, ['delete', 'activate', 'deactivate'], true)) {
+        if (! in_array($action, ['delete', 'activate', 'deactivate'], true)) {
             throw new \InvalidArgumentException('Unknown course-code action.');
         }
 
@@ -110,10 +108,11 @@ final class AdminCourseCodeAuthoringService
             foreach ($codes as $code) {
                 if ($action === 'delete') {
                     $result[$this->removeLockedCode($code) ? 'deactivated' : 'deleted']++;
+
                     continue;
                 }
                 if ($action === 'activate' && ($code->type !== 'course'
-                    || !in_array((int) $code->course_id, $eligibleCourseIds, true))) {
+                    || ! in_array((int) $code->course_id, $eligibleCourseIds, true))) {
                     continue;
                 }
                 $target = $action === 'activate';
@@ -142,15 +141,15 @@ final class AdminCourseCodeAuthoringService
 
     private function assertVersion(CourseCode $code, string $version, string $field, string $message): void
     {
-        if (!hash_equals(CourseCodeEditorVersion::for($code), $version)) {
+        if (! hash_equals(CourseCodeEditorVersion::for($code), $version)) {
             throw ValidationException::withMessages([$field => $message]);
         }
     }
 
     private function assertCourseTarget(CourseCode $code): void
     {
-        if ($code->type !== 'course' || !$code->course_id
-            || !$this->inventory->courses()->whereKey($code->course_id)->lockForUpdate()->first()) {
+        if ($code->type !== 'course' || ! $code->course_id
+            || ! $this->inventory->courses()->whereKey($code->course_id)->lockForUpdate()->first()) {
             throw ValidationException::withMessages([
                 'course_id' => 'اختر الكورس الأصلي وليس نسخة تعديل أو أرشيف',
             ]);

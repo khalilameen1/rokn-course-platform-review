@@ -73,10 +73,10 @@ final class NotificationCampaignIntentTest extends TestCase
     public function test_identity_is_canonical_once_and_long_keys_are_not_truncated(): void
     {
         $short = $this->intent('  delivery:1  ');
-        $longKey = str_repeat('a', 64) . 'b';
+        $longKey = str_repeat('a', 64).'b';
         self::assertSame('delivery:1', $short->deliveryKey);
         self::assertSame(hash('sha256', $longKey), $this->intent($longKey)->deliveryKey);
-        self::assertNotSame($this->intent($longKey)->deliveryKey, $this->intent(substr($longKey, 0, 64) . 'c')->deliveryKey);
+        self::assertNotSame($this->intent($longKey)->deliveryKey, $this->intent(substr($longKey, 0, 64).'c')->deliveryKey);
         $generated = $this->intent('');
         self::assertMatchesRegularExpression('/^[a-f0-9-]{36}$/', $generated->deliveryKey);
         self::assertNotSame($generated->deliveryKey, $this->intent('')->deliveryKey);

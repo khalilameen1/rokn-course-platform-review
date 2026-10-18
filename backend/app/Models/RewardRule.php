@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Cache;
 use App\Support\AfterCommitCacheInvalidation;
 use App\Support\DatabaseCapabilities;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 final class RewardRule extends Model
@@ -42,26 +42,27 @@ final class RewardRule extends Model
 
     public static function activeFor(string $event): ?self
     {
-        if (!DatabaseCapabilities::hasTable('reward_rules')) {
+        if (! DatabaseCapabilities::hasTable('reward_rules')) {
             return null;
         }
 
-        $load = fn () => static::query()->active()->where('event_key', $event)->first();
+        $load = fn () => self::query()->active()->where('event_key', $event)->first();
         try {
-            return Cache::remember('reward-rule:active:v2:' . $event, 30, $load);
+            return Cache::remember('reward-rule:active:v2:'.$event, 30, $load);
         } catch (Throwable $exception) {
             report($exception);
+
             return $load();
         }
     }
 
     public static function configuredAmount(string $event, int $legacyFallback = 0): int
     {
-        if (!DatabaseCapabilities::hasTable('reward_rules')) {
+        if (! DatabaseCapabilities::hasTable('reward_rules')) {
             return max(0, $legacyFallback);
         }
 
-        return max(0, (int) (static::activeFor($event)?->coins_amount ?? 0));
+        return max(0, (int) (self::activeFor($event)?->coins_amount ?? 0));
     }
 
     protected static function booted(): void
@@ -73,7 +74,7 @@ final class RewardRule extends Model
             ])));
             $invalidate = static function () use ($events): void {
                 foreach ($events as $event) {
-                    Cache::forget('reward-rule:active:v2:' . $event);
+                    Cache::forget('reward-rule:active:v2:'.$event);
                 }
                 if (in_array('welcome_bonus', $events, true)) {
                     Cache::forget('auth-methods:dynamic:v2');
@@ -82,7 +83,7 @@ final class RewardRule extends Model
 
             AfterCommitCacheInvalidation::run($invalidate, static fn (Throwable $exception) => report($exception));
         };
-        static::saved($forget);
-        static::deleted($forget);
+        self::saved($forget);
+        self::deleted($forget);
     }
 }

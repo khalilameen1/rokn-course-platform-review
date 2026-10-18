@@ -33,6 +33,7 @@ final class AppArtworkService
             $urls[$key] = $settings->getAttribute($key.'_image_url')
                 ?: asset('assets/app-artwork/v1/'.$asset['file']);
         }
+
         return $urls;
     }
 
@@ -42,10 +43,11 @@ final class AppArtworkService
         $settings ??= DesignSetting::getDefaultSettings();
         $urls = [];
         foreach (self::ASSETS as $key => $asset) {
-            if (!$settings->getAttribute($key.'_image_url')) {
+            if (! $settings->getAttribute($key.'_image_url')) {
                 $urls[$key] = asset('assets/app-artwork/v1/'.$asset['file']);
             }
         }
+
         return $urls;
     }
 
@@ -53,6 +55,7 @@ final class AppArtworkService
     {
         $key = $order <= 1 ? 'badge_junior' : ($order === 2 ? 'badge_mid' : 'badge_senior');
         $this->levelUrls ??= $this->urls();
+
         return $this->levelUrls[$key];
     }
 }

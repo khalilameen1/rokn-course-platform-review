@@ -9,23 +9,23 @@ use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
 use App\Models\OperatingCostPool;
 use App\Models\Setting;
-use App\Services\CourseCostReportService;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminOperatingCostAuthoringService;
+use App\Services\CourseCostReportService;
 use App\Services\PlatformCommercialReportService;
+use App\Support\CsvCell;
+use App\Support\OperatingCostEditorVersion;
+use App\Support\ReportPeriod;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
-use App\Support\CsvCell;
-use App\Support\OperatingCostEditorVersion;
 
 final class OperatingCostPoolController extends Controller
 {
-    public function __construct(private readonly AdminOperatingCostAuthoringService $authoring)
-    {
-    }
+    public function __construct(private readonly AdminOperatingCostAuthoringService $authoring) {}
 
     public function index(Request $request): View
     {
@@ -56,7 +56,7 @@ final class OperatingCostPoolController extends Controller
             ->withCount('activeEnrollments')
             ->orderBy('name_ar')
             ->get(['id', 'name_ar', 'deleted_at']);
-        $settings = Setting::query()->first() ?? new Setting();
+        $settings = Setting::query()->first() ?? new Setting;
         $editPool = $request->filled('edit_cost')
             ? OperatingCostPool::query()->with(['course' => fn ($query) => $query->withTrashed()])->findOrFail((int) $request->input('edit_cost'))
             : null;
@@ -237,7 +237,7 @@ final class OperatingCostPoolController extends Controller
     private function reportFilters(Request $request): array
     {
         return $request->validate([
-            'period' => ['nullable', Rule::in(array_keys(\App\Support\ReportPeriod::labels()))],
+            'period' => ['nullable', Rule::in(array_keys(ReportPeriod::labels()))],
             'course_id' => ['nullable', 'integer', 'exists:courses,id'],
             'plan' => ['nullable', 'string', 'max:100'],
             'source' => ['nullable', Rule::in([
@@ -248,7 +248,7 @@ final class OperatingCostPoolController extends Controller
         ]);
     }
 
-    private function invoiceCourses(): \Illuminate\Database\Eloquent\Builder
+    private function invoiceCourses(): Builder
     {
         return Course::withTrashed()->whereNotIn('courses.id',
             CourseAuthoringRevision::query()->select('revision_course_id'));

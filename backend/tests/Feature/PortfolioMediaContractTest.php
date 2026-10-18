@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Resources\PortfolioMediaResource;
-use App\Services\BunnyService;
 use App\Services\BunnyDeliveryService;
+use App\Services\BunnyService;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -113,7 +113,7 @@ final class PortfolioMediaContractTest extends TestCase
     {
         return (object) [
             'id' => $id,
-            'public_id' => '99999999-9999-4999-8999-' . str_pad((string) $id, 12, '0', STR_PAD_LEFT),
+            'public_id' => '99999999-9999-4999-8999-'.str_pad((string) $id, 12, '0', STR_PAD_LEFT),
             'file_type' => 'video',
             'file_path' => $path,
             'sort_order' => 0,

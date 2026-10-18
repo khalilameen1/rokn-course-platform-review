@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use App\Services\BunnyService;
+use App\Services\BunnyConfiguration;
 use App\Services\BunnyMediaRegistry;
+use App\Services\BunnyService;
 use Tests\TestCase;
 
 final class BunnyDirectUploadAuthorizationTest extends TestCase
@@ -18,7 +19,7 @@ final class BunnyDirectUploadAuthorizationTest extends TestCase
             'bunny.direct_upload_signature_ttl_seconds' => 1800,
         ]);
 
-        $service = new class(app(\App\Services\BunnyConfiguration::class), app(BunnyMediaRegistry::class)) extends BunnyService
+        $service = new class(app(BunnyConfiguration::class), app(BunnyMediaRegistry::class)) extends BunnyService
         {
             public function isEnabled(): bool
             {
@@ -48,7 +49,7 @@ final class BunnyDirectUploadAuthorizationTest extends TestCase
             'bunny.direct_upload_signature_ttl_seconds' => 172800,
         ]);
 
-        $service = new class(app(\App\Services\BunnyConfiguration::class), app(BunnyMediaRegistry::class)) extends BunnyService
+        $service = new class(app(BunnyConfiguration::class), app(BunnyMediaRegistry::class)) extends BunnyService
         {
             public function isEnabled(): bool
             {

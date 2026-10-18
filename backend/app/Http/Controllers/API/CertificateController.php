@@ -21,8 +21,7 @@ final class CertificateController extends Controller
     public function __construct(
         private readonly CertificateService $certificates,
         private readonly CertificateEligibilityService $eligibility
-    ) {
-    }
+    ) {}
 
     /**
      * List all certificates for the authenticated user with course minimum details.
@@ -31,9 +30,9 @@ final class CertificateController extends Controller
     {
         $user = auth('api')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
-                'status'  => 401,
+                'status' => 401,
                 'success' => false,
                 'message' => 'سجّل الدخول أولًا',
                 'data' => null,
@@ -48,15 +47,14 @@ final class CertificateController extends Controller
             ->orderBy('generated_at', 'desc')
             ->orderByDesc('id')
             ->get()
-            ->each(fn (Certificate $certificate) =>
-                $certificate->setRelation('user', $user)
+            ->each(fn (Certificate $certificate) => $certificate->setRelation('user', $user)
             );
 
         return response()->json([
-            'status'  => 200,
+            'status' => 200,
             'success' => true,
             'message' => 'تم تحميل الشهادات',
-            'data'    => CertificateResource::collection($certificates),
+            'data' => CertificateResource::collection($certificates),
         ]);
     }
 
@@ -64,7 +62,7 @@ final class CertificateController extends Controller
     public function show($courseId): JsonResponse
     {
         $user = auth('api')->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'status' => 401,
                 'success' => false,
@@ -78,7 +76,7 @@ final class CertificateController extends Controller
             ->where('course_id', $courseId)
             ->first();
         $certificate?->setRelation('user', $user);
-        if (!$certificate) {
+        if (! $certificate) {
             return response()->json([
                 'status' => 404,
                 'success' => false,
@@ -87,7 +85,7 @@ final class CertificateController extends Controller
                 'data' => null,
             ], 404);
         }
-        if (!$certificate->isActiveCredential()) {
+        if (! $certificate->isActiveCredential()) {
             return response()->json([
                 'status' => 410,
                 'success' => false,
@@ -96,10 +94,10 @@ final class CertificateController extends Controller
                 'data' => null,
             ], 410);
         }
-        if (!$certificate->hasCompleteCredentialSnapshot()) {
+        if (! $certificate->hasCompleteCredentialSnapshot()) {
             return $this->invalidSnapshotResponse();
         }
-        if (!$certificate->hasStoredArtifact()) {
+        if (! $certificate->hasStoredArtifact()) {
             $this->queueGeneration($certificate);
 
             return $this->pendingResponse($certificate);
@@ -118,9 +116,9 @@ final class CertificateController extends Controller
     {
         $user = auth('api')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
-                'status'  => 401,
+                'status' => 401,
                 'success' => false,
                 'message' => 'سجّل الدخول أولًا',
                 'data' => null,
@@ -133,7 +131,7 @@ final class CertificateController extends Controller
         $certificate?->setRelation('user', $user);
 
         if ($certificate) {
-            if (!$certificate->isActiveCredential()) {
+            if (! $certificate->isActiveCredential()) {
                 return response()->json([
                     'status' => 410,
                     'success' => false,
@@ -142,27 +140,27 @@ final class CertificateController extends Controller
                     'data' => null,
                 ], 410);
             }
-            if (!$certificate->hasCompleteCredentialSnapshot()) {
+            if (! $certificate->hasCompleteCredentialSnapshot()) {
                 return $this->invalidSnapshotResponse();
             }
-            if (!$certificate->hasStoredArtifact()) {
+            if (! $certificate->hasStoredArtifact()) {
                 $this->queueGeneration($certificate);
 
                 return $this->pendingResponse($certificate);
             }
 
             return response()->json([
-                'status'  => 200,
+                'status' => 200,
                 'success' => true,
                 'message' => 'تم تحميل الشهادة',
-                'data'    => new CertificateResource($certificate),
+                'data' => new CertificateResource($certificate),
             ]);
         }
 
         $course = Course::find($courseId);
-        if (!$course) {
+        if (! $course) {
             return response()->json([
-                'status'  => 404,
+                'status' => 404,
                 'success' => false,
                 'message' => 'الكورس غير متاح',
                 'data' => null,
@@ -172,13 +170,13 @@ final class CertificateController extends Controller
         $eligibility = $this->eligibility->for($user, $course);
         if ($eligibility['reason'] === 'entitlement_inactive') {
             return response()->json([
-                'status'  => 403,
+                'status' => 403,
                 'success' => false,
                 'message' => 'هذا الكورس غير مضاف إلى حسابك',
                 'data' => null,
             ], 403);
         }
-        if (!$eligibility['included']) {
+        if (! $eligibility['included']) {
             return response()->json([
                 'status' => 402,
                 'success' => false,
@@ -208,11 +206,11 @@ final class CertificateController extends Controller
                 'data' => null,
             ], 404);
         }
-        if (!$eligibility['available']) {
+        if (! $eligibility['available']) {
             return response()->json([
                 'status' => 403,
                 'success' => false,
-                'code' => 'certificate_' . $eligibility['reason'],
+                'code' => 'certificate_'.$eligibility['reason'],
                 'message' => "أكمل المطلوب أولًا\nثم اطلب الشهادة",
                 'data' => null,
             ], 403);
@@ -239,7 +237,7 @@ final class CertificateController extends Controller
             false
         );
 
-        if (!$certificate) {
+        if (! $certificate) {
             // The immutable credential row is committed before rendering its
             // image. A renderer/storage interruption is therefore pending
             // work, not a failed issue action, and a retry must reuse it.
@@ -254,31 +252,31 @@ final class CertificateController extends Controller
                 ->whereNotNull('certificate_text_template_key')
                 ->whereNotNull('certificate_text')
                 ->first();
-            if ($pending && !$pending->hasStoredArtifact()) {
+            if ($pending && ! $pending->hasStoredArtifact()) {
                 $this->queueGeneration($pending);
 
                 return $this->pendingResponse($pending);
             }
 
             return response()->json([
-                'status'  => 500,
+                'status' => 500,
                 'success' => false,
                 'message' => "تعذّر إصدار الشهادة الآن\nحاول مرة أخرى",
                 'data' => null,
             ], 500);
         }
 
-        if (!$certificate->hasStoredArtifact()) {
+        if (! $certificate->hasStoredArtifact()) {
             $this->queueGeneration($certificate);
 
             return $this->pendingResponse($certificate);
         }
 
         return response()->json([
-            'status'  => 200,
+            'status' => 200,
             'success' => true,
             'message' => 'تم إصدار الشهادة',
-            'data'    => new CertificateResource($certificate),
+            'data' => new CertificateResource($certificate),
         ]);
     }
 
@@ -330,5 +328,4 @@ final class CertificateController extends Controller
             ],
         ], 202);
     }
-
 }

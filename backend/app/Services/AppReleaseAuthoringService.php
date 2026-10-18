@@ -13,12 +13,10 @@ use Illuminate\Validation\ValidationException;
 /** Release writes shared by the dashboard and the explicit direct-release bootstrap. */
 final class AppReleaseAuthoringService
 {
-    public function __construct(private readonly AppReleasePolicyService $releasePolicy)
-    {
-    }
+    public function __construct(private readonly AppReleasePolicyService $releasePolicy) {}
 
     /** @param array<string, mixed> $data Validated and normalized release fields.
-     *  @param callable(AppVersion):void $complete Completes the dashboard receipt in this transaction.
+     * @param  callable(AppVersion):void  $complete  Completes the dashboard receipt in this transaction.
      */
     public function create(array $data, callable $complete): AppVersion
     {
@@ -51,7 +49,9 @@ final class AppReleaseAuthoringService
         return DB::transaction(function () use ($id, $editorVersion): bool {
             $version = AppVersion::query()->whereKey($id)->lockForUpdate()->firstOrFail();
             $this->assertCurrentVersion($version, $editorVersion);
-            if ($version->is_active) return false;
+            if ($version->is_active) {
+                return false;
+            }
             $version->delete();
 
             return true;
@@ -64,8 +64,10 @@ final class AppReleaseAuthoringService
         return DB::transaction(function () use ($id, $editorVersion): bool {
             $version = AppVersion::query()->whereKey($id)->lockForUpdate()->firstOrFail();
             $this->assertCurrentVersion($version, $editorVersion);
-            if (!$version->is_active && !$this->isActivatable($version)) return false;
-            $version->is_active = !$version->is_active;
+            if (! $version->is_active && ! $this->isActivatable($version)) {
+                return false;
+            }
+            $version->is_active = ! $version->is_active;
             $version->save();
 
             return true;
@@ -103,7 +105,7 @@ final class AppReleaseAuthoringService
 
     private function assertCurrentVersion(AppVersion $version, string $editorVersion): void
     {
-        if (!hash_equals(AppVersionEditorVersion::for($version), $editorVersion)) {
+        if (! hash_equals(AppVersionEditorVersion::for($version), $editorVersion)) {
             throw ValidationException::withMessages([
                 'editor_version' => "تغيّر إصدار التطبيق منذ فتح الصفحة\nأعد تحميلها قبل المتابعة",
             ]);
@@ -113,8 +115,10 @@ final class AppReleaseAuthoringService
     private function assertDownloadPolicy(array $data): void
     {
         $url = $data['download_url'] ?? null;
-        if (!$data['is_active'] && !$data['is_force_update'] && ($url === null || trim($url) === '')) return;
-        if (!$this->releasePolicy->isAllowedDownloadUrl($data['distribution_channel'], $url)) {
+        if (! $data['is_active'] && ! $data['is_force_update'] && ($url === null || trim($url) === '')) {
+            return;
+        }
+        if (! $this->releasePolicy->isAllowedDownloadUrl($data['distribution_channel'], $url)) {
             throw ValidationException::withMessages([
                 'download_url' => match ($data['distribution_channel']) {
                     'play' => 'استخدم صفحة تطبيق ركن الصحيحة على Google Play',
@@ -159,7 +163,7 @@ final class AppReleaseAuthoringService
                 ->unique();
             if (
                 $sameBuildVersionNames->isNotEmpty()
-                && !$sameBuildVersionNames->contains($data['version_name'])
+                && ! $sameBuildVersionNames->contains($data['version_name'])
             ) {
                 throw ValidationException::withMessages([
                     'version_name' => 'نفس رقم البناء يجب أن يحمل نفس اسم الإصدار في كل قنوات التوزيع.',

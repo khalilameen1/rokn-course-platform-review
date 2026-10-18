@@ -28,7 +28,9 @@ final class AdminStudentNoteService
     {
         return DB::transaction(function () use ($noteId, $actorId, $isAdmin): bool {
             $note = UserNote::query()->whereKey($noteId)->lockForUpdate()->firstOrFail();
-            if ((int) $note->created_by !== $actorId && !$isAdmin) return false;
+            if ((int) $note->created_by !== $actorId && ! $isAdmin) {
+                return false;
+            }
             $note->delete();
 
             return true;

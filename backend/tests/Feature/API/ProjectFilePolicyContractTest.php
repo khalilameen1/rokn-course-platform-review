@@ -29,12 +29,12 @@ final class ProjectFilePolicyContractTest extends TestCase
             'product_features.definitions.project_uploads.default_enabled' => true,
             'projects.allowed_mime_types' => ['text/plain'],
         ]);
-        $student = new User();
+        $student = new User;
         $student->forceFill([
             'name_ar' => 'طالب المشروع', 'email' => 'project-policy@example.test',
             'role' => 'client', 'active' => true,
         ])->save();
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1, 'name_ar' => 'كورس المشروع',
             'price' => 800, 'is_coming_soon' => false, 'is_catalog_visible' => true,
@@ -50,7 +50,7 @@ final class ProjectFilePolicyContractTest extends TestCase
             'course_id' => $course->id, 'module_id' => $module->id, 'title_ar' => 'المشروع',
             'sectionable_type' => Project::class, 'sectionable_id' => $project->id, 'order' => 1,
         ]);
-        $enrollment = new CourseEnrollment();
+        $enrollment = new CourseEnrollment;
         $enrollment->forceFill([
             'tenant_id' => 1, 'user_id' => $student->id, 'course_id' => $course->id,
             'is_active' => true, 'enrolled_at' => now(), 'access_granted_at' => now(),

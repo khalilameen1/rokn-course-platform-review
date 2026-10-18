@@ -4,20 +4,25 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use App\Data\VerifiedStorePurchase;
 use App\Exceptions\StorePurchaseVerificationException;
 use App\Services\LiveStorePurchaseProviderGateway;
 use Firebase\JWT\JWT;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class AppleStorePurchaseRoutingTest extends TestCase
 {
     private const PRODUCT = 'rokn.coins.900';
+
     private const TRANSACTION = '1000000000000001';
+
     private const ACCOUNT = '20b579ee-c954-401f-9e01-b18c79a5a3c5';
 
     private string $privateKey;
+
     /** @var list<string> */
     private array $certificateChain;
 
@@ -44,7 +49,7 @@ final class AppleStorePurchaseRoutingTest extends TestCase
      */
     private function disposableChain(string $leafExtensions, string $intermediateExtensions): array
     {
-        $config = __DIR__ . '/../Fixtures/apple-store-signer.cnf';
+        $config = __DIR__.'/../Fixtures/apple-store-signer.cnf';
         $options = ['config' => $config, 'private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1'];
         $rootKey = openssl_pkey_new($options);
         $intermediateKey = openssl_pkey_new($options);
@@ -87,7 +92,7 @@ final class AppleStorePurchaseRoutingTest extends TestCase
         ];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('chainsWithoutAppleMarkers')]
+    #[DataProvider('chainsWithoutAppleMarkers')]
     public function test_a_certificate_under_the_trusted_root_without_apple_markers_cannot_sign(
         string $leafExtensions, string $intermediateExtensions
     ): void {
@@ -127,7 +132,7 @@ final class AppleStorePurchaseRoutingTest extends TestCase
         self::assertSame(11.11, $verified->grossAmount);
         Http::assertSentCount(1);
         Http::assertSent(fn ($request) => $request->url() ===
-            'https://api.storekit-sandbox.itunes.apple.com/inApps/v1/transactions/' . self::TRANSACTION);
+            'https://api.storekit-sandbox.itunes.apple.com/inApps/v1/transactions/'.self::TRANSACTION);
     }
 
     public function test_signed_production_receipt_is_not_sent_to_sandbox(): void
@@ -173,8 +178,7 @@ final class AppleStorePurchaseRoutingTest extends TestCase
     /** @dataProvider invalidServerClaims */
     public function test_server_signed_snapshot_is_still_required_and_authoritative(array $claims, string $error): void
     {
-        Http::fake(['https://api.storekit-sandbox.itunes.apple.com/*' =>
-            Http::response(['signedTransactionInfo' => $this->signedTransaction($claims)])]);
+        Http::fake(['https://api.storekit-sandbox.itunes.apple.com/*' => Http::response(['signedTransactionInfo' => $this->signedTransaction($claims)])]);
         $this->assertRejected($this->signedTransaction(), $error);
         Http::assertSentCount(1);
     }
@@ -232,9 +236,9 @@ final class AppleStorePurchaseRoutingTest extends TestCase
         ], $overrides), $this->privateKey, 'ES256', null, ['x5c' => $this->certificateChain]);
     }
 
-    private function verify(string $jws): \App\Data\VerifiedStorePurchase
+    private function verify(string $jws): VerifiedStorePurchase
     {
-        return (new LiveStorePurchaseProviderGateway())->verify('apple', self::PRODUCT, $jws, self::TRANSACTION, self::ACCOUNT);
+        return (new LiveStorePurchaseProviderGateway)->verify('apple', self::PRODUCT, $jws, self::TRANSACTION, self::ACCOUNT);
     }
 
     private function assertRejected(string $jws, string $error, int $httpStatus = 422): void

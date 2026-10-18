@@ -16,6 +16,7 @@ use App\Models\CourseSection;
 use App\Models\FeedbackReport;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
+use App\Models\User;
 use App\Services\CourseAccessPlanService;
 use App\Services\ProjectSubmissionService;
 use App\Services\StoredFileReferenceService;
@@ -27,6 +28,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 final class LearnerAttachmentAdmissionStorageRetryTest extends TestCase
@@ -74,6 +76,7 @@ final class LearnerAttachmentAdmissionStorageRetryTest extends TestCase
             ->andReturnUsing(function () use ($service, $user, $project, $files, $requestId, $disk, $oldPaths, &$accepted): bool {
                 // The real cleanup already observed no committed owner.
                 $accepted = $service->submit($user, $project, null, $files, $requestId);
+
                 return $disk->delete($oldPaths[0]);
             });
         Storage::set('local', $interleaved);
@@ -146,6 +149,7 @@ final class LearnerAttachmentAdmissionStorageRetryTest extends TestCase
         $interleaved->shouldReceive('delete')->once()->with($oldPath)
             ->andReturnUsing(function () use ($service, $report, $requestId, $image, $disk, $oldPath, &$message): bool {
                 $message = $service->appendLearnerMessage($report, null, 'صورة المشكلة', $requestId, $image);
+
                 return $disk->delete($oldPath);
             });
         Storage::set('feedback', $interleaved);
@@ -167,7 +171,7 @@ final class LearnerAttachmentAdmissionStorageRetryTest extends TestCase
             try {
                 $service->appendLearnerMessage($report, null, 'رسالة مختلفة', $requestId, $image);
                 self::fail('Changed content must not rebind an accepted support message.');
-            } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+            } catch (HttpException $exception) {
                 self::assertSame(409, $exception->getStatusCode());
             }
         } finally {
@@ -182,7 +186,7 @@ final class LearnerAttachmentAdmissionStorageRetryTest extends TestCase
 
     private function projectContext(): array
     {
-        $user = new \App\Models\User();
+        $user = new User;
         $user->forceFill(['name' => 'Learner', 'email' => 'storage-retry@example.test',
             'active' => true, 'role' => 'client'])->save();
         $course = Course::factory()->make();
@@ -194,11 +198,12 @@ final class LearnerAttachmentAdmissionStorageRetryTest extends TestCase
         $plan = CourseAccessPlan::create(['course_id' => $course->id, 'code' => 'basic',
             'name_ar' => 'تعلم', 'price_coins' => 100, 'minimum_paid_coins' => 0,
             'project_feedback_level' => 'pass_only']);
-        $enrollment = new CourseEnrollment();
+        $enrollment = new CourseEnrollment;
         $enrollment->forceFill(['tenant_id' => 1, 'user_id' => $user->id, 'course_id' => $course->id,
             'access_plan_id' => $plan->id,
             'access_plan_snapshot' => app(CourseAccessPlanService::class)->snapshot($plan->fresh()),
             'is_active' => true, 'enrolled_at' => now()])->save();
+
         return [$user, $project];
     }
 }

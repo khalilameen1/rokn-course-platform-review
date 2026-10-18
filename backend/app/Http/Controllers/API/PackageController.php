@@ -13,9 +13,7 @@ use Throwable;
 
 final class PackageController extends Controller
 {
-    public function __construct(private readonly PackageChannelPricingService $pricing)
-    {
-    }
+    public function __construct(private readonly PackageChannelPricingService $pricing) {}
 
     public function index(): JsonResponse
     {
@@ -53,7 +51,7 @@ final class PackageController extends Controller
             ->purchasable()
             ->find($id);
 
-        if (!$package) {
+        if (! $package) {
             return response()->json([
                 'status' => 404,
                 'success' => false,
@@ -69,5 +67,4 @@ final class PackageController extends Controller
             'data' => $this->pricing->packagePayload($package),
         ]);
     }
-
 }

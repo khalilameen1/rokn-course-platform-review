@@ -14,9 +14,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 final class AdminNotificationsController extends Controller
 {
-    public function __construct(private readonly ApiResponseService $responses)
-    {
-    }
+    public function __construct(private readonly ApiResponseService $responses) {}
 
     public function index(): JsonResource
     {
@@ -47,7 +45,7 @@ final class AdminNotificationsController extends Controller
         ], true), 404);
 
         $message = $messages->publicMessage($systemKey);
-        if (!$message) {
+        if (! $message) {
             return $this->responses->success(null, 'لا توجد رسالة الآن');
         }
 

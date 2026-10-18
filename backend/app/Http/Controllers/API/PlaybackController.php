@@ -54,6 +54,7 @@ final class PlaybackController extends Controller
             ], true);
             $purchaseLocked = $reason === 'course_purchase_required';
             $previousLocked = $reason === 'previous_section_incomplete';
+
             return $responses->error(
                 $purchaseLocked
                     ? 'أضف الكورس إلى حسابك لتشغيل هذا المقطع'

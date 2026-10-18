@@ -16,14 +16,15 @@ final class AdminContactWorkflowService
     public function __construct(
         private readonly ContactAccountLookupService $accountsByEmail,
         private readonly AccountDeletionService $deletion
-    ) {
-    }
+    ) {}
 
     public function markRead(int $contactId, string $expected): void
     {
         DB::transaction(function () use ($contactId, $expected): void {
             $locked = $this->lockedCurrent($contactId, $expected);
-            if (!$locked->read) $locked->forceFill(['read' => true])->save();
+            if (! $locked->read) {
+                $locked->forceFill(['read' => true])->save();
+            }
         }, 3);
     }
 
@@ -44,7 +45,7 @@ final class AdminContactWorkflowService
     {
         DB::transaction(function () use ($contactId, $expected, $actorId): void {
             $locked = $this->lockedCurrent($contactId, $expected);
-            if (!$locked->isAccountDeletionRequest() || $locked->isResolved()) {
+            if (! $locked->isAccountDeletionRequest() || $locked->isResolved()) {
                 throw ValidationException::withMessages([
                     'editor_version' => ['لا يمكن بدء معالجة هذا الطلب في حالته الحالية'],
                 ]);
@@ -67,7 +68,7 @@ final class AdminContactWorkflowService
     {
         DB::transaction(function () use ($contactId, $validated, $actorId): void {
             $locked = $this->lockedCurrent($contactId, (string) $validated['editor_version']);
-            if (!$locked->isAccountDeletionRequest() || $locked->isResolved() || !$locked->isProcessing()) {
+            if (! $locked->isAccountDeletionRequest() || $locked->isResolved() || ! $locked->isProcessing()) {
                 throw ValidationException::withMessages([
                     'editor_version' => ["تغيّرت حالة الطلب\nحدّث الصفحة قبل الإغلاق"],
                 ]);
@@ -96,26 +97,27 @@ final class AdminContactWorkflowService
 
     /**
      * Caller must validate the administrator's identity-verification and deletion confirmations.
-     * @param array{editor_version:string,account_email:string,verification_note:string} $validated
+     *
+     * @param  array{editor_version:string,account_email:string,verification_note:string}  $validated
      * @return bool Whether account file cleanup remains pending.
      */
     public function executeVerifiedDeletion(int $contactId, array $validated, int $actorId): bool
     {
         return DB::transaction(function () use ($contactId, $validated, $actorId): bool {
             $locked = $this->lockedCurrent($contactId, (string) $validated['editor_version']);
-            if (!$locked->isAccountDeletionRequest() || $locked->isResolved() || !$locked->isProcessing()) {
+            if (! $locked->isAccountDeletionRequest() || $locked->isResolved() || ! $locked->isProcessing()) {
                 throw ValidationException::withMessages([
                     'editor_version' => ["تغيّرت حالة الطلب\nحدّث الصفحة قبل تنفيذ الحذف"],
                 ]);
             }
             $matchedUser = $this->accountsByEmail->forEmail($locked->email);
-            if (!$matchedUser || strtolower((string) $matchedUser->role) !== 'client') {
+            if (! $matchedUser || strtolower((string) $matchedUser->role) !== 'client') {
                 throw ValidationException::withMessages([
                     'account_email' => ['لا يوجد حساب طالب نشط مطابق لهذا الطلب'],
                 ]);
             }
             $confirmedEmail = Str::lower(trim((string) $validated['account_email']));
-            if (!hash_equals(Str::lower(trim((string) $matchedUser->email)), $confirmedEmail)) {
+            if (! hash_equals(Str::lower(trim((string) $matchedUser->email)), $confirmedEmail)) {
                 throw ValidationException::withMessages([
                     'account_email' => ['بريد التأكيد لا يطابق الحساب المطلوب حذفه'],
                 ]);
@@ -138,6 +140,7 @@ final class AdminContactWorkflowService
                 'resolved_user_id' => $matchedUser->id,
                 'resolution_metadata' => $metadata,
             ])->save();
+
             return $pending;
         }, 3);
 
@@ -146,13 +149,12 @@ final class AdminContactWorkflowService
     private function lockedCurrent(int $contactId, string $expected): Contact
     {
         $locked = Contact::query()->whereKey($contactId)->lockForUpdate()->firstOrFail();
-        if (!hash_equals(ContactEditorVersion::for($locked), $expected)) {
+        if (! hash_equals(ContactEditorVersion::for($locked), $expected)) {
             throw ValidationException::withMessages([
                 'editor_version' => ["تغيّرت الرسالة منذ فتح الصفحة\nحدّثها قبل تنفيذ الإجراء"],
             ]);
         }
+
         return $locked;
     }
-
-
 }

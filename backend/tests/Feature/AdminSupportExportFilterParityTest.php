@@ -20,8 +20,11 @@ final class AdminSupportExportFilterParityTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private Course $course;
+
     private FeedbackReport $wanted;
+
     private FeedbackReport $guest;
 
     protected function setUp(): void
@@ -167,6 +170,7 @@ final class AdminSupportExportFilterParityTest extends TestCase
             $rows[] = $row;
         }
         fclose($stream);
+
         return $rows;
     }
 

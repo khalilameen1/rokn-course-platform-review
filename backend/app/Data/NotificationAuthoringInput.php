@@ -24,14 +24,13 @@ final readonly class NotificationAuthoringInput
         public ?string $actionLink,
         public ?string $sendAt,
         public ?UploadedFile $image
-    ) {
-    }
+    ) {}
 
     /**
      * Only call with fields already validated by the input boundary.
      * This factory neither grants authoring permission nor selects recipients.
      *
-     * @param array<string,mixed> $fields
+     * @param  array<string,mixed>  $fields
      */
     public static function fromValidated(int $authorId, array $fields): self
     {
@@ -42,8 +41,8 @@ final readonly class NotificationAuthoringInput
             messageAr: (string) $fields['message_ar'],
             titleEn: $fields['title_en'] ?? null,
             messageEn: $fields['message_en'] ?? null,
-            targetStudentId: !empty($fields['user_id']) ? (int) $fields['user_id'] : null,
-            courseId: !empty($fields['course_id']) ? (int) $fields['course_id'] : null,
+            targetStudentId: ! empty($fields['user_id']) ? (int) $fields['user_id'] : null,
+            courseId: ! empty($fields['course_id']) ? (int) $fields['course_id'] : null,
             audience: (string) ($fields['audience'] ?? 'all'),
             kind: $fields['notification_kind'] ?? null,
             actionLabel: $fields['action_label'] ?? null,

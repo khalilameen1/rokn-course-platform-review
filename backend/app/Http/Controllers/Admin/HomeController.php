@@ -19,7 +19,7 @@ class HomeController extends Controller
     {
         // Resolve only the authorized projection. In particular a moderator
         // request must not instantiate the financial report dependency graph.
-        if (!$permissions->isAdministrator($request->user()?->role)) {
+        if (! $permissions->isAdministrator($request->user()?->role)) {
             return view('admin.home.moderator', app(ModeratorHomeReadService::class)->read(
                 $request->query(),
                 max(1, (int) $request->query('page', 1))

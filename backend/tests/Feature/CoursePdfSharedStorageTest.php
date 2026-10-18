@@ -4,24 +4,31 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\API\CoursePdfController;
 use App\Http\Controllers\Admin\CoursePdfController as AdminCoursePdfController;
 use App\Http\Requests\Admin\CoursePdfOrderRequest;
 use App\Http\Requests\Admin\CoursePdfRequest;
 use App\Http\Requests\Admin\CoursePdfVersionRequest;
+use App\Jobs\DeleteAccountFile;
+use App\Models\AccountFileDeletion;
 use App\Models\Course;
 use App\Models\CoursePdf;
 use App\Models\User;
+use App\Services\AdminCoursePdfApplicationService;
 use App\Services\CourseModuleAccessService;
+use App\Services\StoredFileReferenceService;
+use App\Support\CourseAttachmentExternalUrl;
+use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 final class CoursePdfSharedStorageTest extends TestCase
@@ -117,7 +124,7 @@ final class CoursePdfSharedStorageTest extends TestCase
             'course_pdfs.shared_storage' => true,
             'filesystems.disks.course-pdfs-shared' => [
                 'driver' => 'local',
-                'root' => sys_get_temp_dir() . '/course-pdfs-shared',
+                'root' => sys_get_temp_dir().'/course-pdfs-shared',
                 'visibility' => 'private',
             ],
         ]);
@@ -465,7 +472,7 @@ final class CoursePdfSharedStorageTest extends TestCase
             self::assertNull($metadata[$field]);
         }
         self::assertStringNotContainsString('drive.google.com', $metadata['download_url']);
-        $target = \App\Support\CourseAttachmentExternalUrl::normalize($pdf->external_url);
+        $target = CourseAttachmentExternalUrl::normalize($pdf->external_url);
         $this->get($metadata['download_url'])->assertRedirect($target)->assertHeader('Referrer-Policy', 'no-referrer');
         self::assertSame($target, app(AdminCoursePdfController::class)->preview(Course::findOrFail(7), $pdf)->getTargetUrl());
         $this->get($metadata['download_url'].'&tampered=1')->assertForbidden();
@@ -487,7 +494,7 @@ final class CoursePdfSharedStorageTest extends TestCase
             'storage_disk' => 'course-pdfs-shared', 'file_size' => 10,
         ]);
         Storage::disk('course-pdfs-shared')->put($pdf->file_path, '%PDF-old');
-        $service = app(\App\Services\AdminCoursePdfApplicationService::class);
+        $service = app(AdminCoursePdfApplicationService::class);
         $service->update($course, $pdf, [
             'source_type' => 'external', 'external_url' => 'https://example.org/archive.zip',
         ], 1, null);
@@ -502,7 +509,7 @@ final class CoursePdfSharedStorageTest extends TestCase
         try {
             $this->prepareFormRequest($switch, $course->fresh(), $pdf->fresh());
             self::fail('An external link cannot become an upload without replacement bytes.');
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             self::assertArrayHasKey('pdf_file', $exception->errors());
         }
         self::assertSame(2, (int) $course->fresh()->authoring_version);
@@ -523,12 +530,12 @@ final class CoursePdfSharedStorageTest extends TestCase
             'course_id' => 7, 'title' => 'ملف خارجي', 'file_path' => '',
             'source_type' => 'external', 'external_url' => 'https://example.org/large.zip',
         ]);
-        $service = app(\App\Services\AdminCoursePdfApplicationService::class);
+        $service = app(AdminCoursePdfApplicationService::class);
         self::assertFalse($service->toggle($course, $pdf, 1)['pdf']['is_active']);
         try {
             $service->destroy($course->fresh(), $pdf->fresh(), 1);
             self::fail('Stale version must not delete the attachment.');
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             self::assertSame(409, $exception->status);
         }
         self::assertTrue($service->destroy($course->fresh(), $pdf->fresh(), 2)['pdf']['deleted']);
@@ -546,7 +553,7 @@ final class CoursePdfSharedStorageTest extends TestCase
             try {
                 $this->prepareFormRequest($request, $course);
                 self::fail('Invalid external URL must be rejected.');
-            } catch (\Illuminate\Validation\ValidationException $exception) {
+            } catch (ValidationException $exception) {
                 self::assertArrayHasKey('external_url', $exception->errors());
             }
         }
@@ -558,7 +565,7 @@ final class CoursePdfSharedStorageTest extends TestCase
         try {
             $this->prepareFormRequest($request, $course);
             self::fail('Mixed file and external source must be rejected.');
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             self::assertArrayHasKey('pdf_file', $exception->errors());
         }
         self::assertSame(0, CoursePdf::count());
@@ -602,7 +609,7 @@ final class CoursePdfSharedStorageTest extends TestCase
 
     public function test_replacing_back_to_prior_content_cannot_reuse_a_path_being_deleted(): void
     {
-        \Illuminate\Support\Facades\Queue::fake();
+        Queue::fake();
         $course = Course::findOrFail(7);
         $course->forceFill(['is_coming_soon' => true])->save();
         $disk = Storage::disk('course-pdfs-shared');
@@ -611,14 +618,14 @@ final class CoursePdfSharedStorageTest extends TestCase
             'storage_disk' => 'course-pdfs-shared', 'file_size' => 4,
         ]);
         $disk->put($pdf->file_path, 'seed');
-        $service = app(\App\Services\AdminCoursePdfApplicationService::class);
+        $service = app(AdminCoursePdfApplicationService::class);
         $firstBytes = "First version of the course notes\n";
         $service->update($course, $pdf, [], 1,
             UploadedFile::fake()->createWithContent('notes.txt', $firstBytes));
         $priorPath = $pdf->fresh()->file_path;
         $service->update($course->fresh(), $pdf->fresh(), [], 2,
             UploadedFile::fake()->createWithContent('notes.txt', "Second version of the course notes\n"));
-        $cleanup = \App\Models\AccountFileDeletion::query()
+        $cleanup = AccountFileDeletion::query()
             ->where('path_hash', hash('sha256', $priorPath))->firstOrFail();
 
         $observedDisk = \Mockery::mock($disk);
@@ -635,8 +642,8 @@ final class CoursePdfSharedStorageTest extends TestCase
             });
         Storage::set('course-pdfs-shared', $observedDisk);
         try {
-            (new \App\Jobs\DeleteAccountFile((int) $cleanup->id))
-                ->handle(app(\App\Services\StoredFileReferenceService::class));
+            (new DeleteAccountFile((int) $cleanup->id))
+                ->handle(app(StoredFileReferenceService::class));
         } finally {
             Storage::set('course-pdfs-shared', $disk);
         }
@@ -651,7 +658,7 @@ final class CoursePdfSharedStorageTest extends TestCase
 
     public function test_retry_after_rollback_cannot_reuse_an_orphan_path_being_deleted(): void
     {
-        \Illuminate\Support\Facades\Queue::fake();
+        Queue::fake();
         $course = Course::findOrFail(7);
         $course->forceFill(['is_coming_soon' => true])->save();
         $disk = Storage::disk('course-pdfs-shared');
@@ -660,7 +667,7 @@ final class CoursePdfSharedStorageTest extends TestCase
             'storage_disk' => 'course-pdfs-shared', 'file_size' => 4,
         ]);
         $disk->put($pdf->file_path, 'seed');
-        $service = app(\App\Services\AdminCoursePdfApplicationService::class);
+        $service = app(AdminCoursePdfApplicationService::class);
         $bytes = "Replacement notes after a failed save\n";
         $oldPathHash = hash('sha256', $pdf->file_path);
         DB::statement("CREATE TRIGGER reject_old_attachment_cleanup BEFORE INSERT ON account_file_deletions
@@ -669,14 +676,14 @@ final class CoursePdfSharedStorageTest extends TestCase
             $service->update($course, $pdf, [], 1,
                 UploadedFile::fake()->createWithContent('notes.txt', $bytes));
             self::fail('The rejected cleanup ledger must roll back the edit.');
-        } catch (\Illuminate\Database\QueryException $exception) {
+        } catch (QueryException $exception) {
             self::assertStringContainsString('cleanup unavailable', $exception->getMessage());
         } finally {
             DB::statement('DROP TRIGGER reject_old_attachment_cleanup');
         }
         self::assertSame(1, (int) $course->fresh()->authoring_version);
         self::assertSame('courses/7/seed.txt', $pdf->fresh()->file_path);
-        $cleanup = \App\Models\AccountFileDeletion::query()->firstOrFail();
+        $cleanup = AccountFileDeletion::query()->firstOrFail();
         $failedPath = $cleanup->path;
         $disk->assertExists($failedPath);
 
@@ -690,8 +697,8 @@ final class CoursePdfSharedStorageTest extends TestCase
             });
         Storage::set('course-pdfs-shared', $observedDisk);
         try {
-            (new \App\Jobs\DeleteAccountFile((int) $cleanup->id))
-                ->handle(app(\App\Services\StoredFileReferenceService::class));
+            (new DeleteAccountFile((int) $cleanup->id))
+                ->handle(app(StoredFileReferenceService::class));
         } finally {
             Storage::set('course-pdfs-shared', $disk);
         }
@@ -705,7 +712,7 @@ final class CoursePdfSharedStorageTest extends TestCase
 
     public function test_database_retry_and_content_deduplication_do_not_repeat_the_physical_upload(): void
     {
-        \Illuminate\Support\Facades\Queue::fake();
+        Queue::fake();
         $course = Course::findOrFail(7);
         $course->forceFill(['is_coming_soon' => true])->save();
         $disk = Storage::disk('course-pdfs-shared');
@@ -714,7 +721,7 @@ final class CoursePdfSharedStorageTest extends TestCase
             ->andReturnUsing(fn (...$arguments) => $disk->putFileAs(...$arguments));
         Storage::set('course-pdfs-shared', $observedDisk);
         $receipts = 0;
-        $service = app(\App\Services\AdminCoursePdfApplicationService::class);
+        $service = app(AdminCoursePdfApplicationService::class);
         try {
             $created = $service->store($course,
                 UploadedFile::fake()->createWithContent('notes.txt', "Course notes\n"),
@@ -742,7 +749,7 @@ final class CoursePdfSharedStorageTest extends TestCase
 
     public function test_failed_byte_write_keeps_current_attachment_and_cleanup_cannot_remove_its_retry(): void
     {
-        \Illuminate\Support\Facades\Queue::fake();
+        Queue::fake();
         $course = Course::findOrFail(7);
         $course->forceFill(['is_coming_soon' => true])->save();
         $disk = Storage::disk('course-pdfs-shared');
@@ -751,11 +758,12 @@ final class CoursePdfSharedStorageTest extends TestCase
             'storage_disk' => 'course-pdfs-shared', 'file_size' => 4,
         ]);
         $disk->put($pdf->file_path, 'seed');
-        $service = app(\App\Services\AdminCoursePdfApplicationService::class);
+        $service = app(AdminCoursePdfApplicationService::class);
         $observedDisk = \Mockery::mock($disk);
         $observedDisk->shouldReceive('putFileAs')->once()
             ->andReturnUsing(function ($directory, $file, $name) use ($disk): bool {
                 $disk->put($directory.'/'.$name, 'partial');
+
                 return false;
             });
         Storage::set('course-pdfs-shared', $observedDisk);
@@ -771,13 +779,13 @@ final class CoursePdfSharedStorageTest extends TestCase
         self::assertSame(1, (int) $course->fresh()->authoring_version);
         self::assertSame('courses/7/seed.txt', $pdf->fresh()->file_path);
         self::assertSame('seed', $disk->get($pdf->fresh()->file_path));
-        $failedCleanup = \App\Models\AccountFileDeletion::query()->firstOrFail();
+        $failedCleanup = AccountFileDeletion::query()->firstOrFail();
         $failedPath = $failedCleanup->path;
         $service->update($course->fresh(), $pdf->fresh(), [], 1,
             UploadedFile::fake()->createWithContent('notes.txt', "Complete replacement\n"));
         $failedCleanup->forceFill(['available_at' => now()])->save();
-        (new \App\Jobs\DeleteAccountFile((int) $failedCleanup->id))
-            ->handle(app(\App\Services\StoredFileReferenceService::class));
+        (new DeleteAccountFile((int) $failedCleanup->id))
+            ->handle(app(StoredFileReferenceService::class));
         self::assertSame(2, (int) $course->fresh()->authoring_version);
         self::assertSame("Complete replacement\n", $disk->get($pdf->fresh()->file_path));
         self::assertNotSame($failedPath, $pdf->fresh()->file_path);
@@ -786,7 +794,7 @@ final class CoursePdfSharedStorageTest extends TestCase
 
     public function test_a_stale_replacement_cleans_only_its_upload_and_preserves_the_winning_edit(): void
     {
-        \Illuminate\Support\Facades\Queue::fake();
+        Queue::fake();
         $course = Course::findOrFail(7);
         $course->forceFill(['is_coming_soon' => true])->save();
         $disk = Storage::disk('course-pdfs-shared');
@@ -795,12 +803,13 @@ final class CoursePdfSharedStorageTest extends TestCase
             'storage_disk' => 'course-pdfs-shared', 'file_size' => 4,
         ]);
         $disk->put($pdf->file_path, 'seed');
-        $service = app(\App\Services\AdminCoursePdfApplicationService::class);
+        $service = app(AdminCoursePdfApplicationService::class);
         $observedDisk = \Mockery::mock($disk);
         $observedDisk->shouldReceive('putFileAs')->once()
             ->andReturnUsing(function (...$arguments) use ($disk, $service, $course, $pdf) {
                 $path = $disk->putFileAs(...$arguments);
                 $service->update($course->fresh(), $pdf->fresh(), ['title' => 'التعديل الأحدث'], 1, null);
+
                 return $path;
             });
         Storage::set('course-pdfs-shared', $observedDisk);
@@ -808,17 +817,17 @@ final class CoursePdfSharedStorageTest extends TestCase
             $service->update($course, $pdf, [], 1,
                 UploadedFile::fake()->createWithContent('notes.txt', "Stale replacement\n"));
             self::fail('A concurrent winning edit must reject the old version.');
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             self::assertSame(409, $exception->status);
         } finally {
             Storage::set('course-pdfs-shared', $disk);
         }
         self::assertSame(2, (int) $course->fresh()->authoring_version);
         self::assertSame('التعديل الأحدث', $pdf->fresh()->title);
-        $cleanup = \App\Models\AccountFileDeletion::query()->firstOrFail();
+        $cleanup = AccountFileDeletion::query()->firstOrFail();
         $unusedPath = $cleanup->path;
-        (new \App\Jobs\DeleteAccountFile((int) $cleanup->id))
-            ->handle(app(\App\Services\StoredFileReferenceService::class));
+        (new DeleteAccountFile((int) $cleanup->id))
+            ->handle(app(StoredFileReferenceService::class));
         $disk->assertMissing($unusedPath);
         self::assertSame('seed', $disk->get($pdf->fresh()->file_path));
         self::assertSame(1, CoursePdf::count());
@@ -852,7 +861,7 @@ final class CoursePdfSharedStorageTest extends TestCase
 
     private function authenticate(int $id): void
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill(['id' => $id, 'active' => true]);
         $user->exists = true;
         auth('api')->setUser($user);

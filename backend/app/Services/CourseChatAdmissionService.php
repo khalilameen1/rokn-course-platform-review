@@ -19,8 +19,7 @@ final class CourseChatAdmissionService
         private PaidAiCallExecutionService $paidCalls,
         private AiEntitlementBudgetService $budget,
         private readonly AiUsageSettlementService $settlements,
-    ) {
-    }
+    ) {}
 
     public function admit(
         User $user,
@@ -61,6 +60,7 @@ final class CourseChatAdmissionService
             );
         } catch (\UnexpectedValueException) {
             $failed = $this->turns->failBeforeDispatch($turn, 'chat_attachment_claim_failed');
+
             return new CourseChatAdmissionResult(
                 $failed ? 'identity_conflict' : 'in_progress',
                 $turn->fresh()
@@ -89,13 +89,14 @@ final class CourseChatAdmissionService
         }
 
         $prior = AiUsageEvent::query()->where('request_id', $clientRequestId)->first();
-        if (!$prior) {
+        if (! $prior) {
             return new CourseChatAdmissionResult('new', $turn, $claimed);
         }
         if ((int) $prior->user_id !== (int) $user->id
             || (int) $prior->enrollment_id !== (int) $enrollment->id
             || (string) $prior->feature !== 'course_chat') {
             $this->turns->failBeforeDispatch($turn, 'chat_usage_identity_mismatch');
+
             return new CourseChatAdmissionResult('identity_conflict', $turn, $claimed);
         }
 
@@ -105,8 +106,9 @@ final class CourseChatAdmissionService
             && (int) ($priorContext['lesson_id'] ?? 0) === (int) ($requestContext['lesson_id'] ?? 0)
             && ($priorContext['language'] ?? null) === ($requestContext['language'] ?? null)
             && ($priorContext['prompt_version'] ?? null) === ($requestContext['prompt_version'] ?? null);
-        if (!$sameRequest && !($prior->status === 'reserved' && $priorContext === [])) {
+        if (! $sameRequest && ! ($prior->status === 'reserved' && $priorContext === [])) {
             $this->turns->failBeforeDispatch($turn, 'chat_usage_identity_mismatch');
+
             return new CourseChatAdmissionResult('identity_conflict', $turn, $claimed);
         }
 
@@ -142,7 +144,7 @@ final class CourseChatAdmissionService
 
             return new CourseChatAdmissionResult('terminal', $terminal, $claimed);
         }
-        if (!$prior->reservation_expires_at || !$prior->reservation_expires_at->isPast()) {
+        if (! $prior->reservation_expires_at || ! $prior->reservation_expires_at->isPast()) {
             return new CourseChatAdmissionResult('streaming', $turn, $claimed);
         }
         if ($this->paidCalls->landedResult($prior) !== null) {

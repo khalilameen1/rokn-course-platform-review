@@ -15,9 +15,9 @@ use InvalidArgumentException;
 final readonly class CourseSectionEdit
 {
     /**
-     * @param array{description_ar?:?string,description_en?:?string,duration_minutes?:?int,is_opened?:bool} $lessonChanges
-     * @param array{requirements_text_ar?:?string,requirements_text_en?:?string,is_graduation_project?:bool} $projectChanges
-     * @param list<string>|null $projectSubmissionTypes Null means not submitted.
+     * @param  array{description_ar?:?string,description_en?:?string,duration_minutes?:?int,is_opened?:bool}  $lessonChanges
+     * @param  array{requirements_text_ar?:?string,requirements_text_en?:?string,is_graduation_project?:bool}  $projectChanges
+     * @param  list<string>|null  $projectSubmissionTypes  Null means not submitted.
      */
     public function __construct(
         public string $type,
@@ -33,7 +33,7 @@ final readonly class CourseSectionEdit
         public ?UploadedFile $thumbnail = null,
         public ?string $requestId = null
     ) {
-        if (!in_array($type, ['lesson', 'project'], true)) {
+        if (! in_array($type, ['lesson', 'project'], true)) {
             throw new InvalidArgumentException('Unsupported course section type.');
         }
         if (array_diff(array_keys($lessonChanges), [

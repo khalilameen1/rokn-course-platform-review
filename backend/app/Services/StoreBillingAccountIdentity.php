@@ -11,7 +11,7 @@ final class StoreBillingAccountIdentity
 {
     public function google(User|int $user): string
     {
-        return hash_hmac('sha256', 'google:user:' . $this->id($user), $this->key());
+        return hash_hmac('sha256', 'google:user:'.$this->id($user), $this->key());
     }
 
     public function rememberGoogle(User $user): string
@@ -38,7 +38,7 @@ final class StoreBillingAccountIdentity
     public function apple(User|int $user): string
     {
         $hex = substr(
-            hash_hmac('sha256', 'apple:user:' . $this->id($user), $this->key()),
+            hash_hmac('sha256', 'apple:user:'.$this->id($user), $this->key()),
             0,
             32
         );

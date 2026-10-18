@@ -94,7 +94,7 @@ final class CourseReelUploadQueueTest extends TestCase
         ]);
 
         $html = $this->actingAs($admin, 'web')->get(route('admin.courses.show', $course))->assertOk()->getContent();
-        $document = new \DOMDocument();
+        $document = new \DOMDocument;
         @$document->loadHTML('<?xml encoding="utf-8" ?>'.$html);
         $xpath = new \DOMXPath($document);
 

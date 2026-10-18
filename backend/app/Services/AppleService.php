@@ -8,6 +8,8 @@ use App\Models\User;
 use Exception;
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
@@ -15,8 +17,11 @@ use Illuminate\Support\Facades\Http;
 final class AppleService
 {
     private const APPLE_KEYS_URL = 'https://appleid.apple.com/auth/keys';
+
     private const ISSUER = 'https://appleid.apple.com';
+
     private const CACHE_KEY = 'oauth:apple:jwks:v1';
+
     private const NONCE_CACHE_PREFIX = 'oauth:apple:nonce:v1:';
 
     public function verify(string $identityToken, string $rawNonce): array
@@ -47,8 +52,8 @@ final class AppleService
         if (
             ($decoded->iss ?? null) !== self::ISSUER
             || empty($decoded->sub)
-            || !is_int($issuedAt)
-            || !is_int($expiresAt)
+            || ! is_int($issuedAt)
+            || ! is_int($expiresAt)
             || $issuedAt <= 0
             || $expiresAt <= time()
             || $issuedAt >= $expiresAt
@@ -72,9 +77,9 @@ final class AppleService
         $claim = $decoded->nonce ?? null;
         $expectedNonce = hash('sha256', $rawNonce);
         if (
-            !is_string($claim)
+            ! is_string($claim)
             || preg_match('/\A[a-f0-9]{64}\z/', $claim) !== 1
-            || !hash_equals($expectedNonce, $claim)
+            || ! hash_equals($expectedNonce, $claim)
         ) {
             throw new Exception('Apple identity token nonce does not match.');
         }
@@ -83,7 +88,7 @@ final class AppleService
         // instances. The mobile client retains the token until its session is
         // durable, so an identical retry after a database/network failure must
         // remain valid. A different token can never reuse the nonce.
-        $nonceKey = self::NONCE_CACHE_PREFIX . $expectedNonce;
+        $nonceKey = self::NONCE_CACHE_PREFIX.$expectedNonce;
         $credentialHash = hash('sha256', $identityToken);
         $claimedCredentialHash = $claimNonce ? Cache::get($nonceKey) : $credentialHash;
         if ($claimedCredentialHash === null) {
@@ -98,8 +103,8 @@ final class AppleService
             }
         }
         if (
-            !is_string($claimedCredentialHash)
-            || !hash_equals($claimedCredentialHash, $credentialHash)
+            ! is_string($claimedCredentialHash)
+            || ! hash_equals($claimedCredentialHash, $credentialHash)
         ) {
             throw new Exception('Apple identity token nonce was already used.');
         }
@@ -150,20 +155,20 @@ final class AppleService
                     // Never attach an HTTP exception containing a secret form body.
                     throw new SocialProviderUnavailableException('Apple token exchange is temporarily unavailable.');
                 }
-                if (!$response->successful()) {
+                if (! $response->successful()) {
                     if ($response->status() === 400 && $response->json('error') === 'invalid_grant') {
                         throw new Exception('Apple authorization expired; start a fresh sign-in.');
                     }
                     throw new SocialProviderUnavailableException('Apple token exchange is unavailable.');
                 }
                 $tokens = $response->json();
-                if (!is_array($tokens) || !is_string($tokens['refresh_token'] ?? null)
-                    || trim($tokens['refresh_token']) === '' || !is_string($tokens['id_token'] ?? null)) {
+                if (! is_array($tokens) || ! is_string($tokens['refresh_token'] ?? null)
+                    || trim($tokens['refresh_token']) === '' || ! is_string($tokens['id_token'] ?? null)) {
                     throw new SocialProviderUnavailableException('Apple returned an incomplete token response.');
                 }
                 $exchangedIdentity = $this->verifyToken($tokens['id_token'], $rawNonce, false);
-                if (!hash_equals($identity['id'], $exchangedIdentity['id'])
-                    || !hash_equals($identity['client_id'], $exchangedIdentity['client_id'])) {
+                if (! hash_equals($identity['id'], $exchangedIdentity['id'])
+                    || ! hash_equals($identity['client_id'], $exchangedIdentity['client_id'])) {
                     throw new Exception('Apple authorization does not match the signed identity.');
                 }
                 $grant = [
@@ -171,11 +176,13 @@ final class AppleService
                     'apple_refresh_token' => $tokens['refresh_token'],
                 ];
                 Cache::put($receiptKey, Crypt::encryptString(json_encode($grant, JSON_THROW_ON_ERROR)), now()->addMinutes(10));
+
                 return $grant;
             });
-        } catch (\Illuminate\Contracts\Cache\LockTimeoutException) {
+        } catch (LockTimeoutException) {
             throw new SocialProviderUnavailableException('Apple sign-in is already being completed.');
         }
+
         return [...$identity, 'apple_grant' => $grant];
     }
 
@@ -217,6 +224,7 @@ final class AppleService
 
         try {
             $this->privateKey();
+
             return true;
         } catch (SocialProviderUnavailableException) {
             return false;
@@ -240,7 +248,7 @@ final class AppleService
         // key. An explicitly configured malformed secret must not fall back.
         $key = is_string($pem) ? @openssl_pkey_get_private($pem) : false;
         $details = $key !== false ? openssl_pkey_get_details($key) : false;
-        if (!is_array($details) || ($details['type'] ?? null) !== OPENSSL_KEYTYPE_EC
+        if (! is_array($details) || ($details['type'] ?? null) !== OPENSSL_KEYTYPE_EC
             || ($details['ec']['curve_name'] ?? null) !== 'prime256v1') {
             throw new SocialProviderUnavailableException('Apple signing key is not configured correctly.');
         }
@@ -251,7 +259,7 @@ final class AppleService
     private function clientSecret(string $clientId): string
     {
         $allowedClients = array_map('trim', explode(',', (string) config('services.apple.client_id')));
-        if (!$this->revocationConfigured() || !in_array($clientId, $allowedClients, true)) {
+        if (! $this->revocationConfigured() || ! in_array($clientId, $allowedClients, true)) {
             throw new SocialProviderUnavailableException('Apple token lifecycle credentials are not configured.');
         }
         try {
@@ -267,7 +275,7 @@ final class AppleService
         }
     }
 
-    private function keyFor(string $kid): \Firebase\JWT\Key
+    private function keyFor(string $kid): Key
     {
         $keys = JWK::parseKeySet($this->appleJwks(false), 'RS256');
         if (isset($keys[$kid])) {
@@ -276,7 +284,7 @@ final class AppleService
 
         // Apple can rotate signing keys before the normal cache TTL.
         $keys = JWK::parseKeySet($this->appleJwks(true), 'RS256');
-        if (!isset($keys[$kid])) {
+        if (! isset($keys[$kid])) {
             throw new Exception('No matching Apple signing key was found.');
         }
 
@@ -296,7 +304,7 @@ final class AppleService
                 ->get(self::APPLE_KEYS_URL)
                 ->throw()
                 ->json();
-            if (!is_array($payload) || !isset($payload['keys']) || !is_array($payload['keys'])) {
+            if (! is_array($payload) || ! isset($payload['keys']) || ! is_array($payload['keys'])) {
                 throw new Exception('Invalid Apple public-keys response.');
             }
 
@@ -307,7 +315,7 @@ final class AppleService
     private function base64UrlDecode(string $value): string
     {
         $padding = (4 - (strlen($value) % 4)) % 4;
-        $decoded = base64_decode(strtr($value . str_repeat('=', $padding), '-_', '+/'), true);
+        $decoded = base64_decode(strtr($value.str_repeat('=', $padding), '-_', '+/'), true);
         if ($decoded === false) {
             throw new Exception('Invalid base64url value.');
         }

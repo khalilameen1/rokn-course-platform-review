@@ -29,7 +29,7 @@ final class ApplyApiLocaleEnvelopeTest extends TestCase
     public function test_complete_success_envelope_passes_through_byte_identical(): void
     {
         $response = app(ApiResponseService::class)->success(
-            ['items' => [['id' => 1, 'title' => 'درس', 'empty' => new \stdClass()]]],
+            ['items' => [['id' => 1, 'title' => 'درس', 'empty' => new \stdClass]]],
             'تم'
         );
         $before = $response->getContent();
@@ -109,7 +109,7 @@ final class ApplyApiLocaleEnvelopeTest extends TestCase
     private function handle(JsonResponse $response): JsonResponse
     {
         $request = Request::create('/api/v1/_contract', 'GET', server: ['HTTP_ACCEPT_LANGUAGE' => 'ar']);
-        $handled = (new ApplyAPILocale())->handle($request, static fn () => $response);
+        $handled = (new ApplyAPILocale)->handle($request, static fn () => $response);
         self::assertInstanceOf(JsonResponse::class, $handled);
 
         return $handled;

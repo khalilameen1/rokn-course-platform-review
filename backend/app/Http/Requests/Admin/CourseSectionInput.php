@@ -27,7 +27,7 @@ final class CourseSectionInput
         $moduleId = $request->exists('module_id')
             ? $request->integer('module_id')
             : (int) ($section?->module_id ?? 0);
-        $typeChanged = !$creating && $section?->getSectionType() !== $sectionType;
+        $typeChanged = ! $creating && $section?->getSectionType() !== $sectionType;
         $request->validate([
             'title_ar' => $creating
                 ? ['required', 'string', 'max:255']
@@ -113,7 +113,7 @@ final class CourseSectionInput
             'lesson_duration_minutes' => 'sometimes|nullable|integer|min:1',
             'is_opened' => 'sometimes|boolean',
         ]);
-        if ($videoRequired && !$request->filled('bunny_video_claim')) {
+        if ($videoRequired && ! $request->filled('bunny_video_claim')) {
             throw ValidationException::withMessages([
                 'bunny_video_claim' => 'اختر ملف الفيديو وانتظر اكتمال رفعه',
             ]);

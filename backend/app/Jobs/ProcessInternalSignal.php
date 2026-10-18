@@ -21,7 +21,9 @@ final class ProcessInternalSignal implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
+
     public int $timeout = 150;
+
     public bool $failOnTimeout = true;
 
     public function __construct(public int $signalId, public ?string $signalType = null)
@@ -47,7 +49,7 @@ final class ProcessInternalSignal implements ShouldQueue
     {
         $leaseId = (string) Str::uuid();
         $signal = $this->claim($leaseId);
-        if (!$signal) {
+        if (! $signal) {
             return;
         }
 
@@ -94,7 +96,7 @@ final class ProcessInternalSignal implements ShouldQueue
                     'lease_id' => null,
                     'last_error_fingerprint' => hash(
                         'sha256',
-                        $exception::class . '|' . $exception->getMessage()
+                        $exception::class.'|'.$exception->getMessage()
                     ),
                     'updated_at' => now(),
                 ]);
@@ -111,7 +113,7 @@ final class ProcessInternalSignal implements ShouldQueue
     {
         return DB::transaction(function () use ($leaseId): ?InternalSignal {
             $signal = InternalSignal::query()->lockForUpdate()->find($this->signalId);
-            if (!$signal || $signal->status === InternalSignal::STATUS_HANDLED) {
+            if (! $signal || $signal->status === InternalSignal::STATUS_HANDLED) {
                 return null;
             }
             if ($signal->available_at?->isFuture()) {

@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
+use App\Services\CourseCatalogueRevisionService;
+use App\Services\StoredFileDeletionService;
 use App\Support\PublicDiskUrl;
 use Illuminate\Database\Eloquent\Model;
-use App\Services\StoredFileDeletionService;
-use App\Services\CourseCatalogueRevisionService;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Photo extends Model
 {
@@ -30,7 +31,6 @@ class Photo extends Model
     }
 
     /**
-     * @param $query
      * @return mixed
      */
     public function scopeFeatured($query)
@@ -41,7 +41,7 @@ class Photo extends Model
     /**
      * Gets the owning models.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\MorphTo
+     * @return MorphTo
      */
     public function photoable()
     {
@@ -63,7 +63,7 @@ class Photo extends Model
             || ($owner instanceof User
                 && in_array(strtolower((string) $owner->role), ['teacher', 'admin'], true)
                 && $owner->teachingCourses()->exists());
-        if (!$affectsCatalogue) {
+        if (! $affectsCatalogue) {
             return;
         }
         app(CourseCatalogueRevisionService::class)->invalidateAfterCommit();

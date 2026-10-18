@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Schema;
 final class FinancialProvenanceTest extends ApiTestCase
 {
     private int $packageSequence = 0;
+
     private int $operationSequence = 0;
 
     protected function setUp(): void
@@ -493,14 +494,14 @@ final class FinancialProvenanceTest extends ApiTestCase
         unset($metadata['reversal_cycle']);
         $lot->forceFill(['metadata' => $metadata])->save();
         WalletTransaction::query()->where('category', 'package_reversal')->update([
-            'idempotency_key' => 'financial-reversal:paid-lot:' . $lot->id,
+            'idempotency_key' => 'financial-reversal:paid-lot:'.$lot->id,
         ]);
 
         $lifecycle->resolveFinancialReview($package->fresh(), 'repaid', 'legacy:restore');
         $lifecycle->resolveFinancialReview($package->fresh(), 'repaid', 'legacy:restore');
         self::assertSame(500, (int) $this->user->fresh()->wallet_purchased_coins);
         self::assertSame(1, WalletTransaction::query()->where(
-            'idempotency_key', 'financial-resolution:restore-paid-lot:' . $lot->id
+            'idempotency_key', 'financial-resolution:restore-paid-lot:'.$lot->id
         )->count());
 
         $lifecycle->registerReversal($package->fresh(), Order::FINANCIAL_REFUNDED, 'New refund', 'new:refund');
@@ -734,7 +735,7 @@ final class FinancialProvenanceTest extends ApiTestCase
             (int) $this->user->id,
             $amount,
             'package_purchase',
-            'test:package-credit:' . (++$this->operationSequence),
+            'test:package-credit:'.(++$this->operationSequence),
             $order,
             ['package_id' => $packageId],
             WalletTransaction::BUCKET_PAID
@@ -749,8 +750,8 @@ final class FinancialProvenanceTest extends ApiTestCase
     private function packageRecord(int $coins): int
     {
         return (int) DB::table('packages')->insertGetId([
-            'name_ar' => 'Test package ' . (++$this->packageSequence),
-            'name_en' => 'Test package ' . $this->packageSequence,
+            'name_ar' => 'Test package '.(++$this->packageSequence),
+            'name_en' => 'Test package '.$this->packageSequence,
             'price' => 100,
             'coins' => $coins,
             'created_at' => now(),
@@ -766,7 +767,7 @@ final class FinancialProvenanceTest extends ApiTestCase
         bool $issueCertificate = true
     ): array {
         $category = $scope === 'chat' ? 'course_chat_upgrade' : 'course_purchase';
-        $key = 'test:' . $category . ':' . (++$this->operationSequence);
+        $key = 'test:'.$category.':'.(++$this->operationSequence);
         $course = Course::query()->findOrFail($this->courseId);
         $order = Order::query()->create([
             'user_id' => $this->user->id,
@@ -781,8 +782,8 @@ final class FinancialProvenanceTest extends ApiTestCase
             'status' => Order::STATUS_APPROVED,
             'financial_status' => Order::FINANCIAL_SETTLED,
             'notes' => $scope === 'chat'
-                ? 'Rokn AI/full-access upgrade from grant order #' . (int) $enrollment?->order_id
-                : 'Idempotency: ' . $key,
+                ? 'Rokn AI/full-access upgrade from grant order #'.(int) $enrollment?->order_id
+                : 'Idempotency: '.$key,
             'approved_at' => now(),
         ]);
         $debit = app(WalletService::class)->debit(
@@ -820,7 +821,7 @@ final class FinancialProvenanceTest extends ApiTestCase
     {
         $course = Course::query()->findOrFail($this->courseId);
         $parentOrderId = (int) ($enrollment->access_plan_order_id ?: $enrollment->order_id);
-        $key = 'test:course-full-track-upgrade:' . (++$this->operationSequence);
+        $key = 'test:course-full-track-upgrade:'.(++$this->operationSequence);
         $order = Order::query()->create([
             'user_id' => $this->user->id,
             'course_id' => $course->id,
@@ -834,7 +835,7 @@ final class FinancialProvenanceTest extends ApiTestCase
             'reward_coins' => 0,
             'status' => Order::STATUS_APPROVED,
             'financial_status' => Order::FINANCIAL_SETTLED,
-            'notes' => 'Course access-plan upgrade from order #' . $parentOrderId,
+            'notes' => 'Course access-plan upgrade from order #'.$parentOrderId,
             'approved_at' => now(),
         ]);
         $debit = app(WalletService::class)->debit(

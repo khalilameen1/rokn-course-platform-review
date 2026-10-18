@@ -14,8 +14,7 @@ final class CourseChatRequestService
     public function __construct(
         private CourseAccessPlanService $accessPlans,
         private AiInputAttachmentService $attachments
-    ) {
-    }
+    ) {}
 
     /** @return array{state:string, attachment?:AiInputAttachment} */
     public function uploadAttachment(
@@ -25,16 +24,16 @@ final class CourseChatRequestService
         UploadedFile $file,
         string $clientUploadId
     ): array {
-        if (!$course->isPublishedForLearning()
-            || !$access->hasLearningAccess((int) $user->id, (int) $course->id)
-            || !$access->hasChatAccess((int) $user->id, (int) $course->id)) {
+        if (! $course->isPublishedForLearning()
+            || ! $access->hasLearningAccess((int) $user->id, (int) $course->id)
+            || ! $access->hasChatAccess((int) $user->id, (int) $course->id)) {
             return ['state' => 'not_found'];
         }
 
         $enrollment = $access->activeChatEnrollmentFor((int) $user->id, (int) $course->id);
         $terms = $enrollment ? $this->accessPlans->termsForEnrollment($enrollment) : null;
         $contract = $this->attachmentContract($terms);
-        if (!$contract['enabled']) {
+        if (! $contract['enabled']) {
             return ['state' => 'not_included'];
         }
 

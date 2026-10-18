@@ -11,7 +11,7 @@ final class PlaybackCapabilityServiceTest extends TestCase
 {
     public function test_it_keeps_only_a_small_non_identifying_capability_summary(): void
     {
-        $service = new PlaybackCapabilityService();
+        $service = new PlaybackCapabilityService;
         $normalized = $service->normalize([
             'app_version' => '1.4.0 build 12',
             'os' => 'android',
@@ -40,7 +40,7 @@ final class PlaybackCapabilityServiceTest extends TestCase
 
     public function test_an_explicit_non_hls_client_receives_an_honest_compatibility_reason(): void
     {
-        $service = new PlaybackCapabilityService();
+        $service = new PlaybackCapabilityService;
         $capabilities = $service->normalize(['supports_hls' => false, 'os' => 'other']);
         $policy = $service->networkPolicy($capabilities);
 

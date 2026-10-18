@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 final class LevelBadgeStorageRetryTest extends TestCase
@@ -28,7 +29,7 @@ final class LevelBadgeStorageRetryTest extends TestCase
         Http::preventStrayRequests();
         Queue::fake();
         Storage::fake('public');
-        $admin = new User();
+        $admin = new User;
         $admin->forceFill([
             'name_ar' => 'مدير', 'email' => 'level-badge-admin@example.test',
             'role' => 'admin', 'active' => true,
@@ -63,6 +64,7 @@ final class LevelBadgeStorageRetryTest extends TestCase
                 // Real DeleteAccountFile has already checked references. The
                 // retry commits through HTTP before that old native delete.
                 $this->postBadge($data, $fixture)->assertRedirect(route('admin.levels.index'));
+
                 return $disk->delete($failedPath);
             });
         Storage::set('public', $interleavedDisk);
@@ -116,7 +118,7 @@ final class LevelBadgeStorageRetryTest extends TestCase
         self::assertSame(1, DB::table('admin_authoring_create_intents')->where('status', 'completed')->count());
     }
 
-    private function postBadge(array $data, UploadedFile $fixture): \Illuminate\Testing\TestResponse
+    private function postBadge(array $data, UploadedFile $fixture): TestResponse
     {
         return $this->post(route('admin.levels.store'), [
             ...$data,

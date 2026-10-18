@@ -10,7 +10,7 @@ use Illuminate\Support\Collection;
 final class CommercialLearnerSummaryService
 {
     /**
-     * @param Collection<int, array<string, mixed>> $rows
+     * @param  Collection<int, array<string, mixed>>  $rows
      * @return array<string, mixed>
      */
     public function forRows(Collection $rows): array
@@ -37,25 +37,21 @@ final class CommercialLearnerSummaryService
         $aiAttempts = $aiRequests + $aiFailedRequests + $aiUnansweredRequests;
         $actualCostByService = collect(CourseCostReportService::serviceLabels())
             ->mapWithKeys(function (string $_label, string $serviceKey) use ($rows): array {
-                $complete = $rows->every(fn (array $row): bool =>
-                    ($row['actual_cost_by_service_egp'][$serviceKey] ?? null) !== null
+                $complete = $rows->every(fn (array $row): bool => ($row['actual_cost_by_service_egp'][$serviceKey] ?? null) !== null
                 );
 
                 return [$serviceKey => $complete
-                    ? round((float) $rows->sum(fn (array $row): float =>
-                        (float) $row['actual_cost_by_service_egp'][$serviceKey]
+                    ? round((float) $rows->sum(fn (array $row): float => (float) $row['actual_cost_by_service_egp'][$serviceKey]
                     ), 4)
                     : null];
             })->all();
         $estimatedCostByService = collect(CourseCostReportService::serviceLabels())
             ->mapWithKeys(function (string $_label, string $serviceKey) use ($rows): array {
-                $complete = $rows->every(fn (array $row): bool =>
-                    ($row['cost_with_estimates_by_service_egp'][$serviceKey] ?? null) !== null
+                $complete = $rows->every(fn (array $row): bool => ($row['cost_with_estimates_by_service_egp'][$serviceKey] ?? null) !== null
                 );
 
                 return [$serviceKey => $complete
-                    ? round((float) $rows->sum(fn (array $row): float =>
-                        (float) $row['cost_with_estimates_by_service_egp'][$serviceKey]
+                    ? round((float) $rows->sum(fn (array $row): float => (float) $row['cost_with_estimates_by_service_egp'][$serviceKey]
                     ), 4)
                     : null];
             })->all();

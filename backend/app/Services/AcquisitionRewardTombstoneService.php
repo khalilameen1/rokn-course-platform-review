@@ -114,6 +114,7 @@ final class AcquisitionRewardTombstoneService
             ->all();
 
         sort($keys, SORT_STRING);
+
         return $keys;
     }
 
@@ -133,8 +134,7 @@ final class AcquisitionRewardTombstoneService
                 'provider' => strtolower(trim((string) $identity->provider)),
                 'identifier' => trim((string) $identity->provider_user_id),
             ])
-            ->filter(static fn (array $identity): bool =>
-                $identity['provider'] !== '' && $identity['identifier'] !== ''
+            ->filter(static fn (array $identity): bool => $identity['provider'] !== '' && $identity['identifier'] !== ''
             );
 
         $email = mb_strtolower(trim((string) $user->email));
@@ -165,8 +165,7 @@ final class AcquisitionRewardTombstoneService
         }
 
         return $identities
-            ->unique(static fn (array $identity): string =>
-                $identity['provider'] . "\0" . $identity['identifier']
+            ->unique(static fn (array $identity): string => $identity['provider']."\0".$identity['identifier']
             )
             ->values()
             ->all();
@@ -256,15 +255,20 @@ final class AcquisitionRewardTombstoneService
         string $actionKey,
         int $methodId,
         string $campaignKey = ''
-    ): ?string
-    {
+    ): ?string {
         $actionKey = strtolower(trim($actionKey));
         $campaignKey = strtolower(trim($campaignKey));
-        if ($actionKey === 'register') return self::WELCOME_REWARD;
-        if ($campaignKey !== '') return 'campaign:' . $campaignKey;
-        if ($actionKey === '') return $methodId > 0 ? 'method:' . $methodId : null;
+        if ($actionKey === 'register') {
+            return self::WELCOME_REWARD;
+        }
+        if ($campaignKey !== '') {
+            return 'campaign:'.$campaignKey;
+        }
+        if ($actionKey === '') {
+            return $methodId > 0 ? 'method:'.$methodId : null;
+        }
 
-        return 'task:' . $actionKey;
+        return 'task:'.$actionKey;
     }
 
     private function identityHmac(string $provider, string $providerUserId): string
@@ -274,6 +278,6 @@ final class AcquisitionRewardTombstoneService
             throw new RuntimeException('Reward tombstone HMAC key is not configured.');
         }
 
-        return hash_hmac('sha256', $provider . "\0" . $providerUserId, $key);
+        return hash_hmac('sha256', $provider."\0".$providerUserId, $key);
     }
 }

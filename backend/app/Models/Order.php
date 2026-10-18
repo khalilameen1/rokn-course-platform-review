@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\URL;
-use App\Models\PaymentMethod;
 
 class Order extends Model
 {
@@ -56,7 +55,7 @@ class Order extends Model
         'recovered_coins',
         'unrecovered_coins',
         'approved_by',
-        'is_premium_user'
+        'is_premium_user',
     ];
 
     protected $casts = [
@@ -89,7 +88,7 @@ class Order extends Model
     public function getPaymentScreenshotUrlAttribute(): ?string
     {
         if (
-            !$this->exists
+            ! $this->exists
             || PaymentEvidencePath::from($this->getRawOriginal('payment_screenshot')) === null
         ) {
             return null;
@@ -102,14 +101,19 @@ class Order extends Model
         );
     }
 
-
     // Payment methods
     const PAYMENT_METHOD_ONLINE = 'online';
+
     const PAYMENT_METHOD_COURSE_CODE = 'course_code';
+
     const PAYMENT_METHOD_WALLET = 'wallet';
+
     const PAYMENT_METHOD_WALLET_COINS = 'wallet_coins';
+
     const PAYMENT_METHOD_KASHIER = 'kashier';
+
     const PAYMENT_METHOD_GOOGLE_PLAY = 'google_play';
+
     const PAYMENT_METHOD_APP_STORE = 'app_store';
 
     public const KASHIER_CHECKOUT_TTL_MINUTES = 30;
@@ -139,19 +143,31 @@ class Order extends Model
 
     // Order statuses
     const STATUS_PENDING = 'pending';
+
     const STATUS_APPROVED = 'approved';
+
     const STATUS_REJECTED = 'rejected';
+
     const STATUS_CANCELLED = 'cancelled';
+
     const STATUS_FAILED = 'cancelled'; // Mapped to 'cancelled' to match orders table enum in MySQL
 
     public const FINANCIAL_PENDING = 'pending';
+
     public const FINANCIAL_SETTLED = 'settled';
+
     public const FINANCIAL_REJECTED = 'rejected';
+
     public const FINANCIAL_CANCELLED = 'cancelled';
+
     public const FINANCIAL_REFUNDED = 'refunded';
+
     public const FINANCIAL_CHARGEBACK = 'chargeback';
+
     public const FINANCIAL_REVERSED = 'reversed';
+
     public const FINANCIAL_PARTIALLY_RECOVERED = 'partially_recovered';
+
     public const FINANCIAL_REVIEW_REQUIRED = 'review_required';
 
     /**
@@ -277,7 +293,7 @@ class Order extends Model
     protected static function booted(): void
     {
         static::saving(function (Order $order): void {
-            if (!$order->exists || $order->isDirty(['access_plan_id', 'access_plan_snapshot'])) {
+            if (! $order->exists || $order->isDirty(['access_plan_id', 'access_plan_snapshot'])) {
                 CourseAccessPlanSnapshot::assertValidForPlan(
                     $order->access_plan_id !== null ? (int) $order->access_plan_id : null,
                     $order->access_plan_snapshot
@@ -318,7 +334,7 @@ class Order extends Model
                 }
 
                 if ($order->getOriginal('transaction_id') !== null && $order->isDirty('transaction_id')) {
-                        throw new \LogicException('Payment transaction identity is write-once.');
+                    throw new \LogicException('Payment transaction identity is write-once.');
                 }
 
                 foreach ([
@@ -437,5 +453,4 @@ class Order extends Model
     {
         return $this->status === self::STATUS_REJECTED;
     }
-
 }

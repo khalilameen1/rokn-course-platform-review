@@ -15,15 +15,14 @@ final class AdminHeaderNotificationService
 
     public function __construct(
         private readonly AdminPermissionMatrix $permissions
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{unread_count:int,items:Collection<int,array{id:string,label:string,url:string}>}
      */
     public function for(?User $administrator): array
     {
-        if (!$administrator || !$this->permissions->isAdministrator($administrator->role)) {
+        if (! $administrator || ! $this->permissions->isAdministrator($administrator->role)) {
             return ['unread_count' => 0, 'items' => collect()];
         }
 
@@ -48,7 +47,7 @@ final class AdminHeaderNotificationService
             ->map(function (DatabaseNotification $notification) use ($users): ?array {
                 $userId = $this->targetUserId($notification);
                 $user = $userId ? $users->get($userId) : null;
-                if (!$user) {
+                if (! $user) {
                     return null;
                 }
 
@@ -56,7 +55,7 @@ final class AdminHeaderNotificationService
 
                 return [
                     'id' => (string) $notification->id,
-                    'label' => 'طلب جديد من ' . $name,
+                    'label' => 'طلب جديد من '.$name,
                     'url' => route('admin.users.show', [$userId, 'n_id' => $notification->id]),
                 ];
             })
@@ -71,7 +70,7 @@ final class AdminHeaderNotificationService
     {
         $data = is_array($notification->data) ? $notification->data : [];
         $candidate = $data['user_id'] ?? $data['data'] ?? null;
-        if (!is_numeric($candidate) || (int) $candidate <= 0) {
+        if (! is_numeric($candidate) || (int) $candidate <= 0) {
             return null;
         }
 

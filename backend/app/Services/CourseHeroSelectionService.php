@@ -42,7 +42,7 @@ final class CourseHeroSelectionService
                     'authoring_version',
                 ]);
             $lockedCourse = $rootCourses->firstWhere('id', $course->getKey());
-            if (!$lockedCourse) {
+            if (! $lockedCourse) {
                 throw ValidationException::withMessages([
                     'is_main_course' => ['لا يمكن اختيار كورس فرعي للواجهة الرئيسية'],
                 ]);
@@ -56,8 +56,7 @@ final class CourseHeroSelectionService
             }
 
             $eligible = $rootCourses
-                ->filter(fn (Course $candidate): bool =>
-                    !(bool) $candidate->is_coming_soon
+                ->filter(fn (Course $candidate): bool => ! (bool) $candidate->is_coming_soon
                     && (bool) $candidate->is_catalog_visible
                 );
             $otherEligible = $eligible->where('id', '<>', $lockedCourse->id);

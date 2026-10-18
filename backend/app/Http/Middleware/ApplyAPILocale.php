@@ -2,19 +2,19 @@
 
 namespace App\Http\Middleware;
 
-use App\Support\RoknLocale;
 use App\Support\ApiErrorContract;
 use App\Support\BusinessClock;
+use App\Support\RoknLocale;
 use Closure;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ApplyAPILocale
 {
     /**
      * Handle an incoming request.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
+     * @param  Request  $request
      * @return mixed
      */
     public function handle($request, Closure $next)
@@ -23,13 +23,13 @@ class ApplyAPILocale
         app()->setLocale($locale);
 
         $response = $next($request);
-        if ($response instanceof JsonResponse && !$response->headers->has('ETag')) {
+        if ($response instanceof JsonResponse && ! $response->headers->has('ETag')) {
             $this->normalizeEnvelope($response);
         }
         $response->headers->set('Content-Language', $locale);
         $vary = array_filter(array_map('trim', explode(',', (string) $response->headers->get('Vary'))));
         $normalizedVary = array_map('strtolower', $vary);
-        if (!in_array('*', $vary, true) && !in_array('accept-language', $normalizedVary, true)) {
+        if (! in_array('*', $vary, true) && ! in_array('accept-language', $normalizedVary, true)) {
             $vary[] = 'Accept-Language';
         }
         $response->headers->set('Vary', implode(', ', $vary));
@@ -50,7 +50,7 @@ class ApplyAPILocale
         }
 
         $body = $response->getData(true);
-        if (!is_array($body)) {
+        if (! is_array($body)) {
             return;
         }
 
@@ -71,7 +71,7 @@ class ApplyAPILocale
                 : ApiErrorContract::retryable($status);
             $changed = true;
         }
-        if (!array_key_exists('server_time', $body)) {
+        if (! array_key_exists('server_time', $body)) {
             // Non-versioned manual and legacy controllers share the same
             // clock contract as ApiResponseService. ETagged bodies stay
             // byte-stable and clients use their HTTP Date header instead.

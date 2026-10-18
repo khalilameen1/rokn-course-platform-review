@@ -13,16 +13,27 @@ use Throwable;
 final class OpenRouterEventStream
 {
     private string $buffer = '';
+
     private string $content = '';
+
     private string $providerRequestId = '';
+
     private mixed $finishReason = null;
+
     private mixed $nativeFinishReason = null;
+
     private array $usage = [];
+
     private array $annotations = [];
+
     private int $lastEmittedLength = 0;
+
     private int $lastEmittedAt;
+
     private bool $completed = false;
+
     private bool $receivedFragments = false;
+
     private mixed $callback;
 
     public function __construct(callable $onPartial, private string $model)
@@ -42,6 +53,7 @@ final class OpenRouterEventStream
         // Only a complete, explicit error envelope is authoritative here.
         if (str_starts_with(ltrim($this->buffer), '{')) {
             $this->rejectJsonError($this->buffer);
+
             return;
         }
         foreach ($this->takeCompleteSseEvents() as $event) {
@@ -70,14 +82,14 @@ final class OpenRouterEventStream
         } catch (JsonException) {
             return; // An incomplete chunk is not a provider rejection.
         }
-        if (!is_array($frame) || array_key_exists('choices', $frame)) {
+        if (! is_array($frame) || array_key_exists('choices', $frame)) {
             return;
         }
         $error = $frame['error'] ?? null;
-        if (!is_array($error)
-            || !(is_string($error['code'] ?? null) || is_int($error['code'] ?? null))
+        if (! is_array($error)
+            || ! (is_string($error['code'] ?? null) || is_int($error['code'] ?? null))
             || trim((string) $error['code']) === ''
-            || !is_string($error['message'] ?? null)) {
+            || ! is_string($error['message'] ?? null)) {
             return;
         }
         $this->throwProviderError($error);
@@ -106,11 +118,11 @@ final class OpenRouterEventStream
     public function finish(): array
     {
         try {
-            if (!$this->completed && trim($this->buffer) !== '') {
+            if (! $this->completed && trim($this->buffer) !== '') {
                 $this->completed = $this->consumeSseEvent($this->buffer);
                 $this->buffer = '';
             }
-            if (!$this->completed && !filled($this->finishReason)) {
+            if (! $this->completed && ! filled($this->finishReason)) {
                 throw new AiProviderUnavailableException(
                     false,
                     'AI provider stream ended before completion.',
@@ -159,7 +171,7 @@ final class OpenRouterEventStream
     {
         $dataLines = [];
         foreach (preg_split('/\r\n|\n|\r/', $event) ?: [] as $line) {
-            if (!str_starts_with($line, 'data:')) {
+            if (! str_starts_with($line, 'data:')) {
                 continue;
             }
             $dataLines[] = ltrim(substr($line, 5), ' ');
@@ -183,7 +195,7 @@ final class OpenRouterEventStream
                 outcomeUnknown: true
             );
         }
-        if (!is_array($frame)) {
+        if (! is_array($frame)) {
             return false;
         }
         if (isset($frame['error'])) {
@@ -211,7 +223,7 @@ final class OpenRouterEventStream
             $this->usage = $frame['usage'];
         }
         $frameAnnotations = data_get($frame, 'choices.0.delta.annotations');
-        if (!is_array($frameAnnotations)) {
+        if (! is_array($frameAnnotations)) {
             $frameAnnotations = data_get($frame, 'choices.0.message.annotations');
         }
         if (is_array($frameAnnotations) && $frameAnnotations !== []) {
@@ -227,7 +239,7 @@ final class OpenRouterEventStream
         $providerStatus = ctype_digit($rawCode) ? (int) $rawCode : null;
         $outcomeUnknown = $this->content !== '';
         throw new AiProviderUnavailableException(
-            !$outcomeUnknown && (
+            ! $outcomeUnknown && (
                 in_array($providerStatus, [408, 429], true)
                 || ($providerStatus !== null && $providerStatus >= 500)
             ),
@@ -245,7 +257,7 @@ final class OpenRouterEventStream
         if (is_string($content)) {
             return $content;
         }
-        if (!is_array($content)) {
+        if (! is_array($content)) {
             return '';
         }
 
@@ -253,13 +265,14 @@ final class OpenRouterEventStream
         foreach ($content as $part) {
             if (is_string($part)) {
                 $text .= $part;
+
                 continue;
             }
-            if (!is_array($part)) {
+            if (! is_array($part)) {
                 continue;
             }
             $type = strtolower(trim((string) ($part['type'] ?? '')));
-            if ($type !== '' && !in_array($type, ['text', 'output_text'], true)) {
+            if ($type !== '' && ! in_array($type, ['text', 'output_text'], true)) {
                 continue;
             }
             if (is_string($part['text'] ?? null)) {
@@ -284,7 +297,7 @@ final class OpenRouterEventStream
         // progress (the AI SDK pattern) so a long answer costs about one
         // write per second, however fast the provider streams.
         if (
-            !$force
+            ! $force
             && $this->lastEmittedLength > 0
             && $now - $this->lastEmittedAt < 1_000_000_000
         ) {

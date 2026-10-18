@@ -10,9 +10,7 @@ use Google\Client as GoogleClient;
 
 final readonly class LiveStoreNotificationAuthenticityVerifier implements StoreNotificationAuthenticityVerifier
 {
-    public function __construct(private LiveStorePurchaseProviderGateway $storeGateway)
-    {
-    }
+    public function __construct(private LiveStorePurchaseProviderGateway $storeGateway) {}
 
     public function verifyGooglePushToken(string $token): array
     {
@@ -34,7 +32,7 @@ final readonly class LiveStoreNotificationAuthenticityVerifier implements StoreN
             $claims = false;
         }
 
-        if (!is_array($claims)) {
+        if (! is_array($claims)) {
             throw new StorePurchaseVerificationException(
                 'google_rtdn_identity_invalid',
                 'Google Play notification identity is invalid.',
@@ -46,10 +44,10 @@ final readonly class LiveStoreNotificationAuthenticityVerifier implements StoreN
         $email = strtolower((string) ($claims['email'] ?? ''));
         $verified = filter_var($claims['email_verified'] ?? false, FILTER_VALIDATE_BOOL);
         if (
-            !in_array($issuer, ['accounts.google.com', 'https://accounts.google.com'], true)
-            || !$verified
-            || !hash_equals($expectedEmail, $email)
-            || !hash_equals($audience, (string) ($claims['aud'] ?? ''))
+            ! in_array($issuer, ['accounts.google.com', 'https://accounts.google.com'], true)
+            || ! $verified
+            || ! hash_equals($expectedEmail, $email)
+            || ! hash_equals($audience, (string) ($claims['aud'] ?? ''))
         ) {
             throw new StorePurchaseVerificationException(
                 'google_rtdn_identity_mismatch',

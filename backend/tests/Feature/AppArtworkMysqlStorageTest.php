@@ -12,7 +12,7 @@ final class AppArtworkMysqlStorageTest extends TestCase
 {
     public function test_all_artwork_urls_fit_the_real_design_settings_schema(): void
     {
-        if (!filter_var(env('ROKN_REQUIRE_MYSQL_CONTRACT_TEST'), FILTER_VALIDATE_BOOL)) {
+        if (! filter_var(env('ROKN_REQUIRE_MYSQL_CONTRACT_TEST'), FILTER_VALIDATE_BOOL)) {
             self::markTestSkipped('Requires the production MySQL schema contract job.');
         }
         self::assertSame('testing', app()->environment());

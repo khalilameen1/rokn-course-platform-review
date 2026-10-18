@@ -23,7 +23,7 @@ final class LessonMediaDeliveryContractTest extends TestCase
     public function test_lessons_have_one_secure_stream_delivery_source(): void
     {
         $bunny = $this->source('app/Services/BunnyDeliveryService.php')
-            . $this->source('app/Services/LessonMediaDeliveryService.php');
+            .$this->source('app/Services/LessonMediaDeliveryService.php');
         $manifest = $this->source('app/Services/PlaybackManifestService.php');
 
         self::assertStringContainsString('BunnyDeliveryService $delivery', $manifest);
@@ -139,7 +139,7 @@ final class LessonMediaDeliveryContractTest extends TestCase
         self::assertStringContainsString('->sectionLockStatus(', $resource);
         self::assertStringContainsString("'is_locked' => \$isLocked", $resource);
         self::assertStringContainsString("['is_completed'] ?? false", $resource);
-        self::assertStringContainsString('if (!$isLocked || $isPreview)', $resource);
+        self::assertStringContainsString('if (! $isLocked || $isPreview)', $resource);
     }
 
     public function test_course_section_order_is_the_only_learner_sequence_contract(): void

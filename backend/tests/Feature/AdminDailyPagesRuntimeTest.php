@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Middleware\RequireAdminMfa;
+use App\Models\Classification;
+use App\Models\CoinEarningMethod;
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
-use App\Models\Classification;
 use App\Models\Lesson;
 use App\Models\Level;
 use App\Models\Order;
@@ -17,9 +18,13 @@ use App\Models\Package;
 use App\Models\Path;
 use App\Models\RewardRule;
 use App\Models\User;
+use App\Services\AdminPaymentOperationsReadService;
 use DOMDocument;
 use DOMXPath;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class AdminDailyPagesRuntimeTest extends TestCase
@@ -55,7 +60,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
             'base_authoring_version' => 1,
             'status' => CourseAuthoringRevision::DRAFT,
             'active_slot' => 'course:'.$canonical->id,
-            'clone_key' => (string) \Illuminate\Support\Str::uuid(),
+            'clone_key' => (string) Str::uuid(),
         ]);
         $this->withoutMiddleware(RequireAdminMfa::class);
 
@@ -147,7 +152,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $this->get(route('admin.courses.pdfs.index', $course))
             ->assertRedirect(route('admin.courses.show', $course).'#studioCourseAttachments');
 
-        foreach (array_keys(\App\Services\AdminPaymentOperationsReadService::stateLabels()) as $state) {
+        foreach (array_keys(AdminPaymentOperationsReadService::stateLabels()) as $state) {
             $this->get(route('admin.orders.index', ['state' => $state]))->assertOk();
         }
     }
@@ -160,7 +165,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $this->actingAs($admin, 'web');
 
         $studio = $this->get(route('admin.courses.show', $course))->assertOk();
-        $studioDocument = new DOMDocument();
+        $studioDocument = new DOMDocument;
         @$studioDocument->loadHTML('<?xml encoding="utf-8" ?>'.$studio->getContent());
         $studioXPath = new DOMXPath($studioDocument);
         $this->assertUniqueDomIds($studioXPath);
@@ -168,7 +173,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $this->assertPairedBooleanControl($studioXPath, 'is_catalog_visible');
 
         $settings = $this->get(route('admin.settings'))->assertOk();
-        $settingsDocument = new DOMDocument();
+        $settingsDocument = new DOMDocument;
         @$settingsDocument->loadHTML('<?xml encoding="utf-8" ?>'.$settings->getContent());
         $settingsXPath = new DOMXPath($settingsDocument);
         $this->assertUniqueDomIds($settingsXPath);
@@ -217,7 +222,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
 
         $response->assertRedirect(route('admin.courses.show', $course));
         $page = $this->followRedirects($response)->assertOk();
-        $document = new DOMDocument();
+        $document = new DOMDocument;
         @$document->loadHTML('<?xml encoding="utf-8" ?>'.$page->getContent());
         $xpath = new DOMXPath($document);
 
@@ -246,7 +251,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $edit = $this->actingAs($moderator, 'web')
             ->get(route('admin.teachers.edit', $teacher))
             ->assertOk();
-        $document = new DOMDocument();
+        $document = new DOMDocument;
         @$document->loadHTML('<?xml encoding="utf-8" ?>'.$edit->getContent());
         $xpath = new DOMXPath($document);
         $editorVersion = trim((string) $xpath->evaluate(
@@ -296,7 +301,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $index = $this->actingAs($admin, 'web')
             ->get(route('admin.coin-earning-methods.index'))
             ->assertOk();
-        $document = new DOMDocument();
+        $document = new DOMDocument;
         @$document->loadHTML('<?xml encoding="utf-8" ?>'.$index->getContent());
         $xpath = new DOMXPath($document);
         $version = $this->inputValue($xpath, 'reward-rule-'.$failedRule->id, 'editor_version');
@@ -335,7 +340,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $response->assertSee('كيف يعمل الرصيد')->assertSee('المكافآت التلقائية')->assertSee('اكسب عملات')
             ->assertSee('name="rewards_help_ar"', false)->assertSee('name="rewards_help_en"', false)
             ->assertSee('name="how_to_use_coins_ar"', false);
-        $document = new DOMDocument();
+        $document = new DOMDocument;
         @$document->loadHTML('<?xml encoding="utf-8" ?>'.$response->getContent());
         $xpath = new DOMXPath($document);
         $this->assertUniqueDomIds($xpath);
@@ -388,7 +393,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $response = $this->actingAs($admin, 'web')
             ->from(route('admin.coin-earning-methods.index'))
             ->post(route('admin.reward-rules.store'), [
-                'authoring_request_id' => (string) \Illuminate\Support\Str::uuid(),
+                'authoring_request_id' => (string) Str::uuid(),
                 'event_key' => 'daily_checkin',
                 'title_ar' => 'مكافأة الحضور الجديدة',
                 'title_en' => 'Daily reward',
@@ -401,7 +406,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
 
         $response->assertRedirect(route('admin.coin-earning-methods.index'));
         $page = $this->followRedirects($response)->assertOk();
-        $document = new DOMDocument();
+        $document = new DOMDocument;
         @$document->loadHTML('<?xml encoding="utf-8" ?>'.$page->getContent());
         $xpath = new DOMXPath($document);
         self::assertSame('daily_checkin', trim((string) $xpath->evaluate(
@@ -414,7 +419,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
 
     public function test_reward_task_create_receipt_replays_without_creating_another_task(): void
     {
-        $this->assertRewardCreateReplay('admin.coin-earning-methods.store', \App\Models\CoinEarningMethod::class, [
+        $this->assertRewardCreateReplay('admin.coin-earning-methods.store', CoinEarningMethod::class, [
             'title_ar' => 'مهمة اختبار', 'title_en' => 'Test task', 'coins_amount' => 10,
             'action_key' => 'internal_receipt_task', 'requires_external_visit' => '0', 'is_active' => '1',
         ]);
@@ -429,12 +434,12 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         ]);
     }
 
-    /** @param class-string<\Illuminate\Database\Eloquent\Model> $modelClass */
+    /** @param class-string<Model> $modelClass */
     private function assertRewardCreateReplay(string $routeName, string $modelClass, array $payload): void
     {
         $admin = $this->dashboardUser('admin');
         $this->withoutMiddleware(RequireAdminMfa::class);
-        $intentId = (string) \Illuminate\Support\Str::uuid();
+        $intentId = (string) Str::uuid();
         $payload['authoring_request_id'] = $intentId;
         $before = $modelClass::query()->count();
         for ($attempt = 0; $attempt < 2; $attempt++) {
@@ -443,7 +448,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
                 ->assertSessionHasNoErrors();
             self::assertSame($before + 1, $modelClass::query()->count());
         }
-        $receipt = \Illuminate\Support\Facades\DB::table('admin_authoring_create_intents')
+        $receipt = DB::table('admin_authoring_create_intents')
             ->where('actor_id', $admin->id)->where('route_name', $routeName)->where('intent_id', $intentId)->sole();
         self::assertSame('completed', $receipt->status);
         self::assertSame($modelClass, $receipt->resource_type);
@@ -452,7 +457,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
 
     private function dashboardUser(string $role): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'name_ar' => match ($role) {
                 'admin' => 'مالك ركن',
@@ -470,7 +475,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
 
     private function assertStudioLessonRow(string $html, string $title, string $label): void
     {
-        $document = new DOMDocument();
+        $document = new DOMDocument;
         @$document->loadHTML('<?xml encoding="utf-8" ?>'.$html);
         $xpath = new DOMXPath($document);
         $rows = $xpath->query("//*[contains(concat(' ', normalize-space(@class), ' '), ' outline-item ')]");
@@ -492,7 +497,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
 
     private function course(string $name): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => $name,
@@ -507,7 +512,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
 
     private function assertStudioCourseForm(string $html, Course $course): void
     {
-        $document = new DOMDocument();
+        $document = new DOMDocument;
         @$document->loadHTML($html);
         $xpath = new DOMXPath($document);
         $forms = $xpath->query('//*[@id="studioCourseForm"]');
@@ -566,7 +571,9 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $ids = [];
         foreach ($nodes as $node) {
             $id = $node->attributes?->getNamedItem('id')?->nodeValue;
-            if (!is_string($id) || $id === '') continue;
+            if (! is_string($id) || $id === '') {
+                continue;
+            }
             self::assertArrayNotHasKey($id, $ids, "Duplicate DOM id {$id}");
             $ids[$id] = true;
         }

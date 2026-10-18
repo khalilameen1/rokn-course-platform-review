@@ -13,16 +13,15 @@ final class GrantAdminAccess
     public function __construct(
         private readonly AdminPermissionMatrix $permissions,
         private readonly AdminSessionIdentity $sessionIdentity
-    ) {
-    }
+    ) {}
 
     public function handle(Request $request, Closure $next)
     {
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return redirect()->route('login');
         }
-        if (!(bool) $user->active) {
+        if (! (bool) $user->active) {
             return $this->logout($request);
         }
 
@@ -36,7 +35,7 @@ final class GrantAdminAccess
                 // Sessions created before this guard was deployed are pinned
                 // on their first request. New logins are pinned immediately.
                 $request->session()->put(AdminSessionIdentity::SESSION_KEY, $expectedIdentity);
-            } elseif (!hash_equals($expectedIdentity, $sessionIdentity)) {
+            } elseif (! hash_equals($expectedIdentity, $sessionIdentity)) {
                 return $this->logout($request);
             }
         }

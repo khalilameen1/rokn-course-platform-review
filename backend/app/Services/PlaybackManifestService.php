@@ -24,8 +24,7 @@ final class PlaybackManifestService
         private PlaybackCapabilityService $capabilities,
         private CourseRevisionResolver $revisionResolver,
         private CourseEntitlementService $courseAccess
-    ) {
-    }
+    ) {}
 
     public function issue(User $user, Lesson $lesson, array $clientContext = []): array
     {
@@ -44,7 +43,7 @@ final class PlaybackManifestService
             )
             : null;
         $graceSession = $graceContext['session'] ?? null;
-        if ($graceRevision && !$graceSession) {
+        if ($graceRevision && ! $graceSession) {
             $canonical = $graceRevision->canonicalCourse()->firstOrFail();
             throw new CourseRevisionChangedException(
                 (int) $canonical->id,
@@ -58,9 +57,9 @@ final class PlaybackManifestService
         // section/course was removed from the authored graph. Never let the
         // preview flag resurrect orphaned or unpublished media.
         if (
-            !$course
-            || !$section
-            || !$publishedOrGrace
+            ! $course
+            || ! $section
+            || ! $publishedOrGrace
             || (int) $lesson->list_id !== (int) $course->id
             || (int) $section->course_id !== (int) $course->id
             || $section->getSectionType() !== 'lesson'
@@ -74,22 +73,22 @@ final class PlaybackManifestService
         // opened as a new session, and no archived curriculum is resurrected.
         $isPublicPreview = (bool) $lesson->is_opened;
         $allowed = $isPublicPreview;
-        if ($graceSession !== null && !$allowed) {
+        if ($graceSession !== null && ! $allowed) {
             $allowed = $this->courseAccess->hasLearningAccess(
                 (int) $user->id,
                 (int) $graceContext['canonical_course']->id
             );
         }
-        if (!$allowed) {
+        if (! $allowed) {
             $accessState = $this->sectionAccess->sectionAccessState($user, $section);
             $allowed = $accessState['can_access'];
         }
-        if (!$allowed) {
+        if (! $allowed) {
             throw new AuthorizationException(
                 (string) ($accessState['lock_reason'] ?? 'lesson_locked')
             );
         }
-        if (!$lesson->usesBunnyVideo()) {
+        if (! $lesson->usesBunnyVideo()) {
             throw new RuntimeException('The lesson video is not ready for secure playback.');
         }
 
@@ -116,13 +115,13 @@ final class PlaybackManifestService
         // Superseded objects are retained for seven days, so a manifest issued
         // immediately before an authoring replacement stays valid for its TTL.
         $source = $this->delivery->videoPlayback((string) $lesson->bunny_video_id);
-        if (!$source || empty($source['url'])) {
+        if (! $source || empty($source['url'])) {
             throw new RuntimeException('A secure playback source could not be issued.');
         }
         $qualities = collect($state->available_qualities ?: ['auto'])
             ->filter(fn ($quality) => in_array($quality, ['auto', '1080p', '720p', '480p', '360p'], true))
             ->unique()->values()->all();
-        if (!in_array('auto', $qualities, true)) {
+        if (! in_array('auto', $qualities, true)) {
             array_unshift($qualities, 'auto');
         }
 
@@ -140,7 +139,7 @@ final class PlaybackManifestService
         );
 
         $sourceExpiresAt = null;
-        if (!empty($source['expires_at'])) {
+        if (! empty($source['expires_at'])) {
             try {
                 $sourceExpiresAt = Carbon::parse((string) $source['expires_at']);
             } catch (\Throwable) {
@@ -195,7 +194,7 @@ final class PlaybackManifestService
                         ->where('sectionable_type', Lesson::class)
                         ->where('sectionable_id', $lesson->id))
                     ->exists();
-            if (!$stillCurrent) {
+            if (! $stillCurrent) {
                 throw new CourseRevisionChangedException(
                     (int) ($lockedCourse?->id ?? $course->id),
                     (int) (
@@ -217,10 +216,10 @@ final class PlaybackManifestService
             $lessonGuid = strtolower(trim((string) $lesson->bunny_video_id));
             $stateGuid = strtolower(trim((string) $lockedState?->provider_media_id));
             if (
-                !$lockedState
+                ! $lockedState
                 || $lessonGuid === ''
                 || $stateGuid === ''
-                || !hash_equals($lessonGuid, $stateGuid)
+                || ! hash_equals($lessonGuid, $stateGuid)
                 || $lockedState->status !== 'ready'
                 || $lockedState->integrity_status === 'quarantined'
                 || $lockedState->last_reconciled_at === null
@@ -340,12 +339,12 @@ final class PlaybackManifestService
             ->whereKey($lessonId)
             ->firstOrFail();
         $state = $lesson->mediaState;
-        if (!$state) {
+        if (! $state) {
             throw new RuntimeException('The lesson video has no published media state.');
         }
         $lessonGuid = strtolower(trim((string) $lesson->bunny_video_id));
         $stateGuid = strtolower(trim((string) $state->provider_media_id));
-        if ($lessonGuid === '' || $stateGuid === '' || !hash_equals($lessonGuid, $stateGuid)) {
+        if ($lessonGuid === '' || $stateGuid === '' || ! hash_equals($lessonGuid, $stateGuid)) {
             throw new RuntimeException('The lesson media generation is not published.');
         }
 
@@ -354,7 +353,7 @@ final class PlaybackManifestService
 
     private function refreshAfter(?Carbon $expiresAt): ?Carbon
     {
-        if (!$expiresAt || $expiresAt->isPast()) {
+        if (! $expiresAt || $expiresAt->isPast()) {
             return null;
         }
 

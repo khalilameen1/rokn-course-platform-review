@@ -21,8 +21,7 @@ final class ProjectReportRetryService
         private CourseAccessPlanService $accessPlans,
         private CourseEntitlementService $courseAccess,
         private PaidAiCallExecutionService $paidCalls
-    ) {
-    }
+    ) {}
 
     public function canRetry(ProjectSubmission $submission): bool
     {
@@ -76,7 +75,7 @@ final class ProjectReportRetryService
     /** @return array{state: string, event: ?AiUsageEvent} */
     private function decision(ProjectSubmission $submission, User $user, bool $lockEvent = false): array
     {
-        if (!$this->isAvailable($submission, $user)) {
+        if (! $this->isAvailable($submission, $user)) {
             return ['state' => 'unavailable', 'event' => null];
         }
         $metadata = is_array($submission->submission_metadata) ? $submission->submission_metadata : [];
@@ -107,7 +106,7 @@ final class ProjectReportRetryService
         if ($retryCount >= 2) {
             return ['state' => 'exhausted', 'event' => $event];
         }
-        $state = $event !== null && !in_array($event->status, ['completed', 'failed'], true)
+        $state = $event !== null && ! in_array($event->status, ['completed', 'failed'], true)
             ? 'not_terminal'
             : 'unsafe';
 

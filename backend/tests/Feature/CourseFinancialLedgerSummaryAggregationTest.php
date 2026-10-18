@@ -100,7 +100,7 @@ final class CourseFinancialLedgerSummaryAggregationTest extends TestCase
      * Verbatim copy of the former chunked implementation, kept only as the
      * equivalence oracle for the database aggregate.
      *
-     * @param Collection<int,int>|null $courseIds
+     * @param  Collection<int,int>|null  $courseIds
      * @return Collection<int,array<string,int>>
      */
     private function legacyCourseSummaries(
@@ -152,7 +152,7 @@ final class CourseFinancialLedgerSummaryAggregationTest extends TestCase
                 $row['total_coins'] += (int) $allocation['total_coins'];
                 $row['paid_coins'] += (int) $allocation['paid_coins'];
                 $row['reward_coins'] += (int) $allocation['reward_coins'];
-                if (!(bool) $allocation['complete']) {
+                if (! (bool) $allocation['complete']) {
                     $row['incomplete_orders']++;
                 }
                 $summary->put($courseId, $row);
@@ -257,29 +257,56 @@ final class CourseFinancialLedgerSummaryAggregationTest extends TestCase
     private function createSchema(): void
     {
         Schema::create('users', function (Blueprint $table): void {
-            $table->id(); $table->string('name_ar')->nullable(); $table->string('email')->unique();
-            $table->string('password'); $table->string('role'); $table->timestamps(); $table->softDeletes();
+            $table->id();
+            $table->string('name_ar')->nullable();
+            $table->string('email')->unique();
+            $table->string('password');
+            $table->string('role');
+            $table->timestamps();
+            $table->softDeletes();
         });
         Schema::create('courses', function (Blueprint $table): void {
-            $table->id(); $table->string('name_ar'); $table->timestamps(); $table->softDeletes();
+            $table->id();
+            $table->string('name_ar');
+            $table->timestamps();
+            $table->softDeletes();
         });
         Schema::create('orders', function (Blueprint $table): void {
-            $table->id(); $table->unsignedBigInteger('user_id'); $table->unsignedBigInteger('course_id')->nullable();
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('course_id')->nullable();
             $table->unsignedBigInteger('wallet_transaction_id')->nullable()->index();
-            $table->string('payment_method'); $table->decimal('amount', 12, 2); $table->decimal('discount_amount', 12, 2);
-            $table->decimal('final_amount', 12, 2); $table->string('status'); $table->string('financial_status');
-            $table->unsignedInteger('total_coins')->nullable(); $table->unsignedInteger('paid_coins')->nullable();
-            $table->unsignedInteger('reward_coins')->nullable(); $table->timestamp('approved_at')->nullable();
-            $table->timestamp('reversed_at')->nullable(); $table->timestamps(); $table->softDeletes();
+            $table->string('payment_method');
+            $table->decimal('amount', 12, 2);
+            $table->decimal('discount_amount', 12, 2);
+            $table->decimal('final_amount', 12, 2);
+            $table->string('status');
+            $table->string('financial_status');
+            $table->unsignedInteger('total_coins')->nullable();
+            $table->unsignedInteger('paid_coins')->nullable();
+            $table->unsignedInteger('reward_coins')->nullable();
+            $table->timestamp('approved_at')->nullable();
+            $table->timestamp('reversed_at')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
         });
         Schema::create('wallet_transactions', function (Blueprint $table): void {
-            $table->id(); $table->uuid('public_id')->unique(); $table->unsignedBigInteger('user_id');
-            $table->string('direction'); $table->string('category'); $table->string('bucket');
-            $table->unsignedInteger('amount'); $table->unsignedInteger('paid_amount')->default(0);
-            $table->unsignedInteger('reward_amount')->default(0); $table->integer('balance_after');
-            $table->integer('paid_balance_after'); $table->integer('reward_balance_after');
-            $table->nullableMorphs('source'); $table->string('idempotency_key');
-            $table->timestamp('occurred_at'); $table->timestamps();
+            $table->id();
+            $table->uuid('public_id')->unique();
+            $table->unsignedBigInteger('user_id');
+            $table->string('direction');
+            $table->string('category');
+            $table->string('bucket');
+            $table->unsignedInteger('amount');
+            $table->unsignedInteger('paid_amount')->default(0);
+            $table->unsignedInteger('reward_amount')->default(0);
+            $table->integer('balance_after');
+            $table->integer('paid_balance_after');
+            $table->integer('reward_balance_after');
+            $table->nullableMorphs('source');
+            $table->string('idempotency_key');
+            $table->timestamp('occurred_at');
+            $table->timestamps();
         });
     }
 }

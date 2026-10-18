@@ -2,26 +2,23 @@
 
 namespace App\Models;
 
-use App\Support\PublicDiskUrl;
 use App\Services\PortfolioModerationService;
 use App\Services\PortfolioReviewReadService;
-
-use App\Models\UserNote;
-use App\Models\Classification;
-use App\Traits\HasPhoto;
+use App\Support\PublicDiskUrl;
 use App\Traits\HasApiTokens;
+use App\Traits\HasPhoto;
 use App\Traits\InvalidatesCourseCatalogue;
 use App\Traits\ResolvesLocalizedAttributes;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
-    use Notifiable, HasPhoto, HasApiTokens, SoftDeletes, ResolvesLocalizedAttributes, InvalidatesCourseCatalogue;
+    use HasApiTokens, HasPhoto, InvalidatesCourseCatalogue, Notifiable, ResolvesLocalizedAttributes, SoftDeletes;
 
     protected static function booted(): void
     {
@@ -63,11 +60,11 @@ class User extends Authenticatable
         // learner role. Deleting/restoring a learner, or moving an account
         // into/out of that role, changes the count even though ordinary
         // learner profile writes must never churn the global catalogue cache.
-        if (!$isCatalogueTeacher) {
-            return !$this->exists || $this->wasChanged(['role', 'deleted_at']);
+        if (! $isCatalogueTeacher) {
+            return ! $this->exists || $this->wasChanged(['role', 'deleted_at']);
         }
 
-        if (!$this->exists || $this->wasRecentlyCreated) {
+        if (! $this->exists || $this->wasRecentlyCreated) {
             return true;
         }
 
@@ -120,7 +117,7 @@ class User extends Authenticatable
     public function getNameAttribute()
     {
         // Check if we're accessing the raw attribute (to avoid infinite loop)
-        if (!array_key_exists('name_ar', $this->attributes) && !array_key_exists('name_en', $this->attributes)) {
+        if (! array_key_exists('name_ar', $this->attributes) && ! array_key_exists('name_en', $this->attributes)) {
             return $this->attributes['name'] ?? null;
         }
 
@@ -135,7 +132,7 @@ class User extends Authenticatable
     public function getBioAttribute()
     {
         // Check if we're accessing the raw attribute (to avoid infinite loop)
-        if (!array_key_exists('bio_ar', $this->attributes) && !array_key_exists('bio_en', $this->attributes)) {
+        if (! array_key_exists('bio_ar', $this->attributes) && ! array_key_exists('bio_en', $this->attributes)) {
             return $this->attributes['bio'] ?? null;
         }
 
@@ -144,8 +141,6 @@ class User extends Authenticatable
 
     /**
      * Get the profile image URL.
-     *
-     * @return string|null
      */
     public function getProfileImageUrlAttribute(): ?string
     {
@@ -186,8 +181,6 @@ class User extends Authenticatable
 
     /**
      * Get the profile deep link for mobile app.
-     *
-     * @return string|null
      */
     public function getProfileDeeplinkAttribute(): ?string
     {
@@ -240,7 +233,7 @@ class User extends Authenticatable
      */
     protected $appends = [
         'completed_lessons_count',
-        'lesson_progress_statistics'
+        'lesson_progress_statistics',
     ];
 
     public function notes()
@@ -261,10 +254,6 @@ class User extends Authenticatable
         ]);
     }
 
-
-    /**
-     * @param Builder $builder
-     */
     public function scopeActive(Builder $builder)
     {
         return $builder->where('active', true);
@@ -280,7 +269,6 @@ class User extends Authenticatable
     {
         return $builder->whereRaw('LOWER(role) = ?', ['admin']);
     }
-
 
     /**
      * Get student section progress for this user.
@@ -308,7 +296,7 @@ class User extends Authenticatable
      */
     public function enrollments()
     {
-        return $this->hasMany(\App\Models\CourseEnrollment::class);
+        return $this->hasMany(CourseEnrollment::class);
     }
 
     /**
@@ -335,7 +323,7 @@ class User extends Authenticatable
     /**
      * Get the student notifications for the user.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function studentNotifications()
     {
@@ -358,14 +346,12 @@ class User extends Authenticatable
     public function purchasedPackages()
     {
         return $this->belongsToMany(Package::class, 'package_user')
-                    ->withPivot('order_id', 'price', 'coins', 'created_at')
-                    ->withTimestamps();
+            ->withPivot('order_id', 'price', 'coins', 'created_at')
+            ->withTimestamps();
     }
 
     /**
      * Check if the user is a premium user (has purchased at least one package).
-     *
-     * @return bool
      */
     public function isPremiumUser(): bool
     {
@@ -415,7 +401,7 @@ class User extends Authenticatable
     /**
      * Check if user has earned a specific level badge.
      *
-     * @param int $levelId
+     * @param  int  $levelId
      * @return bool
      */
     public function hasEarnedLevel($levelId, $courseId = null)
@@ -429,13 +415,13 @@ class User extends Authenticatable
     /**
      * Award a level badge to the user.
      *
-     * @param int $levelId
-     * @param int $courseId
+     * @param  int  $levelId
+     * @param  int  $courseId
      * @return void
      */
     public function awardLevelBadge($levelId, $courseId)
     {
-        if (!$this->hasEarnedLevel($levelId, $courseId)) {
+        if (! $this->hasEarnedLevel($levelId, $courseId)) {
             $this->earnedLevels()->attach($levelId, [
                 'earned_at' => now(),
                 'course_id' => $courseId,
@@ -469,7 +455,7 @@ class User extends Authenticatable
     public function teachingCourses()
     {
         return $this->belongsToMany(Course::class, 'course_teacher', 'teacher_id', 'course_id')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 
     /**
@@ -478,6 +464,6 @@ class User extends Authenticatable
     public function interests()
     {
         return $this->belongsToMany(Classification::class, 'classification_user')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 }

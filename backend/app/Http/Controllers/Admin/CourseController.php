@@ -9,16 +9,16 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CourseRequest;
 use App\Models\Course;
 use App\Models\User;
-use App\Services\AdminCourseAuthoringService;
 use App\Services\AdminAuthoringCreateIntentService;
+use App\Services\AdminCourseAuthoringService;
 use App\Services\AdminCourseEditorStatePresenter;
 use App\Services\AdminCourseLifecycleService;
 use App\Services\AdminCoursePageService;
 use App\Services\AdminCoursePreviewService;
 use App\Services\AdminCourseReportService;
-use App\Services\CourseStagedAuthoringService;
-use App\Services\CourseRevisionResolver;
 use App\Services\CoursePresentationService;
+use App\Services\CourseRevisionResolver;
+use App\Services\CourseStagedAuthoringService;
 use App\Support\ReportPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -91,7 +91,7 @@ final class CourseController extends Controller
             $this->isAdministrator(),
             $this->canCurateHome(),
             max(1, $request->integer('commercial_page', 1)),
-            !$summaryOnly && ($request->query('tab') === 'commercial-report'
+            ! $summaryOnly && ($request->query('tab') === 'commercial-report'
                 || $request->has('commercial_page')),
             $period
         );

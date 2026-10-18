@@ -121,13 +121,13 @@ final class AdminAuthorizationMatrixTest extends TestCase
 
         foreach (Route::getRoutes()->getRoutes() as $route) {
             $name = $route->getName();
-            if (!is_string($name) || !str_starts_with($name, 'admin.')) {
+            if (! is_string($name) || ! str_starts_with($name, 'admin.')) {
                 continue;
             }
 
             $middleware = $route->gatherMiddleware();
             self::assertContains('admin', $middleware, "{$name} must require dashboard authentication");
-            if (!in_array($name, $mfaBootstrapRoutes, true)) {
+            if (! in_array($name, $mfaBootstrapRoutes, true)) {
                 self::assertContains('admin.mfa', $middleware, "{$name} must require dashboard MFA");
             }
 

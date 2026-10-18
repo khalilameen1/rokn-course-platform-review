@@ -4,9 +4,41 @@ namespace App\Http;
 
 use App\Http\Middleware\ApplyAPILocale;
 use App\Http\Middleware\ApplyLocale;
+use App\Http\Middleware\AssignRequestIdentity;
+use App\Http\Middleware\AuditAdminMutation;
+use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\AuthenticateOptionalApiToken;
+use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\GrantAdminAccess;
+use App\Http\Middleware\PauseDuringRecovery;
+use App\Http\Middleware\PreventRequestsDuringMaintenance;
+use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\RequireAdministrator;
+use App\Http\Middleware\RequireAdminMfa;
+use App\Http\Middleware\RequireAiConsent;
+use App\Http\Middleware\RequireProductFeature;
+use App\Http\Middleware\ResilientThrottleRequests;
+use App\Http\Middleware\ResolveCourseAuthoringDraft;
+use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\TrimStrings;
+use App\Http\Middleware\TrustHosts;
+use App\Http\Middleware\TrustProxies;
+use App\Http\Middleware\VerifyCsrfToken;
 use App\Http\Middleware\WebsiteVisitorCount;
+use Illuminate\Auth\Middleware\AuthenticateWithBasicAuth;
+use Illuminate\Auth\Middleware\Authorize;
+use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
+use Illuminate\Auth\Middleware\RequirePassword;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
+use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
+use Illuminate\Foundation\Http\Middleware\ValidatePostSize;
+use Illuminate\Http\Middleware\HandleCors;
+use Illuminate\Http\Middleware\SetCacheHeaders;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Routing\Middleware\ValidateSignature;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class Kernel extends HttpKernel
 {
@@ -21,15 +53,15 @@ class Kernel extends HttpKernel
         // Install the host allow-list before any middleware can ask Symfony to
         // resolve the host. Otherwise a long-lived worker may validate the new
         // request against the previous request's static trusted-host state.
-        \App\Http\Middleware\TrustHosts::class,
-        \App\Http\Middleware\TrustProxies::class,
-        \App\Http\Middleware\AssignRequestIdentity::class,
-        \App\Http\Middleware\SecurityHeaders::class,
-        \Illuminate\Http\Middleware\HandleCors::class,
-        \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
-        \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
-        \App\Http\Middleware\TrimStrings::class,
-        \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+        TrustHosts::class,
+        TrustProxies::class,
+        AssignRequestIdentity::class,
+        SecurityHeaders::class,
+        HandleCors::class,
+        PreventRequestsDuringMaintenance::class,
+        ValidatePostSize::class,
+        TrimStrings::class,
+        ConvertEmptyStringsToNull::class,
     ];
 
     /**
@@ -39,19 +71,19 @@ class Kernel extends HttpKernel
      */
     protected $middlewareGroups = [
         'web' => [
-            \App\Http\Middleware\EncryptCookies::class,
-            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-            \Illuminate\Session\Middleware\StartSession::class,
+            EncryptCookies::class,
+            AddQueuedCookiesToResponse::class,
+            StartSession::class,
             // \Illuminate\Session\Middleware\AuthenticateSession::class,
-            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-            \App\Http\Middleware\VerifyCsrfToken::class,
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            ShareErrorsFromSession::class,
+            VerifyCsrfToken::class,
+            SubstituteBindings::class,
             ApplyLocale::class,
         ],
 
         'api' => [
             'throttle:api',
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            SubstituteBindings::class,
             ApplyAPILocale::class,
         ],
     ];
@@ -64,25 +96,25 @@ class Kernel extends HttpKernel
      * @var array
      */
     protected $middlewareAliases = [
-        'auth' => \App\Http\Middleware\Authenticate::class,
-        'auth.optional' => \App\Http\Middleware\AuthenticateOptionalApiToken::class,
-        'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
-        'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
-        'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,
-        'can' => \Illuminate\Auth\Middleware\Authorize::class,
-        'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
-        'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,
-        'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
-        'throttle' => \App\Http\Middleware\ResilientThrottleRequests::class,
-        'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+        'auth' => Authenticate::class,
+        'auth.optional' => AuthenticateOptionalApiToken::class,
+        'auth.basic' => AuthenticateWithBasicAuth::class,
+        'bindings' => SubstituteBindings::class,
+        'cache.headers' => SetCacheHeaders::class,
+        'can' => Authorize::class,
+        'guest' => RedirectIfAuthenticated::class,
+        'password.confirm' => RequirePassword::class,
+        'signed' => ValidateSignature::class,
+        'throttle' => ResilientThrottleRequests::class,
+        'verified' => EnsureEmailIsVerified::class,
         'admin' => GrantAdminAccess::class,
-        'admin.only' => \App\Http\Middleware\RequireAdministrator::class,
-        'admin.mfa' => \App\Http\Middleware\RequireAdminMfa::class,
-        'admin.audit' => \App\Http\Middleware\AuditAdminMutation::class,
-        'course.draft' => \App\Http\Middleware\ResolveCourseAuthoringDraft::class,
-        'product.feature' => \App\Http\Middleware\RequireProductFeature::class,
-        'ai.consent' => \App\Http\Middleware\RequireAiConsent::class,
-        'recovery.write' => \App\Http\Middleware\PauseDuringRecovery::class,
+        'admin.only' => RequireAdministrator::class,
+        'admin.mfa' => RequireAdminMfa::class,
+        'admin.audit' => AuditAdminMutation::class,
+        'course.draft' => ResolveCourseAuthoringDraft::class,
+        'product.feature' => RequireProductFeature::class,
+        'ai.consent' => RequireAiConsent::class,
+        'recovery.write' => PauseDuringRecovery::class,
         'WebsiteVisitorCount' => WebsiteVisitorCount::class,
     ];
 }

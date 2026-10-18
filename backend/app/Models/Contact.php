@@ -7,9 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class Contact extends Model
 {
     public const TYPE_ACCOUNT_DELETION = 'account_deletion';
+
     public const RESOLUTION_PENDING = 'pending';
+
     public const RESOLUTION_PROCESSING = 'processing';
+
     public const RESOLUTION_CLOSED = 'closed';
+
     public const RESOLUTION_FULFILLED = 'fulfilled';
 
     // Workflow/audit columns are deliberately omitted. Only trusted server

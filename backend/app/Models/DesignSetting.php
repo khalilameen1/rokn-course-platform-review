@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AppArtworkService;
 use App\Services\PublicAppSettingsService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -57,7 +58,7 @@ class DesignSetting extends Model
     protected static function booted(): void
     {
         $invalidate = static function (): void {
-            app(\App\Services\AppArtworkService::class)->forget();
+            app(AppArtworkService::class)->forget();
             PublicAppSettingsService::invalidate();
         };
         static::saved($invalidate);
@@ -145,7 +146,7 @@ class DesignSetting extends Model
             return $settings;
         }
 
-        $settings = new static();
+        $settings = new static;
         $settings->forceFill([
             'logo_url' => null,
             'icon_url' => null,

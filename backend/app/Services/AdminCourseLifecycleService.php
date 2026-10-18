@@ -33,11 +33,12 @@ final class AdminCourseLifecycleService
 
             $hasPublishedContract = $course->published_at !== null
                 || (int) ($course->last_published_authoring_version ?? 0) > 0
-                || !(bool) $course->is_coming_soon
+                || ! (bool) $course->is_coming_soon
                 || $course->enrollments()->exists()
                 || $course->orders()->exists();
-            if (!$hasPublishedContract) {
+            if (! $hasPublishedContract) {
                 $course->delete();
+
                 return $course;
             }
 
@@ -91,7 +92,7 @@ final class AdminCourseLifecycleService
             $course->restore();
             $course->forceFill([
                 'is_catalog_visible' => false,
-                'is_coming_soon' => !$preservedLearnerAccess,
+                'is_coming_soon' => ! $preservedLearnerAccess,
                 'is_main_course' => false,
                 'authoring_version' => max(1, (int) $course->authoring_version + 1),
             ])->save();

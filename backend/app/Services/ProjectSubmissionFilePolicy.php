@@ -10,9 +10,7 @@ use Illuminate\Http\UploadedFile;
 /** One file contract for project payloads, HTTP admission and submission storage. */
 final readonly class ProjectSubmissionFilePolicy
 {
-    public function __construct(private AiInputAttachmentService $attachments)
-    {
-    }
+    public function __construct(private AiInputAttachmentService $attachments) {}
 
     /** @return list<string> */
     public function allowedMimeTypes(?Project $project = null): array
@@ -42,6 +40,7 @@ final readonly class ProjectSubmissionFilePolicy
     /**
      * The HTTP gate permits container MIME aliases so genuine OOXML reaches
      * canonical content inspection. These aliases are not learner-facing types.
+     *
      * @return list<string>
      */
     public function requestMimeTypes(): array

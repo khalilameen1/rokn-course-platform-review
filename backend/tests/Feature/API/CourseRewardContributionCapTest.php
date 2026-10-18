@@ -19,13 +19,14 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Models\WalletDebitAllocation;
 use App\Models\WalletTransaction;
+use App\Services\CourseAccessPlanService;
 use App\Services\CoursePlanUpgradeAction;
-use App\Services\FinancialProvenanceService;
 use App\Services\FinancialAnomalyService;
+use App\Services\FinancialProvenanceService;
 use App\Services\WalletService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 final class CourseRewardContributionCapTest extends TestCase
@@ -304,7 +305,7 @@ final class CourseRewardContributionCapTest extends TestCase
             'user_id' => $forgedUser->id,
             'course_id' => $course->id,
             'access_plan_id' => $course->accessPlans()->where('code', 'mentor')->value('id'),
-            'access_plan_snapshot' => app(\App\Services\CourseAccessPlanService::class)->snapshot(
+            'access_plan_snapshot' => app(CourseAccessPlanService::class)->snapshot(
                 $course->accessPlans()->where('code', 'mentor')->firstOrFail()
             ),
             'payment_method' => Order::PAYMENT_METHOD_WALLET_COINS,
@@ -475,8 +476,8 @@ final class CourseRewardContributionCapTest extends TestCase
     {
         return User::query()->forceCreate([
             'name' => 'Reward cap learner',
-            'email' => 'reward-cap-' . (++$this->sequence) . '@example.test',
-            'phone' => '0100000' . str_pad((string) $this->sequence, 4, '0', STR_PAD_LEFT),
+            'email' => 'reward-cap-'.(++$this->sequence).'@example.test',
+            'phone' => '0100000'.str_pad((string) $this->sequence, 4, '0', STR_PAD_LEFT),
             'role' => 'client',
             'gender' => 'other',
             'active' => true,

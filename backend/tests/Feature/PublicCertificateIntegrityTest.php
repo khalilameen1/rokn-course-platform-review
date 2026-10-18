@@ -11,12 +11,13 @@ use App\Http\Resources\CertificateResource;
 use App\Models\Certificate;
 use App\Models\Course;
 use App\Models\User;
-use App\Services\PublicPortfolioService;
 use App\Services\CertificateQrDestinationService;
-use App\Services\CertificateService;
+use App\Services\LegacyCertificateArtworkRenderer;
+use App\Services\PublicPortfolioService;
 use App\Support\RoknAppLink;
 use App\Support\RoknPublicUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -167,7 +168,7 @@ final class PublicCertificateIntegrityTest extends TestCase
     public function test_incomplete_snapshot_is_never_published_as_a_credential(): void
     {
         [, , $certificate] = $this->credential();
-        \Illuminate\Support\Facades\DB::table('certificates')
+        DB::table('certificates')
             ->where('id', $certificate->id)
             ->update(['certificate_text' => null]);
 
@@ -254,7 +255,7 @@ final class PublicCertificateIntegrityTest extends TestCase
             $practicalDestination['url']
         );
         foreach (['applied', 'skills', 'projects'] as $templateKey) {
-            $practicalVariant = new Certificate();
+            $practicalVariant = new Certificate;
             $practicalVariant->forceFill([
                 'public_id' => (string) Str::uuid(),
                 'user_id' => $user->id,
@@ -271,7 +272,7 @@ final class PublicCertificateIntegrityTest extends TestCase
             );
         }
 
-        $theoretical = new Certificate();
+        $theoretical = new Certificate;
         $theoretical->forceFill([
             'public_id' => (string) Str::uuid(),
             'certificate_text_template_key' => 'knowledge',
@@ -306,7 +307,7 @@ final class PublicCertificateIntegrityTest extends TestCase
 
     public function test_long_arabic_certificate_fields_stay_inside_the_editorial_main_field(): void
     {
-        $reflection = new \ReflectionClass(\App\Services\LegacyCertificateArtworkRenderer::class);
+        $reflection = new \ReflectionClass(LegacyCertificateArtworkRenderer::class);
         $service = $reflection->newInstanceWithoutConstructor();
         $shape = $reflection->getMethod('shapeIfArabic');
         $fit = $reflection->getMethod('fittedFontSize');
@@ -392,7 +393,7 @@ final class PublicCertificateIntegrityTest extends TestCase
     /** @return array{User, Course, Certificate} */
     private function credential(): array
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'name' => 'اسم حامل الشهادة',
             'email' => 'credential-'.Str::uuid().'@example.test',
@@ -401,7 +402,7 @@ final class PublicCertificateIntegrityTest extends TestCase
             'portfolio_slug' => 'old-profile',
         ])->save();
 
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'اسم الكورس وقت الإصدار',

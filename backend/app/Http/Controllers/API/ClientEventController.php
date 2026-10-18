@@ -50,7 +50,7 @@ final class ClientEventController extends Controller
         if ($unknownFields !== []) {
             // Client events use a closed schema so private data cannot slip in.
             throw ValidationException::withMessages([
-                'payload' => ['Unsupported client-event fields: ' . implode(', ', $unknownFields)],
+                'payload' => ['Unsupported client-event fields: '.implode(', ', $unknownFields)],
             ]);
         }
 

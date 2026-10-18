@@ -55,8 +55,7 @@ final readonly class AdminPaymentOperationsReadService
         private PaymentChannelReportService $channels,
         private CourseFinancialLedgerReportService $financialLedger,
         private KashierGatewayEvidenceService $gatewayEvidence
-    ) {
-    }
+    ) {}
 
     /** @param array<string, mixed> $filters @return array<string, mixed> */
     public function index(array $filters): array
@@ -104,8 +103,8 @@ final readonly class AdminPaymentOperationsReadService
      * and state labels, chunk by chunk, so an export never loads the whole
      * table (same streamed pattern as the support-case and course-code CSVs).
      *
-     * @param array<string, mixed> $filters
-     * @param callable(Order):void $each
+     * @param  array<string, mixed>  $filters
+     * @param  callable(Order):void  $each
      */
     public function eachForExport(array $filters, callable $each, int $limit = 50000): void
     {
@@ -206,16 +205,16 @@ final readonly class AdminPaymentOperationsReadService
     /** @param array<string, mixed> $filters */
     private function applyFilters(Builder $query, array $filters): void
     {
-        if (!empty($filters['state'])) {
+        if (! empty($filters['state'])) {
             $this->applyOperationState($query, (string) $filters['state']);
         }
-        if (!empty($filters['payment_method'])) {
+        if (! empty($filters['payment_method'])) {
             $query->where('payment_method', $filters['payment_method']);
         }
-        if (!empty($filters['package_id'])) {
+        if (! empty($filters['package_id'])) {
             $query->where('package_id', (int) $filters['package_id']);
         }
-        if (!empty($filters['user_search'])) {
+        if (! empty($filters['user_search'])) {
             $search = trim((string) $filters['user_search']);
             $query->whereHas('user', static function (Builder $user) use ($search): void {
                 $escaped = '%'.addcslashes($search, '%_\\').'%';
@@ -226,7 +225,7 @@ final readonly class AdminPaymentOperationsReadService
                 });
             });
         }
-        if (!empty($filters['course_search'])) {
+        if (! empty($filters['course_search'])) {
             $search = '%'.addcslashes(trim((string) $filters['course_search']), '%_\\').'%';
             $query->whereHas('course', static function (Builder $course) use ($search): void {
                 $course->where(function (Builder $match) use ($search): void {
@@ -235,11 +234,11 @@ final readonly class AdminPaymentOperationsReadService
                 });
             });
         }
-        if (!empty($filters['date_from'])) {
+        if (! empty($filters['date_from'])) {
             [$from] = BusinessClock::localDayRangeUtc((string) $filters['date_from']);
             $query->where('orders.created_at', '>=', $from);
         }
-        if (!empty($filters['date_to'])) {
+        if (! empty($filters['date_to'])) {
             [, $toExclusive] = BusinessClock::localDayRangeUtc((string) $filters['date_to']);
             $query->where('orders.created_at', '<', $toExclusive);
         }
@@ -255,10 +254,12 @@ final readonly class AdminPaymentOperationsReadService
     {
         if ($state === 'paid') {
             $query->financiallyEffective();
+
             return;
         }
         if ($state === 'expired') {
             $this->whereOperationallyExpired($query);
+
             return;
         }
         if ($state === 'created') {
@@ -276,6 +277,7 @@ final readonly class AdminPaymentOperationsReadService
                     );
                 })
                 ->where(fn (Builder $open) => $this->whereOperationallyOpen($open));
+
             return;
         }
         if ($state === 'pending') {
@@ -295,6 +297,7 @@ final readonly class AdminPaymentOperationsReadService
                                 ->where(fn (Builder $open) => $this->whereOperationallyOpen($open));
                         });
                 });
+
             return;
         }
         if ($state === 'failed') {
@@ -305,6 +308,7 @@ final readonly class AdminPaymentOperationsReadService
                             ->where(fn (Builder $evidence) => $this->whereFailureEvidence($evidence));
                     });
             });
+
             return;
         }
 
@@ -434,15 +438,19 @@ final readonly class AdminPaymentOperationsReadService
 
     private function operationState(Order $order, ?string $providerStatus): string
     {
-        if ($order->isFinanciallyEffective()) return 'paid';
-        if ($order->status === Order::STATUS_APPROVED) return 'cancelled';
+        if ($order->isFinanciallyEffective()) {
+            return 'paid';
+        }
+        if ($order->status === Order::STATUS_APPROVED) {
+            return 'cancelled';
+        }
         if (
             $order->requiresProviderVerification()
             && (
                 (
                     $order->status === Order::STATUS_PENDING
                     && $order->isCheckoutExpired()
-                    && !(
+                    && ! (
                         $providerStatus !== null
                         && in_array($providerStatus, self::CAPTURABLE_STATUSES, true)
                     )
@@ -452,25 +460,37 @@ final readonly class AdminPaymentOperationsReadService
                     && $providerStatus === 'EXPIRED'
                 )
             )
-        ) return 'expired';
-        if ($order->status === Order::STATUS_REJECTED) return 'failed';
+        ) {
+            return 'expired';
+        }
+        if ($order->status === Order::STATUS_REJECTED) {
+            return 'failed';
+        }
         if (
             $order->status === Order::STATUS_CANCELLED
             && in_array($providerStatus, self::FAILURE_STATUSES, true)
-        ) return 'failed';
-        if ($order->status === Order::STATUS_CANCELLED) return 'cancelled';
+        ) {
+            return 'failed';
+        }
+        if ($order->status === Order::STATUS_CANCELLED) {
+            return 'cancelled';
+        }
         if (
             $order->status === Order::STATUS_PENDING
             && $order->requiresProviderVerification()
             && ($providerStatus === null || in_array($providerStatus, self::CREATED_STATUSES, true))
-        ) return 'created';
+        ) {
+            return 'created';
+        }
 
         return 'pending';
     }
 
     private function evidenceSource(Order $order): ?string
     {
-        if ($order->storePurchase) return $order->storePurchase->provider;
+        if ($order->storePurchase) {
+            return $order->storePurchase->provider;
+        }
         $source = data_get($order->payment_gateway_response, 'verified_via')
             ?? data_get($order->payment_gateway_response, 'source');
         $source = trim((string) $source);

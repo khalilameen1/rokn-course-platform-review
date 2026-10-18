@@ -24,7 +24,7 @@ final class FcmNotificationServiceTest extends TestCase
             ->andThrow(new ApiConnectionFailed('connection lost'));
         $this->app->instance(Messaging::class, $messaging);
 
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'id' => 7,
             'active' => true,
@@ -33,7 +33,7 @@ final class FcmNotificationServiceTest extends TestCase
             'marketing_notifications_enabled' => true,
             'preferred_locale' => 'ar',
         ]);
-        $token = new UserDeviceToken();
+        $token = new UserDeviceToken;
         $token->forceFill([
             'id' => 11,
             'user_id' => 7,

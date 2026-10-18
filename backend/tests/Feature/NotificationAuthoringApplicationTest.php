@@ -194,7 +194,9 @@ final class NotificationAuthoringApplicationTest extends TestCase
             $payload = [...$this->payload(), 'send_at' => '2026-10-01T14:15'];
             $input = NotificationAuthoringInput::fromValidated($authorId, $payload);
             $writer = app(AdminNotificationCampaignAuthoringService::class);
-            $complete = static function (?NotificationCampaign $saved): void { self::assertNotNull($saved); };
+            $complete = static function (?NotificationCampaign $saved): void {
+                self::assertNotNull($saved);
+            };
             $campaign = $writer->author($input, $complete);
             self::assertSame(NotificationCampaign::STATUS_SCHEDULED, $campaign->status);
             self::assertSame(

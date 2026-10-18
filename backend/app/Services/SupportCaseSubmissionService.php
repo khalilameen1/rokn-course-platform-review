@@ -21,12 +21,11 @@ final class SupportCaseSubmissionService
         private readonly SupportCaseService $cases,
         private readonly SupportCaseAccessService $access,
         private readonly SupportCaseScreenshotService $screenshots
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, mixed> $validated Validated case fields; transport metadata is separate.
-     * @param array{platform:?string,app_version:?string,build_number:?int,request_id:?string,ip_hash:string,user_agent:?string} $telemetry
+     * @param  array<string, mixed>  $validated  Validated case fields; transport metadata is separate.
+     * @param  array{platform:?string,app_version:?string,build_number:?int,request_id:?string,ip_hash:string,user_agent:?string}  $telemetry
      */
     public function submit(array $validated, ?User $user, ?UploadedFile $screenshot, array $telemetry): SupportCaseSubmissionResult
     {
@@ -40,7 +39,9 @@ final class SupportCaseSubmissionService
         } else {
             try {
                 $report = DB::transaction(function () use ($validated, $fingerprint, $credential, $user, $telemetry): FeedbackReport {
-                    if ($user) User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+                    if ($user) {
+                        User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+                    }
                     $report = FeedbackReport::query()->create([
                         'public_id' => (string) Str::ulid(),
                         'client_request_id' => $validated['client_request_id'],
@@ -78,7 +79,9 @@ final class SupportCaseSubmissionService
                 }, 3);
             } catch (QueryException $exception) {
                 $report = FeedbackReport::query()->where('client_request_id', $validated['client_request_id'])->first();
-                if (!$report || !hash_equals((string) $report->request_fingerprint, $fingerprint)) throw $exception;
+                if (! $report || ! hash_equals((string) $report->request_fingerprint, $fingerprint)) {
+                    throw $exception;
+                }
                 $this->assertReplay($report, $fingerprint, $user);
                 $replayed = true;
             }
@@ -89,7 +92,7 @@ final class SupportCaseSubmissionService
         $this->cases->appendLearnerMessage(
             $report, $user, trim($validated['message']), $validated['client_request_id'], $screenshot
         );
-        if ($user && !$report->user_id) {
+        if ($user && ! $report->user_id) {
             $this->cases->claim($report, $user, $credential['token']);
         }
 
@@ -104,14 +107,14 @@ final class SupportCaseSubmissionService
 
     private function validateContextOwnership(array $validated, ?int $userId): void
     {
-        if (!empty($validated['lesson_id']) && !empty($validated['course_id'])) {
+        if (! empty($validated['lesson_id']) && ! empty($validated['course_id'])) {
             abort_unless(
                 Lesson::query()->whereKey($validated['lesson_id'])
                     ->where('list_id', $validated['course_id'])->exists(),
                 422
             );
         }
-        if (!empty($validated['order_id'])) {
+        if (! empty($validated['order_id'])) {
             abort_unless(
                 $userId && Order::query()->whereKey($validated['order_id'])
                     ->where('user_id', $userId)->exists(),

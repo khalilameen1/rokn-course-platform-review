@@ -14,6 +14,7 @@ namespace App\Auth;
 final class AdminPermissionMatrix
 {
     public const ACCOUNT_CREDENTIALS = 'account.credentials';
+
     public const CONTENT_CURATION = 'content.curation';
 
     /** @var array<string, list<string>> */

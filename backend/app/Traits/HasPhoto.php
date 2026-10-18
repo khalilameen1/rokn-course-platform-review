@@ -2,12 +2,14 @@
 
 namespace App\Traits;
 
-use App\Support\PublicDiskUrl;
+use App\Models\Course;
 use App\Models\Photo;
 use App\Services\StoredFileDeletionService;
 use App\Services\StoredFileUploadService;
-use Illuminate\Support\Facades\Storage;
+use App\Support\PublicDiskUrl;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Facades\Image;
 
 trait HasPhoto
@@ -22,9 +24,9 @@ trait HasPhoto
             // Archiving a course must remain reversible. Its cover is part of
             // the authoring draft and is only retired with a force delete.
             if (
-                $model instanceof \App\Models\Course
+                $model instanceof Course
                 && method_exists($model, 'isForceDeleting')
-                && !$model->isForceDeleting()
+                && ! $model->isForceDeleting()
             ) {
                 return;
             }
@@ -57,6 +59,7 @@ trait HasPhoto
     {
         return $this->morphOne(Photo::class, 'photoable')->where('type', 'gallery');
     }
+
     /**
      * @return mixed
      */
@@ -95,29 +98,32 @@ trait HasPhoto
     public function personal()
     {
         return $this->morphOne(Photo::class, 'photoable')->where('type', 'personal');
-    }  
-    
+    }
+
     /**
      * @return mixed
      */
     public function car_licence()
     {
         return $this->morphOne(Photo::class, 'photoable')->where('type', 'car_licence');
-    }   
+    }
+
     /**
      * @return mixed
      */
     public function car_photo()
     {
         return $this->morphOne(Photo::class, 'photoable')->where('type', 'car_photo');
-    }   
+    }
+
     /**
      * @return mixed
      */
     public function car_photo2()
     {
         return $this->morphOne(Photo::class, 'photoable')->where('type', 'car_photo2');
-    }                
+    }
+
     /**
      * @return mixed
      */
@@ -129,9 +135,7 @@ trait HasPhoto
     /**
      * Adds an image or multiple images to the model.
      *
-     * @param $file
-     * @param $path
-     * @param string $type
+     * @param  string  $type
      * @return static
      */
     public function storeImage($file, $path, $type = 'featured', ?string $operationIdentity = null)
@@ -143,25 +147,28 @@ trait HasPhoto
             // A create receipt may fail after its Photo already committed.
             // Only that domain-owned image is replayable, never orphan bytes.
             $existing = $this->allPhotos()->where('type', $type)->get()->first(
-                fn (Photo $photo): bool => str_starts_with((string) $photo->path, trim($path, '/') . '/')
+                fn (Photo $photo): bool => str_starts_with((string) $photo->path, trim($path, '/').'/')
                     && basename((string) $photo->path) === basename($logicalPath)
             );
-            if ($existing) return $existing;
+            if ($existing) {
+                return $existing;
+            }
         }
         /*$image = Image::make($file);
         $image->fit(1900, 750, function ($constraint) {
             $constraint->aspectRatio();
         });
         Storage::disk('public')->put($path, (string) $image->encode());*/
-        //Storage::disk('public')->put($path, Image::make($file)->encode('jpg', 50));
+        // Storage::disk('public')->put($path, Image::make($file)->encode('jpg', 50));
         $name = $this->storeTrackedImageBytes($file, $path, $operationIdentity);
-        if (!is_string($name) || trim($name) === '') {
+        if (! is_string($name) || trim($name) === '') {
             throw new \RuntimeException('Image storage failed');
         }
 
         try {
             return DB::transaction(function () use ($name, $type) {
                 $owner = $this->newQuery()->whereKey($this->getKey())->lockForUpdate()->firstOrFail();
+
                 return $owner->allPhotos()->firstOrCreate(['path' => $name, 'type' => $type]);
             }, 3);
         } catch (\Throwable $exception) {
@@ -172,9 +179,8 @@ trait HasPhoto
 
     /**
      * Replaces the current image with a new one.
-     * @param $file
-     * @param $path
-     * @param string $type
+     *
+     * @param  string  $type
      */
     public function replaceImage($file, $path, $type = 'featured', ?string $operationIdentity = null)
     {
@@ -185,6 +191,7 @@ trait HasPhoto
                 $newPhoto = $owner->allPhotos()->firstOrCreate(['path' => $name, 'type' => $type]);
                 $owner->allPhotos()->where('type', $type)
                     ->where('photos.id', '!=', $newPhoto->getKey())->get()->each->delete();
+
                 return $newPhoto;
             }, 3);
         } catch (\Throwable $exception) {
@@ -203,7 +210,6 @@ trait HasPhoto
             $operationIdentity
         );
     }
-
 
     public function deleteImage()
     {
@@ -224,10 +230,12 @@ trait HasPhoto
     {
         $this->licence()->delete();
     }
+
     public function deleteCertificationImage()
     {
         $this->certification()->delete();
     }
+
     public function deleteCheck()
     {
         if ($this->photo) {
@@ -266,7 +274,7 @@ trait HasPhoto
     }
 
     /**
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
     public function getImagesAttribute()
     {
@@ -288,7 +296,7 @@ trait HasPhoto
         $photo = $this->photo;
         if (! $photo) {
             $rawImage = $this->attributes['image'] ?? $this->attributes['profile_image'] ?? null;
-            if (!$rawImage) {
+            if (! $rawImage) {
                 return null;
             }
             if (filter_var($rawImage, FILTER_VALIDATE_URL)) {
@@ -304,6 +312,7 @@ trait HasPhoto
 
         return PublicDiskUrl::from($photo->path);
     }
+
     /**
      * @return null|string
      */
@@ -315,7 +324,7 @@ trait HasPhoto
         }
 
         return PublicDiskUrl::from($galleyPhoto->path);
-    }    
+    }
 
     /**
      * @return null|string
@@ -367,7 +376,8 @@ trait HasPhoto
         }
 
         return PublicDiskUrl::from($photo->path);
-    } 
+    }
+
     /**
      * @return null|string
      */
@@ -379,7 +389,8 @@ trait HasPhoto
         }
 
         return PublicDiskUrl::from($photo->path);
-    }  
+    }
+
     /**
      * @return null|string
      */
@@ -391,7 +402,8 @@ trait HasPhoto
         }
 
         return PublicDiskUrl::from($photo->path);
-    } 
+    }
+
     /**
      * @return null|string
      */
@@ -403,7 +415,8 @@ trait HasPhoto
         }
 
         return PublicDiskUrl::from($photo->path);
-    }               
+    }
+
     /**
      * @return null|string
      */
@@ -416,6 +429,7 @@ trait HasPhoto
 
         return PublicDiskUrl::from($photo->path);
     }
+
     /**
      * @return null|string
      */
@@ -426,6 +440,6 @@ trait HasPhoto
             return null;
         }
 
-        return (public_path().'/storage/' .$photo->path);
+        return public_path().'/storage/'.$photo->path;
     }
 }

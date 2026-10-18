@@ -12,9 +12,10 @@ use App\Models\CourseEnrollment;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\CourseAccessPlanService;
+use App\Services\CoursePlanAuthoringService;
 use App\Services\CoursePublishingService;
-use App\Services\CourseStagedAuthoringService;
 use App\Services\CourseRevisionResolver;
+use App\Services\CourseStagedAuthoringService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -33,6 +34,7 @@ final class CourseStagedAccessPlanIdentityTest extends TestCase
             self::assertMatchesRegularExpression('/(?:^|_)test(?:_|$)/i', DB::connection()->getDatabaseName());
             DB::beginTransaction();
             $this->mysqlTransactionStarted = true;
+
             return;
         }
         self::assertSame('sqlite', DB::connection()->getDriverName());
@@ -65,7 +67,7 @@ final class CourseStagedAccessPlanIdentityTest extends TestCase
     {
         $canonical = $this->publishedCourse();
         $plans = app(CourseAccessPlanService::class);
-        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($canonical);
+        app(CoursePlanAuthoringService::class)->createDefaults($canonical);
         $liveIds = $canonical->accessPlans()->pluck('id', 'code')->all();
         $guided = $canonical->accessPlans()->where('code', CourseAccessPlan::GUIDED)->firstOrFail();
         [$order, $enrollment, $event] = $this->purchasedPlan($canonical, $guided);
@@ -111,7 +113,7 @@ final class CourseStagedAccessPlanIdentityTest extends TestCase
     public function test_publish_handles_sort_permutations_at_unsigned_smallint_boundary(): void
     {
         $canonical = $this->publishedCourse();
-        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($canonical);
+        app(CoursePlanAuthoringService::class)->createDefaults($canonical);
         foreach ($canonical->accessPlans()->orderBy('sort_order')->get() as $position => $plan) {
             $plan->update(['sort_order' => 65533 + $position]);
         }
@@ -139,7 +141,7 @@ final class CourseStagedAccessPlanIdentityTest extends TestCase
         $canonical = $this->publishedCourse();
         $service = $this->serviceWithPassingAudit();
         $draft = $service->draftFor($canonical);
-        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($draft);
+        app(CoursePlanAuthoringService::class)->createDefaults($draft);
         $draftIds = $draft->accessPlans()->pluck('id', 'code')->all();
         $expectedPlans = $this->offerRows($draft);
 
@@ -155,7 +157,7 @@ final class CourseStagedAccessPlanIdentityTest extends TestCase
     public function test_failure_after_plan_publication_rolls_back_both_offers_and_ledger(): void
     {
         $canonical = $this->publishedCourse();
-        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($canonical);
+        app(CoursePlanAuthoringService::class)->createDefaults($canonical);
         $guided = $canonical->accessPlans()->where('code', CourseAccessPlan::GUIDED)->firstOrFail();
         $this->purchasedPlan($canonical, $guided);
         $publishing = Mockery::mock(CoursePublishingService::class);
@@ -201,6 +203,7 @@ final class CourseStagedAccessPlanIdentityTest extends TestCase
     {
         $publishing = Mockery::mock(CoursePublishingService::class);
         $publishing->shouldReceive('audit')->andReturn(['ready' => true, 'issues' => []]);
+
         return $this->app->makeWith(CourseStagedAuthoringService::class, ['publishing' => $publishing]);
     }
 
@@ -241,6 +244,7 @@ final class CourseStagedAccessPlanIdentityTest extends TestCase
             'total_tokens' => 100, 'cost_usd' => 0.005, 'completed_at' => now(),
             'metadata' => ['cost_usage_source' => 'provider'],
         ]);
+
         return [$order, $enrollment, $event];
     }
 

@@ -25,9 +25,7 @@ use Illuminate\Validation\ValidationException;
  */
 final readonly class CourseRevisionGraphService
 {
-    public function __construct(private CoursePlanPublicationService $plans)
-    {
-    }
+    public function __construct(private CoursePlanPublicationService $plans) {}
 
     /** @return array{0:Course,1:list<array{0:string,1:int,2:int}>} */
     public function cloneWithinTransaction(Course $source): array
@@ -147,15 +145,19 @@ final readonly class CourseRevisionGraphService
 
     private function cloneSectionable(?Model $content, Course $draft): ?Model
     {
-        if (!$content) return null;
-        if (!$content instanceof Lesson && !$content instanceof Project) {
+        if (! $content) {
+            return null;
+        }
+        if (! $content instanceof Lesson && ! $content instanceof Project) {
             throw ValidationException::withMessages([
                 'course' => 'يحتوي الكورس عنصرًا قديمًا غير مدعوم. احذفه قبل إنشاء مسودة جديدة.',
             ]);
         }
 
         $copy = $content->replicate(['authoring_request_id']);
-        if ($copy instanceof Lesson) $copy->list_id = $draft->id;
+        if ($copy instanceof Lesson) {
+            $copy->list_id = $draft->id;
+        }
         $copy->saveQuietly();
 
         if ($content instanceof Lesson) {
@@ -166,6 +168,7 @@ final readonly class CourseRevisionGraphService
                 $stateCopy->saveQuietly();
             }
         }
+
         return $copy;
     }
 
@@ -173,8 +176,7 @@ final readonly class CourseRevisionGraphService
         CourseAuthoringRevision $revision,
         Course $canonical,
         Course $archive
-    ): void
-    {
+    ): void {
         if (DB::transactionLevel() === 0) {
             throw new \LogicException('Course revision writes must share the authoring transaction.');
         }
@@ -217,7 +219,9 @@ final readonly class CourseRevisionGraphService
     private function moveOwnedContent(Collection $sections, int $courseId): void
     {
         $lessons = $sections->where('sectionable_type', Lesson::class)->pluck('sectionable_id');
-        if ($lessons->isNotEmpty()) DB::table('lessons')->whereIn('id', $lessons)->update(['list_id' => $courseId]);
+        if ($lessons->isNotEmpty()) {
+            DB::table('lessons')->whereIn('id', $lessons)->update(['list_id' => $courseId]);
+        }
     }
 
     private function swapPivot(string $table, string $relatedColumn, Course $canonical, Course $archive): void
@@ -225,12 +229,16 @@ final readonly class CourseRevisionGraphService
         $live = DB::table($table)->where('course_id', $canonical->id)->pluck($relatedColumn);
         $draft = DB::table($table)->where('course_id', $archive->id)->pluck($relatedColumn);
         DB::table($table)->whereIn('course_id', [$canonical->id, $archive->id])->delete();
-        foreach ($draft as $id) DB::table($table)->insert([
-            'course_id' => $canonical->id, $relatedColumn => $id, 'created_at' => now(), 'updated_at' => now(),
-        ]);
-        foreach ($live as $id) DB::table($table)->insert([
-            'course_id' => $archive->id, $relatedColumn => $id, 'created_at' => now(), 'updated_at' => now(),
-        ]);
+        foreach ($draft as $id) {
+            DB::table($table)->insert([
+                'course_id' => $canonical->id, $relatedColumn => $id, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        foreach ($live as $id) {
+            DB::table($table)->insert([
+                'course_id' => $archive->id, $relatedColumn => $id, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
     }
 
     /**
@@ -260,7 +268,7 @@ final readonly class CourseRevisionGraphService
         // A legacy draft with two different copies has no recoverable base.
         // Stop instead of silently discarding either editor's selection; new
         // drafts and unchanged legacy drafts continue without interruption.
-        if (!$hasSnapshot && $live->sort()->values()->all() !== $draft->sort()->values()->all()) {
+        if (! $hasSnapshot && $live->sort()->values()->all() !== $draft->sort()->values()->all()) {
             throw ValidationException::withMessages([
                 'authoring_version' => ["تغيّرت صفوف الكورس منذ بدء هذه المسودة\nأعد فتح المسودة ثم راجع التصنيفات"],
             ])->status(409);
@@ -281,11 +289,13 @@ final readonly class CourseRevisionGraphService
 
     private function insertPivotIds(string $table, string $relatedColumn, int $courseId, Collection $ids): void
     {
-        foreach ($ids as $id) DB::table($table)->insert([
-            'course_id' => $courseId,
-            $relatedColumn => (int) $id,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        foreach ($ids as $id) {
+            DB::table($table)->insert([
+                'course_id' => $courseId,
+                $relatedColumn => (int) $id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 }

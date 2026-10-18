@@ -24,24 +24,28 @@ final class SetProductFeatureFlag extends Command
     {
         $key = trim((string) $this->argument('key'));
         $definitions = config('product_features.definitions', []);
-        if (!array_key_exists($key, $definitions)) {
+        if (! array_key_exists($key, $definitions)) {
             $this->error('Unknown feature key.');
+
             return self::INVALID;
         }
         $state = strtolower(trim((string) $this->argument('state')));
-        if (!in_array($state, ['on', 'off'], true)) {
+        if (! in_array($state, ['on', 'off'], true)) {
             $this->error('State must be on or off.');
+
             return self::INVALID;
         }
         $owner = trim((string) $this->option('owner'));
         $reason = trim((string) $this->option('reason'));
         if ($owner === '' || $reason === '') {
             $this->error('--owner and --reason are required for an auditable change.');
+
             return self::INVALID;
         }
         $rollout = filter_var($this->option('rollout'), FILTER_VALIDATE_INT);
         if ($rollout === false || $rollout < 0 || $rollout > 100) {
             $this->error('--rollout must be an integer from 0 to 100.');
+
             return self::INVALID;
         }
         try {
@@ -50,6 +54,7 @@ final class SetProductFeatureFlag extends Command
                 : null;
         } catch (\Throwable) {
             $this->error('--expires must be a valid timestamp.');
+
             return self::INVALID;
         }
 

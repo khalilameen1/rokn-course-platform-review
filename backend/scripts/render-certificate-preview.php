@@ -14,7 +14,7 @@ if (PHP_SAPI !== 'cli') {
     throw new RuntimeException('Certificate preview is a CLI-only QA command.');
 }
 $environment = getenv('APP_ENV');
-if ($environment !== false && !in_array($environment, ['local', 'testing'], true)) {
+if ($environment !== false && ! in_array($environment, ['local', 'testing'], true)) {
     throw new RuntimeException('Certificate preview is only available in local/testing environments.');
 }
 
@@ -78,7 +78,7 @@ foreach ($examples as $example) {
         'title' => $example['projects'] ? 'شاهد أعماله' : 'تحقق من الشهادة',
         'hint' => 'معاينة فقط',
     ];
-    $certificate = (new Certificate())->forceFill([
+    $certificate = (new Certificate)->forceFill([
         'public_id' => '00000000-0000-4000-8000-000000000000',
         'course_id' => 1,
         'status' => 'active',
@@ -100,7 +100,7 @@ foreach ($examples as $example) {
         throw new RuntimeException('Preview rendering modified the sample credential.');
     }
     $size = getimagesizefromstring($png);
-    if (!is_array($size) || $size[0] !== 2800 || $size[1] !== 1900 || $size[2] !== IMAGETYPE_PNG) {
+    if (! is_array($size) || $size[0] !== 2800 || $size[1] !== 1900 || $size[2] !== IMAGETYPE_PNG) {
         throw new RuntimeException('The production renderer returned unexpected artwork dimensions.');
     }
     $filename = 'rokn-certificate-'.$example['key'].'.png';

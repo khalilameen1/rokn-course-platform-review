@@ -11,19 +11,21 @@ use App\Models\PortfolioItem;
 use App\Models\PortfolioMedia;
 use App\Models\PortfolioVideoUpload;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use RuntimeException;
 use Throwable;
 
 final readonly class PortfolioVideoUploadService
 {
     public const MAX_BYTES = 50 * 1024 * 1024;
+
     public const MIMES = ['video/mp4', 'video/quicktime', 'video/webm'];
+
     private const MAX_MEDIA_PER_ITEM = 12;
 
     public function __construct(
@@ -45,7 +47,7 @@ final readonly class PortfolioVideoUploadService
         $this->uploadAccess->assertAllowed($user);
         $mime = strtolower(trim($mime));
         $originalName = basename(str_replace('\\', '/', trim($originalName)));
-        if ($size < 1 || $size > self::MAX_BYTES || !in_array($mime, self::MIMES, true)) {
+        if ($size < 1 || $size > self::MAX_BYTES || ! in_array($mime, self::MIMES, true)) {
             throw ValidationException::withMessages(['file' => 'ملف الفيديو غير صالح']);
         }
         $expectedExtension = match ($mime) {
@@ -56,7 +58,7 @@ final readonly class PortfolioVideoUploadService
         if (strtolower((string) pathinfo($originalName, PATHINFO_EXTENSION)) !== $expectedExtension) {
             throw ValidationException::withMessages(['file' => 'صيغة الفيديو لا تطابق الملف']);
         }
-        if (!Str::isUuid($idempotencyKey) || preg_match('/^[a-f0-9]{64}$/', $sha256) !== 1) {
+        if (! Str::isUuid($idempotencyKey) || preg_match('/^[a-f0-9]{64}$/', $sha256) !== 1) {
             throw ValidationException::withMessages(['file' => 'أعد اختيار ملف الفيديو']);
         }
         $hash = hash('sha256', json_encode([
@@ -67,7 +69,7 @@ final readonly class PortfolioVideoUploadService
             'sha256' => $sha256,
         ], JSON_THROW_ON_ERROR));
 
-        return Cache::lock('portfolio-video-upload:' . $user->id . ':' . $idempotencyKey, 180)
+        return Cache::lock('portfolio-video-upload:'.$user->id.':'.$idempotencyKey, 180)
             ->block(10, function () use (
                 $user, $item, $idempotencyKey, $size, $mime, $originalName, $sha256, $hash
             ): array {
@@ -78,7 +80,7 @@ final readonly class PortfolioVideoUploadService
                     ->where('idempotency_key', $idempotencyKey)
                     ->first();
                 if ($session) {
-                    if (!hash_equals((string) $session->request_hash, $hash)) {
+                    if (! hash_equals((string) $session->request_hash, $hash)) {
                         throw new PortfolioOperationException(PortfolioOperationException::IDENTITY_CONFLICT);
                     }
                     if ($session->status === 'pending' && $session->expires_at->isFuture()) {
@@ -94,15 +96,18 @@ final readonly class PortfolioVideoUploadService
                             $this->assertNotDeleted((int) $lockedItem->id, (string) $session->idempotency_key);
                             $lockedSession = PortfolioVideoUpload::query()->whereKey($session->id)
                                 ->lockForUpdate()->firstOrFail();
-                            if ($lockedSession->status !== 'pending' || !$lockedSession->expires_at->isFuture()) {
+                            if ($lockedSession->status !== 'pending' || ! $lockedSession->expires_at->isFuture()) {
                                 throw new PortfolioOperationException(PortfolioOperationException::UPLOAD_EXPIRED);
                             }
+
                             return $lockedSession;
                         }, 3);
+
                         return $this->payload($session);
                     }
                     if ($session->status === 'attached') {
                         $this->mediaForSession($session);
+
                         return $this->payload($session);
                     }
                     if ($session->status === 'allocating' && $session->updated_at?->gt(now()->subMinutes(2))) {
@@ -172,17 +177,19 @@ final readonly class PortfolioVideoUploadService
                     ];
                     if ($session) {
                         $session->forceFill($values)->save();
+
                         return $session;
                     }
+
                     return PortfolioVideoUpload::query()->create($values);
                 }, 3);
 
                 $videoGuid = null;
                 try {
-                    $marker = '[rokn-portfolio:' . strtolower($idempotencyKey) . ']';
-                    $remote = $this->bunny->createVideo(mb_substr((string) $item->title, 0, 190) . ' ' . $marker);
+                    $marker = '[rokn-portfolio:'.strtolower($idempotencyKey).']';
+                    $remote = $this->bunny->createVideo(mb_substr((string) $item->title, 0, 190).' '.$marker);
                     $videoGuid = strtolower(trim((string) ($remote['guid'] ?? '')));
-                    if (!$this->validGuid($videoGuid)) {
+                    if (! $this->validGuid($videoGuid)) {
                         throw new RuntimeException('Bunny allocation failed.');
                     }
                     $advanced = PortfolioVideoUpload::query()
@@ -196,7 +203,7 @@ final readonly class PortfolioVideoUploadService
                     $candidate = $this->mediaRegistry->queueVideoCleanup(
                         $videoGuid, null, 'portfolio_direct_upload_pending', 24, false
                     );
-                    if (!$candidate) {
+                    if (! $candidate) {
                         throw new RuntimeException('Cleanup allocation failed.');
                     }
                     $candidate->forceFill(['requires_review' => false, 'reviewed_at' => now()])->save();
@@ -208,6 +215,7 @@ final readonly class PortfolioVideoUploadService
                             'allocation_token' => null,
                             'updated_at' => now(),
                         ]);
+
                     return $this->payload($session->fresh());
                 } catch (Throwable $exception) {
                     PortfolioVideoUpload::query()->whereKey($session->id)
@@ -228,6 +236,7 @@ final readonly class PortfolioVideoUploadService
         $session = $this->sessionFromClaim($user, $itemId, $claim, false);
         if ($session->status === 'attached') {
             $this->mediaForSession($session);
+
             return [
                 'video_id' => (string) $session->video_guid,
                 'claim_expires_at' => $session->expires_at->toIso8601String(),
@@ -247,7 +256,7 @@ final readonly class PortfolioVideoUploadService
             $this->assertNotDeleted((int) $item->id, (string) $session->idempotency_key);
 
             $locked = PortfolioVideoUpload::query()->whereKey($session->id)->lockForUpdate()->firstOrFail();
-            if ($locked->status !== 'pending' || !$locked->expires_at->isFuture()) {
+            if ($locked->status !== 'pending' || ! $locked->expires_at->isFuture()) {
                 throw new PortfolioOperationException(PortfolioOperationException::UPLOAD_EXPIRED);
             }
             $candidate = BunnyVideoCleanupCandidate::query()
@@ -256,7 +265,7 @@ final readonly class PortfolioVideoUploadService
                 ->whereNull('last_attempt_at')
                 ->lockForUpdate()
                 ->first();
-            if (!$candidate) {
+            if (! $candidate) {
                 throw new PortfolioOperationException(PortfolioOperationException::UPLOAD_EXPIRED);
             }
 
@@ -278,12 +287,13 @@ final readonly class PortfolioVideoUploadService
             if (trim((string) $existing->caption) !== trim((string) $caption)) {
                 throw new PortfolioOperationException(PortfolioOperationException::IDENTITY_CONFLICT);
             }
+
             return $existing;
         }
         if ($session->status !== 'pending') {
             throw new PortfolioOperationException(PortfolioOperationException::UPLOAD_EXPIRED);
         }
-        if (!$this->bunny->verifyDirectUpload((string) $session->video_guid, (int) $session->size_bytes)) {
+        if (! $this->bunny->verifyDirectUpload((string) $session->video_guid, (int) $session->size_bytes)) {
             throw ValidationException::withMessages(['claim' => 'لم يكتمل رفع الفيديو بعد']);
         }
 
@@ -303,9 +313,10 @@ final readonly class PortfolioVideoUploadService
                     throw new PortfolioOperationException(PortfolioOperationException::IDENTITY_CONFLICT);
                 }
                 $locked->forceFill(['status' => 'attached', 'attached_at' => now()])->save();
+
                 return $existing;
             }
-            if ($locked->status !== 'pending' || !$locked->expires_at->isFuture()) {
+            if ($locked->status !== 'pending' || ! $locked->expires_at->isFuture()) {
                 throw new PortfolioOperationException(PortfolioOperationException::UPLOAD_EXPIRED);
             }
             if ($item->mediaFiles()->count() >= $this->mediaCapacity()) {
@@ -320,7 +331,7 @@ final readonly class PortfolioVideoUploadService
                 ->whereNull('last_attempt_at')
                 ->lockForUpdate()
                 ->first();
-            if (!$candidate) {
+            if (! $candidate) {
                 throw new PortfolioOperationException(PortfolioOperationException::UPLOAD_EXPIRED);
             }
             $media = $item->mediaFiles()->create([
@@ -340,6 +351,7 @@ final readonly class PortfolioVideoUploadService
             $item->forceFill(['is_public' => false])->save();
             $locked->forceFill(['status' => 'attached', 'attached_at' => now()])->save();
             $candidate->delete();
+
             return $media;
         }, 3);
     }
@@ -363,7 +375,7 @@ final readonly class PortfolioVideoUploadService
             ->first();
         // Attached sessions are durable acceptance receipts, including older
         // deletions from before deleted-upload identities were recorded.
-        if ($session->status === 'attached' && (!$media || $media->deletion_started_at)) {
+        if ($session->status === 'attached' && (! $media || $media->deletion_started_at)) {
             throw new PortfolioOperationException(PortfolioOperationException::MEDIA_DELETED);
         }
 
@@ -375,20 +387,19 @@ final readonly class PortfolioVideoUploadService
         int $itemId,
         string $claim,
         bool $pendingOnly
-    ): PortfolioVideoUpload
-    {
+    ): PortfolioVideoUpload {
         try {
             $payload = json_decode(Crypt::decryptString($claim), true, 16, JSON_THROW_ON_ERROR);
         } catch (Throwable) {
             throw new PortfolioOperationException(PortfolioOperationException::UPLOAD_EXPIRED);
         }
-        if (!is_array($payload) || (int) ($payload['user_id'] ?? 0) !== (int) $user->id) {
+        if (! is_array($payload) || (int) ($payload['user_id'] ?? 0) !== (int) $user->id) {
             throw new PortfolioOperationException(PortfolioOperationException::UPLOAD_EXPIRED);
         }
         $session = PortfolioVideoUpload::query()->find((int) ($payload['upload_id'] ?? 0));
-        if (!$session
+        if (! $session
             || (int) $session->portfolio_item_id !== $itemId
-            || !hash_equals((string) $session->video_guid, (string) ($payload['video_id'] ?? ''))) {
+            || ! hash_equals((string) $session->video_guid, (string) ($payload['video_id'] ?? ''))) {
             throw new PortfolioOperationException(PortfolioOperationException::UPLOAD_EXPIRED);
         }
         // An attached session is an immutable idempotency receipt. Keep it
@@ -401,10 +412,11 @@ final readonly class PortfolioVideoUploadService
             throw new PortfolioOperationException(PortfolioOperationException::UPLOAD_EXPIRED);
         }
         User::query()->whereKey($user->id)->firstOrFail();
-        if (!PortfolioItem::query()->whereKey($session->portfolio_item_id)
+        if (! PortfolioItem::query()->whereKey($session->portfolio_item_id)
             ->where('user_id', $user->id)->available()->exists()) {
             throw $this->notFound(PortfolioItem::class, (int) $session->portfolio_item_id);
         }
+
         return $session;
     }
 
@@ -425,6 +437,7 @@ final readonly class PortfolioVideoUploadService
             'claim_expires_at' => $session->expires_at->toIso8601String(),
             'attached' => $session->status === 'attached',
         ];
+
         return $session->status === 'attached'
             ? $base
             : array_merge($base, $this->bunny->directUploadAuthorization((string) $session->video_guid));
@@ -435,7 +448,7 @@ final readonly class PortfolioVideoUploadService
         if ($this->validGuid((string) $session->video_guid)) {
             $this->queueAbandoned((string) $session->video_guid, $userId, 'portfolio_direct_upload_stale');
         } else {
-            $marker = '[rokn-portfolio:' . strtolower((string) $session->idempotency_key) . ']';
+            $marker = '[rokn-portfolio:'.strtolower((string) $session->idempotency_key).']';
             foreach ($this->bunny->findVideoGuidsByTitleMarker($marker) as $guid) {
                 $this->queueAbandoned($guid, $userId, 'portfolio_direct_upload_interrupted');
             }
@@ -445,7 +458,9 @@ final readonly class PortfolioVideoUploadService
     private function queueAbandoned(string $guid, int $userId, string $reason): void
     {
         $candidate = $this->mediaRegistry->queueVideoCleanup($guid, null, $reason, 1, false);
-        if (!$candidate) throw new RuntimeException('Cleanup allocation failed.');
+        if (! $candidate) {
+            throw new RuntimeException('Cleanup allocation failed.');
+        }
         $candidate->forceFill(['requires_review' => false, 'reviewed_at' => now(), 'reviewed_by' => $userId])->save();
     }
 
@@ -464,6 +479,6 @@ final readonly class PortfolioVideoUploadService
 
     private function notFound(string $model, int $id): ModelNotFoundException
     {
-        return (new ModelNotFoundException())->setModel($model, [$id]);
+        return (new ModelNotFoundException)->setModel($model, [$id]);
     }
 }

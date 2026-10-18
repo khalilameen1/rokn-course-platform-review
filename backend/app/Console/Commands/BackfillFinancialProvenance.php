@@ -25,8 +25,9 @@ final class BackfillFinancialProvenance extends Command
 
     public function handle(FinancialProvenanceService $provenance): int
     {
-        if (!FinancialProvenanceSchema::available()) {
+        if (! FinancialProvenanceSchema::available()) {
             $this->error('Financial provenance tables are missing. Run migrations first.');
+
             return self::FAILURE;
         }
 
@@ -34,6 +35,7 @@ final class BackfillFinancialProvenance extends Command
         $userId = $this->option('user') !== null ? (int) $this->option('user') : null;
         if ($userId !== null && $userId <= 0) {
             $this->error('--user must be a positive learner ID.');
+
             return self::INVALID;
         }
 
@@ -74,11 +76,12 @@ final class BackfillFinancialProvenance extends Command
                     if ($transaction->category === 'course_service_compensation') {
                         $stats['compensation_credits']++;
                         $originalDebit = $this->originalDebitForCompensation($transaction);
-                        if (!$originalDebit) {
+                        if (! $originalDebit) {
                             $stats['unresolved']++;
                             $this->warn(
                                 "Credit #{$transaction->id}: original compensated debit is missing or inconsistent."
                             );
+
                             continue;
                         }
                         if ($apply) {
@@ -89,14 +92,16 @@ final class BackfillFinancialProvenance extends Command
                             );
                             $stats['lots_written'] += $before ? 0 : 1;
                         }
+
                         continue;
                     }
 
                     $stats['package_credits']++;
                     $order = $this->packageOrderForCredit($transaction);
-                    if (!$order) {
+                    if (! $order) {
                         $stats['unresolved']++;
                         $this->warn("Credit #{$transaction->id}: source package order is missing or inconsistent.");
+
                         continue;
                     }
                     if ($apply) {
@@ -109,14 +114,16 @@ final class BackfillFinancialProvenance extends Command
                         $provenance->recordPaidPackageCredit($order, $transaction);
                         $stats['lots_written'] += $before ? 0 : 1;
                     }
+
                     continue;
                 }
 
                 $stats['course_debits']++;
                 $order = $this->courseOrderForDebit($transaction);
-                if (!$order) {
+                if (! $order) {
                     $stats['unresolved']++;
                     $this->warn("Debit #{$transaction->id}: no unique immutable course order match.");
+
                     continue;
                 }
                 if ($apply) {
@@ -158,7 +165,7 @@ final class BackfillFinancialProvenance extends Command
             ['Learners whose paid balance does not match active lots', $remaining['balance_mismatches']],
         ]);
 
-        if (!$apply) {
+        if (! $apply) {
             $this->comment('Dry run only. Re-run with --apply, then repeat without flags to verify zero failures.');
         }
 
@@ -169,7 +176,7 @@ final class BackfillFinancialProvenance extends Command
 
     private function packageOrderForCredit(WalletTransaction $credit): ?Order
     {
-        if ($credit->source_type !== Order::class || !$credit->source_id) {
+        if ($credit->source_type !== Order::class || ! $credit->source_id) {
             return null;
         }
 
@@ -195,7 +202,7 @@ final class BackfillFinancialProvenance extends Command
 
     private function courseOrderForDebit(WalletTransaction $debit): ?Order
     {
-        if ($debit->source_type !== Course::class || !$debit->source_id) {
+        if ($debit->source_type !== Course::class || ! $debit->source_id) {
             return null;
         }
 
@@ -230,7 +237,7 @@ final class BackfillFinancialProvenance extends Command
             ->get(['course_order_id', 'amount']);
         if ($allocations->isNotEmpty()) {
             $orderIds = $allocations->pluck('course_order_id')->unique();
-            if ($orderIds->count() !== 1 || !$orderIds->first()
+            if ($orderIds->count() !== 1 || ! $orderIds->first()
                 || (int) $allocations->sum('amount') !== (int) $debit->paid_amount
                 || Order::query()->where('wallet_transaction_id', $debit->id)->exists()
                 || WalletDebitAllocation::query()
@@ -243,7 +250,7 @@ final class BackfillFinancialProvenance extends Command
         }
 
         if ($debit->category === 'course_purchase') {
-            $query->where('notes', 'Idempotency: ' . $debit->idempotency_key);
+            $query->where('notes', 'Idempotency: '.$debit->idempotency_key);
         } else {
             $parentOrderId = (int) (
                 data_get($debit->metadata, 'parent_order_id')
@@ -261,10 +268,10 @@ final class BackfillFinancialProvenance extends Command
                 $query->where(function ($notes) use ($parentOrderId): void {
                     $notes->where(
                         'notes',
-                        'Rokn AI/full-access upgrade from grant order #' . $parentOrderId
+                        'Rokn AI/full-access upgrade from grant order #'.$parentOrderId
                     )->orWhere(
                         'notes',
-                        'Course access-plan upgrade from order #' . $parentOrderId
+                        'Course access-plan upgrade from order #'.$parentOrderId
                     );
                 });
             }

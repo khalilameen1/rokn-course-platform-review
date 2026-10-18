@@ -20,16 +20,17 @@ final class CourseBrowserPaymentService
             ->where('channel', 'direct')
             ->where('status', 'pending_payment')
             ->first();
-        if (!$checkout || !$checkout->canResumePaymentWith($order)) {
+        if (! $checkout || ! $checkout->canResumePaymentWith($order)) {
             return null;
         }
+
         return $checkout;
     }
 
     public function urlFor(Order $order, string $checkoutId): ?string
     {
         $checkout = $this->payableCheckout($order, $checkoutId);
-        if (!$checkout) {
+        if (! $checkout) {
             return null;
         }
         // The order, not the abandoned quote timer, owns this payment window.

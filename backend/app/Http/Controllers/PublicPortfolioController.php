@@ -12,7 +12,7 @@ class PublicPortfolioController extends Controller
     public function show(string $slug, PublicPortfolioService $service): Response
     {
         $portfolio = $service->find($slug);
-        abort_if(!$portfolio, 404);
+        abort_if(! $portfolio, 404);
 
         return $this->page(view('portfolio.public', compact('portfolio')));
     }
@@ -21,7 +21,7 @@ class PublicPortfolioController extends Controller
     public function project(string $slug, string $projectId, PublicPortfolioService $service): Response
     {
         $page = $service->project($slug, $projectId);
-        abort_if(!$page, 404);
+        abort_if(! $page, 404);
 
         return $this->page(view('portfolio.project', $page));
     }

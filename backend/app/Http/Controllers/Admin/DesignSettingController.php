@@ -17,9 +17,7 @@ use Illuminate\View\View;
 
 final class DesignSettingController extends Controller
 {
-    public function __construct(private readonly AdminDesignSettingsAuthoringService $authoring)
-    {
-    }
+    public function __construct(private readonly AdminDesignSettingsAuthoringService $authoring) {}
 
     public function index(): View
     {
@@ -84,6 +82,7 @@ final class DesignSettingController extends Controller
         foreach (array_keys(AppArtworkService::ASSETS) as $key) {
             $rules[$key.'_image_file'] = ['nullable', 'image', 'mimes:png,webp', 'max:4096', 'dimensions:max_width=4096,max_height=4096'];
         }
+
         return $rules;
     }
 }

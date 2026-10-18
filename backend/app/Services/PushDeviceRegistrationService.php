@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Auth\ClientDeviceContext;
 use App\Models\User;
+use App\Models\UserDeviceToken;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -20,7 +21,7 @@ final class PushDeviceRegistrationService
 
         DB::transaction(function () use ($userId, $device, $deviceToken, $deviceType, $deviceOs): void {
             $lockedUser = User::query()->whereKey($userId)->lockForUpdate()->first();
-            if (!$lockedUser || !(bool) $lockedUser->active || $lockedUser->trashed()) {
+            if (! $lockedUser || ! (bool) $lockedUser->active || $lockedUser->trashed()) {
                 return;
             }
 
@@ -39,13 +40,13 @@ final class PushDeviceRegistrationService
                     // One installation has one current FCM/account owner.
                     // Retire an older token before binding its replacement,
                     // including an interrupted account switch or rotation.
-                    \App\Models\UserDeviceToken::query()
+                    UserDeviceToken::query()
                         ->where('device_id', $tokenAttributes['device_id'])
                         ->where('device_token', '<>', $deviceToken)
                         ->delete();
                 }
 
-                \App\Models\UserDeviceToken::updateOrCreate(
+                UserDeviceToken::updateOrCreate(
                     ['device_token' => $deviceToken],
                     $tokenAttributes
                 );

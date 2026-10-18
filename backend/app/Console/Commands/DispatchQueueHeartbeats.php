@@ -6,8 +6,8 @@ namespace App\Console\Commands;
 
 use App\Jobs\RecordQueueHeartbeat;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 final class DispatchQueueHeartbeats extends Command

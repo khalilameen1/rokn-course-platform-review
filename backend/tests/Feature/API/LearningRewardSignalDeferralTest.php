@@ -7,6 +7,7 @@ namespace Tests\Feature\API;
 use App\Jobs\ProcessInternalSignal;
 use App\Models\Course;
 use App\Models\InternalSignal;
+use App\Models\Project;
 use App\Models\RewardRule;
 use App\Services\InternalSignalHandler;
 use App\Services\LearningRewardService;
@@ -160,7 +161,7 @@ final class LearningRewardSignalDeferralTest extends ApiTestCase
             'module_id' => $this->moduleId,
             'title_ar' => 'مشروع العبور',
             'section_type' => 'project',
-            'sectionable_type' => \App\Models\Project::class,
+            'sectionable_type' => Project::class,
             'sectionable_id' => $projectId,
             'order' => 2,
             'sort_order' => 2,
@@ -289,8 +290,7 @@ final class LearningRewardSignalDeferralTest extends ApiTestCase
         int $coins,
         int $rollingCap,
         string $event = 'course_completed'
-    ): array
-    {
+    ): array {
         return [
             'rule_id' => (int) RewardRule::query()
                 ->where('event_key', $event)

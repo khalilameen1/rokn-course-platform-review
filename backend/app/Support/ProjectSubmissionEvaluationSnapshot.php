@@ -14,6 +14,7 @@ use LogicException;
 final class ProjectSubmissionEvaluationSnapshot
 {
     public const CURRENT_VERSION = 4;
+
     public const SUPPORTED_VERSIONS = [3, self::CURRENT_VERSION];
 
     /** @param array<string,mixed>|null $accessTerms */
@@ -64,11 +65,11 @@ final class ProjectSubmissionEvaluationSnapshot
     public static function fromSubmission(ProjectSubmission $submission): ?array
     {
         $snapshot = $submission->evaluation_snapshot;
-        if (!is_array($snapshot)) {
+        if (! is_array($snapshot)) {
             return null;
         }
         $version = (int) ($snapshot['version'] ?? 0);
-        if (!in_array($version, self::SUPPORTED_VERSIONS, true)) {
+        if (! in_array($version, self::SUPPORTED_VERSIONS, true)) {
             return null;
         }
         if ((int) data_get($snapshot, 'project.id') !== (int) $submission->project_id) {
@@ -87,23 +88,23 @@ final class ProjectSubmissionEvaluationSnapshot
             && $contextIds[2] === 0;
         // Standalone service-level submissions are allowed only when all
         // course/enrollment references are absent. Partial context is unsafe.
-        if (!$hasCompleteContext && !$hasNoContext) {
+        if (! $hasCompleteContext && ! $hasNoContext) {
             return null;
         }
         $requiredProjectKeys = ['requirements_text'];
         foreach ($requiredProjectKeys as $key) {
-            if (!array_key_exists($key, (array) ($snapshot['project'] ?? []))) {
+            if (! array_key_exists($key, (array) ($snapshot['project'] ?? []))) {
                 return null;
             }
         }
         if ($version >= 2) {
             foreach (['id', 'title_ar', 'title_en'] as $key) {
-                if (!array_key_exists($key, (array) ($snapshot['course'] ?? []))) {
+                if (! array_key_exists($key, (array) ($snapshot['course'] ?? []))) {
                     return null;
                 }
             }
             foreach (['title', 'title_ar', 'title_en'] as $key) {
-                if (!array_key_exists($key, (array) ($snapshot['project'] ?? []))) {
+                if (! array_key_exists($key, (array) ($snapshot['project'] ?? []))) {
                     return null;
                 }
             }
@@ -124,8 +125,8 @@ final class ProjectSubmissionEvaluationSnapshot
             }
         }
         $fingerprint = trim((string) ($snapshot['fingerprint'] ?? ''));
-        if ($fingerprint === '' || (!hash_equals($fingerprint, self::fingerprint($snapshot))
-            && !($version === 3 && self::matchesLegacyFingerprint($snapshot, $fingerprint)))) {
+        if ($fingerprint === '' || (! hash_equals($fingerprint, self::fingerprint($snapshot))
+            && ! ($version === 3 && self::matchesLegacyFingerprint($snapshot, $fingerprint)))) {
             return null;
         }
 
@@ -154,9 +155,10 @@ final class ProjectSubmissionEvaluationSnapshot
                 $value[$key] = self::canonicalObjects($child);
             }
         }
-        if (!array_is_list($value)) {
+        if (! array_is_list($value)) {
             ksort($value, SORT_STRING);
         }
+
         return $value;
     }
 
@@ -176,7 +178,7 @@ final class ProjectSubmissionEvaluationSnapshot
                 'requirements_text', 'requirements_text_ar', 'requirements_text_en'],
             'access' => ['enrollment_id', 'access_plan_id', 'terms'],
         ] as $key => $keys) {
-            if (!is_array($ordered[$key] ?? null)) {
+            if (! is_array($ordered[$key] ?? null)) {
                 return false;
             }
             $ordered[$key] = self::inWriterOrder($ordered[$key], $keys);
@@ -186,7 +188,7 @@ final class ProjectSubmissionEvaluationSnapshot
         if (hash_equals($fingerprint, self::fingerprint($ordered))) {
             return true;
         }
-        if (!is_array($ordered['access']['terms'] ?? null)) {
+        if (! is_array($ordered['access']['terms'] ?? null)) {
             return false;
         }
         // Capture can also receive a freshly-created CourseAccessPlanService
@@ -203,6 +205,7 @@ final class ProjectSubmissionEvaluationSnapshot
             'max_output_tokens', 'model_override', 'project_feedback_level',
             'project_output_enabled', 'certificate_enabled', 'purchased_at',
         ]);
+
         return hash_equals($fingerprint, self::fingerprint($ordered));
     }
 
@@ -214,11 +217,10 @@ final class ProjectSubmissionEvaluationSnapshot
                 $ordered[$key] = $value[$key];
             }
         }
+
         // Keep unknown fields in the digest: dropping one would conceal tampering.
         return $ordered + $value;
     }
 
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 }

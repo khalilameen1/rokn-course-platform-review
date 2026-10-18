@@ -15,9 +15,7 @@ use RuntimeException;
 /** Immutable upload attempts and bounded byte writes; cleanup belongs to its outbox owner. */
 final class StoredFileUploadService
 {
-    public function __construct(private readonly StoredFileDeletionService $cleanup)
-    {
-    }
+    public function __construct(private readonly StoredFileDeletionService $cleanup) {}
 
     /** A generated rendition follows the same immutable upload/cleanup owner. */
     public function storeTrackedBytes(
@@ -28,12 +26,12 @@ final class StoredFileUploadService
     ): string {
         $directory = trim($directory, '/');
         if ($bytes === '' || $directory === '' || trim($disk) === ''
-            || !preg_match('/^[a-z0-9]{1,10}$/', $extension)) {
+            || ! preg_match('/^[a-z0-9]{1,10}$/', $extension)) {
             throw new \InvalidArgumentException('Tracked rendition destination is invalid.');
         }
         $path = $directory.'/'.Str::uuid().'.'.$extension;
         $this->cleanup->trackPotentialOrphan($disk, $path, 60);
-        if (!Storage::disk($disk)->put($path, $bytes, [
+        if (! Storage::disk($disk)->put($path, $bytes, [
             'CacheControl' => 'public, max-age=31536000, immutable',
         ])) {
             throw new RuntimeException('Tracked rendition storage failed.');
@@ -60,7 +58,7 @@ final class StoredFileUploadService
         if ($operationIdentity !== null) {
             // Preserve the logical filename for domain replay checks, but
             // never reuse an orphan path a prior cleanup may already own.
-            $path = dirname($path) . '/' . Str::uuid() . '/' . basename($path);
+            $path = dirname($path).'/'.Str::uuid().'/'.basename($path);
         }
         $this->cleanup->trackPotentialOrphan(
             $disk,
@@ -74,6 +72,7 @@ final class StoredFileUploadService
             false,
             $budget
         );
+
         return $path;
     }
 
@@ -90,16 +89,17 @@ final class StoredFileUploadService
             throw new \InvalidArgumentException('Tracked upload destination is invalid.');
         }
         $extension = strtolower((string) ($file->guessExtension() ?: $file->extension()));
-        if (!preg_match('/^[a-z0-9]{1,10}$/', $extension)) {
+        if (! preg_match('/^[a-z0-9]{1,10}$/', $extension)) {
             $extension = 'bin';
         }
         // A stable operation identity turns a lost HTTP response into a resume,
         // rather than a second object. The content hash belongs in the caller's
         // identity so two files in one request can never share a destination.
         $filename = $operationIdentity === null
-            ? (string) Str::uuid() . '.' . $extension
-            : hash('sha256', $operationIdentity) . '.' . $extension;
-        return $directory . '/' . $filename;
+            ? (string) Str::uuid().'.'.$extension
+            : hash('sha256', $operationIdentity).'.'.$extension;
+
+        return $directory.'/'.$filename;
     }
 
     /** Write bytes only after the orphan ledger and any domain reservation exist. */
@@ -109,8 +109,7 @@ final class StoredFileUploadService
         string $disk = 'public',
         bool $resumeExisting = true,
         ?UploadBudget $budget = null
-    ): void
-    {
+    ): void {
         $path = ltrim(trim($path), '/');
         $disk = trim($disk);
         $directory = trim((string) dirname($path), './\\');
@@ -152,7 +151,7 @@ final class StoredFileUploadService
             ];
         }
         $stored = $file->storeAs($directory, $filename, $options);
-        if (!is_string($stored) || ltrim($stored, '/') !== $path) {
+        if (! is_string($stored) || ltrim($stored, '/') !== $path) {
             throw new RuntimeException('Tracked file storage failed.');
         }
     }

@@ -9,11 +9,17 @@ use Illuminate\Database\Eloquent\Model;
 final class NotificationPushDelivery extends Model
 {
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_DISPATCHING = 'dispatching';
+
     public const STATUS_RETRYABLE = 'retryable';
+
     public const STATUS_ACCEPTED = 'accepted';
+
     public const STATUS_FAILED = 'failed';
+
     public const STATUS_UNKNOWN = 'unknown';
+
     public const STATUS_SUPERSEDED = 'superseded';
 
     protected $fillable = [

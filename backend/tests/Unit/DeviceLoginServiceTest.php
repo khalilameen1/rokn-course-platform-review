@@ -56,7 +56,7 @@ final class DeviceLoginServiceTest extends TestCase
     {
         Schema::drop('settings');
 
-        $access = $this->devices->checkDeviceAccess(new User(), null);
+        $access = $this->devices->checkDeviceAccess(new User, null);
 
         self::assertFalse($access['allowed']);
         self::assertSame('deny', $access['action']);
@@ -78,7 +78,7 @@ final class DeviceLoginServiceTest extends TestCase
     {
         $this->setPolicy(null);
 
-        $access = $this->devices->checkDeviceAccess(new User(), 'first-device');
+        $access = $this->devices->checkDeviceAccess(new User, 'first-device');
 
         self::assertTrue($access['allowed']);
         self::assertSame('logout_others', $access['action']);
@@ -146,6 +146,6 @@ final class DeviceLoginServiceTest extends TestCase
 
     private function userLockedTo(string $deviceId): User
     {
-        return (new User())->forceFill(['locked_device_id' => $deviceId]);
+        return (new User)->forceFill(['locked_device_id' => $deviceId]);
     }
 }

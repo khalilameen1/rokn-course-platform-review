@@ -54,11 +54,11 @@ final class WelcomeRewardOwnershipTest extends TestCase
         self::assertSame('welcome_bonus', WalletTransaction::query()->sole()->category);
         self::assertSame(29, (int) $user->coinEarnings()->sole()->amount);
         $receipt = StudentNotification::query()->sole();
-        self::assertSame('registration-bonus:' . $user->id, $receipt->delivery_key);
+        self::assertSame('registration-bonus:'.$user->id, $receipt->delivery_key);
         self::assertSame('coins_claimed', $receipt->notification_type);
         Bus::assertDispatchedTimes(SendUserPushNotification::class, 1);
         Bus::assertDispatched(SendUserPushNotification::class,
-            fn ($job) => $job->uniqueId() === 'notification:' . $receipt->id);
+            fn ($job) => $job->uniqueId() === 'notification:'.$receipt->id);
     }
 
     public function test_welcome_receipt_uses_its_own_template_not_the_generic_task_template(): void

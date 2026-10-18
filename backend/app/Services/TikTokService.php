@@ -44,7 +44,7 @@ final class TikTokService
             );
         }
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             if ($response->serverError() || $response->status() === 429) {
                 throw new SocialProviderUnavailableException('TikTok identity service is unavailable.');
             }
@@ -58,7 +58,7 @@ final class TikTokService
         if ($errorCode !== '' && $errorCode !== 'ok') {
             throw new RuntimeException('TikTok rejected the access token.');
         }
-        if (!is_array($user) || empty($user['open_id'])) {
+        if (! is_array($user) || empty($user['open_id'])) {
             throw new RuntimeException('TikTok returned an invalid identity response.');
         }
 

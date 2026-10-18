@@ -12,8 +12,8 @@ class FacebookService
     /**
      * Verify Facebook access token and retrieve user data
      *
-     * @param string $accessToken
      * @return array ['id', 'name', 'email', 'picture']
+     *
      * @throws Exception
      */
     public function verify(string $accessToken): array
@@ -32,24 +32,24 @@ class FacebookService
 
             $debugData = Http::acceptJson()
                 ->timeout($timeout)
-                ->get('https://graph.facebook.com/' . $graphVersion . '/debug_token', [
+                ->get('https://graph.facebook.com/'.$graphVersion.'/debug_token', [
                     'input_token' => $accessToken,
-                    'access_token' => $appId . '|' . $appSecret,
+                    'access_token' => $appId.'|'.$appSecret,
                 ])
                 ->throw()
                 ->json('data');
 
             if (
-                !is_array($debugData)
+                ! is_array($debugData)
                 || empty($debugData['is_valid'])
-                || !hash_equals($appId, (string) ($debugData['app_id'] ?? ''))
+                || ! hash_equals($appId, (string) ($debugData['app_id'] ?? ''))
                 || empty($debugData['user_id'])
             ) {
                 throw new Exception('Facebook rejected the access token.');
             }
 
             $response = Http::timeout($timeout)
-                ->get('https://graph.facebook.com/' . $graphVersion . '/me', [
+                ->get('https://graph.facebook.com/'.$graphVersion.'/me', [
                     'fields' => 'id,name,email,picture.height(200).width(200)',
                     'access_token' => $accessToken,
                     'appsecret_proof' => hash_hmac('sha256', $accessToken, $appSecret),
@@ -58,8 +58,8 @@ class FacebookService
                 ->json();
 
             if (
-                !isset($response['id'])
-                || !hash_equals((string) $debugData['user_id'], (string) $response['id'])
+                ! isset($response['id'])
+                || ! hash_equals((string) $debugData['user_id'], (string) $response['id'])
             ) {
                 throw new Exception('Invalid Facebook response: missing user ID');
             }
@@ -72,13 +72,13 @@ class FacebookService
             Log::info('Facebook token verified');
 
             return [
-                'id' => (string)$response['id'],
+                'id' => (string) $response['id'],
                 'identity_issued_at' => is_numeric($debugData['issued_at'] ?? null)
                     ? (int) $debugData['issued_at']
                     : null,
                 'name' => $response['name'] ?? null,
                 'email' => $response['email'] ?? null,
-                'email_verified' => !empty($response['email']),
+                'email_verified' => ! empty($response['email']),
                 'picture' => $picture,
             ];
         } catch (Exception $e) {

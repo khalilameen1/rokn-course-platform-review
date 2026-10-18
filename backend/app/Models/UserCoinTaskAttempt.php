@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 class UserCoinTaskAttempt extends Model
 {
     public const STATUS_STARTED = 'started';
+
     public const STATUS_CLAIMED = 'claimed';
 
     protected $fillable = [

@@ -30,7 +30,7 @@ final class ResilientThrottleRequests extends ThrottleRequests
     {
         $identity = parent::resolveRequestSignature($request);
         $route = $request->route();
-        if (!$request->is('api/*') || !$route) {
+        if (! $request->is('api/*') || ! $route) {
             return $identity;
         }
 
@@ -60,7 +60,7 @@ final class ResilientThrottleRequests extends ThrottleRequests
                     );
                 }
 
-                if (!$limit->afterCallback) {
+                if (! $limit->afterCallback) {
                     $this->limiter->hit($limit->key, $limit->decaySeconds);
                 }
             }
@@ -122,7 +122,7 @@ final class ResilientThrottleRequests extends ThrottleRequests
     private function mayFailOpen($request): bool
     {
         if ($request->isMethodSafe()) {
-            return !$request->is(
+            return ! $request->is(
                 'api/*/social-auth/*',
                 'api/social-auth/*',
                 'payment/*',
@@ -169,7 +169,7 @@ final class ResilientThrottleRequests extends ThrottleRequests
 
     private function logDegradedLimiter($request, Throwable $exception, string $phase): void
     {
-        $key = $phase . ':' . (string) ($request->route()?->getName() ?: $request->path());
+        $key = $phase.':'.(string) ($request->route()?->getName() ?: $request->path());
         $now = time();
         if (($now - (self::$lastDegradedLogAt[$key] ?? 0)) < 60) {
             return;

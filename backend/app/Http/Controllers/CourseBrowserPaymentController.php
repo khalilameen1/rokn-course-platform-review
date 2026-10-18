@@ -8,8 +8,8 @@ use App\Models\Order;
 use App\Models\User;
 use App\Services\CourseBrowserPaymentService;
 use App\Services\KashierService;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 final class CourseBrowserPaymentController extends Controller
 {

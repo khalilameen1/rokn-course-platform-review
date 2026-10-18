@@ -6,8 +6,8 @@ namespace App\Http\Middleware;
 
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
-use App\Services\CourseStagedAuthoringService;
 use App\Services\CourseRevisionResolver;
+use App\Services\CourseStagedAuthoringService;
 use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -30,7 +30,7 @@ final class ResolveCourseAuthoringDraft
                 ->latest('id')
                 ->first(['status']);
             if ($routeRevision?->status === CourseAuthoringRevision::ARCHIVED
-                && !in_array(strtoupper($request->method()), ['GET', 'HEAD', 'OPTIONS'], true)) {
+                && ! in_array(strtoupper($request->method()), ['GET', 'HEAD', 'OPTIONS'], true)) {
                 // A form left open across publish still names the old working
                 // course. Do not let its first POST create a fresh draft as a
                 // side effect and then apply/adopt old section IDs. A clean GET
@@ -50,14 +50,18 @@ final class ResolveCourseAuthoringDraft
                 ->first();
             if ($revision) {
                 foreach ($request->route()->parameters() as $name => $parameter) {
-                    if (!$parameter instanceof Model || $parameter instanceof Course) continue;
+                    if (! $parameter instanceof Model || $parameter instanceof Course) {
+                        continue;
+                    }
                     $parameterId = (int) $parameter->getKey();
                     $alreadyInDraft = DB::table('course_authoring_revision_entities')
                         ->where('course_authoring_revision_id', $revision->id)
                         ->where('entity_type', $parameter::class)
                         ->where('revision_entity_id', $parameterId)
                         ->exists();
-                    if ($alreadyInDraft) continue;
+                    if ($alreadyInDraft) {
+                        continue;
+                    }
 
                     $currentId = $this->revisions->currentEntityId($parameter::class, $parameterId)
                         ?? $parameterId;
@@ -71,6 +75,7 @@ final class ResolveCourseAuthoringDraft
                             $name,
                             $parameter->newQuery()->findOrFail($mappedId)
                         );
+
                         continue;
                     }
 

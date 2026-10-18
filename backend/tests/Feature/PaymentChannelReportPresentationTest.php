@@ -134,7 +134,7 @@ final class PaymentChannelReportPresentationTest extends TestCase
         $html = view('admin.orders.partials.index.payment-channel-report', [
             'paymentChannelReport' => app(PaymentChannelReportService::class)->summary(),
         ])->render();
-        $document = new DOMDocument();
+        $document = new DOMDocument;
         @$document->loadHTML('<?xml encoding="utf-8" ?>'.$html);
 
         return new DOMXPath($document);

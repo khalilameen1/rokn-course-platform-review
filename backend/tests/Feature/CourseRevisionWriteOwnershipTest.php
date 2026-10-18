@@ -41,12 +41,12 @@ final class CourseRevisionWriteOwnershipTest extends TestCase
         [$course] = $this->publishedFixture();
         $before = $this->snapshot();
         $graph = app(CourseRevisionGraphService::class);
-        $revision = new CourseAuthoringRevision();
+        $revision = new CourseAuthoringRevision;
         $operations = [
             'clone' => fn () => $graph->cloneWithinTransaction($course),
-            'swap' => fn () => $graph->swapWithinTransaction($revision, $course, new Course()),
+            'swap' => fn () => $graph->swapWithinTransaction($revision, $course, new Course),
             'offers' => fn () => app(CoursePlanPublicationService::class)
-                ->publishWithinTransaction($course, new Course()),
+                ->publishWithinTransaction($course, new Course),
             'lineage' => fn () => app(CourseRevisionLineageService::class)
                 ->finalizeWithinTransaction($revision),
         ];

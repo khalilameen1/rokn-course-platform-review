@@ -13,13 +13,16 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use RuntimeException;
 
-final class SendWhatsAppMessage implements ShouldQueue, ShouldBeUnique
+final class SendWhatsAppMessage implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 25;
+
     public int $uniqueFor = 600;
+
     public array $backoff = [15, 60, 180];
 
     public function __construct(
@@ -31,12 +34,12 @@ final class SendWhatsAppMessage implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return hash('sha256', $this->phone . "\0" . $this->message);
+        return hash('sha256', $this->phone."\0".$this->message);
     }
 
     public function handle(WhatsAppService $whatsApp): void
     {
-        if (!$whatsApp->sendTextMessage($this->phone, $this->message)) {
+        if (! $whatsApp->sendTextMessage($this->phone, $this->message)) {
             throw new RuntimeException('WhatsApp provider did not accept the message.');
         }
     }

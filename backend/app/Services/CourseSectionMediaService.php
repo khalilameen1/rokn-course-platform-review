@@ -21,8 +21,7 @@ final readonly class CourseSectionMediaService
         private BunnyService $bunny,
         private BunnyMediaRegistry $mediaRegistry,
         private BunnyDirectUploadService $directUploads
-    ) {
-    }
+    ) {}
 
     public function stage(
         CourseSectionEdit $edit,
@@ -57,7 +56,7 @@ final readonly class CourseSectionMediaService
                 $edit->requestId,
                 'section_thumbnail_unpublished'
             );
-            if (!$thumbnailPath) {
+            if (! $thumbnailPath) {
                 throw new RuntimeException('تعذر رفع صورة المقطع والصورة السابقة لم تتغير');
             }
         }
@@ -91,14 +90,14 @@ final readonly class CourseSectionMediaService
             // section transaction. Do not attach a cleanup row to a vanished
             // FK; the GUID remains the durable cleanup identity.
             $cleanupLesson = $newType === 'lesson' ? $stage->previousLesson : null;
-            if (!$this->mediaRegistry->queueVideoCleanup($oldVideo, $cleanupLesson, $reason, 168, true)) {
+            if (! $this->mediaRegistry->queueVideoCleanup($oldVideo, $cleanupLesson, $reason, 168, true)) {
                 throw new RuntimeException('تعذر تسجيل تقاعد الفيديو السابق بأمان');
             }
         }
 
         $oldThumbnail = $stage->previousThumbnailPath();
         if ($oldThumbnail && ($newType !== 'lesson' || $stage->thumbnailChanged)) {
-            if (!$this->mediaRegistry->queueStorageCleanup($oldThumbnail, 'superseded_lesson_thumbnail')) {
+            if (! $this->mediaRegistry->queueStorageCleanup($oldThumbnail, 'superseded_lesson_thumbnail')) {
                 throw new RuntimeException('تعذر تأمين تقاعد صورة المقطع السابقة');
             }
         }
@@ -106,12 +105,12 @@ final readonly class CourseSectionMediaService
 
     public function retireDeleted(?Lesson $lesson): void
     {
-        if (!$lesson) {
+        if (! $lesson) {
             return;
         }
 
         $videoGuid = trim((string) $lesson->bunny_video_id);
-        if ($videoGuid !== '' && !$this->mediaRegistry->queueVideoCleanup(
+        if ($videoGuid !== '' && ! $this->mediaRegistry->queueVideoCleanup(
             $videoGuid,
             // Deletion removes the lesson in the same transaction. Cleanup is
             // keyed by the provider GUID and must not require that row to live.
@@ -124,7 +123,7 @@ final readonly class CourseSectionMediaService
         }
 
         $thumbnailPath = trim((string) $lesson->thumbnail_path);
-        if ($thumbnailPath !== '' && !$this->mediaRegistry->queueStorageCleanup($thumbnailPath, 'section_deleted')) {
+        if ($thumbnailPath !== '' && ! $this->mediaRegistry->queueStorageCleanup($thumbnailPath, 'section_deleted')) {
             throw new RuntimeException('تعذر تأمين حذف صورة المقطع');
         }
     }

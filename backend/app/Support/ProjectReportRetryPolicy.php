@@ -16,7 +16,7 @@ final class ProjectReportRetryPolicy
         bool $hasLandedResponse = false
     ): bool {
         if (
-            !in_array($failureReason, [
+            ! in_array($failureReason, [
                 'provider_unavailable',
                 'ai_rate_limited',
                 'worker_failed',
@@ -45,7 +45,5 @@ final class ProjectReportRetryPolicy
             && in_array($providerState, ['', 'retry_safe'], true);
     }
 
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 }

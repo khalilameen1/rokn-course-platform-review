@@ -90,6 +90,7 @@ final class BunnyMediaRegistryTest extends TestCase
             $candidate = BunnyStorageCleanupCandidate::query()->sole();
             self::assertSame('unpublished_storage_upload', $candidate->reason);
             self::assertStringEndsWith('/'.$candidate->path, $request->url());
+
             return Http::response('', 201);
         });
         $file = UploadedFile::fake()->createWithContent('work.txt', 'A durable learner attachment');

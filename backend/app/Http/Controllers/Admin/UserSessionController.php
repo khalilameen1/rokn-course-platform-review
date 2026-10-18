@@ -16,7 +16,7 @@ class UserSessionController extends Controller
 {
     public function index(): View
     {
-        $table = (new ApiToken())->getTable();
+        $table = (new ApiToken)->getTable();
         $ready = Schema::hasColumn($table, 'session_id');
         $sessions = $ready
             ? ApiToken::query()

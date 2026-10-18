@@ -2,17 +2,19 @@
 
 namespace App\Models;
 
+use App\Services\PortfolioModerationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-use App\Services\PortfolioModerationService;
 
 class PortfolioItem extends Model
 {
     protected static function booted(): void
     {
         static::creating(function (PortfolioItem $item): void {
-            if (!$item->public_id) $item->public_id = (string) Str::uuid();
+            if (! $item->public_id) {
+                $item->public_id = (string) Str::uuid();
+            }
         });
         // Capture a pre-publication approval before the first change moves the draft.
         static::saving(fn (PortfolioItem $item) => PortfolioModerationService::preserveLegacyPublication((int) $item->user_id));
@@ -28,7 +30,9 @@ class PortfolioItem extends Model
             }
         });
         static::deleted(function (PortfolioItem $item): void {
-            if ($item->is_public) PortfolioModerationService::invalidate((int) $item->user_id);
+            if ($item->is_public) {
+                PortfolioModerationService::invalidate((int) $item->user_id);
+            }
         });
     }
 

@@ -76,8 +76,7 @@ final class CourseSectionSequenceService
 
         return $learning
             ->groupBy('course_id')
-            ->map(fn (Collection $courseSections): Collection =>
-                $this->orderedWithModuleOrders($courseSections, $moduleOrders)
+            ->map(fn (Collection $courseSections): Collection => $this->orderedWithModuleOrders($courseSections, $moduleOrders)
             );
     }
 
@@ -94,6 +93,7 @@ final class CourseSectionSequenceService
         $moduleOrders = CourseModule::query()
             ->whereIn('id', $moduleIds)
             ->pluck('order', 'id');
+
         return $this->orderedWithModuleOrders($sections, $moduleOrders);
     }
 
@@ -103,7 +103,7 @@ final class CourseSectionSequenceService
     ): Collection {
         // Batch reads share the module-order map across courses. Extra modules
         // from another course are valid; only a referenced missing one is not.
-        if ($sections->contains(fn ($section): bool => !$moduleOrders->has($section->module_id))) {
+        if ($sections->contains(fn ($section): bool => ! $moduleOrders->has($section->module_id))) {
             throw new \LogicException('A learning section references a missing course module.');
         }
 

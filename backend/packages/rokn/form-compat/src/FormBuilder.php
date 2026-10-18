@@ -20,9 +20,7 @@ class FormBuilder
 {
     private mixed $model = null;
 
-    public function __construct(private readonly UrlGenerator $url)
-    {
-    }
+    public function __construct(private readonly UrlGenerator $url) {}
 
     public function open(array $options = []): HtmlString
     {
@@ -41,7 +39,7 @@ class FormBuilder
             $attributes['enctype'] = 'multipart/form-data';
         }
 
-        $html = '<form' . $this->attributes($attributes) . '>';
+        $html = '<form'.$this->attributes($attributes).'>';
         if ($method !== $htmlMethod) {
             $html .= $this->hidden('_method', $method);
         }
@@ -112,9 +110,9 @@ class FormBuilder
         $options['id'] ??= $this->fieldId($name);
 
         return new HtmlString(
-            '<textarea' . $this->attributes($options) . '>'
-            . e((string) ($this->value($name, $value) ?? ''))
-            . '</textarea>'
+            '<textarea'.$this->attributes($options).'>'
+            .e((string) ($this->value($name, $value) ?? ''))
+            .'</textarea>'
         );
     }
 
@@ -131,22 +129,23 @@ class FormBuilder
 
         $options['name'] = $name;
         $options['id'] ??= $this->fieldId($name);
-        $html = '<select' . $this->attributes($options) . '>';
+        $html = '<select'.$this->attributes($options).'>';
 
         foreach ($list as $value => $label) {
             if (is_iterable($label)) {
-                $html .= '<optgroup label="' . e((string) $value) . '">';
+                $html .= '<optgroup label="'.e((string) $value).'">';
                 foreach ($label as $nestedValue => $nestedLabel) {
                     $html .= $this->option($nestedValue, $nestedLabel, $selectedValues);
                 }
                 $html .= '</optgroup>';
+
                 continue;
             }
 
             $html .= $this->option($value, $label, $selectedValues);
         }
 
-        return new HtmlString($html . '</select>');
+        return new HtmlString($html.'</select>');
     }
 
     public function checkbox(
@@ -201,7 +200,7 @@ class FormBuilder
             $options['value'] = $value;
         }
 
-        return new HtmlString('<input' . $this->attributes($options) . '>');
+        return new HtmlString('<input'.$this->attributes($options).'>');
     }
 
     private function value(string $name, mixed $explicit): mixed
@@ -228,7 +227,7 @@ class FormBuilder
 
     private function csrfToken(): string
     {
-        if (!app()->bound('session')) {
+        if (! app()->bound('session')) {
             throw new LogicException('A session is required to render a state-changing form.');
         }
 
@@ -291,9 +290,9 @@ class FormBuilder
             $attributes['selected'] = true;
         }
 
-        return '<option' . $this->attributes($attributes) . '>'
-            . e((string) $label)
-            . '</option>';
+        return '<option'.$this->attributes($attributes).'>'
+            .e((string) $label)
+            .'</option>';
     }
 
     private function attributes(array $attributes): string
@@ -310,7 +309,8 @@ class FormBuilder
 
             $key = e((string) $key);
             if ($value === true) {
-                $html .= ' ' . $key . '="' . $key . '"';
+                $html .= ' '.$key.'="'.$key.'"';
+
                 continue;
             }
 
@@ -318,7 +318,7 @@ class FormBuilder
                 $value = implode(' ', array_map('strval', $value));
             }
 
-            $html .= ' ' . $key . '="' . e((string) $value) . '"';
+            $html .= ' '.$key.'="'.e((string) $value).'"';
         }
 
         return $html;

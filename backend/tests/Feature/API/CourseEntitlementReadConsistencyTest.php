@@ -30,8 +30,11 @@ final class CourseEntitlementReadConsistencyTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Course $course;
+
     private CourseAccessPlan $guidedPlan;
+
     private int $sequence = 0;
 
     protected function setUp(): void
@@ -243,6 +246,7 @@ final class CourseEntitlementReadConsistencyTest extends TestCase
         }
 
         $order = $this->paidPlanOrder('course_purchase', null, 200);
+
         return $this->createEnrollment([
             'tenant_id' => 1,
             'user_id' => $this->user->id,
@@ -260,7 +264,7 @@ final class CourseEntitlementReadConsistencyTest extends TestCase
 
     private function scholarshipEnrollment(): CourseEnrollment
     {
-        $code = new CourseCode();
+        $code = new CourseCode;
         $code->forceFill([
             'tenant_id' => 1,
             'code' => 'GRANT-'.$this->key(),
@@ -372,7 +376,7 @@ final class CourseEntitlementReadConsistencyTest extends TestCase
 
     private function learner(): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'name' => 'Entitlement learner',
             'email' => 'entitlement-'.Str::uuid().'@rokn.test',
@@ -389,7 +393,7 @@ final class CourseEntitlementReadConsistencyTest extends TestCase
 
     private function publishedCourse(): Course
     {
-        $course = new Course();
+        $course = new Course;
         $course->forceFill([
             'tenant_id' => 1,
             'name_ar' => 'كورس اتساق الإتاحة',
@@ -454,7 +458,7 @@ final class CourseEntitlementReadConsistencyTest extends TestCase
 
     private function createEnrollment(array $attributes): CourseEnrollment
     {
-        $enrollment = new CourseEnrollment();
+        $enrollment = new CourseEnrollment;
         $enrollment->forceFill($attributes)->save();
 
         return $enrollment;

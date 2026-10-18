@@ -20,12 +20,11 @@ final class ProjectSubmissionOrchestrator
         private CourseEntitlementService $courseAccess,
         private CourseAccessPlanService $accessPlans,
         private ProjectSubmissionFilePolicy $files
-    ) {
-    }
+    ) {}
 
     /**
-     * @param list<UploadedFile> $files
-     * @param array<string, mixed> $metadata
+     * @param  list<UploadedFile>  $files
+     * @param  array<string, mixed>  $metadata
      * @return array{state:string, submission?:ProjectSubmission, field?:string, message?:string}
      */
     public function submit(
@@ -53,13 +52,13 @@ final class ProjectSubmissionOrchestrator
         $learnerText = UnicodeText::clean((string) $text);
         $hasText = $learnerText !== '';
         $maximumFiles = ProjectSubmissionFilePolicy::maximumFiles($project);
-        if ($hasText && !(bool) $project->submission_text_enabled) {
+        if ($hasText && ! (bool) $project->submission_text_enabled) {
             return $this->invalid('submission_text', 'هذا المشروع يحتاج ملفًا من الأنواع المحددة');
         }
         if (count($files) > $maximumFiles) {
             return $this->invalid('submission_files', "اختر {$maximumFiles} ملفات على الأكثر");
         }
-        if (!$hasText && $files === []) {
+        if (! $hasText && $files === []) {
             return $this->invalid('submission_files', 'أضف نصًا أو ملفًا واحدًا على الأقل');
         }
 
@@ -71,16 +70,16 @@ final class ProjectSubmissionOrchestrator
                     'اختر ملفات بحجم '.ProjectSubmissionFilePolicy::maximumFileMegabytesLabel().' ميجابايت أو أقل'
                 );
             }
-            if (!$this->files->acceptsType($project, $file)) {
+            if (! $this->files->acceptsType($project, $file)) {
                 return $this->invalid('submission_files', 'أحد الملفات بصيغة غير متاحة لهذا المشروع');
             }
         }
 
         $courseId = (int) $project->section?->course_id;
-        if (!$courseId || !$project->section || !$this->courseAccess->hasLearningAccess((int) $user->id, $courseId)) {
+        if (! $courseId || ! $project->section || ! $this->courseAccess->hasLearningAccess((int) $user->id, $courseId)) {
             return ['state' => 'forbidden'];
         }
-        if (!$this->sectionAccess->canAccessSection($user, $project->section)) {
+        if (! $this->sectionAccess->canAccessSection($user, $project->section)) {
             return ['state' => 'prerequisites'];
         }
 

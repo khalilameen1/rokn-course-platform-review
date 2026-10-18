@@ -23,14 +23,18 @@ final class OpenRouterCostReconciliationService
             return 'skipped';
         }
         $lock = Cache::lock('openrouter:cost-reconciliation:event:'.$eventId, 60);
-        if (!$lock->get()) return 'skipped';
+        if (! $lock->get()) {
+            return 'skipped';
+        }
 
         try {
             $event = AiUsageEvent::query()->find($eventId);
             $generationId = $event ? $this->eligibleGeneration($event) : null;
             if ($generationId === null || (int) data_get(
                 $event->metadata, 'cost_reconciliation.next_attempt_at', 0
-            ) > now()->timestamp) return 'skipped';
+            ) > now()->timestamp) {
+                return 'skipped';
+            }
 
             $cost = null;
             $reason = 'unavailable';
@@ -73,7 +77,9 @@ final class OpenRouterCostReconciliationService
             return DB::transaction(function () use ($eventId, $generationId, $cost, $reason, $retryAt): string {
                 $event = AiUsageEvent::query()->lockForUpdate()->find($eventId);
                 // Another settlement/receipt may have won while the GET waited.
-                if (!$event || $this->eligibleGeneration($event) !== $generationId) return 'skipped';
+                if (! $event || $this->eligibleGeneration($event) !== $generationId) {
+                    return 'skipped';
+                }
                 $metadata = is_array($event->metadata) ? $event->metadata : [];
                 $metadata['cost_reconciliation'] = [
                     'checked_at' => now()->toISOString(),
@@ -94,6 +100,7 @@ final class OpenRouterCostReconciliationService
                         ? number_format($cost * $historicalFx, 6, '.', '') : null;
                 }
                 $event->forceFill($fields + ['metadata' => $metadata])->save();
+
                 // No changes to reserved_cost_usd, entitlement aggregates,
                 // delivery state or completed_at (the original usage window).
                 return $cost === null ? 'pending' : 'confirmed';
@@ -106,11 +113,16 @@ final class OpenRouterCostReconciliationService
     private function eligibleGeneration(AiUsageEvent $event): ?string
     {
         if ($event->status !== 'completed'
-            || data_get($event->metadata, 'cost_usage_source') === 'provider') return null;
+            || data_get($event->metadata, 'cost_usage_source') === 'provider') {
+            return null;
+        }
         $headerId = trim((string) data_get($event->metadata, 'provider_generation_id', ''));
         $responseId = trim((string) $event->provider_request_id);
-        if ($headerId !== '' && $responseId !== '' && $headerId !== $responseId) return null;
+        if ($headerId !== '' && $responseId !== '' && $headerId !== $responseId) {
+            return null;
+        }
         $id = $headerId !== '' ? $headerId : $responseId;
+
         return $id !== '' && strlen($id) <= 255 ? $id : null;
     }
 }

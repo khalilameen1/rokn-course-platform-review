@@ -28,7 +28,7 @@ final class SectionCompletionRevisionAcknowledgementTest extends TestCase
     private function fixture(bool $withEvidence = true): array
     {
         Http::preventStrayRequests();
-        $course = (new Course())->forceFill([
+        $course = (new Course)->forceFill([
             'tenant_id' => 1, 'name_ar' => 'كورس التقدم', 'description_ar' => 'وصف',
             'price' => 0, 'is_coming_soon' => false, 'is_catalog_visible' => true,
             'authoring_version' => 4, 'last_published_authoring_version' => 4,
@@ -42,11 +42,11 @@ final class SectionCompletionRevisionAcknowledgementTest extends TestCase
             'sectionable_id' => $lesson->id, 'order' => 1,
         ]);
         LessonMediaState::create(['lesson_id' => $lesson->id, 'duration_seconds' => 60, 'status' => 'ready']);
-        $user = (new User())->forceFill([
+        $user = (new User)->forceFill([
             'name_ar' => 'متعلم', 'email' => 'progress-'.$course->id.'@example.test', 'role' => 'client', 'active' => true,
         ]);
         $user->save();
-        (new CourseEnrollment())->forceFill([
+        (new CourseEnrollment)->forceFill([
             'tenant_id' => 1, 'course_id' => $course->id, 'user_id' => $user->id, 'is_active' => true,
         ])->save();
         // The heartbeat committed evidence, but its completion step failed;
@@ -57,6 +57,7 @@ final class SectionCompletionRevisionAcknowledgementTest extends TestCase
                 'duration_seconds' => 60, 'verified_seconds' => 60, 'completed_at' => now(),
             ]);
         }
+
         return [$course, $section, $user];
     }
 
@@ -124,7 +125,7 @@ final class SectionCompletionRevisionAcknowledgementTest extends TestCase
         } elseif ($reason === 'wrong course') {
             [$course] = $this->fixture(false);
         } elseif ($reason === 'unknown section') {
-            $section = new CourseSection();
+            $section = new CourseSection;
             $section->id = 0;
         } elseif ($reason === 'unpublished') {
             $course->fresh()->forceFill(['is_coming_soon' => true])->save();

@@ -260,6 +260,7 @@ final class ProjectSubmissionOwnershipTest extends TestCase
             ProjectSubmissionFileRetentionService::class,
             CourseEntitlementService::class,
         ]);
+
         return app(ProjectSubmissionEvaluationScheduler::class);
     }
 
@@ -267,7 +268,7 @@ final class ProjectSubmissionOwnershipTest extends TestCase
     {
         foreach ($services as $service) {
             $this->app->bind($service, static function () use ($service): never {
-                throw new \LogicException('Unexpected ownership dependency: ' . $service);
+                throw new \LogicException('Unexpected ownership dependency: '.$service);
             });
         }
     }
@@ -290,14 +291,15 @@ final class ProjectSubmissionOwnershipTest extends TestCase
 
     private function user(array $attributes = []): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill(array_replace([
             'name' => 'Boundary learner',
-            'email' => Str::uuid() . '@test.rokn',
+            'email' => Str::uuid().'@test.rokn',
             'password' => bcrypt('test'),
             'role' => 'client',
             'active' => true,
         ], $attributes))->save();
+
         return $user;
     }
 }

@@ -24,8 +24,9 @@ final class MigrateCoursePdfsToSharedStorage extends Command
     {
         $targetName = trim((string) config('course_pdfs.disk'));
         $targetConfig = config("filesystems.disks.{$targetName}");
-        if ($targetName === '' || in_array($targetName, ['local', 'public'], true) || !is_array($targetConfig)) {
+        if ($targetName === '' || in_array($targetName, ['local', 'public'], true) || ! is_array($targetConfig)) {
             $this->error('COURSE_PDF_DISK must name a configured private shared disk.');
+
             return self::FAILURE;
         }
         if (
@@ -33,6 +34,7 @@ final class MigrateCoursePdfsToSharedStorage extends Command
             && ($targetConfig['visibility'] ?? null) === 'public'
         ) {
             $this->error('COURSE_PDF_DISK must not have public visibility.');
+
             return self::FAILURE;
         }
 
@@ -50,12 +52,14 @@ final class MigrateCoursePdfsToSharedStorage extends Command
         $pdfs = $query->get();
         if ($pdfs->isEmpty()) {
             $this->info('No legacy course PDFs require migration.');
+
             return self::SUCCESS;
         }
 
-        if (!(bool) $this->option('execute')) {
+        if (! (bool) $this->option('execute')) {
             $this->warn("{$pdfs->count()} course PDF(s) require migration to {$targetName}.");
             $this->line('Run with --execute after confirming shared private storage; add --delete-source only after a backup.');
+
             return self::SUCCESS;
         }
 
@@ -68,7 +72,7 @@ final class MigrateCoursePdfsToSharedStorage extends Command
             $sourcePath = ltrim((string) $pdf->file_path, '/');
             $extension = (string) $pdf->file_extension;
             $extension = preg_match('/^[a-z0-9]{1,10}$/', $extension) === 1 ? $extension : 'bin';
-            $targetPath = 'courses/' . (int) $pdf->course_id . '/' . Str::uuid() . '.' . $extension;
+            $targetPath = 'courses/'.(int) $pdf->course_id.'/'.Str::uuid().'.'.$extension;
             $metadataUpdated = false;
 
             try {
@@ -77,16 +81,16 @@ final class MigrateCoursePdfsToSharedStorage extends Command
                 }
 
                 $source = Storage::disk($sourceName);
-                if (!$source->exists($sourcePath)) {
+                if (! $source->exists($sourcePath)) {
                     throw new \RuntimeException("source object is missing on {$sourceName}");
                 }
 
                 $stream = $source->readStream($sourcePath);
-                if (!is_resource($stream)) {
+                if (! is_resource($stream)) {
                     throw new \RuntimeException('could not open source stream');
                 }
                 try {
-                    if (!$target->put(
+                    if (! $target->put(
                         $targetPath,
                         $stream,
                         StorageWriteOptions::forDisk($targetName, 'private')
@@ -97,7 +101,7 @@ final class MigrateCoursePdfsToSharedStorage extends Command
                     fclose($stream);
                 }
 
-                if (!$target->exists($targetPath) || (int) $target->size($targetPath) !== (int) $source->size($sourcePath)) {
+                if (! $target->exists($targetPath) || (int) $target->size($targetPath) !== (int) $source->size($sourcePath)) {
                     throw new \RuntimeException('shared-storage copy verification failed');
                 }
 
@@ -122,7 +126,7 @@ final class MigrateCoursePdfsToSharedStorage extends Command
                 $metadataUpdated = true;
 
                 if ((bool) $this->option('delete-source')) {
-                    if ($this->remainingReferences($sourceName, $sourcePath) === 0 && !$source->delete($sourcePath)) {
+                    if ($this->remainingReferences($sourceName, $sourcePath) === 0 && ! $source->delete($sourcePath)) {
                         throw new \RuntimeException('verified copy is active, but source cleanup failed');
                     }
                 }
@@ -130,7 +134,7 @@ final class MigrateCoursePdfsToSharedStorage extends Command
                 $migrated++;
             } catch (Throwable $exception) {
                 $failed++;
-                if (!$metadataUpdated) {
+                if (! $metadataUpdated) {
                     try {
                         $target->delete($targetPath);
                     } catch (Throwable) {
@@ -142,6 +146,7 @@ final class MigrateCoursePdfsToSharedStorage extends Command
         }
 
         $this->info("Migrated {$migrated}; failed {$failed}.");
+
         return $failed === 0 ? self::SUCCESS : self::FAILURE;
     }
 

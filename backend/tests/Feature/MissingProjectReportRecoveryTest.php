@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Jobs\GenerateProjectFeedback;
-use App\Models\AiUsageEvent;
 use App\Models\AiEntitlementUsage;
 use App\Models\AiInputAttachment;
+use App\Models\AiUsageEvent;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
@@ -24,9 +24,9 @@ use App\Services\AiEntitlementBudgetService;
 use App\Services\AiUsageSettlementService;
 use App\Services\CourseAccessPlanService;
 use App\Services\PaidAiCallExecutionService;
-use App\Services\ProjectSubmissionPresenter;
 use App\Services\ProjectReportRetryService;
 use App\Services\ProjectSubmissionFileRetentionService;
+use App\Services\ProjectSubmissionPresenter;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -175,8 +175,11 @@ final class MissingProjectReportRecoveryTest extends TestCase
 
         self::assertSame('queued', $result['state']);
         $requestId = data_get($result['submission']->submission_metadata, 'ai_feedback.request_id');
-        if ($failedEvent) self::assertNotSame($submission->public_id, $requestId);
-        else self::assertSame($submission->public_id, $requestId);
+        if ($failedEvent) {
+            self::assertNotSame($submission->public_id, $requestId);
+        } else {
+            self::assertSame($submission->public_id, $requestId);
+        }
         self::assertSame(1, data_get($result['submission']->submission_metadata, 'ai_feedback.retry_count'));
         $duplicate = app(ProjectReportRetryService::class)->request($submission, $submission->user);
         self::assertSame('not_terminal', $duplicate['state']);
@@ -254,9 +257,13 @@ final class MissingProjectReportRecoveryTest extends TestCase
                 'status' => 'unavailable', 'reason' => 'provider_unavailable', 'retry_count' => 0,
             ]]])->save();
         }
-        if ($unavailable === 'expired') $enrollment->forceFill(['expires_at' => now()->subDay()])->save();
-        elseif ($unavailable === 'revoked') $enrollment->forceFill(['is_active' => false])->save();
-        else $enrollment->order->forceFill(['financial_status' => Order::FINANCIAL_REFUNDED])->save();
+        if ($unavailable === 'expired') {
+            $enrollment->forceFill(['expires_at' => now()->subDay()])->save();
+        } elseif ($unavailable === 'revoked') {
+            $enrollment->forceFill(['is_active' => false])->save();
+        } else {
+            $enrollment->order->forceFill(['financial_status' => Order::FINANCIAL_REFUNDED])->save();
+        }
         $retired = $submission->fresh();
 
         $result = app(ProjectReportRetryService::class)->request($retired, $retired->user);
@@ -307,11 +314,14 @@ final class MissingProjectReportRecoveryTest extends TestCase
         $providerResult = ['message' => 'تقرير محفوظ عن تصميم الشعار',
             'usage' => ['total_tokens' => 100, 'cost' => .01, 'cost_reported' => true], 'provider_request_id' => 'retired-report'];
         $calls->landSuccessfulResultForActiveUser($event, $execution, $submission->user_id, $providerResult);
-        if ($settled) app(AiUsageSettlementService::class)->settle($event, $providerResult);
+        if ($settled) {
+            app(AiUsageSettlementService::class)->settle($event, $providerResult);
+        }
         $submission->forceFill(['submission_metadata' => ['ai_feedback' => [
             'status' => 'unavailable', 'reason' => 'worker_failed',
             'request_id' => $submission->public_id, 'retry_count' => 0,
         ]], 'updated_at' => now()->subDays(31)])->save();
+
         return [$submission, $enrollment, $event, $providerResult];
     }
 
@@ -357,7 +367,7 @@ final class MissingProjectReportRecoveryTest extends TestCase
         $report = 'التكوين واضح ويمكن تحسين تباين الشعار';
         Http::fake(['https://openrouter.test/project' => function ($request) use ($report) {
             foreach ($request['messages'] as $message) {
-                if (!is_array($message['content'])) {
+                if (! is_array($message['content'])) {
                     continue;
                 }
                 foreach ($message['content'] as $part) {
@@ -366,6 +376,7 @@ final class MissingProjectReportRecoveryTest extends TestCase
                     }
                 }
             }
+
             return Http::response(['id' => 'jpeg-report', 'choices' => [['message' => ['content' => $report]]],
                 'usage' => ['prompt_tokens' => 50, 'completion_tokens' => 20, 'total_tokens' => 70, 'cost' => .001]]);
         }]);
@@ -438,7 +449,9 @@ final class MissingProjectReportRecoveryTest extends TestCase
         $result = ['message' => 'هذا تقرير فعلي محفوظ عن المحاولة', 'usage' => ['total_tokens' => 100, 'cost' => .01],
             'provider_request_id' => 'report-known'];
         $calls->landSuccessfulResultForActiveUser($event, $execution, $submission->user_id, $result);
-        if ($settled) app(AiUsageSettlementService::class)->settle($event, $result);
+        if ($settled) {
+            app(AiUsageSettlementService::class)->settle($event, $result);
+        }
 
         app()->call([new GenerateProjectFeedback($submission->id), 'handle']);
 
@@ -452,7 +465,7 @@ final class MissingProjectReportRecoveryTest extends TestCase
 
     private function fixture(bool $report = true): array
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill(['name' => 'Report learner', 'email' => Str::uuid().'@test.rokn',
             'password' => bcrypt('test'), 'active' => true, 'role' => 'client'])->save();
         app(AiConsentService::class)->record($user, true);
@@ -481,7 +494,7 @@ final class MissingProjectReportRecoveryTest extends TestCase
             'source_id' => $course->id, 'idempotency_key' => 'missing-report-test:'.$order->id,
             'metadata' => ['order_id' => $order->id], 'occurred_at' => now()]);
         $order->forceFill(['wallet_transaction_id' => $transaction->id])->save();
-        $enrollment = new CourseEnrollment();
+        $enrollment = new CourseEnrollment;
         $enrollment->forceFill(['tenant_id' => 1, 'user_id' => $user->id, 'course_id' => $course->id,
             'order_id' => $order->id, 'access_plan_id' => $plan->id, 'access_plan_snapshot' => $terms,
             'is_active' => true, 'enrolled_at' => now()])->save();
@@ -493,6 +506,7 @@ final class MissingProjectReportRecoveryTest extends TestCase
             'feedback' => 'قبول للاستكمال وليس تقريرًا', 'submitted_at' => now()->subMinutes(10),
             'reviewed_at' => now()->subMinutes(5), 'updated_at' => now()->subMinutes(5)]);
         $submission->forceFill(['updated_at' => now()->subMinutes(5)])->save();
+
         return [$submission, $enrollment];
     }
 }

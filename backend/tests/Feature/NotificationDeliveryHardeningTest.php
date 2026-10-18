@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Jobs\SendUserPushNotification;
 use App\Http\Resources\StudentNotificationResource;
+use App\Jobs\SendUserPushNotification;
 use App\Models\StudentNotification;
 use App\Models\User;
 use App\Services\StudentNotificationPresentationService;
-use Illuminate\Http\Request;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -205,6 +205,7 @@ final class NotificationDeliveryHardeningTest extends TestCase
         $messaging->shouldReceive('send')->once()->andReturnUsing(
             static function ($push) use (&$sent): array {
                 $sent = $push->jsonSerialize();
+
                 return ['name' => 'authored-push'];
             }
         );

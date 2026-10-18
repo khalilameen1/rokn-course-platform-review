@@ -38,9 +38,7 @@ final readonly class PortfolioReviewReadService
         'caption', 'width', 'height', 'duration_seconds', 'sort_order',
     ];
 
-    public function __construct(private PortfolioShareIdentityService $shareIdentity)
-    {
-    }
+    public function __construct(private PortfolioShareIdentityService $shareIdentity) {}
 
     /** Review decisions hold the owner lock; reads fail closed against this content hash. */
     public function snapshot(User $user): array
@@ -54,8 +52,7 @@ final readonly class PortfolioReviewReadService
             'projects' => $items->map(static fn (PortfolioItem $item): array => [
                 'item' => array_intersect_key($item->getAttributes(), array_flip(self::ITEM_FIELDS)),
                 'course' => $item->course?->only(['name_ar', 'name_en']),
-                'media' => $item->mediaFiles->map(static fn (PortfolioMedia $media): array =>
-                    array_intersect_key($media->getAttributes(), array_flip(self::MEDIA_FIELDS))
+                'media' => $item->mediaFiles->map(static fn (PortfolioMedia $media): array => array_intersect_key($media->getAttributes(), array_flip(self::MEDIA_FIELDS))
                 )->all(),
             ])->all(),
         ];
@@ -110,7 +107,7 @@ final readonly class PortfolioReviewReadService
         $row = PortfolioPublication::query()->where('user_id', $user->id)->first();
         if ($row) {
             $content = json_decode((string) $row->content, true);
-            if (!is_array($content)) {
+            if (! is_array($content)) {
                 return null;
             }
 
@@ -122,11 +119,11 @@ final readonly class PortfolioReviewReadService
                 'stored' => true,
             ];
         }
-        if ($user->portfolio_sharing_status !== 'approved' || !$user->portfolio_approved_hash) {
+        if ($user->portfolio_sharing_status !== 'approved' || ! $user->portfolio_approved_hash) {
             return null;
         }
         $snapshot ??= $this->snapshot($user);
-        if (!hash_equals((string) $user->portfolio_approved_hash, $snapshot['hash'])) {
+        if (! hash_equals((string) $user->portfolio_approved_hash, $snapshot['hash'])) {
             return null;
         }
 
@@ -148,12 +145,12 @@ final readonly class PortfolioReviewReadService
     public function livePublication(User $user, ?array $snapshot = null): ?array
     {
         if ($user->portfolio_sharing_suspended_at !== null
-            || !$user->active
-            || !$this->shareIdentity->isValidUnlistedSlug((string) $user->portfolio_slug)) {
+            || ! $user->active
+            || ! $this->shareIdentity->isValidUnlistedSlug((string) $user->portfolio_slug)) {
             return null;
         }
         $publication = $this->publication($user, $snapshot);
-        if (!$publication) {
+        if (! $publication) {
             return null;
         }
 
@@ -182,7 +179,7 @@ final readonly class PortfolioReviewReadService
         $effective = [];
         foreach ($projects as $project) {
             $item = $live->get((int) ($project['item']['id'] ?? 0));
-            if (!$item) {
+            if (! $item) {
                 continue;
             }
             $liveMedia = $item->mediaFiles->keyBy('id');
@@ -214,11 +211,11 @@ final readonly class PortfolioReviewReadService
     /** Resolve the current share link, not a stale model's cached slug or approval. */
     public function publicUrlFor(User $owner): ?string
     {
-        if (!$owner->exists) {
+        if (! $owner->exists) {
             return null;
         }
         $current = User::query()->find($owner->id);
-        if (!$current || $this->livePublication($current) === null) {
+        if (! $current || $this->livePublication($current) === null) {
             return null;
         }
 

@@ -12,6 +12,7 @@ use Throwable;
 final class QuarantineProfileSvg extends Command
 {
     protected $signature = 'security:quarantine-profile-svg {--execute : Copy to private quarantine, remove public source and clear the profile path}';
+
     protected $description = 'Audit and quarantine legacy local SVG profile images';
 
     public function handle(): int
@@ -26,34 +27,35 @@ final class QuarantineProfileSvg extends Command
             function ($users) use ($public, $quarantine, $execute, &$found, &$failed): void {
                 foreach ($users as $user) {
                     $path = ltrim(trim((string) $user->getRawOriginal('profile_image')), '/');
-                    if ($path === '' || filter_var($path, FILTER_VALIDATE_URL) || !$this->isSvg($public, $path)) {
+                    if ($path === '' || filter_var($path, FILTER_VALIDATE_URL) || ! $this->isSvg($public, $path)) {
                         continue;
                     }
 
                     $found++;
-                    if (!$execute) {
+                    if (! $execute) {
                         $this->line("User #{$user->id}: {$path}");
+
                         continue;
                     }
 
-                    $target = 'profile-svg/' . $user->id . '-' . basename($path);
+                    $target = 'profile-svg/'.$user->id.'-'.basename($path);
                     try {
                         if ($public->exists($path)) {
                             $stream = $public->readStream($path);
-                            if (!is_resource($stream)) {
+                            if (! is_resource($stream)) {
                                 throw new \RuntimeException('could not read source');
                             }
                             try {
-                                if (!$quarantine->put($target, $stream)) {
+                                if (! $quarantine->put($target, $stream)) {
                                     throw new \RuntimeException('quarantine write failed');
                                 }
                             } finally {
                                 fclose($stream);
                             }
-                            if (!$quarantine->exists($target) || $quarantine->size($target) !== $public->size($path)) {
+                            if (! $quarantine->exists($target) || $quarantine->size($target) !== $public->size($path)) {
                                 throw new \RuntimeException('quarantine verification failed');
                             }
-                            if (!$public->delete($path)) {
+                            if (! $public->delete($path)) {
                                 throw new \RuntimeException('public source deletion failed');
                             }
                         }
@@ -89,7 +91,7 @@ final class QuarantineProfileSvg extends Command
         if (strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'svg') {
             return true;
         }
-        if (!$disk->exists($path)) {
+        if (! $disk->exists($path)) {
             return false;
         }
 
@@ -98,7 +100,7 @@ final class QuarantineProfileSvg extends Command
                 return true;
             }
             $stream = $disk->readStream($path);
-            if (!is_resource($stream)) {
+            if (! is_resource($stream)) {
                 return false;
             }
             try {
@@ -106,6 +108,7 @@ final class QuarantineProfileSvg extends Command
             } finally {
                 fclose($stream);
             }
+
             return preg_match('/<svg(?:\s|>)/i', $prefix) === 1;
         } catch (Throwable) {
             return false;

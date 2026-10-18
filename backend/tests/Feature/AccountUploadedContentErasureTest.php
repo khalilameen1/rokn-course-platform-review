@@ -152,6 +152,7 @@ final class AccountUploadedContentErasureTest extends TestCase
         $identityBefore = $owned['user']->fresh()->getAttributes();
         $files = DB::transaction(function () use ($owner, $owned): array {
             $locked = User::query()->lockForUpdate()->findOrFail($owned['user']->id);
+
             return array_merge(
                 $owner->eraseLearningFilesWithinDeletion($locked),
                 $owner->eraseSupportFilesWithinDeletion($locked->id),
@@ -186,6 +187,7 @@ final class AccountUploadedContentErasureTest extends TestCase
         foreach ($fixture['rows'] as $table => $id) {
             $snapshot[$table] = (array) DB::table($table)->find($id);
         }
+
         return $snapshot;
     }
 
@@ -242,6 +244,7 @@ final class AccountUploadedContentErasureTest extends TestCase
         foreach ($files as $file) {
             Storage::disk($file['disk'])->put($file['path'], 'Private bytes');
         }
+
         return compact('user', 'rows', 'files');
     }
 }

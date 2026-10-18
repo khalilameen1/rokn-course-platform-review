@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Support\DurableJobDispatch;
-use Illuminate\Bus\UniqueLock;
 use Illuminate\Bus\Queueable;
+use Illuminate\Bus\UniqueLock;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -58,15 +58,13 @@ final class DurableJobDispatchTest extends TestCase
     }
 }
 
-final class DurableUniqueDispatchFixture implements ShouldQueue, ShouldBeUnique
+final class DurableUniqueDispatchFixture implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
     public int $uniqueFor = 60;
 
-    public function __construct(private readonly string $key)
-    {
-    }
+    public function __construct(private readonly string $key) {}
 
     public function uniqueId(): string
     {

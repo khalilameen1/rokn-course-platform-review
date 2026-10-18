@@ -19,19 +19,19 @@ final class ArabicLiteralNewlineTest extends TestCase
 
         /** @var SplFileInfo $file */
         foreach ($files as $file) {
-            if (!$file->isFile() || $file->getExtension() !== 'php') {
+            if (! $file->isFile() || $file->getExtension() !== 'php') {
                 continue;
             }
 
             foreach (token_get_all((string) file_get_contents($file->getPathname())) as $token) {
-                if (!is_array($token) || $token[0] !== T_CONSTANT_ENCAPSED_STRING) {
+                if (! is_array($token) || $token[0] !== T_CONSTANT_ENCAPSED_STRING) {
                     continue;
                 }
 
                 $literal = $token[1];
                 if (
-                    !str_starts_with($literal, "'")
-                    || !str_contains($literal, '\\n')
+                    ! str_starts_with($literal, "'")
+                    || ! str_contains($literal, '\\n')
                     || preg_match('/[\x{0600}-\x{06FF}]/u', $literal) !== 1
                 ) {
                     continue;
