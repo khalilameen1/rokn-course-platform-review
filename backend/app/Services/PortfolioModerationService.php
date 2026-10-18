@@ -18,6 +18,8 @@ use Throwable;
  */
 final class PortfolioModerationService
 {
+    public const RECONCILE_SIGNAL = 'portfolio.sharing.reconcile';
+
     public function __construct(
         private readonly PortfolioReviewReadService $reviews,
         private readonly PortfolioShareIdentityService $shareIdentity,
@@ -25,18 +27,44 @@ final class PortfolioModerationService
         private readonly SupportCaseService $cases
     ) {}
 
+    /**
+     * Content changed: the draft waits for review again. When a publication
+     * is live, the change may leave nothing new to review (only removals), so
+     * the stored state is reconciled after commit by a durable internal
+     * signal (transactional outbox) instead of by the owner's next GET.
+     */
     public static function invalidate(int $userId, ?int $expectedRevision = null): void
     {
         $query = DB::table('users')->where('id', $userId);
         if ($expectedRevision !== null) {
             $query->where('portfolio_sharing_revision', $expectedRevision);
         }
-        $query->update([
+        $changed = $query->update([
             'portfolio_sharing_status' => 'pending',
             'portfolio_sharing_revision' => DB::raw('portfolio_sharing_revision + 1'),
             'portfolio_approved_hash' => null,
             'portfolio_sharing_rejection_reason' => null,
         ]);
+        if ($changed < 1 || ! PortfolioPublication::query()->where('user_id', $userId)->exists()) {
+            return;
+        }
+        $revision = (int) DB::table('users')->where('id', $userId)->value('portfolio_sharing_revision');
+        app(InternalSignalService::class)->record(
+            self::RECONCILE_SIGNAL,
+            "user:{$userId}:revision:{$revision}",
+            ['user_id' => $userId, 'revision' => $revision],
+            User::class,
+            $userId
+        );
+    }
+
+    /** Persist the review state a content change left behind (the signal handler). */
+    public function reconcileAfterChange(int $userId): void
+    {
+        $user = User::query()->find($userId);
+        if ($user) {
+            $this->reconcile($user);
+        }
     }
 
     /**
@@ -106,28 +134,6 @@ final class PortfolioModerationService
         }
 
         return $status;
-    }
-
-    public function reconcileOwnerState(User $user): array
-    {
-        $current = User::query()->whereKey($user->id)->firstOrFail();
-        $snapshot = $this->reviews->snapshot($current);
-        $status = $this->reconcile($current, $snapshot);
-        $live = $this->reviews->livePublication($current);
-        $publishedAt = $live['publication']['published_at'] ?? null;
-
-        return [
-            'sharing_status' => $status,
-            'sharing_revision' => (int) $current->portfolio_sharing_revision,
-            'sharing_rejection_reason' => $status === 'rejected'
-                ? $current->portfolio_sharing_rejection_reason : null,
-            'sharing_suspended' => $current->portfolio_sharing_suspended_at !== null,
-            // The link stays live on the last approved version while a newer
-            // draft is pending or rejected.
-            'published' => $live !== null,
-            'published_at' => $publishedAt instanceof \DateTimeInterface ? $publishedAt->format(DATE_ATOM) : null,
-            'has_unpublished_changes' => $live !== null && $status !== 'approved',
-        ];
     }
 
     public function decide(User $owner, User $reviewer, int $revision, string $hash, string $decision, ?string $reason): void

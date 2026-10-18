@@ -11,7 +11,7 @@ use App\Models\User;
 use App\Services\BunnyDeliveryService;
 use App\Services\BunnyService;
 use App\Services\CertificateQrDestinationService;
-use App\Services\PortfolioModerationService;
+use App\Services\PortfolioReviewReadService;
 use App\Services\PublicPortfolioService;
 use App\Support\RoknPublicUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -149,7 +149,7 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         $private = $this->work($owner, false);
         $private->update(['title' => 'Draft only']);
         $item->update(['title' => $item->title]);
-        self::assertSame('approved', app(PortfolioModerationService::class)->reconcileOwnerState($owner)['sharing_status']);
+        self::assertSame('approved', app(PortfolioReviewReadService::class)->ownerState($owner)['sharing_status']);
         $this->actingAs($owner->fresh(), 'api')->putJson('/api/v1/portfolio-profile', ['portfolio_headline' => 'عنوان جديد'])
             ->assertOk()->assertJsonPath('data.sharing_status', 'pending')
             ->assertJsonPath('data.published', true)->assertJsonPath('data.has_unpublished_changes', true)
@@ -161,8 +161,13 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         self::assertSame('pending', $owner->fresh()->portfolio_sharing_status);
         self::assertSame(RoknPublicUrl::portfolio($owner->portfolio_slug), $owner->fresh()->profile_deeplink);
         $this->approve($owner);
+        $revision = (int) $owner->fresh()->portfolio_sharing_revision;
         $item->update(['is_featured' => true]);
-        self::assertSame('pending', $owner->fresh()->portfolio_sharing_status);
+        // Featuring invalidates the review, but it is a presentation choice
+        // the live publication follows, so the change's reconcile signal
+        // stores that nothing is left to review.
+        self::assertSame($revision + 1, (int) $owner->fresh()->portfolio_sharing_revision);
+        self::assertSame('approved', $owner->fresh()->portfolio_sharing_status);
     }
 
     public function test_out_of_band_write_and_deleted_media_fail_closed_without_exposing_other_owners(): void

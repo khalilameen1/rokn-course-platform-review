@@ -328,11 +328,40 @@ final class CourseChatTurnService
         return CourseChatTurn::query()->find($turn->id);
     }
 
-    public function reconcileForPolling(?CourseChatTurn $turn): ?CourseChatTurn
+    /**
+     * Recover open turns whose worker died or went quiet: deliver an answer
+     * that already landed or settled, and close a turn past its stale cutoff.
+     * Runs from the scheduler every few seconds (ai:recover-chat-turns), so
+     * the status poll stays a pure read (RFC 9110 safe method).
+     *
+     * @return int turns that reached a terminal state
+     */
+    public function recoverOpenTurns(int $limit = 200): int
+    {
+        $turns = CourseChatTurn::query()
+            ->whereIn('status', [CourseChatTurn::QUEUED, CourseChatTurn::STREAMING])
+            ->orderBy('id')
+            ->limit(max(1, min(1000, $limit)))
+            ->get();
+        $closed = 0;
+        foreach ($turns as $turn) {
+            $recovered = $this->recover($turn);
+            if ($recovered && ! in_array($recovered->status, [
+                CourseChatTurn::QUEUED,
+                CourseChatTurn::STREAMING,
+            ], true)) {
+                $closed++;
+            }
+        }
+
+        return $closed;
+    }
+
+    private function recover(?CourseChatTurn $turn): ?CourseChatTurn
     {
         // A worker that checkpointed recently still owns the turn (a lease, as
-        // in queue visibility timeouts). Polling is then a plain read; locking
-        // recovery runs only once progress has gone quiet.
+        // in queue visibility timeouts). Locking recovery runs only once
+        // progress has gone quiet, unless the paid answer already landed.
         $lease = max(3, (int) config('openrouter.chat_poll_recovery_after_seconds', 10));
         if (
             $turn

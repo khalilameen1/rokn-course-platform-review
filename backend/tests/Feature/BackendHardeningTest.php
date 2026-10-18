@@ -1676,6 +1676,49 @@ final class BackendHardeningTest extends TestCase
         self::assertTrue($observedAt->equalTo($turn->updated_at));
     }
 
+    public function test_course_chat_poll_never_recovers_a_stalled_turn_and_the_scheduler_does(): void
+    {
+        $user = $this->user();
+        $course = $this->course();
+        $requestId = '9a3c1f7e-5b2d-4c8e-9f10-2d3e4f5a6b7c';
+        $turns = app(CourseChatTurnService::class);
+        $turn = $turns->begin(
+            $user->id,
+            $course->id,
+            null,
+            null,
+            $requestId,
+            'سؤال انقطع عامله',
+            'ar',
+            'prompt-v1'
+        );
+        $turn->forceFill(['updated_at' => now()->subMinutes(10)])->save();
+        $before = (array) DB::table('course_chat_turns')->where('id', $turn->id)->first();
+
+        $writes = [];
+        DB::listen(function ($query) use (&$writes): void {
+            if (preg_match('/^\s*(insert|update|delete|replace)\b/i', $query->sql) === 1) {
+                $writes[] = $query->sql;
+            }
+        });
+        $this->actingAs($user, 'api')
+            ->getJson('/api/v1/course-chat/turns/'.$requestId)
+            ->assertOk()
+            ->assertJsonPath('code', 'chat_answer_in_progress')
+            ->assertJsonPath('data.turn_status', CourseChatTurn::QUEUED);
+        self::assertSame([], $writes);
+        self::assertEquals($before, (array) DB::table('course_chat_turns')->where('id', $turn->id)->first());
+
+        $this->artisan('ai:recover-chat-turns')->assertSuccessful();
+
+        self::assertSame(CourseChatTurn::FAILED, $turn->fresh()->status);
+        self::assertSame('chat_request_abandoned', $turn->fresh()->error_code);
+        $this->actingAs($user, 'api')
+            ->getJson('/api/v1/course-chat/turns/'.$requestId)
+            ->assertOk()
+            ->assertJsonPath('data.turn_status', CourseChatTurn::FAILED);
+    }
+
     public function test_stalled_course_chat_recovers_an_already_settled_answer(): void
     {
         $user = $this->user();
@@ -2032,6 +2075,12 @@ final class BackendHardeningTest extends TestCase
         self::assertSame($settled ? 'completed' : 'reserved', $event->fresh()->status);
         self::assertEquals($usageBefore,
             DB::table('ai_entitlement_usages')->where('enrollment_id', $enrollmentId)->first());
+        // The poll only reads; the scheduled recovery presents the answer.
+        $this->getJson('/api/v1/course-chat/turns/'.$requestId)
+            ->assertOk()
+            ->assertJsonPath('data.turn_status', CourseChatTurn::STREAMING);
+        self::assertSame($settled ? 'completed' : 'reserved', $event->fresh()->status);
+        $this->artisan('ai:recover-chat-turns')->assertSuccessful();
         foreach ([1, 2] as $poll) {
             $this->getJson('/api/v1/course-chat/turns/'.$requestId)
                 ->assertOk()

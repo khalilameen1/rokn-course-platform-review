@@ -207,7 +207,11 @@ final class CourseChatController extends Controller
         ], 'تم تحميل المحادثة');
     }
 
-    /** Lightweight polling path for a turn already admitted to the AI queue. */
+    /**
+     * Lightweight polling path for a turn already admitted to the AI queue.
+     * A pure read (RFC 9110 safe method): stuck turns are recovered by the
+     * scheduled ai:recover-chat-turns command, not by the poll.
+     */
     public function status(string $clientRequestId): JsonResponse
     {
         if (! Str::isUuid($clientRequestId)) {
@@ -221,8 +225,6 @@ final class CourseChatController extends Controller
         if (! $turn) {
             abort(404);
         }
-
-        $turn = $this->turns->reconcileForPolling($turn) ?? $turn;
 
         if ($turn->status === CourseChatTurn::COMPLETED) {
             return $this->responses->success([

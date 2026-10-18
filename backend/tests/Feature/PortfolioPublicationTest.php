@@ -320,7 +320,10 @@ final class PortfolioPublicationTest extends TestCase
             ->assertJsonPath('data.sharing_status', 'rejected')->assertJsonPath('data.published', true);
 
         $item->update(['title' => 'Live work']);
-        self::assertSame('approved', app(PortfolioModerationService::class)->reconcileOwnerState($owner)['sharing_status']);
+        // Restoring the live content leaves nothing to review: the change's
+        // reconcile signal stores that, no owner read is needed.
+        self::assertSame('approved', $owner->fresh()->portfolio_sharing_status);
+        self::assertSame('approved', app(PortfolioReviewReadService::class)->ownerState($owner)['sharing_status']);
         $this->decide($owner, 'rejected', 'مخالفة');
         $this->get(route('portfolio.public', $owner->portfolio_slug))->assertNotFound();
     }

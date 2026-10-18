@@ -10,7 +10,6 @@ use App\Http\Resources\StudentProfileResource;
 use App\Http\Responses\SocialLoginResponse;
 use App\Models\ApiToken;
 use App\Models\Setting;
-use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\AccountDeletionService;
 use App\Services\ApiResponseService;
@@ -209,7 +208,7 @@ class SignController extends Controller
     {
         $user = auth('api')->user();
 
-        if (! $this->hasFreshSocialReauthentication($request, $user)) {
+        if (! $this->devices->hasFreshSocialReauthentication($user, $request->bearerToken())) {
             return $this->responses->error(
                 "أكد هويتك من جديد\nاستخدم حساب تسجيل الدخول نفسه",
                 403,
@@ -246,43 +245,6 @@ class SignController extends Controller
             $cleanupPending ? 202 : 200,
             ['deletion_status' => $cleanupPending ? 'cleanup_pending' : 'completed']
         );
-    }
-
-    private function hasFreshSocialReauthentication(Request $request, User $user): bool
-    {
-        $plainToken = trim((string) ($request->bearerToken() ?: ''));
-        if ($plainToken === '') {
-            return false;
-        }
-
-        $token = ApiToken::query()
-            ->where('user_id', $user->id)
-            ->where('token', hash('sha256', $plainToken))
-            ->whereHasNotExpired()
-            ->first();
-        $issuedAt = $token?->issued_at;
-        $window = max(60, min(600, (int) config('social_auth.account_deletion_reauth_seconds', 300)));
-        if (! $issuedAt || $issuedAt->isBefore(now()->subSeconds($window)) || $issuedAt->isFuture()) {
-            return false;
-        }
-
-        // The presented bearer must be minted in the same short window as a
-        // provider verification for this exact user. Linked identities belong
-        // to social_accounts; the provider used for this session belongs to
-        // the bearer, never to the mutable user profile.
-        $provider = strtolower(trim((string) $token->auth_provider));
-        $providerUserId = trim((string) $token->auth_provider_user_id);
-        if ($provider === '' || $providerUserId === '') {
-            return false;
-        }
-
-        return SocialAccount::query()
-            ->where('user_id', $user->id)
-            ->where('provider', $provider)
-            ->where('provider_user_id', $providerUserId)
-            ->where('last_verified_at', '>=', now()->subSeconds($window))
-            ->where('last_verified_at', '<=', $issuedAt->copy()->addSeconds(5))
-            ->exists();
     }
 
     /**

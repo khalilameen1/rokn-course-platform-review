@@ -50,7 +50,12 @@ final class CertificateController extends Controller
         return $this->responses->success(CertificateResource::collection($certificates), 'تم تحميل الشهادات');
     }
 
-    /** Read an already-issued credential without producing side effects. */
+    /**
+     * Read an already-issued credential without producing side effects (RFC
+     * 9110 safe method). A pending artifact is rendered by the job the issue
+     * POST queued; a lost job is re-queued by the issue POST itself and by the
+     * scheduled certificates:recover-pending command, never by this read.
+     */
     public function show($courseId): JsonResponse
     {
         $user = auth('api')->user();
@@ -73,8 +78,6 @@ final class CertificateController extends Controller
             return $this->invalidSnapshotResponse();
         }
         if (! $certificate->hasStoredArtifact()) {
-            $this->queueGeneration($certificate);
-
             return $this->pendingResponse($certificate);
         }
 

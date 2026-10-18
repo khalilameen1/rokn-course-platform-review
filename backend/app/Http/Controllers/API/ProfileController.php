@@ -8,13 +8,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\StudentProfileResource;
 use App\Models\User;
 use App\Services\ApiResponseService;
-use App\Services\PortfolioShareIdentityService;
 use App\Services\StudentProfileService;
+use App\Services\WatchHistoryRecorder;
 use App\Support\LearningReminderSchedule;
 use App\Support\UnicodeText;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -30,7 +29,6 @@ final class ProfileController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        app(PortfolioShareIdentityService::class)->ensure($user);
         $profile = new StudentProfileResource($user);
 
         // Account/settings screens only consume identity and preferences. Keep
@@ -219,11 +217,11 @@ final class ProfileController extends Controller
         );
     }
 
-    public function clearWatchHistory(Request $request): JsonResponse
+    public function clearWatchHistory(Request $request, WatchHistoryRecorder $history): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
-        $deleted = DB::table('watching_logs')->where('user_id', $user->id)->delete();
+        $deleted = $history->clear($user);
 
         return $this->responses->success([
             'deleted_entries' => $deleted,

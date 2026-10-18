@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\CoinTaskRejected;
+use App\Exceptions\WhatsAppLinkRejected;
 use App\Models\CoinEarningMethod;
 use App\Models\User;
 use App\Models\UserCoinTaskAttempt;
@@ -33,12 +35,12 @@ final readonly class WhatsAppLinkService
             || ! $method->hasClaimCapacity()
             || $method->action_key !== 'link_whatsapp'
         ) {
-            throw new \DomainException('task_unavailable');
+            throw new CoinTaskRejected(CoinTaskRejected::TASK_UNAVAILABLE);
         }
 
         $botPhone = $this->normalizeBotPhone((string) config('whatsapp.linking.bot_phone'));
         if ($botPhone === null) {
-            throw new \DomainException('whatsapp_bot_unavailable');
+            throw new CoinTaskRejected(CoinTaskRejected::WHATSAPP_BOT_UNAVAILABLE);
         }
 
         $rawToken = bin2hex(random_bytes(24));
@@ -54,7 +56,7 @@ final readonly class WhatsAppLinkService
             // inbound claim below is its financial boundary.
             $lockedMethod = CoinEarningMethod::query()->findOrFail($method->id);
             if (! $lockedMethod->isAvailableNow() || ! $lockedMethod->hasClaimCapacity()) {
-                throw new \DomainException('task_unavailable');
+                throw new CoinTaskRejected(CoinTaskRejected::TASK_UNAVAILABLE);
             }
             $earning = $lockedUser->coinEarnings()
                 ->where('coin_earning_method_id', $lockedMethod->id)
@@ -157,7 +159,11 @@ final readonly class WhatsAppLinkService
         }, 3);
     }
 
-    /** @return array{matched:bool,already_claimed:bool,user:?User,method_id:?int,coins:int,earned_coins:int,balance:int,reward_deferred:bool,reward_unavailable:bool} */
+    /**
+     * @return array{matched:bool,already_claimed:bool,user:?User,method_id:?int,coins:int,earned_coins:int,balance:int,reward_deferred:bool,reward_unavailable:bool}
+     *
+     * @throws WhatsAppLinkRejected when the sender's number belongs to another account
+     */
     public function consumeInbound(string $sender, string $message): array
     {
         $rawToken = $this->extractToken($message);
@@ -248,7 +254,7 @@ final readonly class WhatsAppLinkService
                 ->where('phone_e164', $phone)
                 ->where('user_id', '!=', $user->id)
                 ->exists()) {
-                throw new \DomainException('whatsapp_phone_in_use');
+                throw new WhatsAppLinkRejected(WhatsAppLinkRejected::PHONE_IN_USE);
             }
 
             $connection ??= new UserWhatsAppConnection(['user_id' => $user->id]);

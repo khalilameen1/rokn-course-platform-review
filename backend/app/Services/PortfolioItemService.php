@@ -39,7 +39,8 @@ final readonly class PortfolioItemService
         private CourseRevisionLearnerReadService $revisionReads,
         private CourseRevisionResolver $revisionResolver,
         private PortfolioUploadAccessService $uploadAccess,
-        private PortfolioReviewReadService $reviews
+        private PortfolioReviewReadService $reviews,
+        private PortfolioShareIdentityService $shareIdentity
     ) {}
 
     /**
@@ -296,6 +297,9 @@ final readonly class PortfolioItemService
                     ->lockForUpdate()
                     ->first();
                 abort_if(! $lockedUser, 404);
+                // The first portfolio write gives the owner an unlisted share
+                // slug; profile and portfolio reads only read it.
+                $this->shareIdentity->ensure($lockedUser);
 
                 $existing = $lockedUser->portfolioItems()
                     ->with(['mediaFiles', 'course'])

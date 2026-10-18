@@ -16,8 +16,11 @@ use Throwable;
  * Moves resume rows written against a superseded course revision onto the
  * current lesson. Publishing records a durable signal that merges every
  * affected learner in bounded batches (afterPublish), outside the course
- * publish lock. The history read keeps ensureCanonical as a fallback for a
- * learner the job has not reached yet; once merged, a read is a pure read.
+ * publish lock. A heartbeat that inserts a resume row runs ensureCanonical
+ * for its learner (a pre-publish read committing after the merge). The
+ * history GET never merges (RFC 9110 safe method); legacy rows from publishes
+ * before the signal existed are queued by
+ * 2026_10_18_100100_queue_watch_history_canonicalization.
  */
 final class WatchHistoryCanonicalizationService
 {
@@ -38,7 +41,7 @@ final class WatchHistoryCanonicalizationService
 
         // The fingerprint is taken before the merge. A publish or a new resume
         // row that commits while it runs changes the next fingerprint, so the
-        // following read repeats the (idempotent) check instead of trusting a
+        // following check repeats the (idempotent) merge instead of trusting a
         // marker that predates it.
         for ($batch = 0; $batch < max(1, $maxBatches); $batch++) {
             if ($this->materialize($userId)) {

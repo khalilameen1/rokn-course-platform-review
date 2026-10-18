@@ -208,6 +208,34 @@ final readonly class PortfolioReviewReadService
         return $effective;
     }
 
+    /**
+     * The owner's sharing state as the reconciled state would show it, without
+     * writing: reconcile() persists the same status from the write path.
+     *
+     * @return array{sharing_status:string,sharing_revision:int,sharing_rejection_reason:?string,sharing_suspended:bool,published:bool,published_at:?string,has_unpublished_changes:bool}
+     */
+    public function ownerState(User $user): array
+    {
+        $current = User::query()->whereKey($user->id)->firstOrFail();
+        $snapshot = $this->snapshot($current);
+        $status = $this->status($current, $snapshot);
+        $live = $this->livePublication($current, $snapshot);
+        $publishedAt = $live['publication']['published_at'] ?? null;
+
+        return [
+            'sharing_status' => $status,
+            'sharing_revision' => (int) $current->portfolio_sharing_revision,
+            'sharing_rejection_reason' => $status === 'rejected'
+                ? $current->portfolio_sharing_rejection_reason : null,
+            'sharing_suspended' => $current->portfolio_sharing_suspended_at !== null,
+            // The link stays live on the last approved version while a newer
+            // draft is pending or rejected.
+            'published' => $live !== null,
+            'published_at' => $publishedAt instanceof \DateTimeInterface ? $publishedAt->format(DATE_ATOM) : null,
+            'has_unpublished_changes' => $live !== null && $status !== 'approved',
+        ];
+    }
+
     /** Resolve the current share link, not a stale model's cached slug or approval. */
     public function publicUrlFor(User $owner): ?string
     {

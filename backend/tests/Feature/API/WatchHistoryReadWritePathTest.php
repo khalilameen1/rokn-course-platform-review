@@ -18,9 +18,10 @@ use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 
 /**
- * GET /user/watch-history is a safe read once a learner's resume rows are
- * canonical, and an accepted heartbeat that changes no resume state does not
- * rewrite the resume row.
+ * GET /user/watch-history is always a safe read (RFC 9110): superseded resume
+ * rows are merged by the publish signal and by the heartbeat write path, and
+ * an accepted heartbeat that changes no resume state does not rewrite the
+ * resume row.
  */
 final class WatchHistoryReadWritePathTest extends ApiTestCase
 {
@@ -31,7 +32,7 @@ final class WatchHistoryReadWritePathTest extends ApiTestCase
         $this->travelTo(CarbonImmutable::parse('2026-10-04 12:00:00', 'UTC'));
     }
 
-    public function test_history_read_writes_nothing_after_the_first_canonicalization(): void
+    public function test_history_read_never_merges_and_the_queued_signal_does(): void
     {
         $archiveCourseId = $this->archivePublishedLesson(oldLessonId: 20, currentLessonId: 10);
         DB::table('watching_logs')->insert($this->logRow(20, $archiveCourseId, [
@@ -40,31 +41,54 @@ final class WatchHistoryReadWritePathTest extends ApiTestCase
             'watched_at' => now()->subHour(),
         ]));
 
-        // First read after the publish moves the resume pointer once.
-        $this->history()->assertOk()
+        // GET is safe (RFC 9110): before the merge the superseded row is
+        // hidden and left in place, and nothing is written.
+        $before = $this->recordQueries(fn () => $this->history()->assertOk()
+            ->assertJsonCount(0, 'data.items'));
+        self::assertSame([], $this->writes($before));
+        $this->assertDatabaseHas('watching_logs', ['user_id' => $this->user->id, 'lesson_id' => 20]);
+
+        // Courses published before the publish signal existed get the same
+        // durable signal from the release migration.
+        $migration = require database_path('migrations/2026_10_18_100100_queue_watch_history_canonicalization.php');
+        $migration->up();
+        $migration->up();
+        $signals = InternalSignal::query()->where('type', 'course.watch_history.canonicalize')->get();
+        self::assertCount(1, $signals);
+        self::assertSame(
+            ['after_user_id' => 0, 'course_id' => $this->courseId, 'published_revision' => 2],
+            $signals->first()->payload
+        );
+        app(InternalSignalHandler::class)->handle($signals->first());
+        $this->assertDatabaseMissing('watching_logs', ['user_id' => $this->user->id, 'lesson_id' => 20]);
+
+        $after = $this->recordQueries(fn () => $this->history()->assertOk()
             ->assertJsonCount(1, 'data.items')
             ->assertJsonPath('data.items.0.lesson_id', 10)
             ->assertJsonPath('data.items.0.course_id', $this->courseId)
-            ->assertJsonPath('data.items.0.position_seconds', 42);
+            ->assertJsonPath('data.items.0.position_seconds', 42));
+        self::assertSame([], $this->writes($after));
+        self::assertSame([], $this->matching($after, 'course_authoring_revision_entities'));
+    }
+
+    public function test_a_new_resume_row_merges_a_superseded_row_that_landed_after_the_publish_merge(): void
+    {
+        $session = $this->enrolledSession();
+        $archiveCourseId = $this->archivePublishedLesson(oldLessonId: 20, currentLessonId: 10);
+        // A heartbeat that read lesson 20 before the publish committed and
+        // inserted its row after the publish merge had passed this learner.
+        DB::table('watching_logs')->insert($this->logRow(20, $archiveCourseId, [
+            'position_seconds' => 42,
+            'watched_at' => now()->subMinute(),
+        ]));
+
+        $this->sample($session, 1, 5)->assertOk()->assertJsonPath('data.recorded', true);
+
         $this->assertDatabaseMissing('watching_logs', ['user_id' => $this->user->id, 'lesson_id' => 20]);
-
-        // The merge created a row; the next read re-checks (read only) and
-        // remembers. From then on the canonicalization check is skipped.
-        $second = $this->recordQueries(fn () => $this->history()->assertOk());
-        self::assertSame([], $this->writes($second));
-        $third = $this->recordQueries(fn () => $this->history()->assertOk()
-            ->assertJsonPath('data.items.0.lesson_id', 10));
-        self::assertSame([], $this->writes($third));
-        self::assertSame([], $this->matching($third, 'distinct "lesson_id"'));
-        self::assertSame([], $this->matching($third, 'course_authoring_revision_entities'));
-
-        // A later publish invalidates the marker: the check runs again, and
-        // with nothing superseded it is still a pure read.
-        $this->archiveRevision($this->courseId, $this->createArchiveCourse());
-        $afterPublish = $this->recordQueries(fn () => $this->history()->assertOk()
-            ->assertJsonPath('data.items.0.lesson_id', 10));
-        self::assertNotSame([], $this->matching($afterPublish, 'distinct "lesson_id"'));
-        self::assertSame([], $this->writes($afterPublish));
+        self::assertSame(1, DB::table('watching_logs')->where('user_id', $this->user->id)->count());
+        $this->history()->assertOk()
+            ->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.items.0.lesson_id', 10);
     }
 
     public function test_the_publish_signal_merges_history_so_the_first_read_writes_nothing(): void

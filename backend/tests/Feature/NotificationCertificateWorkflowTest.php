@@ -49,7 +49,7 @@ final class NotificationCertificateWorkflowTest extends TestCase
         'account_file_deletions',
         'notification_push_deliveries', 'notification_campaign_recipients', 'admin_notifications',
         'notification_campaigns', 'user_device_tokens', 'student_notifications', 'user_project_evaluations',
-        'portfolio_media', 'portfolio_items', 'user_level', 'levels',
+        'portfolio_publications', 'portfolio_media', 'portfolio_items', 'user_level', 'levels',
         'course_authoring_revision_entities', 'course_authoring_revisions', 'financial_entitlement_holds',
         'project_submission_review_decisions', 'project_submissions', 'projects', 'student_section_progress', 'course_sections', 'certificates', 'course_enrollments',
         'courses', 'users',
@@ -850,6 +850,16 @@ final class NotificationCertificateWorkflowTest extends TestCase
             $table->string('file_path');
             $table->string('file_type');
             $table->unsignedInteger('sort_order')->default(0);
+            $table->timestamps();
+        });
+        Schema::create('portfolio_publications', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('user_id')->unique();
+            $table->unsignedBigInteger('revision');
+            $table->string('content_hash', 64);
+            $table->longText('content');
+            $table->unsignedBigInteger('approved_by')->nullable();
+            $table->timestamp('published_at')->nullable();
             $table->timestamps();
         });
         Schema::create('levels', function (Blueprint $table): void {

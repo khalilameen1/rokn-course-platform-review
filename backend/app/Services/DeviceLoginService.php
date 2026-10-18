@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ApiToken;
 use App\Models\Setting;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\UserDeviceToken;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
@@ -407,6 +408,64 @@ class DeviceLoginService
 
             $this->auth->guard('api')->logout();
         });
+    }
+
+    /**
+     * Account deletion requires a bearer minted within a short window of a
+     * provider verification for this exact user (OWASP step-up re-auth). The
+     * provider belongs to the bearer, never to the mutable user profile.
+     */
+    public function hasFreshSocialReauthentication(User $user, ?string $plainBearer): bool
+    {
+        $plainToken = trim((string) $plainBearer);
+        if ($plainToken === '') {
+            return false;
+        }
+
+        $token = ApiToken::query()
+            ->where('user_id', $user->id)
+            ->where('token', hash('sha256', $plainToken))
+            ->whereHasNotExpired()
+            ->first();
+        $issuedAt = $token?->issued_at;
+        $window = max(60, min(600, (int) config('social_auth.account_deletion_reauth_seconds', 300)));
+        if (! $issuedAt || $issuedAt->isBefore(now()->subSeconds($window)) || $issuedAt->isFuture()) {
+            return false;
+        }
+
+        // Linked identities belong to social_accounts; the provider used for
+        // this session is recorded on the bearer.
+        $provider = strtolower(trim((string) $token->auth_provider));
+        $providerUserId = trim((string) $token->auth_provider_user_id);
+        if ($provider === '' || $providerUserId === '') {
+            return false;
+        }
+
+        return SocialAccount::query()
+            ->where('user_id', $user->id)
+            ->where('provider', $provider)
+            ->where('provider_user_id', $providerUserId)
+            ->where('last_verified_at', '>=', now()->subSeconds($window))
+            ->where('last_verified_at', '<=', $issuedAt->copy()->addSeconds(5))
+            ->exists();
+    }
+
+    /**
+     * Revoke a session issued by a social completion whose replay snapshot
+     * could not be finalized: another request owns that completion, so this
+     * bearer is never handed to the app.
+     */
+    public function revokeUndeliveredSession(string $plainToken): void
+    {
+        $plainToken = trim($plainToken);
+        if ($plainToken === '') {
+            return;
+        }
+
+        ApiToken::query()
+            ->where('token', hash('sha256', $plainToken))
+            ->whereNull('revoked_at')
+            ->update(['revoked_at' => now()]);
     }
 
     /** Dashboard revocation of one session and its installation's push binding. */

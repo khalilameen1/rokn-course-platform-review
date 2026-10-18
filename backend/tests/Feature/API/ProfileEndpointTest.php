@@ -30,7 +30,8 @@ class ProfileEndpointTest extends ApiTestCase
         $this->actingAs($this->user, 'api')->putJson('/api/v1/user/profile', [
             'watch_history_enabled' => false,
         ])->assertOk();
-        $this->actingAs($this->user, 'api')->getJson('/api/v1/user/profile')
+        // Each request resolves its own user, as the API guard does.
+        $this->actingAs($this->user->fresh(), 'api')->getJson('/api/v1/user/profile')
             ->assertOk()->assertJsonPath('data.learning_reminder_hour', 10);
     }
 
@@ -90,7 +91,7 @@ class ProfileEndpointTest extends ApiTestCase
             'video_quality_preference' => '720p',
             'playback_speed' => 1.5,
         ]);
-        $this->actingAs($this->user, 'api')->getJson('/api/v1/user/profile')
+        $this->actingAs($this->user->fresh(), 'api')->getJson('/api/v1/user/profile')
             ->assertOk()
             ->assertJsonPath('data.video_quality_preference', '720p')
             ->assertJsonPath('data.playback_speed', 1.5);

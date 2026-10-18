@@ -12,6 +12,7 @@ use App\Models\ApiToken;
 use App\Models\SocialOAuthAttempt;
 use App\Models\User;
 use App\Services\ApiResponseService;
+use App\Services\DeviceLoginService;
 use App\Services\SocialAuthProviderRegistry;
 use App\Services\SocialLoginAction;
 use App\Services\SocialOAuthAttemptService;
@@ -33,7 +34,8 @@ final class SocialOAuthController extends Controller
     public function __construct(
         private readonly SocialAuthProviderRegistry $socialProviders,
         private readonly SocialOAuthAttemptService $attempts,
-        private readonly ApiResponseService $responses
+        private readonly ApiResponseService $responses,
+        private readonly DeviceLoginService $devices
     ) {}
 
     public function start(Request $request, string $socialProvider): RedirectResponse
@@ -292,17 +294,11 @@ final class SocialOAuthController extends Controller
                     ], JSON_THROW_ON_ERROR))
                 );
                 if (! $finalized) {
-                    $plainToken = trim((string) data_get(
+                    $this->devices->revokeUndeliveredSession((string) data_get(
                         $response->getData(true),
                         'data.api_token',
                         ''
                     ));
-                    if ($plainToken !== '') {
-                        ApiToken::query()
-                            ->where('token', hash('sha256', $plainToken))
-                            ->whereNull('revoked_at')
-                            ->update(['revoked_at' => now()]);
-                    }
 
                     return $this->responses->error("جارٍ إكمال تسجيل الدخول\nحاول بعد قليل", 409, null, ['code' => 'social_login_in_progress']);
                 }

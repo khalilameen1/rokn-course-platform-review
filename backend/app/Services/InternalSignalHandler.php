@@ -30,7 +30,8 @@ final readonly class InternalSignalHandler
         private CurriculumCompletionService $curriculumCompletion,
         private CourseRevisionResolver $revisionResolver,
         private readonly StudentNotificationService $notifications,
-        private WatchHistoryCanonicalizationService $watchHistory
+        private WatchHistoryCanonicalizationService $watchHistory,
+        private PortfolioModerationService $portfolioModeration
     ) {}
 
     public function handle(InternalSignal $signal): void
@@ -93,6 +94,10 @@ final readonly class InternalSignalHandler
                 return;
             case 'course.watch_history.canonicalize':
                 $this->canonicalizeWatchHistory($payload);
+
+                return;
+            case PortfolioModerationService::RECONCILE_SIGNAL:
+                $this->portfolioModeration->reconcileAfterChange((int) ($payload['user_id'] ?? 0));
 
                 return;
             default:

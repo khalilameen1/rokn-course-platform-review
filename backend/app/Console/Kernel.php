@@ -61,6 +61,15 @@ class Kernel extends ConsoleKernel
             ->everyMinute()
             ->withoutOverlapping(5)
             ->onOneServer();
+        // The chat status poll is a pure read (RFC 9110). Open turns past the
+        // worker lease (openrouter.chat_poll_recovery_after_seconds, 10s) are
+        // recovered here every five seconds, close to the poll cadence that
+        // used to drive recovery. The open-turn query is indexed and empty
+        // when no chat is in flight.
+        $schedule->command('ai:recover-chat-turns --limit=200')
+            ->everyFiveSeconds()
+            ->withoutOverlapping(1)
+            ->onOneServer();
         $schedule->command('ai:recover-stalled-feedback --limit=200')
             ->everyMinute()
             ->withoutOverlapping(10)

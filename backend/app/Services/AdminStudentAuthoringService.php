@@ -18,7 +18,8 @@ final class AdminStudentAuthoringService
 {
     public function __construct(
         private readonly StoredFileUploadService $uploads,
-        private readonly StoredFileDeletionService $cleanup
+        private readonly StoredFileDeletionService $cleanup,
+        private readonly PortfolioShareIdentityService $shareIdentity
     ) {}
 
     /**
@@ -51,6 +52,9 @@ final class AdminStudentAuthoringService
                         // Dashboard creation never proves ownership of this email.
                         'email_verified_at' => null,
                     ])->save();
+                    // Registration owns the unlisted portfolio slug; the
+                    // profile GET only reads it.
+                    $this->shareIdentity->ensure($user);
                 }
                 if ($imagePath !== null) {
                     $user->allPhotos()->firstOrCreate(['type' => 'featured'], ['path' => $imagePath]);

@@ -7,6 +7,7 @@ use App\Models\CourseSection;
 use App\Services\CourseDurationService;
 use App\Services\CourseEntitlementService;
 use App\Services\CourseRevisionLearnerReadService;
+use App\Services\PortfolioShareIdentityService;
 use App\Services\WalletService;
 use App\Support\LearningReminderSchedule;
 use Illuminate\Http\Request;
@@ -74,7 +75,9 @@ class StudentProfileResource extends JsonResource
             'profile_image' => $this->profile_image_url,
             'profile_revision' => (int) $this->profile_revision,
             'job_title' => $this->job_title,
-            'portfolio_slug' => $this->portfolio_slug,
+            // Registration and portfolio writes create the unlisted slug; a
+            // missing or legacy alias is not exposed rather than repaired here.
+            'portfolio_slug' => $this->presentablePortfolioSlug($this->portfolio_slug),
             'portfolio_headline' => $this->portfolio_headline,
             'portfolio_url' => $this->profile_deeplink,
             'email' => $this->publicEmail(),
@@ -260,5 +263,13 @@ class StudentProfileResource extends JsonResource
         app(CourseDurationService::class)->attachMany($courses);
 
         return BaseCourseResource::collection($courses);
+    }
+
+    /** Only a valid unlisted share slug is a portfolio link; anything else reads as none. */
+    private function presentablePortfolioSlug(mixed $slug): ?string
+    {
+        $slug = trim((string) $slug);
+
+        return app(PortfolioShareIdentityService::class)->isValidUnlistedSlug($slug) ? $slug : null;
     }
 }

@@ -42,7 +42,8 @@ final readonly class WatchHistoryRecorder
         private CourseRevisionResolver $revisionResolver,
         private LearningRewardService $rewards,
         private PlaybackSessionService $sessions,
-        private CourseCompletionService $completion
+        private CourseCompletionService $completion,
+        private WatchHistoryCanonicalizationService $canonicalHistory
     ) {}
 
     /**
@@ -232,7 +233,7 @@ final readonly class WatchHistoryRecorder
             ?? ''
         );
 
-        [$log, $resumeRecorded] = $this->writeResume(
+        [$log, $resumeRecorded, $created] = $this->writeResume(
             $user,
             $resumeLesson,
             $resumeLesson->getRelationValue('courseSection')?->id,
@@ -248,6 +249,14 @@ final readonly class WatchHistoryRecorder
                 : (int) $sample['sequence'],
             $evidence
         );
+        if ($created) {
+            // A heartbeat that read its lesson before a publish committed can
+            // insert a resume row for the superseded lesson after the publish
+            // signal already merged this learner. Only a new row can do that,
+            // so the merge check runs here, on the write path, and the history
+            // GET stays a pure read (RFC 9110 safe method).
+            $this->canonicalHistory->ensureCanonical((int) $user->id);
+        }
 
         // The response exposes the exact server-qualified evidence and reward
         // committed for this accepted sample, or the durable snapshot when
@@ -273,6 +282,17 @@ final readonly class WatchHistoryRecorder
             'section_completion' => $completionResult,
             'reward' => $reward,
         ]];
+    }
+
+    /**
+     * Forget the learner's resume list. Academic evidence, section completion
+     * and course progress are separate facts and stay untouched.
+     *
+     * @return int the number of resume rows removed
+     */
+    public function clear(User $user): int
+    {
+        return WatchingLog::query()->where('user_id', $user->id)->delete();
     }
 
     /**
@@ -341,7 +361,7 @@ final readonly class WatchHistoryRecorder
 
     /**
      * @param  array<string, mixed>  $evidence
-     * @return array{0: WatchingLog, 1: bool}
+     * @return array{0: WatchingLog, 1: bool, 2: bool} the row, whether resume state was recorded, whether the row was created
      */
     private function writeResume(
         User $user,
@@ -479,7 +499,7 @@ final readonly class WatchHistoryRecorder
 
             $log->save();
 
-            return [$log, $resumeRecorded];
+            return [$log, $resumeRecorded, $created];
         }, 3);
     }
 }

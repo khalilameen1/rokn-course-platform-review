@@ -31,8 +31,9 @@ final class CoinTaskRejected extends \DomainException
     }
 
     /**
-     * Collaborators (WhatsApp linking, wallet guards) refuse with a bare
-     * DomainException whose message is already a stable code. Keep that code.
+     * WhatsApp linking refuses with this exception directly; wallet guards
+     * still refuse with a bare DomainException whose message is already a
+     * stable code. Keep that code.
      */
     public static function from(\DomainException $exception): self
     {

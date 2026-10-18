@@ -9,7 +9,6 @@ use App\Models\WatchingLog;
 use App\Services\ApiResponseService;
 use App\Services\BunnyDeliveryService;
 use App\Services\PlaybackCapabilityService;
-use App\Services\WatchHistoryCanonicalizationService;
 use App\Services\WatchHistoryRecorder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,13 +17,14 @@ final class WatchHistoryController extends Controller
 {
     public function __construct(
         private readonly ApiResponseService $responses,
-        private readonly BunnyDeliveryService $delivery,
-        private readonly WatchHistoryCanonicalizationService $canonicalHistory
+        private readonly BunnyDeliveryService $delivery
     ) {}
 
     /**
      * Return a bounded, resume-oriented history. Video URLs are deliberately
      * excluded so this endpoint cannot bypass the normal lesson access path.
+     * A pure read (RFC 9110 safe method): resume rows are moved onto the
+     * current revision by the publish signal and by the heartbeat write path.
      */
     public function index(Request $request): JsonResponse
     {
@@ -34,7 +34,6 @@ final class WatchHistoryController extends Controller
         ]);
 
         $user = auth('api')->user();
-        $this->canonicalHistory->ensureCanonical((int) $user->id);
         $history = WatchingLog::query()
             ->where('user_id', $user->id)
             ->whereHas('course', function ($courses): void {

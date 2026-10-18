@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API;
 
+use App\Exceptions\WhatsAppLinkRejected;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendWhatsAppMessage;
 use App\Models\User;
@@ -98,7 +99,8 @@ final class WhatsAppConnectionController extends Controller
         try {
             $result = $this->links->linkInbound($sender, $message);
         } catch (\DomainException $exception) {
-            if ($exception->getMessage() === 'whatsapp_phone_in_use') {
+            if ($exception instanceof WhatsAppLinkRejected
+                && $exception->reason === WhatsAppLinkRejected::PHONE_IN_USE) {
                 $this->sendReply(
                     $sender,
                     "هذا الرقم مرتبط بحساب ركن آخر\nافتح المهمة من الحساب الصحيح"

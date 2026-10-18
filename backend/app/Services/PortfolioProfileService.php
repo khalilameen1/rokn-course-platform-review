@@ -8,19 +8,27 @@ use App\Models\User;
 use App\Support\RoknPublicUrl;
 use Illuminate\Support\Facades\DB;
 
-/** The owner's portfolio headline, skills and links, and the sharing state shown beside them. */
+/**
+ * The owner's portfolio headline, skills and links, and the sharing state shown
+ * beside them. Reading it never writes (RFC 9110 safe method): the share slug
+ * is created on registration and portfolio writes, and stored review state is
+ * reconciled by the 'portfolio.sharing.reconcile' signal that every content
+ * change records (PortfolioModerationService::invalidate).
+ */
 final readonly class PortfolioProfileService
 {
     public function __construct(
         private PortfolioShareIdentityService $portfolioShares,
-        private PortfolioModerationService $moderation
+        private PortfolioReviewReadService $reviews
     ) {}
 
     /** @return array<string, mixed> */
     public function profile(User $user): array
     {
-        $slug = $this->portfolioShares->ensure($user);
-        $sharing = $this->moderation->reconcileOwnerState($user);
+        $slug = $this->portfolioShares->isValidUnlistedSlug((string) $user->portfolio_slug)
+            ? (string) $user->portfolio_slug
+            : null;
+        $sharing = $this->reviews->ownerState($user);
 
         return [
             'slug' => $slug,
@@ -45,7 +53,7 @@ final readonly class PortfolioProfileService
                 ->all(),
             // Live whenever an approved version is published, including while
             // newer changes wait for review (see has_unpublished_changes).
-            'public_url' => $sharing['published'] ? RoknPublicUrl::portfolio($slug) : null,
+            'public_url' => $sharing['published'] && $slug !== null ? RoknPublicUrl::portfolio($slug) : null,
         ];
     }
 
@@ -59,6 +67,7 @@ final readonly class PortfolioProfileService
             /** @var User $locked */
             $locked = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
             $locked->update($validated);
+            $this->portfolioShares->ensure($locked);
 
             return $locked->fresh();
         });
