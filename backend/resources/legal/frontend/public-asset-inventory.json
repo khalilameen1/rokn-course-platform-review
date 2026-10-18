@@ -571,7 +571,7 @@
     },
     {
       "path": "public/index.php",
-      "sha256": "599a0b3227574a526080ade32b86d12d1e3977379529db2908b3476601574055",
+      "sha256": "bdf51e508c611deac126c9bdef3fb327b324dafd346bcd8d0c361dcf371acbb0",
       "classification": "deployment"
     },
     {
