@@ -58,6 +58,18 @@ final class PushDeviceRegistrationService
         }, 3);
     }
 
+    /**
+     * Stop delivery to one installation without logging the learner out. The
+     * token is detached from the account so it cannot be reused.
+     */
+    public function unregister(int $userId, string $deviceToken): void
+    {
+        UserDeviceToken::query()
+            ->where('user_id', $userId)
+            ->where('device_token', $deviceToken)
+            ->delete();
+    }
+
     private function normalizeDeviceOs(?string $deviceOs): ?string
     {
         $value = strtolower(trim((string) $deviceOs));

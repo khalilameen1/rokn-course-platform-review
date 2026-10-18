@@ -94,6 +94,28 @@ final class AdminMfaSecurityTest extends TestCase
             ->assertRedirect(route('admin.dashboard'));
     }
 
+    public function test_enrolment_confirmed_in_another_session_is_not_overwritten(): void
+    {
+        Carbon::setTestNow('2026-08-12 12:00:00');
+        $admin = $this->admin();
+        $this->actingAs($admin)->get(route('admin.mfa.setup'))->assertOk();
+        $pendingSecret = Crypt::decryptString((string) session('admin_mfa_setup_secret_ciphertext'));
+
+        // Another browser tab finished enrolment with its own secret first.
+        $otherSecret = app(Totp::class)->generateSecret();
+        $admin->newQuery()->whereKey($admin->id)->first()->forceFill([
+            'admin_totp_secret' => $otherSecret,
+            'admin_totp_confirmed_at' => now(),
+        ])->save();
+
+        $this->post(route('admin.mfa.setup.confirm'), ['code' => app(Totp::class)->code($pendingSecret)])
+            ->assertStatus(409);
+
+        self::assertSame($otherSecret, $admin->fresh()->admin_totp_secret);
+        self::assertNull($admin->fresh()->admin_totp_last_used_step);
+        self::assertNull(session('admin_mfa_new_recovery_codes_ciphertext'));
+    }
+
     public function test_recovery_code_is_single_use_and_invalid_responses_do_not_identify_code_type(): void
     {
         Carbon::setTestNow('2026-08-12 12:00:00');

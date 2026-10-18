@@ -6,201 +6,67 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\ApiToken;
-use App\Models\UserDeviceToken;
+use App\Services\ApiResponseService;
 use App\Services\DeviceLoginService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 final class UserSessionController extends Controller
 {
+    public function __construct(
+        private readonly ApiResponseService $responses,
+        private readonly DeviceLoginService $devices
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
-        /** @var ApiToken|null $current */
-        $current = $request->attributes->get('rokn_api_token');
-        $currentSessionId = trim((string) $current?->session_id);
-        $sessions = $request->user()->apiTokens()
-            ->whereHasNotExpired()
-            ->whereNotNull('session_id')
-            ->orderByDesc('last_used_at')
-            ->orderByDesc('issued_at')
-            ->orderByDesc('session_id')
-            ->limit(DeviceLoginService::MAX_ACTIVE_SESSIONS)
-            ->get()
-            ->groupBy(static function (ApiToken $token): string {
-                $deviceId = trim((string) $token->device_id);
-
-                return $deviceId !== ''
-                    ? 'device:'.$deviceId
-                    : 'legacy-session:'.$token->session_id;
-            })
-            ->map(static function ($deviceSessions) use ($currentSessionId): array {
-                /** @var ApiToken $latest */
-                $latest = $deviceSessions->first();
-                /** @var ApiToken|null $currentDeviceSession */
-                $currentDeviceSession = $deviceSessions->first(
-                    static fn (ApiToken $token): bool => $currentSessionId !== ''
-                        && hash_equals($currentSessionId, (string) $token->session_id)
-                );
-                $display = $currentDeviceSession ?: $latest;
-
-                return [
-                    // A representative session keeps the UUID route contract;
-                    // revocation resolves it to all sessions of this device.
-                    'id' => $display->session_id,
-                    'platform' => $display->platform ?: 'other',
-                    'device_class' => in_array($display->device_class, ['phone', 'tablet'], true)
-                        ? $display->device_class
-                        : null,
-                    'app_version' => $display->app_version,
-                    'app_build' => $display->app_build,
-                    'issued_at' => optional($display->issued_at)->toIso8601String(),
-                    'last_used_at' => optional($latest->last_used_at ?: $latest->issued_at)->toIso8601String(),
-                    'expires_at' => optional($display->expired_at)->toIso8601String(),
-                    'current' => $currentDeviceSession !== null,
-                ];
-            })
-            ->values();
-
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل الأجهزة المسجّل عليها الحساب',
-            'data' => $sessions,
-        ]);
+        return $this->responses->success(
+            $this->devices->activeDeviceSessions($request->user(), $this->currentToken($request)),
+            'تم تحميل الأجهزة المسجّل عليها الحساب'
+        );
     }
 
     public function destroy(Request $request, string $sessionId): JsonResponse
     {
-        /** @var ApiToken|null $current */
-        $current = $request->attributes->get('rokn_api_token');
-        /** @var ApiToken|null $session */
-        $session = $request->user()->apiTokens()
-            ->where('session_id', $sessionId)
-            ->whereHasNotExpired()
-            ->first();
+        $result = $this->devices->revokeDeviceSession(
+            $request->user(),
+            $sessionId,
+            $this->currentToken($request)
+        );
 
-        // Revocation is a desired-state operation. If the first successful
-        // response was lost, retrying it must not turn that success into a
-        // permanent 404 in the devices screen.
-        if (! $session) {
-            return response()->json([
-                'status' => 200,
-                'success' => true,
-                'message' => 'تم إنهاء الجلسة',
-                'data' => [
-                    'signed_out' => false,
-                    'already_revoked' => true,
-                ],
-                'signed_out' => false,
-            ]);
-        }
-
-        $currentDeviceId = trim((string) $current?->device_id);
-        $sessionDeviceId = trim((string) $session->device_id);
-        $isCurrent = $current !== null
-            && (
-                hash_equals((string) $current->session_id, (string) $session->session_id)
-                || ($currentDeviceId !== '' && hash_equals($currentDeviceId, $sessionDeviceId))
-            );
-        DB::transaction(function () use ($session): void {
-            $deviceId = trim((string) $session->device_id);
-            $sessions = ApiToken::query()
-                ->where('user_id', $session->user_id)
-                ->whereHasNotExpired()
-                ->when(
-                    $deviceId !== '',
-                    static fn ($query) => $query->where('device_id', $deviceId),
-                    static fn ($query) => $query->where('session_id', $session->session_id)
-                )
-                ->lockForUpdate()
-                ->get();
-            $sessions->each(static fn (ApiToken $token): mixed => $token->revoke());
-            $this->removePushRegistrationForDevices($session->user_id, [$deviceId]);
-        }, 3);
-
-        $message = $isCurrent ? 'تم تسجيل الخروج من هذا الجهاز' : 'تم إنهاء الجلسة';
-
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => $message,
-            'data' => [
-                'signed_out' => $isCurrent,
-                'already_revoked' => false,
-            ],
-            'signed_out' => $isCurrent,
-        ]);
+        return $this->responses->success(
+            $result,
+            $result['signed_out'] ? 'تم تسجيل الخروج من هذا الجهاز' : 'تم إنهاء الجلسة',
+            200,
+            ['signed_out' => $result['signed_out']]
+        );
     }
 
     /** End every other app session while keeping this request usable. */
     public function destroyOthers(Request $request): JsonResponse
     {
-        /** @var ApiToken|null $current */
-        $current = $request->attributes->get('rokn_api_token');
+        $current = $this->currentToken($request);
         if (! $current || empty($current->session_id)) {
-            return response()->json([
-                'status' => 409,
-                'success' => false,
-                'code' => 'current_session_unavailable',
-                'message' => 'حدّث التطبيق ثم حاول مرة أخرى',
-                'data' => null,
-            ], 409);
+            return $this->responses->error(
+                'حدّث التطبيق ثم حاول مرة أخرى',
+                409,
+                null,
+                ['code' => 'current_session_unavailable']
+            );
         }
 
-        $revoked = DB::transaction(function () use ($request, $current): int {
-            $sessions = $request->user()->apiTokens()
-                ->whereHasNotExpired()
-                ->whereNotNull('session_id')
-                ->where('session_id', '<>', $current->session_id)
-                ->lockForUpdate()
-                ->get();
-            $deviceIds = $sessions
-                ->pluck('device_id')
-                ->map(static fn ($value): string => trim((string) $value))
-                ->filter()
-                ->unique()
-                ->values()
-                ->all();
-            $sessions->each(static fn (ApiToken $session): mixed => $session->revoke());
-            $this->removePushRegistrationForDevices((int) $request->user()->id, $deviceIds);
+        $revoked = $this->devices->revokeOtherSessions($request->user(), $current);
 
-            return $sessions->count();
-        }, 3);
-
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => $revoked > 0 ? 'تم تسجيل الخروج من الأجهزة الأخرى' : 'لا توجد جلسات أخرى',
-            'data' => ['revoked_count' => $revoked],
-        ]);
+        return $this->responses->success(
+            ['revoked_count' => $revoked],
+            $revoked > 0 ? 'تم تسجيل الخروج من الأجهزة الأخرى' : 'لا توجد جلسات أخرى'
+        );
     }
 
-    /** @param array<int, string> $deviceIds */
-    private function removePushRegistrationForDevices(int $userId, array $deviceIds): void
+    private function currentToken(Request $request): ?ApiToken
     {
-        $deviceIds = array_values(array_filter(array_unique($deviceIds)));
-        if ($deviceIds === []) {
-            return;
-        }
+        $current = $request->attributes->get('rokn_api_token');
 
-        $activeDeviceIds = ApiToken::query()
-            ->where('user_id', $userId)
-            ->whereHasNotExpired()
-            ->whereIn('device_id', $deviceIds)
-            ->pluck('device_id')
-            ->map(static fn ($deviceId): string => trim((string) $deviceId))
-            ->filter()
-            ->unique()
-            ->all();
-        $orphanedDeviceIds = array_values(array_diff($deviceIds, $activeDeviceIds));
-        if ($orphanedDeviceIds === []) {
-            return;
-        }
-
-        UserDeviceToken::query()
-            ->where('user_id', $userId)
-            ->whereIn('device_id', $orphanedDeviceIds)
-            ->delete();
+        return $current instanceof ApiToken ? $current : null;
     }
 }

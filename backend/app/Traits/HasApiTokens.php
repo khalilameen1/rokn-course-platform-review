@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 
 trait HasApiTokens
 {
+    /** @return HasMany<ApiToken, $this> */
     public function apiTokens(): HasMany
     {
         return $this->hasMany(ApiToken::class, 'user_id');

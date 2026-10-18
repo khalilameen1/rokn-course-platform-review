@@ -10,6 +10,7 @@ use App\Models\UserCoinTaskAttempt;
 use App\Models\UserWhatsAppConnection;
 use App\Models\WhatsAppLinkToken;
 use App\Support\BusinessClock;
+use App\Support\StudentNotificationIntent;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -19,7 +20,8 @@ final readonly class WhatsAppLinkService
 
     public function __construct(
         private WalletService $wallet,
-        private AcquisitionRewardTombstoneService $rewardTombstones
+        private AcquisitionRewardTombstoneService $rewardTombstones,
+        private StudentNotificationService $notifications
     ) {}
 
     /** @return array<string, mixed> */
@@ -114,6 +116,45 @@ final readonly class WhatsAppLinkService
             'action_url' => 'https://wa.me/'.$botPhone.'?text='.rawurlencode($message),
             'expires_at' => $expiresAt->toIso8601String(),
         ];
+    }
+
+    /**
+     * Link the sender from a provider webhook and record the in-app receipt in
+     * the same transaction, so a replayed webhook never pays or notifies twice.
+     *
+     * @return array{matched:bool,already_claimed:bool,user:?User,method_id:?int,coins:int,earned_coins:int,balance:int,reward_deferred:bool,reward_unavailable:bool}
+     */
+    public function linkInbound(string $sender, string $message): array
+    {
+        return DB::transaction(function () use ($sender, $message): array {
+            $result = $this->consumeInbound($sender, $message);
+
+            if ($result['matched'] && $result['user'] && $result['earned_coins'] > 0) {
+                // The token identifies the exact campaign even when a newer
+                // WhatsApp campaign exists or the original was retired.
+                $methodId = $result['method_id'];
+                $method = $methodId
+                    ? CoinEarningMethod::withTrashed()->find($methodId)
+                    : null;
+                $this->notifications->notifyUser(
+                    $result['user'],
+                    new StudentNotificationIntent(
+                        notificationType: StudentNotificationService::TYPE_WHATSAPP_CONNECTED,
+                        titleAr: 'تم ربط واتساب',
+                        titleEn: 'WhatsApp Connected',
+                        messageAr: 'أضفنا '.$result['earned_coins']." عملة ركن إلى رصيدك\nافتح المحفظة لمعرفة التفاصيل",
+                        messageEn: $result['earned_coins'].' Rokn coins were added to your wallet.',
+                        link: null,
+                        notifiableType: $method ? CoinEarningMethod::class : null,
+                        notifiableId: $method?->id,
+                        deliveryKey: 'whatsapp-linked:'.$result['user']->id,
+                        templateVariables: ['coins' => (int) $result['earned_coins']]
+                    )
+                );
+            }
+
+            return $result;
+        }, 3);
     }
 
     /** @return array{matched:bool,already_claimed:bool,user:?User,method_id:?int,coins:int,earned_coins:int,balance:int,reward_deferred:bool,reward_unavailable:bool} */

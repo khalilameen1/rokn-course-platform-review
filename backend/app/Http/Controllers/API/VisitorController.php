@@ -6,6 +6,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Visitor;
+use App\Services\ApiResponseService;
 use App\Support\BusinessClock;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\DB;
 
 final class VisitorController extends Controller
 {
+    public function __construct(private readonly ApiResponseService $responses) {}
+
     public function getStats(Request $request): JsonResponse
     {
         $businessNow = BusinessClock::now();
@@ -43,12 +46,7 @@ final class VisitorController extends Controller
                 ->get(),
         ];
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'Visitor statistics retrieved successfully',
-            'data' => $stats,
-        ]);
+        return $this->responses->success($stats, 'Visitor statistics retrieved successfully');
     }
 
     public function getRecentVisitors(Request $request): JsonResponse
@@ -69,11 +67,6 @@ final class VisitorController extends Controller
             ->limit((int) ($validated['limit'] ?? 50))
             ->get();
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'Recent visitor activity retrieved successfully',
-            'data' => $visitors,
-        ]);
+        return $this->responses->success($visitors, 'Recent visitor activity retrieved successfully');
     }
 }

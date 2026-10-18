@@ -6,25 +6,26 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\StudentProfileResource;
-use App\Models\ProfileUpdateReceipt;
 use App\Models\User;
+use App\Services\ApiResponseService;
 use App\Services\PortfolioShareIdentityService;
-use App\Services\StoredFileDeletionService;
+use App\Services\StudentProfileService;
 use App\Support\LearningReminderSchedule;
 use App\Support\UnicodeText;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Intervention\Image\Facades\Image;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
-use Throwable;
 
 final class ProfileController extends Controller
 {
+    public function __construct(
+        private readonly ApiResponseService $responses,
+        private readonly StudentProfileService $profiles
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         /** @var User $user */
@@ -41,12 +42,7 @@ final class ProfileController extends Controller
                 : $profile->withoutLearningSnapshot();
         }
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل الملف الشخصي',
-            'data' => $profile,
-        ]);
+        return $this->responses->success($profile, 'تم تحميل الملف الشخصي');
     }
 
     public function update(Request $request): JsonResponse
@@ -134,17 +130,6 @@ final class ProfileController extends Controller
                 'mime' => strtolower((string) $profileImage->getMimeType()),
             ] : null,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-        $clientRequestId = (string) $validated['client_request_id'];
-        $existingReceipt = ProfileUpdateReceipt::query()
-            ->where('user_id', $user->id)
-            ->where('client_request_id', $clientRequestId)
-            ->first();
-        if ($existingReceipt) {
-            abort_unless(hash_equals((string) $existingReceipt->request_fingerprint, $requestFingerprint), 409);
-
-            return $this->profileUpdateResponse($user->fresh(), true);
-        }
-
         $updateData = [];
 
         if ($request->has('name')) {
@@ -199,87 +184,21 @@ final class ProfileController extends Controller
             $updateData['playback_speed'] = (float) $request->input('playback_speed');
         }
 
-        $newImagePath = null;
-        $oldImagePath = $user->profile_image;
-        $applied = false;
-        $replayed = false;
-        try {
-            if ($request->hasFile('profile_image')) {
-                // Decode and re-encode the raster. This strips metadata and any
-                // polyglot payload instead of trusting the extension alone.
-                $newImagePath = $this->storeSafeProfileImage($request->file('profile_image'));
-                $updateData['profile_image'] = $newImagePath;
-            }
+        $result = $this->profiles->update(
+            $user,
+            (string) $validated['client_request_id'],
+            $requestFingerprint,
+            $updateData,
+            isset($validated['expected_profile_revision']) ? (int) $validated['expected_profile_revision'] : null,
+            $request->hasFile('profile_image') ? $request->file('profile_image') : null
+        );
 
-            DB::transaction(function () use (
-                $user,
-                $validated,
-                $clientRequestId,
-                $requestFingerprint,
-                $updateData,
-                &$applied,
-                &$replayed
-            ): void {
-                $locked = $user->newQuery()->lockForUpdate()->findOrFail($user->id);
-                $receipt = ProfileUpdateReceipt::query()
-                    ->where('user_id', $locked->id)
-                    ->where('client_request_id', $clientRequestId)
-                    ->first();
-                if ($receipt) {
-                    abort_unless(hash_equals((string) $receipt->request_fingerprint, $requestFingerprint), 409);
-                    $replayed = true;
-
-                    return;
-                }
-                if (array_key_exists('expected_profile_revision', $validated)
-                    && $validated['expected_profile_revision'] !== null
-                    && (int) $validated['expected_profile_revision'] !== (int) $locked->profile_revision) {
-                    throw ValidationException::withMessages([
-                        'profile' => ['تغيرت بيانات الحساب على جهاز آخر. أعد تحميلها ثم احفظ من جديد.'],
-                    ]);
-                }
-
-                $nextRevision = (int) $locked->profile_revision + 1;
-                $locked->forceFill($updateData + ['profile_revision' => $nextRevision])->save();
-                ProfileUpdateReceipt::query()->create([
-                    'user_id' => $locked->id,
-                    'client_request_id' => $clientRequestId,
-                    'request_fingerprint' => $requestFingerprint,
-                    'profile_revision' => $nextRevision,
-                ]);
-                $applied = true;
-            });
-        } catch (Throwable $exception) {
-            if ($newImagePath) {
-                app(StoredFileDeletionService::class)->deleteOrQueue('public', $newImagePath);
-            }
-            throw $exception;
-        }
-
-        if ($newImagePath && ! $applied) {
-            app(StoredFileDeletionService::class)->deleteOrQueue('public', $newImagePath);
-        }
-        if ($applied && $newImagePath && $oldImagePath && ! filter_var($oldImagePath, FILTER_VALIDATE_URL)) {
-            app(StoredFileDeletionService::class)->deleteOrQueue('public', $oldImagePath);
-        }
-
-        return $this->profileUpdateResponse($user->fresh(), $replayed);
-    }
-
-    private function profileUpdateResponse(User $user, bool $replayed = false): JsonResponse
-    {
-        // Portfolio URLs are unlisted share capabilities, not discoverable
-        // usernames. A legacy/custom alias is rotated before any authenticated
-        // profile response exposes it, including replayed updates.
-        app(PortfolioShareIdentityService::class)->ensure($user);
-
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تعديل البيانات بنجاح',
-            'data' => (new StudentProfileResource($user->fresh()))->withoutLearningSnapshot(),
-            'replayed' => $replayed,
-        ]);
+        return $this->responses->success(
+            (new StudentProfileResource($result['user']))->withoutLearningSnapshot(),
+            'تم تعديل البيانات بنجاح',
+            200,
+            ['replayed' => $result['replayed']]
+        );
     }
 
     public function updateInterests(Request $request): JsonResponse
@@ -292,48 +211,12 @@ final class ProfileController extends Controller
             'classification_ids.*' => 'integer|min:1|distinct|exists:classifications,id',
         ]);
 
-        $user = DB::transaction(function () use ($user, $request): User {
-            $locked = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
-            $locked->interests()->sync($request->classification_ids);
+        $user = $this->profiles->replaceInterests($user, $request->classification_ids);
 
-            return $locked->fresh();
-        });
-
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحديث الاهتمامات بنجاح',
-            'data' => (new StudentProfileResource($user))->withoutLearningSnapshot(),
-        ]);
-
-    }
-
-    private function storeSafeProfileImage(UploadedFile $file): string
-    {
-        $image = Image::make($file->getRealPath());
-        // EXIF orientation is optional in PHP. A perfectly valid raster must
-        // never turn into a 500 merely because a lightweight production image
-        // omits the EXIF extension.
-        if (function_exists('exif_read_data')) {
-            $image->orientate();
-        }
-        $image->resize(1024, 1024, static function ($constraint): void {
-            $constraint->aspectRatio();
-            $constraint->upsize();
-        });
-
-        $canvas = Image::canvas($image->width(), $image->height(), '#ffffff')
-            ->insert($image)
-            ->encode('jpg', 86);
-        $path = 'profiles/'.Str::uuid().'.jpg';
-        app(StoredFileDeletionService::class)
-            ->trackPotentialOrphan('public', $path, 60);
-
-        if (! Storage::disk('public')->put($path, (string) $canvas)) {
-            throw new \RuntimeException('Could not store profile image.');
-        }
-
-        return $path;
+        return $this->responses->success(
+            (new StudentProfileResource($user))->withoutLearningSnapshot(),
+            'تم تحديث الاهتمامات بنجاح'
+        );
     }
 
     public function clearWatchHistory(Request $request): JsonResponse
@@ -342,14 +225,9 @@ final class ProfileController extends Controller
         $user = $request->user();
         $deleted = DB::table('watching_logs')->where('user_id', $user->id)->delete();
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم مسح سجل المشاهدة',
-            'data' => [
-                'deleted_entries' => $deleted,
-                'course_progress_preserved' => true,
-            ],
-        ]);
+        return $this->responses->success([
+            'deleted_entries' => $deleted,
+            'course_progress_preserved' => true,
+        ], 'تم مسح سجل المشاهدة');
     }
 }

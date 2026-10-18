@@ -4,10 +4,30 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * One hashed, revocable app bearer. The table name comes from configuration,
+ * so its columns are declared here for static analysis.
+ *
+ * @property string $token
+ * @property int $user_id
+ * @property string|null $session_id
+ * @property string|null $device_id
+ * @property string|null $platform
+ * @property string|null $device_class
+ * @property string|null $app_version
+ * @property string|null $app_build
+ * @property string|null $auth_provider
+ * @property string|null $auth_provider_user_id
+ * @property CarbonInterface|null $issued_at
+ * @property CarbonInterface|null $expired_at
+ * @property CarbonInterface|null $last_used_at
+ * @property CarbonInterface|null $revoked_at
+ */
 final class ApiToken extends Model
 {
     protected $guarded = [];

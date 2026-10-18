@@ -12,8 +12,9 @@ use App\Models\ApiToken;
 use App\Models\Setting;
 use App\Models\SocialAccount;
 use App\Models\User;
-use App\Models\UserDeviceToken;
 use App\Services\AccountDeletionService;
+use App\Services\ApiResponseService;
+use App\Services\DeviceLoginService;
 use App\Services\PushDeviceRegistrationService;
 use App\Services\SocialAuthProviderRegistry;
 use App\Services\SocialLoginAction;
@@ -22,7 +23,6 @@ use App\Support\RoknLocale;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
@@ -32,7 +32,10 @@ class SignController extends Controller
         private readonly SocialAuthProviderRegistry $socialProviders,
         private readonly SocialLoginAction $login,
         private readonly PushDeviceRegistrationService $pushDevices,
-        private readonly WelcomeRewardOfferService $welcomeOffer
+        private readonly WelcomeRewardOfferService $welcomeOffer,
+        private readonly ApiResponseService $responses,
+        private readonly DeviceLoginService $devices,
+        private readonly AccountDeletionService $accountDeletion
     ) {}
 
     /**
@@ -137,34 +140,29 @@ class SignController extends Controller
         $badgeAr = trim((string) ($settings?->recommended_provider_badge_ar ?? ''));
         $badgeEn = trim((string) ($settings?->recommended_provider_badge_en ?? ''));
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل طرق الدخول',
-            'data' => [
-                'providers' => $providers,
-                'authorization_api_url' => $publicApiUrl,
-                'authorization_urls' => $this->socialProviders->browserAvailable()
-                    ->mapWithKeys(fn (string $provider) => [
-                        $provider => $this->socialProviders->browserStartUrl($provider),
-                    ]),
-                'native_only_providers' => $this->socialProviders->nativeOnlyAvailable(),
-                'otp_enabled' => false,
-                'password_login_visible' => false,
-                'welcome_bonus_coins' => max(0, $welcomeBonus),
-                'recommended_provider_bonus_coins' => $providerBonus,
-                'recommended_provider_total_coins' => $recommendedTotal,
-                'recommended_provider' => $recommendedProvider,
-                'recommendation_badge' => $this->recommendationBadge(
-                    $recommendedProvider, $recommendedTotal, $badgeAr,
-                    (string) config('social_auth.recommended_provider_badge_ar')
-                ),
-                'recommendation_badge_en' => $this->recommendationBadge(
-                    $recommendedProvider, $recommendedTotal, $badgeEn,
-                    (string) config('social_auth.recommended_provider_badge_en')
-                ),
-            ],
-        ]);
+        return $this->responses->success([
+            'providers' => $providers,
+            'authorization_api_url' => $publicApiUrl,
+            'authorization_urls' => $this->socialProviders->browserAvailable()
+                ->mapWithKeys(fn (string $provider) => [
+                    $provider => $this->socialProviders->browserStartUrl($provider),
+                ]),
+            'native_only_providers' => $this->socialProviders->nativeOnlyAvailable(),
+            'otp_enabled' => false,
+            'password_login_visible' => false,
+            'welcome_bonus_coins' => max(0, $welcomeBonus),
+            'recommended_provider_bonus_coins' => $providerBonus,
+            'recommended_provider_total_coins' => $recommendedTotal,
+            'recommended_provider' => $recommendedProvider,
+            'recommendation_badge' => $this->recommendationBadge(
+                $recommendedProvider, $recommendedTotal, $badgeAr,
+                (string) config('social_auth.recommended_provider_badge_ar')
+            ),
+            'recommendation_badge_en' => $this->recommendationBadge(
+                $recommendedProvider, $recommendedTotal, $badgeEn,
+                (string) config('social_auth.recommended_provider_badge_en')
+            ),
+        ], 'تم تحميل طرق الدخول');
     }
 
     private function recommendationBadge(?string $provider, int $coins, string $authored, string $fallback): ?string
@@ -197,32 +195,9 @@ class SignController extends Controller
         $user = $request->user();
         /** @var ApiToken|null $currentToken */
         $currentToken = $request->attributes->get('rokn_api_token');
-        DB::transaction(function () use ($user, $validated, $currentToken): void {
-            $pushTokens = UserDeviceToken::query()
-                ->where('user_id', $user->id);
-            $currentDeviceId = trim((string) $currentToken?->device_id);
-            $hasReplacementOnCurrentDevice = $currentToken !== null
-                && $currentDeviceId !== ''
-                && $user->apiTokens()
-                    ->whereHasNotExpired()
-                    ->where('token', '<>', $currentToken->getKey())
-                    ->where('device_id', $currentDeviceId)
-                    ->exists();
-            if ($currentDeviceId !== '' && ! $hasReplacementOnCurrentDevice) {
-                $pushTokens->where('device_id', $currentDeviceId)->delete();
-            } elseif ($currentDeviceId === '' && ! empty($validated['device_token'])) {
-                $pushTokens->where('device_token', $validated['device_token'])->delete();
-            }
+        $this->devices->signOutCurrentSession($user, $currentToken, $validated['device_token'] ?? null);
 
-            auth('api')->logout();
-        });
-
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تسجيل الخروج بنجاح',
-            'data' => null,
-        ]);
+        return $this->responses->success(null, 'تم تسجيل الخروج بنجاح');
     }
 
     /**
@@ -235,55 +210,42 @@ class SignController extends Controller
         $user = auth('api')->user();
 
         if (! $this->hasFreshSocialReauthentication($request, $user)) {
-            return response()->json([
-                'status' => 403,
-                'success' => false,
-                'code' => 'social_reauthentication_required',
-                'message' => "أكد هويتك من جديد\nاستخدم حساب تسجيل الدخول نفسه",
-                'data' => null,
-            ], 403);
+            return $this->responses->error(
+                "أكد هويتك من جديد\nاستخدم حساب تسجيل الدخول نفسه",
+                403,
+                null,
+                ['code' => 'social_reauthentication_required']
+            );
         }
 
         try {
-            $cleanup = app(AccountDeletionService::class)->delete($user);
-
-            if ($cleanup['local_cleanup_pending'] || $cleanup['remote_portfolio_cleanup_pending']) {
-                Log::notice('Deleted account has deferred file cleanup.', [
-                    'deleted_user_id' => $user->id,
-                    'local_cleanup_pending' => $cleanup['local_cleanup_pending'],
-                    'remote_portfolio_cleanup_pending' => $cleanup['remote_portfolio_cleanup_pending'],
-                ]);
-            }
-
-            $cleanupPending = $cleanup['local_cleanup_pending'] || $cleanup['remote_portfolio_cleanup_pending'];
-
-            return response()->json([
-                'status' => $cleanupPending ? 202 : 200,
-                'success' => true,
-                'deletion_status' => $cleanupPending ? 'cleanup_pending' : 'completed',
-                'message' => $cleanupPending
-                    ? "تم تعطيل الحساب ومسح بياناته من التطبيق\nنستكمل حذف الملفات من التخزين"
-                    : 'تم حذف الحساب وبياناته الشخصية بنجاح',
-                'data' => null,
-            ], $cleanupPending ? 202 : 200);
-        } catch (SocialProviderUnavailableException $exception) {
-            return response()->json([
-                'status' => 503,
-                'success' => false,
-                'code' => 'apple_revocation_unavailable',
-                'message' => "تعذّر إلغاء تفويض Apple الآن\nلم نحذف حسابك، حاول مرة أخرى",
-                'data' => null,
-            ], 503);
-        } catch (\Throwable $exception) {
-            report($exception);
+            $cleanup = $this->accountDeletion->delete($user);
+        } catch (SocialProviderUnavailableException) {
+            return $this->responses->error(
+                "تعذّر إلغاء تفويض Apple الآن\nلم نحذف حسابك، حاول مرة أخرى",
+                503,
+                null,
+                ['code' => 'apple_revocation_unavailable']
+            );
         }
 
-        return response()->json([
-            'status' => 500,
-            'success' => false,
-            'message' => "تعذّر حذف الحساب الآن\nحاول مرة أخرى أو تواصل مع الدعم",
-            'data' => null,
-        ], 500);
+        $cleanupPending = $cleanup['local_cleanup_pending'] || $cleanup['remote_portfolio_cleanup_pending'];
+        if ($cleanupPending) {
+            Log::notice('Deleted account has deferred file cleanup.', [
+                'deleted_user_id' => $user->id,
+                'local_cleanup_pending' => $cleanup['local_cleanup_pending'],
+                'remote_portfolio_cleanup_pending' => $cleanup['remote_portfolio_cleanup_pending'],
+            ]);
+        }
+
+        return $this->responses->success(
+            null,
+            $cleanupPending
+                ? "تم تعطيل الحساب ومسح بياناته من التطبيق\nنستكمل حذف الملفات من التخزين"
+                : 'تم حذف الحساب وبياناته الشخصية بنجاح',
+            $cleanupPending ? 202 : 200,
+            ['deletion_status' => $cleanupPending ? 'cleanup_pending' : 'completed']
+        );
     }
 
     private function hasFreshSocialReauthentication(Request $request, User $user): bool
@@ -308,8 +270,8 @@ class SignController extends Controller
         // provider verification for this exact user. Linked identities belong
         // to social_accounts; the provider used for this session belongs to
         // the bearer, never to the mutable user profile.
-        $provider = strtolower(trim((string) $token?->auth_provider));
-        $providerUserId = trim((string) $token?->auth_provider_user_id);
+        $provider = strtolower(trim((string) $token->auth_provider));
+        $providerUserId = trim((string) $token->auth_provider_user_id);
         if ($provider === '' || $providerUserId === '') {
             return false;
         }
@@ -345,15 +307,10 @@ class SignController extends Controller
         );
         $user->refresh();
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم حفظ رمز التنبيهات بنجاح',
-            'data' => [
-                'device_token' => $request->input('device_token'),
-                'user' => (new StudentProfileResource($user))->withoutLearningSnapshot(),
-            ],
-        ]);
+        return $this->responses->success([
+            'device_token' => $request->input('device_token'),
+            'user' => (new StudentProfileResource($user))->withoutLearningSnapshot(),
+        ], 'تم حفظ رمز التنبيهات بنجاح');
     }
 
     /**
@@ -367,18 +324,8 @@ class SignController extends Controller
             'device_token' => 'required|string|max:500',
         ]);
 
-        $user = $request->user();
+        $this->pushDevices->unregister((int) $request->user()->id, $validated['device_token']);
 
-        UserDeviceToken::query()
-            ->where('user_id', $user->id)
-            ->where('device_token', $validated['device_token'])
-            ->delete();
-
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم إيقاف تنبيهات هذا الجهاز',
-            'data' => null,
-        ]);
+        return $this->responses->success(null, 'تم إيقاف تنبيهات هذا الجهاز');
     }
 }

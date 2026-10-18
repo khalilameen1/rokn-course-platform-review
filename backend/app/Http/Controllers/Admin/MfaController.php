@@ -7,11 +7,11 @@ namespace App\Http\Controllers\Admin;
 use App\Auth\Totp;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\AdminMfaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
@@ -19,12 +19,10 @@ class MfaController extends Controller
 {
     private const GENERIC_ERROR = 'The verification code is invalid or has already been used.';
 
-    private readonly Totp $totp;
-
-    public function __construct(Totp $totp)
-    {
-        $this->totp = $totp;
-    }
+    public function __construct(
+        private readonly Totp $totp,
+        private readonly AdminMfaService $mfa
+    ) {}
 
     public function setup(Request $request): Response|RedirectResponse
     {
@@ -76,30 +74,13 @@ class MfaController extends Controller
         $belongsToUser = (int) $request->session()->get('admin_mfa_setup_user_id', 0)
             === (int) $user->getAuthIdentifier();
         $setupTtl = max(300, (int) config('admin_security.setup_ttl_minutes', 15) * 60);
-        $step = ($belongsToUser && $secret !== '' && $startedAt > 0 && (time() - $startedAt) <= $setupTtl)
-            ? $this->totp->matchingStep($secret, $submittedCode)
+        $recoveryCodes = ($belongsToUser && $secret !== '' && $startedAt > 0 && (time() - $startedAt) <= $setupTtl)
+            ? $this->mfa->confirmEnrolment($user, $secret, $submittedCode)
             : null;
 
-        if ($step === null) {
+        if ($recoveryCodes === null) {
             return $this->invalidCodeResponse();
         }
-
-        $recoveryCodes = $this->totp->generateRecoveryCodes();
-        DB::transaction(function () use ($user, $secret, $step, $recoveryCodes): void {
-            /** @var User $lockedUser */
-            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->getAuthIdentifier());
-            abort_if($lockedUser->admin_totp_confirmed_at, 409, 'MFA is already configured.');
-
-            $lockedUser->forceFill([
-                'admin_totp_secret' => $secret,
-                'admin_totp_confirmed_at' => now(),
-                'admin_totp_last_used_step' => $step,
-                'admin_mfa_backup_codes' => array_map(
-                    fn (string $code): string => $this->totp->hashRecoveryCode($code),
-                    $recoveryCodes
-                ),
-            ])->save();
-        });
 
         $request->session()->regenerate(true);
         $this->markVerified($request, (int) $user->getAuthIdentifier(), $secret);
@@ -145,11 +126,7 @@ class MfaController extends Controller
 
         $code = trim($validated['code']);
         $request->request->remove('code');
-        $verified = preg_match('/^[0-9]{6}$/D', $code) === 1
-            ? $this->consumeTotp($user, $code)
-            : $this->consumeRecoveryCode($user, $code);
-
-        if (! $verified) {
+        if (! $this->mfa->verifyChallenge($user, $code)) {
             return $this->invalidCodeResponse();
         }
 
@@ -180,77 +157,6 @@ class MfaController extends Controller
         }
 
         return $this->noStoreView('admin.auth.mfa-backup-codes', ['codes' => $codes]);
-    }
-
-    private function consumeTotp(User $user, string $code): bool
-    {
-        try {
-            $secret = trim((string) $user->admin_totp_secret);
-            $step = $secret === '' ? null : $this->totp->matchingStep($secret, $code);
-        } catch (\Throwable $exception) {
-            report($exception);
-
-            return false;
-        }
-
-        if ($step === null) {
-            return false;
-        }
-
-        try {
-            return DB::transaction(function () use ($user, $secret, $step): bool {
-                /** @var User|null $lockedUser */
-                $lockedUser = User::query()->lockForUpdate()->find($user->getAuthIdentifier());
-                if (! $lockedUser || ! hash_equals($secret, (string) $lockedUser->admin_totp_secret)) {
-                    return false;
-                }
-
-                if ($lockedUser->admin_totp_last_used_step !== null
-                    && $step <= (int) $lockedUser->admin_totp_last_used_step) {
-                    return false;
-                }
-
-                $lockedUser->forceFill(['admin_totp_last_used_step' => $step])->save();
-
-                return true;
-            });
-        } catch (\Throwable $exception) {
-            report($exception);
-
-            return false;
-        }
-    }
-
-    private function consumeRecoveryCode(User $user, string $code): bool
-    {
-        if (preg_match('/^[A-Za-z0-9-]{8,20}$/D', $code) !== 1) {
-            return false;
-        }
-
-        $candidate = $this->totp->hashRecoveryCode($code);
-
-        return DB::transaction(function () use ($user, $candidate): bool {
-            /** @var User|null $lockedUser */
-            $lockedUser = User::query()->lockForUpdate()->find($user->getAuthIdentifier());
-            if (! $lockedUser) {
-                return false;
-            }
-
-            $hashes = array_values(array_filter(
-                is_array($lockedUser->admin_mfa_backup_codes) ? $lockedUser->admin_mfa_backup_codes : [],
-                'is_string'
-            ));
-            foreach ($hashes as $index => $hash) {
-                if (hash_equals($hash, $candidate)) {
-                    unset($hashes[$index]);
-                    $lockedUser->forceFill(['admin_mfa_backup_codes' => array_values($hashes)])->save();
-
-                    return true;
-                }
-            }
-
-            return false;
-        });
     }
 
     private function markVerified(Request $request, int $userId, string $secret): void

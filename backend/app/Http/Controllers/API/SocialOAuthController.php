@@ -11,11 +11,13 @@ use App\Http\Responses\SocialLoginResponse;
 use App\Models\ApiToken;
 use App\Models\SocialOAuthAttempt;
 use App\Models\User;
+use App\Services\ApiResponseService;
 use App\Services\SocialAuthProviderRegistry;
 use App\Services\SocialLoginAction;
 use App\Services\SocialOAuthAttemptService;
 use App\Support\FacebookGraphVersion;
 use App\Support\RoknLocale;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -30,7 +32,8 @@ final class SocialOAuthController extends Controller
 {
     public function __construct(
         private readonly SocialAuthProviderRegistry $socialProviders,
-        private readonly SocialOAuthAttemptService $attempts
+        private readonly SocialOAuthAttemptService $attempts,
+        private readonly ApiResponseService $responses
     ) {}
 
     public function start(Request $request, string $socialProvider): RedirectResponse
@@ -213,13 +216,7 @@ final class SocialOAuthController extends Controller
         // burn the legitimate app's one-time completion code.
         $attempt = $this->attempts->inspectCompletion((string) $validated['code']);
         if (! $attempt) {
-            return response()->json([
-                'status' => 410,
-                'success' => false,
-                'code' => 'social_login_expired',
-                'message' => "انتهت محاولة تسجيل الدخول\nابدأ مرة أخرى",
-                'data' => null,
-            ], 410);
+            return $this->loginExpired();
         }
 
         // Browser checkout issues a restricted cookie session, not an app
@@ -234,25 +231,13 @@ final class SocialOAuthController extends Controller
             // non-consuming so an attacker cannot burn the real app's code.
             $this->attempts->consumeCompletion((string) $validated['code']);
 
-            return response()->json([
-                'status' => 410,
-                'success' => false,
-                'code' => 'social_login_expired',
-                'message' => "انتهت محاولة تسجيل الدخول\nابدأ مرة أخرى",
-                'data' => null,
-            ], 410);
+            return $this->loginExpired();
         }
 
         $challenge = trim((string) $attempt->code_challenge);
         $verifier = trim((string) ($validated['code_verifier'] ?? ''));
         if ($challenge === '' || $verifier === '' || ! hash_equals($challenge, $this->pkceChallenge($verifier))) {
-            return response()->json([
-                'status' => 422,
-                'success' => false,
-                'code' => 'social_login_pkce_mismatch',
-                'message' => "تعذر إكمال محاولة تسجيل الدخول\nابدأ من جديد",
-                'data' => null,
-            ], 422);
+            return $this->responses->error("تعذر إكمال محاولة تسجيل الدخول\nابدأ من جديد", 422, null, ['code' => 'social_login_pkce_mismatch']);
         }
 
         if ($attempt->completion_consumed_at) {
@@ -260,24 +245,12 @@ final class SocialOAuthController extends Controller
         }
 
         if (empty($attempt->encrypted_token)) {
-            return response()->json([
-                'status' => 410,
-                'success' => false,
-                'code' => 'social_login_expired',
-                'message' => "انتهت محاولة تسجيل الدخول\nابدأ مرة أخرى",
-                'data' => null,
-            ], 410);
+            return $this->loginExpired();
         }
 
         $claimedAttempt = $this->attempts->claimCompletion((string) $validated['code']);
         if (! $claimedAttempt) {
-            return response()->json([
-                'status' => 409,
-                'success' => false,
-                'code' => 'social_login_in_progress',
-                'message' => "جارٍ إكمال تسجيل الدخول\nحاول بعد قليل",
-                'data' => null,
-            ], 409);
+            return $this->responses->error("جارٍ إكمال تسجيل الدخول\nحاول بعد قليل", 409, null, ['code' => 'social_login_in_progress']);
         }
         try {
             $providerToken = Crypt::decryptString((string) $claimedAttempt->encrypted_token);
@@ -285,13 +258,7 @@ final class SocialOAuthController extends Controller
             report($exception);
             $this->attempts->finalizeCompletion($claimedAttempt);
 
-            return response()->json([
-                'status' => 410,
-                'success' => false,
-                'code' => 'social_login_expired',
-                'message' => "انتهت محاولة تسجيل الدخول\nابدأ مرة أخرى",
-                'data' => null,
-            ], 410);
+            return $this->loginExpired();
         }
 
         try {
@@ -337,13 +304,7 @@ final class SocialOAuthController extends Controller
                             ->update(['revoked_at' => now()]);
                     }
 
-                    return response()->json([
-                        'status' => 409,
-                        'success' => false,
-                        'code' => 'social_login_in_progress',
-                        'message' => "جارٍ إكمال تسجيل الدخول\nحاول بعد قليل",
-                        'data' => null,
-                    ], 409);
+                    return $this->responses->error("جارٍ إكمال تسجيل الدخول\nحاول بعد قليل", 409, null, ['code' => 'social_login_in_progress']);
                 }
             } catch (\Throwable $exception) {
                 // Identity verification and token issuance already succeeded.
@@ -370,13 +331,7 @@ final class SocialOAuthController extends Controller
     private function replayCompletedSession(SocialOAuthAttempt $attempt)
     {
         if (empty($attempt->encrypted_session_response)) {
-            return response()->json([
-                'status' => 410,
-                'success' => false,
-                'code' => 'social_login_expired',
-                'message' => "انتهت محاولة تسجيل الدخول\nابدأ مرة أخرى",
-                'data' => null,
-            ], 410);
+            return $this->loginExpired();
         }
 
         try {
@@ -415,14 +370,18 @@ final class SocialOAuthController extends Controller
         } catch (\Throwable $exception) {
             report($exception);
 
-            return response()->json([
-                'status' => 410,
-                'success' => false,
-                'code' => 'social_login_expired',
-                'message' => "انتهت محاولة تسجيل الدخول\nابدأ مرة أخرى",
-                'data' => null,
-            ], 410);
+            return $this->loginExpired();
         }
+    }
+
+    private function loginExpired(): JsonResponse
+    {
+        return $this->responses->error(
+            "انتهت محاولة تسجيل الدخول\nابدأ مرة أخرى",
+            410,
+            null,
+            ['code' => 'social_login_expired']
+        );
     }
 
     private function authorizationUrl(string $provider, string $state, ?string $nonce = null): string

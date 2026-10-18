@@ -6,6 +6,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClientEvent;
+use App\Services\ApiResponseService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -43,6 +44,8 @@ final class ClientEventController extends Controller
         'request_id',
         'occurred_at',
     ];
+
+    public function __construct(private readonly ApiResponseService $responses) {}
 
     public function store(Request $request): JsonResponse
     {
@@ -111,22 +114,14 @@ final class ClientEventController extends Controller
 
             // The client outbox retries 5xx. Returning a false 202 here made a
             // database outage silently erase the only evidence of the outage.
-            return response()->json([
-                'status' => 503,
-                'success' => false,
-                'message' => 'تعذر حفظ الحدث الآن',
-                'data' => ['accepted' => false, 'retryable' => true],
-                'accepted' => false,
-                'retryable' => true,
-            ], 503);
+            return $this->responses->error(
+                'تعذر حفظ الحدث الآن',
+                503,
+                ['accepted' => false, 'retryable' => true],
+                ['accepted' => false, 'retryable' => true]
+            );
         }
 
-        return response()->json([
-            'status' => 202,
-            'success' => true,
-            'message' => 'تم حفظ الحدث',
-            'data' => ['accepted' => true],
-            'accepted' => true,
-        ], 202);
+        return $this->responses->success(['accepted' => true], 'تم حفظ الحدث', 202, ['accepted' => true]);
     }
 }

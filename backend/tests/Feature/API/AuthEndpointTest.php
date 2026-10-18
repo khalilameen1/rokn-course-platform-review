@@ -15,13 +15,17 @@ use App\Models\UserDeviceToken;
 use App\Services\DeviceLoginService;
 use App\Services\SocialOAuthAttemptService;
 use App\Services\WelcomeRewardService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * Authentication contract tests for Rokn's social-only mobile sign-in.
@@ -570,6 +574,146 @@ class AuthEndpointTest extends ApiTestCase
         ]);
     }
 
+    public function test_revoking_other_sessions_keeps_this_session_and_retires_their_push_registrations(): void
+    {
+        $currentDeviceId = (string) Str::uuid();
+        $otherDeviceId = (string) Str::uuid();
+        $currentToken = $this->user->generateApiToken(session: ['device_id' => $currentDeviceId]);
+        $otherToken = $this->user->generateApiToken(session: ['device_id' => $otherDeviceId]);
+        $otherTokenAgain = $this->user->generateApiToken(session: ['device_id' => $otherDeviceId]);
+        foreach ([$currentDeviceId => 'current-device-push', $otherDeviceId => 'other-device-push'] as $deviceId => $push) {
+            UserDeviceToken::query()->create([
+                'user_id' => $this->user->id,
+                'device_token' => $push,
+                'device_type' => 'android',
+                'device_os' => 'android',
+                'device_id' => $deviceId,
+            ]);
+        }
+
+        $this->app['auth']->forgetGuards();
+        $this->withToken($currentToken)
+            ->deleteJson('/api/v1/user/sessions')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'تم تسجيل الخروج من الأجهزة الأخرى')
+            ->assertJsonPath('data.revoked_count', 2);
+
+        self::assertNull(ApiToken::query()->find(hash('sha256', $currentToken))?->revoked_at);
+        self::assertNotNull(ApiToken::query()->find(hash('sha256', $otherToken))?->revoked_at);
+        self::assertNotNull(ApiToken::query()->find(hash('sha256', $otherTokenAgain))?->revoked_at);
+        $this->assertDatabaseHas('user_device_tokens', ['device_token' => 'current-device-push']);
+        $this->assertDatabaseMissing('user_device_tokens', ['device_token' => 'other-device-push']);
+
+        // Nothing is left to end; the request stays a successful no-op.
+        $this->app['auth']->forgetGuards();
+        $this->withToken($currentToken)
+            ->deleteJson('/api/v1/user/sessions')
+            ->assertOk()
+            ->assertJsonPath('message', 'لا توجد جلسات أخرى')
+            ->assertJsonPath('data.revoked_count', 0);
+    }
+
+    public function test_revoking_other_sessions_requires_a_session_bound_bearer(): void
+    {
+        $legacyToken = $this->user->generateApiToken();
+        $otherToken = $this->user->generateApiToken();
+        ApiToken::query()->whereKey(hash('sha256', $legacyToken))->update(['session_id' => null]);
+
+        $this->app['auth']->forgetGuards();
+        $this->withToken($legacyToken)
+            ->deleteJson('/api/v1/user/sessions')
+            ->assertStatus(409)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', 'current_session_unavailable')
+            ->assertJsonPath('message', 'حدّث التطبيق ثم حاول مرة أخرى');
+
+        self::assertNull(ApiToken::query()->find(hash('sha256', $otherToken))?->revoked_at);
+    }
+
+    public function test_dashboard_revocation_ends_one_session_and_its_installation_push_binding(): void
+    {
+        $deviceId = (string) Str::uuid();
+        $revokedToken = $this->user->generateApiToken(session: ['device_id' => $deviceId]);
+        $sameDeviceToken = $this->user->generateApiToken(session: ['device_id' => $deviceId]);
+        UserDeviceToken::query()->create([
+            'user_id' => $this->user->id,
+            'device_token' => 'dashboard-revoked-push',
+            'device_type' => 'android',
+            'device_os' => 'android',
+            'device_id' => $deviceId,
+        ]);
+        $sessionId = (string) ApiToken::query()
+            ->where('token', hash('sha256', $revokedToken))
+            ->value('session_id');
+
+        app(DeviceLoginService::class)->revokeSessionFromDashboard($sessionId);
+
+        self::assertNotNull(ApiToken::query()->find(hash('sha256', $revokedToken))?->revoked_at);
+        self::assertNull(ApiToken::query()->find(hash('sha256', $sameDeviceToken))?->revoked_at);
+        $this->assertDatabaseMissing('user_device_tokens', ['device_token' => 'dashboard-revoked-push']);
+
+        $this->expectException(ModelNotFoundException::class);
+        app(DeviceLoginService::class)->revokeSessionFromDashboard((string) Str::uuid());
+    }
+
+    public function test_apple_revocation_outage_refuses_account_deletion_with_a_stable_code(): void
+    {
+        $this->configureAppleTestKey();
+        Schema::table('social_accounts', function (Blueprint $table): void {
+            $table->string('apple_client_id')->nullable();
+            $table->text('apple_refresh_token')->nullable();
+        });
+        Http::fake(['https://appleid.apple.com/auth/revoke' => Http::response([], 503)]);
+        SocialAccount::query()->create([
+            'user_id' => $this->user->id,
+            'provider' => 'apple',
+            'provider_user_id' => 'apple-owner-1',
+            'apple_client_id' => 'com.rokn',
+            'apple_refresh_token' => 'apple-delete-token',
+            'last_verified_at' => now(),
+        ]);
+        $reauthToken = $this->user->generateApiToken('apple', 'apple-owner-1');
+
+        $this->app['auth']->forgetGuards();
+        $this->withToken($reauthToken)->postJson('/api/v1/delete-account')
+            ->assertStatus(503)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', 'apple_revocation_unavailable')
+            ->assertJsonPath('retryable', true);
+
+        $this->assertTrue((bool) $this->user->fresh()->active);
+        $this->assertNull($this->user->fresh()->deleted_at);
+    }
+
+    public function test_unexpected_account_deletion_failure_is_reported_and_leaves_the_account_intact(): void
+    {
+        Exceptions::fake();
+        SocialAccount::query()->create([
+            'user_id' => $this->user->id,
+            'provider' => 'facebook',
+            'provider_user_id' => 'facebook-owner-500',
+            'last_verified_at' => now(),
+        ]);
+        $reauthToken = $this->user->generateApiToken('facebook', 'facebook-owner-500');
+        User::saving(static function (User $user): void {
+            if ($user->isDirty('active') && ! $user->active) {
+                throw new RuntimeException('Simulated failure while erasing the account.');
+            }
+        });
+
+        $this->app['auth']->forgetGuards();
+        $this->withToken($reauthToken)->postJson('/api/v1/delete-account')
+            ->assertStatus(500)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', 'server_error')
+            ->assertJsonPath('retryable', true);
+
+        Exceptions::assertReported(RuntimeException::class);
+        $this->assertTrue((bool) $this->user->fresh()->active);
+        $this->assertNull($this->user->fresh()->deleted_at);
+    }
+
     public function test_auth_methods_hide_half_configured_tiktok_and_blank_credentials(): void
     {
         config()->set([
@@ -1017,6 +1161,26 @@ class AuthEndpointTest extends ApiTestCase
         $this->assertDatabaseMissing('wallet_transactions', [
             'user_id' => $crossProviderReplacement->id,
             'category' => 'welcome_bonus',
+        ]);
+    }
+
+    private function configureAppleTestKey(): void
+    {
+        $configurationPath = storage_path('openssl-test.cnf');
+        file_put_contents($configurationPath, "[ req ]\ndistinguished_name = req_distinguished_name\n[ req_distinguished_name ]\n");
+        $key = openssl_pkey_new([
+            'config' => $configurationPath,
+            'private_key_type' => OPENSSL_KEYTYPE_EC,
+            'curve_name' => 'prime256v1',
+        ]);
+        self::assertInstanceOf(\OpenSSLAsymmetricKey::class, $key);
+        self::assertTrue(openssl_pkey_export($key, $pem, null, ['config' => $configurationPath]));
+        $keyPath = storage_path('apple-test.p8');
+        file_put_contents($keyPath, $pem);
+        config([
+            'services.apple.client_id' => 'com.rokn', 'services.apple.team_id' => 'TESTTEAM01',
+            'services.apple.key_id' => 'TESTKEY001', 'services.apple.key_file' => $keyPath,
+            'services.apple.private_key_base64' => null,
         ]);
     }
 }

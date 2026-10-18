@@ -6,14 +6,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ApiToken;
-use App\Models\UserDeviceToken;
+use App\Services\DeviceLoginService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class UserSessionController extends Controller
 {
+    public function __construct(private readonly DeviceLoginService $devices) {}
+
     public function index(): View
     {
         $table = (new ApiToken)->getTable();
@@ -42,20 +43,7 @@ class UserSessionController extends Controller
 
     public function destroy(string $sessionId): RedirectResponse
     {
-        DB::transaction(function () use ($sessionId): void {
-            $session = ApiToken::query()
-                ->where('session_id', $sessionId)
-                ->lockForUpdate()
-                ->firstOrFail();
-            $deviceId = trim((string) $session->device_id);
-            $session->revoke();
-            if ($deviceId !== '' && Schema::hasColumn('user_device_tokens', 'device_id')) {
-                UserDeviceToken::query()
-                    ->where('user_id', $session->user_id)
-                    ->where('device_id', $deviceId)
-                    ->delete();
-            }
-        }, 3);
+        $this->devices->revokeSessionFromDashboard($sessionId);
 
         return back()->with('success', 'تم إنهاء جلسة الجهاز.');
     }
