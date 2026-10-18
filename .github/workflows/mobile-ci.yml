@@ -9,7 +9,7 @@ on:
       - "mobile/**"
       - ".github/workflows/mobile-ci.yml"
   push:
-    branches: [main, khalil]
+    branches: [main, khalil, codex/launch-fixes-20261017]
     paths:
       - "mobile/**"
       - ".github/workflows/mobile-ci.yml"
