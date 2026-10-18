@@ -1,0 +1,33 @@
+# gitleaks (https://github.com/gitleaks/gitleaks) with its default rules.
+# Every exception below was reviewed against the full history on
+# 2026-10-18; each one names why the flagged value is not a secret. Keep
+# exceptions narrow (path + rule) so a real credential in the same file is
+# still caught by every other rule.
+
+title = "Rokn secret scan"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Checksums, not secrets: Flyway-style migration lock and CocoaPods lockfile"
+paths = [
+    '''^backend/database/migration-lock\.json$''',
+    '''^mobile/ios/Podfile\.lock$''',
+]
+
+[[allowlists]]
+description = "Test fixtures matched by the entropy rule: idempotency and lease keys, RFC 6238 TOTP vector"
+targetRules = ["generic-api-key"]
+paths = ['''^backend/tests/''']
+
+[[allowlists]]
+description = "Placeholder PEM bodies in tests (the body is the word 'fixture')"
+targetRules = ["private-key"]
+regexTarget = "line"
+regexes = ['''BEGIN PRIVATE KEY-----\\nfixture\\n''']
+
+[[allowlists]]
+description = "Firebase Android client config: its API key is public by design and is restricted to the app's package and signing certificate in Google Cloud (https://firebase.google.com/docs/projects/api-keys)"
+targetRules = ["gcp-api-key", "generic-api-key"]
+paths = ['''^mobile/android/app/google-services\.json$''']

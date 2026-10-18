@@ -1,0 +1,3 @@
+# One-off historical findings reviewed on 2026-10-18 (gitleaks fingerprints).
+# Deleted doc; the bearer value is the placeholder YOUR_TOKEN.
+b6b3ba4d244e3bff99da8bf77dfe175855635103:backend/course_code_functionality_report.md:curl-auth-header:116
