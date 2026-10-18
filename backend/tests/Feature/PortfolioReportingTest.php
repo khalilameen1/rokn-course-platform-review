@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\FeedbackReport;
+use App\Models\SupportCaseEvent;
 use App\Models\User;
 use App\Services\PortfolioReviewReadService;
 use App\Services\PublicPortfolioService;
@@ -70,6 +71,28 @@ final class PortfolioReportingTest extends TestCase
         $owner->forceFill(['portfolio_sharing_suspended_at' => now()])->save();
         $this->post(route('portfolio.report', $owner->portfolio_slug), ['message' => 'محتوى غير مناسب'])->assertNotFound();
         self::assertSame(0, FeedbackReport::query()->count());
+    }
+
+    public function test_repeating_a_sharing_decision_records_one_case_event(): void
+    {
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $owner = $this->owner();
+        $this->approveFixture($owner);
+        $this->post(route('portfolio.report', $owner->portfolio_slug), ['message' => 'محتوى غير مناسب للنشر'])->assertRedirect();
+        $report = FeedbackReport::query()->firstOrFail();
+        $url = route('admin.feedback.portfolio-sharing', $report);
+        $admin = $this->owner('admin');
+
+        $this->actingAs($admin, 'web')->post($url, ['suspend' => true])->assertRedirect();
+        $suspendedAt = $owner->fresh()->portfolio_sharing_suspended_at;
+        $this->travel(5)->minutes();
+        $this->post($url, ['suspend' => true])->assertRedirect()->assertSessionHas('success');
+
+        self::assertEquals($suspendedAt, $owner->fresh()->portfolio_sharing_suspended_at);
+        $events = SupportCaseEvent::query()->where('feedback_report_id', $report->id);
+        self::assertSame(1, (clone $events)->where('event_type', 'portfolio_sharing_suspended')->count());
+        self::assertSame((int) $admin->id, (int) (clone $events)->where('event_type', 'portfolio_sharing_suspended')->value('actor_id'));
+        self::assertSame(0, (clone $events)->where('event_type', 'portfolio_sharing_restored')->count());
     }
 
     private function approveFixture(User $owner): void

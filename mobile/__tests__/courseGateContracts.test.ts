@@ -39,26 +39,10 @@ describe('course gate contracts', () => {
   });
 
   it('keeps project portfolio publication explicit and entitlement gated', () => {
-    const portfolioController = source(
-      '../backend/app/Http/Controllers/API/PortfolioController.php',
-    );
-    const portfolioMutations = source(
-      '../backend/app/Services/PortfolioMediaMutationService.php',
-    );
-    const portfolioVideoUploads = source(
-      '../backend/app/Services/PortfolioVideoUploadService.php',
-    );
+    // The backend rules (a portfolio item starts unpublished, finalize needs
+    // uploaded media, entitlement is checked) are proven by backend HTTP
+    // tests: PortfolioEndpointTest and PortfolioPublicationTest.
     const portfolioState = source('src/screens/Profile/portfolioState.ts');
-
-    expect(portfolioController).toContain('submissionAllowsPortfolio');
-    expect(portfolioController).toContain("'is_public' => false");
-    expect(portfolioController).not.toContain(
-      "forceFill(['is_public' => true])",
-    );
-    expect(portfolioVideoUploads).not.toContain(
-      "forceFill(['is_public' => true])",
-    );
-    expect(portfolioMutations).toContain('if ($uploadedCount < 1)');
     expect(portfolioState).toContain(
       'const hasUploadedWork = portfolioMediaCount(item) > 0',
     );

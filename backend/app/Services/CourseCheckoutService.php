@@ -61,6 +61,20 @@ final readonly class CourseCheckoutService
         return $checkout ? $this->payload($checkout) : null;
     }
 
+    /**
+     * The checkout a learner must settle or cancel before starting another,
+     * returned beside a checkout_already_pending refusal.
+     *
+     * @return array{id: string, course_id: int}|null
+     */
+    public function awaitingSettlementSummary(User $user): ?array
+    {
+        $pending = CourseCheckout::query()->where('user_id', $user->id)
+            ->awaitingSettlement()->latest('id')->first();
+
+        return $pending ? ['id' => $pending->public_id, 'course_id' => (int) $pending->course_id] : null;
+    }
+
     public function authorize(User $user, string $id): array
     {
         return DB::transaction(function () use ($user, $id): array {

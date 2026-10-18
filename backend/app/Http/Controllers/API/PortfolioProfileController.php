@@ -6,20 +6,18 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Services\PortfolioModerationService;
-use App\Services\PortfolioShareIdentityService;
+use App\Services\ApiResponseService;
+use App\Services\PortfolioProfileService;
 use App\Services\SafeExternalUrl;
-use App\Support\RoknPublicUrl;
 use App\Support\UnicodeText;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 final class PortfolioProfileController extends Controller
 {
     public function __construct(
-        private PortfolioShareIdentityService $portfolioShares,
-        private PortfolioModerationService $moderation
+        private readonly PortfolioProfileService $profiles,
+        private readonly ApiResponseService $responses
     ) {}
 
     public function show(): JsonResponse
@@ -27,12 +25,7 @@ final class PortfolioProfileController extends Controller
         /** @var User $user */
         $user = auth('api')->user();
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل بيانات المعرض',
-            'data' => $this->profilePayload($user),
-        ]);
+        return $this->responses->success($this->profiles->profile($user), 'تم تحميل بيانات المعرض');
     }
 
     public function update(Request $request): JsonResponse
@@ -82,51 +75,6 @@ final class PortfolioProfileController extends Controller
             ],
         ]);
 
-        $user = DB::transaction(function () use ($user, $validated): User {
-            /** @var User $locked */
-            $locked = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
-            $locked->update($validated);
-
-            return $locked->fresh();
-        });
-
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحديث بيانات المعرض',
-            'data' => $this->profilePayload($user->fresh()),
-        ]);
-    }
-
-    private function profilePayload(User $user): array
-    {
-        $slug = $this->portfolioShares->ensure($user);
-        $sharing = $this->moderation->reconcileOwnerState($user);
-
-        return [
-            'slug' => $slug,
-            'share_mode' => 'unlisted',
-            ...$sharing,
-            'headline' => $user->portfolio_headline,
-            'skills' => $user->portfolio_skills ?? [],
-            'links' => collect($user->portfolio_links ?? [])
-                ->map(function ($link): ?array {
-                    $safeUrl = SafeExternalUrl::sanitize($link['url'] ?? null);
-                    if (! $safeUrl) {
-                        return null;
-                    }
-
-                    return [
-                        'label' => (string) ($link['label'] ?? ''),
-                        'url' => $safeUrl,
-                    ];
-                })
-                ->filter()
-                ->values()
-                ->all(),
-            // Live whenever an approved version is published, including while
-            // newer changes wait for review (see has_unpublished_changes).
-            'public_url' => $sharing['published'] ? RoknPublicUrl::portfolio($slug) : null,
-        ];
+        return $this->responses->success($this->profiles->update($user, $validated), 'تم تحديث بيانات المعرض');
     }
 }

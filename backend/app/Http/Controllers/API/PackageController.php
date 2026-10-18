@@ -6,6 +6,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Package;
+use App\Services\ApiResponseService;
 use App\Services\PackageChannelPricingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -13,7 +14,10 @@ use Throwable;
 
 final class PackageController extends Controller
 {
-    public function __construct(private readonly PackageChannelPricingService $pricing) {}
+    public function __construct(
+        private readonly PackageChannelPricingService $pricing,
+        private readonly ApiResponseService $responses
+    ) {}
 
     public function index(): JsonResponse
     {
@@ -31,15 +35,11 @@ final class PackageController extends Controller
         try {
             $packages = Cache::remember('public-packages:v2', 60, $load);
         } catch (Throwable) {
+            // A cache outage serves the catalogue uncached instead of failing.
             $packages = $load();
         }
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل باقات العملات',
-            'data' => $packages,
-        ]);
+        return $this->responses->success($packages, 'تم تحميل باقات العملات');
     }
 
     public function show(int|string $id): JsonResponse
@@ -52,19 +52,9 @@ final class PackageController extends Controller
             ->find($id);
 
         if (! $package) {
-            return response()->json([
-                'status' => 404,
-                'success' => false,
-                'message' => 'الباقة غير متاحة',
-                'data' => null,
-            ], 404);
+            return $this->responses->error('الباقة غير متاحة', 404);
         }
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل الباقة',
-            'data' => $this->pricing->packagePayload($package),
-        ]);
+        return $this->responses->success($this->pricing->packagePayload($package), 'تم تحميل الباقة');
     }
 }

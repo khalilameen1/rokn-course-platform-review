@@ -6,67 +6,34 @@ namespace App\Http\Controllers\API;
 
 use App\Exceptions\PortfolioOperationException;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\PortfolioItemResource;
-use App\Models\Course;
-use App\Models\PortfolioItem;
-use App\Models\Project;
-use App\Models\ProjectSubmission;
 use App\Models\User;
-use App\Services\CourseAccessPlanService;
-use App\Services\CourseEntitlementService;
-use App\Services\CourseRevisionLearnerReadService;
-use App\Services\CourseRevisionResolver;
+use App\Services\ApiResponseService;
+use App\Services\PortfolioItemService;
 use App\Services\PortfolioMediaMutationService;
-use App\Services\PortfolioReviewReadService;
 use App\Services\PortfolioUploadAccessService;
 use App\Services\SafeExternalUrl;
-use App\Support\ProjectSubmissionEvaluationSnapshot;
 use App\Support\UnicodeText;
 use Illuminate\Contracts\Cache\LockTimeoutException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 final class PortfolioController extends Controller
 {
     public function __construct(
-        private CourseEntitlementService $courseAccess,
-        private CourseAccessPlanService $accessPlans,
-        private PortfolioMediaMutationService $mediaMutations,
-        private CourseRevisionLearnerReadService $revisionReads,
-        private CourseRevisionResolver $revisionResolver,
-        private PortfolioUploadAccessService $uploadAccess,
-        private PortfolioReviewReadService $reviews
+        private readonly PortfolioItemService $items,
+        private readonly PortfolioMediaMutationService $mediaMutations,
+        private readonly PortfolioUploadAccessService $uploadAccess,
+        private readonly ApiResponseService $responses
     ) {}
-
-    /** @return list<int> */
-    private function liveItemIds(User $owner): array
-    {
-        $live = $this->reviews->livePublication($owner);
-
-        return array_map(static fn (array $project): int => (int) $project['item']->id, $live['projects'] ?? []);
-    }
-
-    private function itemResource(PortfolioItem $item): PortfolioItemResource
-    {
-        $owner = $item->relationLoaded('user') ? $item->user : User::query()->find($item->user_id);
-
-        return (new PortfolioItemResource($item))->withLiveItemIds($owner ? $this->liveItemIds($owner) : []);
-    }
 
     public function uploadAccess(): JsonResponse
     {
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم التحقق من إمكانية إضافة أعمال',
-            'data' => $this->uploadAccess->decision(auth('api')->user()),
-        ]);
+        return $this->responses->success(
+            $this->uploadAccess->decision($this->user()),
+            'تم التحقق من إمكانية إضافة أعمال'
+        );
     }
 
     /**
@@ -79,62 +46,20 @@ final class PortfolioController extends Controller
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:100',
         ]);
-        $user = auth('api')->user();
-        $summary = $request->boolean('summary');
-        $query = $user->portfolioItems()
-            ->available()
-            ->withCount('mediaFiles')
-            ->with([
-                'mediaFiles' => function ($media) use ($summary): void {
-                    if ($summary) {
-                        // The mobile gallery needs a cover only. Excluding video
-                        // rows here also prevents PortfolioMediaResource from
-                        // performing one Bunny inspection for every saved video.
-                        $media->where('file_type', 'image')->limit(1);
-                    }
-                },
-                'course',
-            ])
-            ->orderByDesc('is_featured')
-            ->orderBy('sort_order')
-            ->latest('id');
-        $pagination = null;
-        if ($request->filled('page') || $request->filled('per_page')) {
-            $paginator = $query->paginate(
-                (int) ($validated['per_page'] ?? 30),
-                ['*'],
-                'page',
-                (int) ($validated['page'] ?? 1)
-            );
-            $items = collect($paginator->items());
-            $pagination = [
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
-            ];
-        } else {
-            // Keep the established mobile response intact. Clients that can
-            // render large histories opt into the page contract above.
-            $items = $query->get();
-        }
-
-        $liveItemIds = $this->liveItemIds($user);
-        $resources = PortfolioItemResource::collection($items);
-        $resources->collection->each(
-            fn (PortfolioItemResource $resource) => $resource->withLiveItemIds($liveItemIds)
+        // Clients that can render large histories opt into the page contract.
+        $paginated = $request->filled('page') || $request->filled('per_page');
+        $list = $this->items->list(
+            $this->user(),
+            $request->boolean('summary'),
+            $paginated ? (int) ($validated['page'] ?? 1) : null,
+            $paginated ? (int) ($validated['per_page'] ?? 30) : null
         );
-        $payload = [
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل المشروعات',
-            'data' => $resources,
-        ];
-        if ($pagination !== null) {
-            $payload['pagination'] = $pagination;
-        }
 
-        return response()->json($payload);
+        return $this->responses->success(
+            $list['items'],
+            'تم تحميل المشروعات',
+            additional: $list['pagination'] !== null ? ['pagination' => $list['pagination']] : []
+        );
     }
 
     /** Passed course projects that have not yet been added to this portfolio. */
@@ -144,97 +69,14 @@ final class PortfolioController extends Controller
             'per_page' => 'nullable|integer|min:1|max:50',
         ]);
 
-        $user = auth('api')->user();
-        $usedProjectIds = $user->portfolioItems()
-            ->whereNotNull('source_project_id')
-            ->pluck('source_project_id');
-        $usedCurrentProjectIds = collect($this->revisionResolver->currentLearnerEntityMap(
-            Project::class,
-            $usedProjectIds
-        ))->values()->unique()->values();
-
-        $submissionProjectIds = ProjectSubmission::query()
-            ->where('user_id', $user->id)
-            ->where('review_status', ProjectSubmission::STATUS_PASSED)
-            ->distinct()
-            ->pluck('project_id');
-        $candidateProjectIds = collect($this->revisionResolver->currentLearnerEntityMap(
-            Project::class,
-            $submissionProjectIds
-        ))->values()->unique()->values();
-
-        $projects = Project::query()
-            ->whereIn('id', $candidateProjectIds)
-            ->whereHas('section.course', fn ($courses) => $courses
-                ->where('is_coming_soon', false))
-            ->when($usedCurrentProjectIds->isNotEmpty(), fn ($query) => $query->whereNotIn('id', $usedCurrentProjectIds)
-            )
-            ->with([
-                'section.course:id,name_ar,name_en,image',
-                'section.module:id,course_id,title,title_ar,title_en,order',
-            ])->get()->keyBy('id');
-        $eligible = $this->revisionReads
-            ->projectSubmissions((int) $user->id, $projects->keys())
-            ->filter(fn (ProjectSubmission $row): bool => $row->reviewOutcome()['passed'] && $this->submissionAllowsPortfolio($row)
-            )
-            ->map(function (ProjectSubmission $row, int $currentId) use ($projects) {
-                $row->setRelation('project', $projects->get($currentId));
-                $row->project_id = $currentId;
-
-                return $row;
-            })->sortByDesc('updated_at')->values();
-        $perPage = (int) ($validated['per_page'] ?? 20);
-        $page = max(1, (int) $request->input('page', 1));
-        $evaluations = new LengthAwarePaginator(
-            $eligible->forPage($page, $perPage)->values(),
-            $eligible->count(),
-            $perPage,
-            $page,
-            ['path' => $request->url(), 'query' => $request->query()]
+        return $this->responses->success(
+            $this->items->eligibleProjects(
+                $this->user(),
+                max(1, (int) $request->input('page', 1)),
+                (int) ($validated['per_page'] ?? 20)
+            ),
+            'تم تحميل المشروعات المتاحة'
         );
-
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل المشروعات المتاحة',
-            'data' => [
-                'items' => collect($evaluations->items())->map(function (ProjectSubmission $submission) {
-                    $project = $submission->project;
-                    $section = $project?->section;
-                    $outcome = $submission->reviewOutcome();
-
-                    return [
-                        'project_id' => $project?->id,
-                        'course_section_id' => $section?->id,
-                        'title' => $section?->title,
-                        'requirements' => $project?->requirements_text,
-                        'course' => $section?->course ? [
-                            'id' => $section->course->id,
-                            'title' => $section->course->name_ar,
-                            'title_en' => $section->course->name_en,
-                            'image' => $section->course->image,
-                        ] : null,
-                        'module' => $section?->module ? [
-                            'id' => $section->module->id,
-                            'title' => $section->module->title,
-                            'order' => $section->module->order,
-                        ] : null,
-                        'score' => $outcome['assessment_type'] === 'human_review'
-                            ? $outcome['score']
-                            : null,
-                        'assessment_type' => $outcome['assessment_type'],
-                        'skill_verified' => $outcome['skill_verified'],
-                        'passed_at' => $outcome['reviewed_at'] ?? $submission->updated_at,
-                    ];
-                })->values(),
-                'pagination' => [
-                    'current_page' => $evaluations->currentPage(),
-                    'last_page' => $evaluations->lastPage(),
-                    'per_page' => $evaluations->perPage(),
-                    'total' => $evaluations->total(),
-                ],
-            ],
-        ]);
     }
 
     /**
@@ -271,230 +113,31 @@ final class PortfolioController extends Controller
             'file_types' => 'prohibited',
         ]);
 
-        $user = auth('api')->user();
-        $courseId = $request->filled('course_id') ? $request->integer('course_id') : null;
-        $requestedSourceProjectId = $request->filled('source_project_id')
-            ? $request->integer('source_project_id')
-            : null;
-        $currentSourceProjectId = $requestedSourceProjectId
-            ? $this->currentProjectId($requestedSourceProjectId)
-            : null;
-        $sourceProject = null;
-        $equivalentSourceProjectIds = $currentSourceProjectId
-            ? $this->logicalProjectIds($currentSourceProjectId)
-            : [];
-
-        $requestFingerprint = hash('sha256', json_encode([
-            'title' => trim((string) $request->input('title')),
-            'description' => trim((string) $request->input('description')),
-            'course_id' => $courseId,
-            'source_project_id' => $request->filled('source_project_id')
-                ? $request->integer('source_project_id')
-                : null,
-            'role' => trim((string) $request->input('role')),
-            'tools' => array_values((array) $request->input('tools', [])),
-            'external_url' => trim((string) $request->input('external_url')),
-            'completed_at' => $request->input('completed_at'),
-            'is_featured' => $request->boolean('is_featured'),
-            'sort_order' => $request->integer('sort_order', 0),
-            'expected_media_count' => $request->integer(
-                'expected_media_count',
-                0
-            ),
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-        $clientRequestId = $request->string('client_request_id')->toString();
         try {
-            return Cache::lock(
-                'portfolio-item-create:'.$user->id.':'.strtolower($clientRequestId),
-                30
-            )->block(10, function () use (
-                $user,
-                $request,
-                $requestFingerprint,
-                $courseId,
-                $requestedSourceProjectId,
-                $currentSourceProjectId,
-                $sourceProject,
-                $equivalentSourceProjectIds
-            ): JsonResponse {
-                $existingRequest = $user->portfolioItems()
-                    ->with(['mediaFiles', 'course'])
-                    ->where('client_request_id', $request->string('client_request_id')->toString())
-                    ->first();
-                if ($existingRequest) {
-                    abort_unless(
-                        hash_equals((string) $existingRequest->request_fingerprint, $requestFingerprint),
-                        409
-                    );
-
-                    return $this->createdItemResponse($existingRequest, true);
-                }
-
-                $this->uploadAccess->assertAllowed($user);
-
-                if ($currentSourceProjectId) {
-                    if ($user->portfolioItems()
-                        ->whereIn('source_project_id', $equivalentSourceProjectIds)
-                        ->exists()) {
-                        throw ValidationException::withMessages([
-                            'source_project_id' => ['This project is already in your portfolio.'],
-                        ]);
-                    }
-
-                    $sourceProject = $this->currentPublishedProject($currentSourceProjectId);
-                    $sourceSubmission = $this->revisionReads->projectSubmissions(
-                        (int) $user->id,
-                        [$currentSourceProjectId]
-                    )->get($currentSourceProjectId);
-                    if (
-                        ! $sourceSubmission
-                        || ! $sourceSubmission->reviewOutcome()['passed']
-                        || ! $this->submissionAllowsPortfolio($sourceSubmission)
-                        || ! $sourceProject->section
-                    ) {
-                        throw ValidationException::withMessages([
-                            'source_project_id' => ['Only a passed project can be added to the portfolio.'],
-                        ]);
-                    }
-
-                    $projectCourseId = (int) $sourceProject->section->course_id;
-                    if ($courseId && $courseId !== $projectCourseId) {
-                        throw ValidationException::withMessages([
-                            'course_id' => ['The course does not match the selected project.'],
-                        ]);
-                    }
-                    $courseId = $projectCourseId;
-                } elseif ($courseId && ! $this->courseAccess->hasLearningAccess(
-                    (int) $user->id,
-                    $courseId
-                )) {
-                    throw ValidationException::withMessages([
-                        'course_id' => ['Only one of your courses can be linked to this portfolio item.'],
-                    ]);
-                }
-
-                $itemTitle = trim((string) $request->input('title'));
-                if ($itemTitle === '') {
-                    $itemTitle = trim((string) ($sourceProject?->section?->title ?: 'مشروع تطبيقي'));
-                }
-                $itemDescription = $request->filled('description')
-                    ? (string) $request->input('description')
-                    : (string) ($sourceProject?->requirements_text ?? '');
-
-                $item = DB::transaction(function () use (
-                    $user,
-                    $request,
-                    $courseId,
-                    $itemTitle,
-                    $itemDescription,
-                    $requestFingerprint,
-                    $requestedSourceProjectId
-                ): PortfolioItem {
-                    $lockedUser = User::query()
-                        ->whereKey($user->id)
-                        ->lockForUpdate()
-                        ->first();
-                    abort_if(! $lockedUser, 404);
-
-                    $existing = $lockedUser->portfolioItems()
-                        ->with(['mediaFiles', 'course'])
-                        ->where('client_request_id', $request->string('client_request_id')->toString())
-                        ->first();
-                    if ($existing) {
-                        abort_unless(
-                            hash_equals((string) $existing->request_fingerprint, $requestFingerprint),
-                            409
-                        );
-
-                        return $existing;
-                    }
-
-                    $lockedCurrentSourceProjectId = $requestedSourceProjectId
-                        ? $this->currentProjectId($requestedSourceProjectId)
-                        : null;
-                    $currentEquivalentSourceProjectIds = $lockedCurrentSourceProjectId
-                        ? $this->logicalProjectIds($lockedCurrentSourceProjectId)
-                        : [];
-                    if ($currentEquivalentSourceProjectIds !== [] && $lockedUser->portfolioItems()
-                        ->whereIn('source_project_id', $currentEquivalentSourceProjectIds)->exists()) {
-                        throw ValidationException::withMessages([
-                            'source_project_id' => ['This project is already in your portfolio.'],
-                        ]);
-                    }
-
-                    $lockedCourseId = $courseId;
-                    if ($lockedCurrentSourceProjectId) {
-                        $lockedSourceProject = $this->currentPublishedProject($lockedCurrentSourceProjectId);
-                        $lockedCourse = Course::query()
-                            ->whereKey($lockedSourceProject->section->course_id)
-                            ->lockForUpdate()
-                            ->firstOrFail();
-                        $lockedCurrentSourceProjectId = $this->currentProjectId($requestedSourceProjectId);
-                        $lockedSourceProject = $this->currentPublishedProject($lockedCurrentSourceProjectId);
-                        abort_unless(
-                            (int) $lockedSourceProject->section->course_id === (int) $lockedCourse->id,
-                            409
-                        );
-                        $sourceSubmission = $this->revisionReads->projectSubmissions(
-                            (int) $lockedUser->id,
-                            [$lockedCurrentSourceProjectId]
-                        )->get($lockedCurrentSourceProjectId);
-                        if (
-                            ! $sourceSubmission
-                            || ! $sourceSubmission->reviewOutcome()['passed']
-                            || ! $this->submissionAllowsPortfolio($sourceSubmission)
-                            || ! $lockedSourceProject->section
-                        ) {
-                            throw ValidationException::withMessages([
-                                'source_project_id' => ['Only a passed project can be added to the portfolio.'],
-                            ]);
-                        }
-                        $projectCourseId = (int) $lockedSourceProject->section->course_id;
-                        if ($lockedCourseId && $lockedCourseId !== $projectCourseId) {
-                            throw ValidationException::withMessages([
-                                'course_id' => ['The course does not match the selected project.'],
-                            ]);
-                        }
-                        $lockedCourseId = $projectCourseId;
-                    }
-
-                    return $lockedUser->portfolioItems()->create([
-                        'client_request_id' => $request->string('client_request_id')->toString(),
-                        'request_fingerprint' => $requestFingerprint,
-                        'title' => $itemTitle,
-                        'description' => $itemDescription,
-                        'course_id' => $lockedCourseId,
-                        'source_project_id' => $lockedCurrentSourceProjectId,
-                        'slug' => $this->portfolioItemSlug($itemTitle),
-                        'role' => $request->input('role'),
-                        'tools' => $request->input('tools'),
-                        'external_url' => $request->input('external_url'),
-                        'completed_at' => $request->input('completed_at'),
-                        'is_featured' => $request->boolean('is_featured'),
-                        'sort_order' => $request->integer('sort_order', 0),
-                        'expected_media_count' => $request->integer('expected_media_count', 0),
-                        'is_public' => false,
-                    ]);
-                }, 3);
-
-                $item->load(['mediaFiles', 'course']);
-
-                return $this->createdItemResponse($item, false);
-            });
+            $created = $this->items->create($this->user(), $request->string('client_request_id')->toString(), [
+                'title' => $request->input('title'),
+                'description' => $request->filled('description') ? (string) $request->input('description') : null,
+                'course_id' => $request->filled('course_id') ? $request->integer('course_id') : null,
+                'source_project_id' => $request->filled('source_project_id')
+                    ? $request->integer('source_project_id')
+                    : null,
+                'role' => $request->input('role'),
+                'tools' => $request->input('tools'),
+                'external_url' => $request->input('external_url'),
+                'completed_at' => $request->input('completed_at'),
+                'is_featured' => $request->boolean('is_featured'),
+                'sort_order' => $request->integer('sort_order', 0),
+                'expected_media_count' => $request->integer('expected_media_count', 0),
+            ]);
         } catch (LockTimeoutException) {
-            return $this->error("جارٍ حفظ هذا المشروع\nحاول بعد قليل", 409);
+            return $this->responses->error("جارٍ حفظ هذا المشروع\nحاول بعد قليل", 409);
         }
-    }
 
-    private function createdItemResponse(PortfolioItem $item, bool $replayed): JsonResponse
-    {
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تمت إضافة المشروع',
-            'data' => $this->itemResource($item),
-            'replayed' => $replayed,
-        ]);
+        return $this->responses->success(
+            $created['item'],
+            'تمت إضافة المشروع',
+            additional: ['replayed' => $created['replayed']]
+        );
     }
 
     /**
@@ -502,23 +145,12 @@ final class PortfolioController extends Controller
      */
     public function show($id): JsonResponse
     {
-        $user = auth('api')->user();
-        $item = $user->portfolioItems()
-            ->available()
-            ->withCount('mediaFiles')
-            ->with(['mediaFiles', 'course'])
-            ->find($id);
-
+        $item = $this->items->show($this->user(), $id);
         if (! $item) {
-            return $this->error('المشروع غير متاح', 404);
+            return $this->responses->error('المشروع غير متاح', 404);
         }
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل المشروع',
-            'data' => $this->itemResource($item),
-        ]);
+        return $this->responses->success($item, 'تم تحميل المشروع');
     }
 
     /**
@@ -542,51 +174,23 @@ final class PortfolioController extends Controller
             'is_public' => 'nullable|boolean',
             'cover_media_id' => 'nullable|integer|min:1',
         ]);
+        $presentation = [];
+        if ($request->filled('is_public')) {
+            $presentation['is_public'] = $request->boolean('is_public');
+        }
+        if ($request->exists('cover_media_id')) {
+            $presentation['cover_media_id'] = $request->filled('cover_media_id')
+                ? $request->integer('cover_media_id')
+                : null;
+        }
 
-        $user = auth('api')->user();
-        $item = DB::transaction(function () use ($user, $id, $request): PortfolioItem {
-            $lockedUser = User::query()
-                ->whereKey($user->id)
-                ->lockForUpdate()
-                ->first();
-            abort_if(! $lockedUser, 404);
-            $item = $lockedUser->portfolioItems()->lockForUpdate()->find($id);
-            abort_if(! $item, 404);
-            abort_if($item->deletion_started_at !== null, 409);
-
-            $presentation = [];
-            if ($request->filled('is_public')) {
-                $presentation['hidden_at'] = $request->boolean('is_public') ? null : ($item->hidden_at ?? now());
-            }
-            if ($request->exists('cover_media_id')) {
-                $coverId = $request->filled('cover_media_id') ? $request->integer('cover_media_id') : null;
-                if ($coverId !== null && ! $item->mediaFiles()->available()
-                    ->where('file_type', 'image')->whereKey($coverId)->exists()) {
-                    throw ValidationException::withMessages([
-                        'cover_media_id' => ['اختر صورة الغلاف من صور هذا المشروع'],
-                    ]);
-                }
-                $presentation['cover_media_id'] = $coverId;
-            }
-            $item->update($presentation + $request->only([
+        return $this->responses->success(
+            $this->items->update($this->user(), $id, $request->only([
                 'title', 'description', 'role', 'tools', 'external_url', 'completed_at',
                 'is_featured', 'sort_order',
-            ]) + ($request->filled('title')
-                ? ['slug' => $this->portfolioItemSlug(
-                    $request->input('title'),
-                    (string) $item->slug
-                )]
-                : []));
-
-            return $item->fresh(['mediaFiles', 'course']);
-        }, 3);
-
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحديث المشروع',
-            'data' => $this->itemResource($item),
-        ]);
+            ]), $presentation),
+            'تم تحديث المشروع'
+        );
     }
 
     /**
@@ -594,33 +198,33 @@ final class PortfolioController extends Controller
      */
     public function destroy($id): JsonResponse
     {
-        $user = auth('api')->user();
-        $deleted = $this->mediaMutations->deleteItem($user, (int) $id);
+        $deleted = $this->mediaMutations->deleteItem($this->user(), (int) $id);
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم حذف المشروع',
-            'data' => ['already_deleted' => ! $deleted],
-        ]);
+        return $this->responses->success(['already_deleted' => ! $deleted], 'تم حذف المشروع');
     }
 
     /** Publish an intentionally shortened upload after at least one file landed. */
     public function finalize($id): JsonResponse
     {
-        $user = auth('api')->user();
         try {
-            $item = $this->mediaMutations->finalize($user, (int) $id);
+            $item = $this->items->finalize($this->user(), (int) $id);
         } catch (PortfolioOperationException $exception) {
-            return $this->portfolioOperationError($exception);
+            return $this->responses->error(match ($exception->reason) {
+                PortfolioOperationException::INCOMPLETE_ITEM => 'أضف ملفًا واحدًا على الأقل قبل النشر',
+                PortfolioOperationException::MEDIA_NOT_READY => "الملفات ما زالت قيد التجهيز\nحاول بعد قليل",
+                default => 'هذا المشروع غير متاح الآن',
+            }, 409);
         }
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم حفظ المشروع للمراجعة',
-            'data' => $this->itemResource($item),
-        ]);
+        return $this->responses->success($item, 'تم حفظ المشروع للمراجعة');
+    }
+
+    private function user(): User
+    {
+        /** @var User $user */
+        $user = auth('api')->user();
+
+        return $user;
     }
 
     private function normalizePortfolioInput(Request $request): void
@@ -664,90 +268,5 @@ final class PortfolioController extends Controller
                 $field => ['تغيّر معرّف الطلب أثناء التنفيذ'],
             ]);
         }
-    }
-
-    private function portfolioItemSlug(mixed $title, string $fallback = ''): string
-    {
-        $slug = Str::slug(UnicodeText::clean($title, false));
-        if ($slug !== '') {
-            return $slug;
-        }
-        if ($fallback !== '') {
-            return $fallback;
-        }
-
-        return 'item-'.Str::lower((string) Str::uuid());
-    }
-
-    /** @return list<int> */
-    private function logicalProjectIds(int $projectId): array
-    {
-        $currentProjectId = $this->revisionResolver->currentLearnerEntityMap(
-            Project::class,
-            [$projectId]
-        )[$projectId] ?? $projectId;
-
-        return $this->revisionResolver->equivalentEntityIds(
-            Project::class,
-            (int) $currentProjectId
-        );
-    }
-
-    private function currentProjectId(int $projectId): int
-    {
-        return (int) ($this->revisionResolver->currentLearnerEntityMap(
-            Project::class,
-            [$projectId]
-        )[$projectId] ?? $projectId);
-    }
-
-    private function currentPublishedProject(int $projectId): Project
-    {
-        for ($attempt = 0; $attempt < 2; $attempt++) {
-            $projectId = $this->currentProjectId($projectId);
-            $project = Project::query()
-                ->whereKey($projectId)
-                ->whereHas('section.course', fn ($courses) => $courses
-                    ->where('is_coming_soon', false))
-                ->with('section')
-                ->first();
-            if ($project) {
-                return $project;
-            }
-        }
-
-        throw (new ModelNotFoundException)->setModel(Project::class, [$projectId]);
-    }
-
-    private function submissionAllowsPortfolio(ProjectSubmission $submission): bool
-    {
-        $snapshot = ProjectSubmissionEvaluationSnapshot::fromSubmission($submission);
-        $terms = $snapshot ? data_get($snapshot, 'access.terms') : null;
-        if (! is_array($terms)) {
-            return false;
-        }
-
-        return (bool) ($this->accessPlans->publicPayloadFromTerms($terms)['project_output_enabled'] ?? false);
-    }
-
-    private function error(string $message, int $httpStatus): JsonResponse
-    {
-        return response()->json([
-            'status' => $httpStatus,
-            'success' => false,
-            'message' => $message,
-            'data' => null,
-        ], $httpStatus);
-    }
-
-    private function portfolioOperationError(PortfolioOperationException $exception): JsonResponse
-    {
-        [$status, $message] = match ($exception->reason) {
-            PortfolioOperationException::INCOMPLETE_ITEM => [409, 'أضف ملفًا واحدًا على الأقل قبل النشر'],
-            PortfolioOperationException::MEDIA_NOT_READY => [409, "الملفات ما زالت قيد التجهيز\nحاول بعد قليل"],
-            default => [409, 'هذا المشروع غير متاح الآن'],
-        };
-
-        return $this->error($message, $status);
     }
 }

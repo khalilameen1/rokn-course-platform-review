@@ -3,68 +3,34 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\About;
-use App\Support\AdminEditorVersion;
-use App\Support\AdminSingletonLock;
-use Illuminate\Contracts\View\Factory;
+use App\Services\AdminPublicContentAuthoringService;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
 
 class AboutsController extends Controller
 {
-    public function __construct()
+    public function __construct(private readonly AdminPublicContentAuthoringService $content)
     {
         $this->middleware('auth');
     }
 
-    private function aboutForDisplay(): About
+    public function privacy(): View
     {
-        return About::query()->first() ?? new About;
+        return view('admin.abouts.privacy', $this->content->editorState());
     }
 
-    /**
-     * @return Factory|View
-     */
-    public function privacy()
+    public function policy(): View
     {
-        $about = $this->aboutForDisplay();
-
-        return view('admin.abouts.privacy', [
-            'about' => $about,
-            'editorVersion' => $this->editorVersion($about),
-        ]);
+        return view('admin.abouts.policy', $this->content->editorState());
     }
 
-    /**
-     * @return Factory|View
-     */
-    public function policy()
+    public function about(): View
     {
-        $about = $this->aboutForDisplay();
-
-        return view('admin.abouts.policy', [
-            'about' => $about,
-            'editorVersion' => $this->editorVersion($about),
-        ]);
+        return view('admin.abouts.about', $this->content->editorState());
     }
 
-    public function about()
-    {
-        $about = $this->aboutForDisplay();
-
-        return view('admin.abouts.about', [
-            'about' => $about,
-            'editorVersion' => $this->editorVersion($about),
-        ]);
-    }
-
-    /**
-     * @return RedirectResponse
-     */
-    public function update(Request $request)
+    public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'about_ar' => 'nullable|string|max:100000',
@@ -77,33 +43,8 @@ class AboutsController extends Controller
         ]);
         $editorVersion = (string) $validated['editor_version'];
         unset($validated['editor_version']);
-        DB::transaction(function () use ($validated, $editorVersion): void {
-            AdminSingletonLock::acquire('abouts');
-            $about = About::query()->lockForUpdate()->first();
-            $snapshot = $about ?? new About;
-            if (! hash_equals($this->editorVersion($snapshot), $editorVersion)) {
-                throw ValidationException::withMessages([
-                    'editor_version' => "تغيّر النص المنشور منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
-                ]);
-            }
-            $about ??= About::query()->create([
-                'about_ar' => '',
-                'about_en' => '',
-                'privacy_ar' => '',
-                'privacy_en' => '',
-                'policy_ar' => '',
-                'policy_en' => '',
-            ]);
-            $about->update($validated);
-        }, 3);
+        $this->content->save($validated, $editorVersion);
 
         return redirect()->back()->with('success', 'تم تحديث النص المنشور');
-    }
-
-    private function editorVersion(About $about): string
-    {
-        return AdminEditorVersion::for($about, [
-            'about_ar', 'about_en', 'privacy_ar', 'privacy_en', 'policy_ar', 'policy_en',
-        ]);
     }
 }

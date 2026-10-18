@@ -7,7 +7,9 @@ namespace App\Http\Controllers\API;
 use App\Exceptions\PortfolioOperationException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PortfolioMediaResource;
+use App\Models\PortfolioMedia;
 use App\Models\User;
+use App\Services\ApiResponseService;
 use App\Services\PortfolioMediaAuthoringService;
 use App\Services\PortfolioMediaMutationService;
 use App\Support\UnicodeText;
@@ -22,7 +24,8 @@ final class PortfolioMediaController extends Controller
 {
     public function __construct(
         private PortfolioMediaAuthoringService $mediaAuthoring,
-        private PortfolioMediaMutationService $mediaMutations
+        private PortfolioMediaMutationService $mediaMutations,
+        private ApiResponseService $responses
     ) {}
 
     public function append(Request $request, $id): JsonResponse
@@ -67,7 +70,7 @@ final class PortfolioMediaController extends Controller
         } catch (PortfolioOperationException $exception) {
             return $this->portfolioOperationError($exception);
         } catch (LockTimeoutException) {
-            return $this->error("جارٍ رفع هذا الملف\nحاول بعد قليل", 409);
+            return $this->responses->error("جارٍ رفع هذا الملف\nحاول بعد قليل", 409);
         }
 
         return $this->mediaResponse($result['media'], $result['replayed']);
@@ -89,18 +92,13 @@ final class PortfolioMediaController extends Controller
         $this->assertIdempotencyHeaderMatches($request, 'idempotency_key');
         try {
             $data = $this->mediaAuthoring->issueVideo($user, (int) $id, $validated);
-
-            return response()->json([
-                'status' => 200,
-                'success' => true,
-                'message' => 'تم تجهيز رفع الفيديو',
-                'data' => $data,
-            ]);
         } catch (PortfolioOperationException $exception) {
             return $this->portfolioOperationError($exception);
         } catch (LockTimeoutException) {
-            return $this->error("جارٍ تجهيز رفع الفيديو\nحاول بعد قليل", 409);
+            return $this->responses->error("جارٍ تجهيز رفع الفيديو\nحاول بعد قليل", 409);
         }
+
+        return $this->responses->success($data, 'تم تجهيز رفع الفيديو');
     }
 
     public function renewVideoUpload(Request $request, $id): JsonResponse
@@ -112,16 +110,11 @@ final class PortfolioMediaController extends Controller
         $validated = $request->validate(['claim' => ['required', 'string', 'max:4096']]);
         try {
             $data = $this->mediaAuthoring->renewVideo($user, (int) $id, (string) $validated['claim']);
-
-            return response()->json([
-                'status' => 200,
-                'success' => true,
-                'message' => 'تم تجديد رابط الرفع',
-                'data' => $data,
-            ]);
         } catch (PortfolioOperationException $exception) {
             return $this->portfolioOperationError($exception);
         }
+
+        return $this->responses->success($data, 'تم تجديد رابط الرفع');
     }
 
     public function claimVideoUpload(Request $request, $id): JsonResponse
@@ -157,34 +150,16 @@ final class PortfolioMediaController extends Controller
         $user = auth('api')->user();
         $deleted = $this->mediaMutations->deleteMedia($user, (int) $id, (int) $mediaId);
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم حذف الملف',
-            'data' => ['already_deleted' => ! $deleted],
-        ]);
+        return $this->responses->success(['already_deleted' => ! $deleted], 'تم حذف الملف');
     }
 
-    private function mediaResponse($media, bool $replayed): JsonResponse
+    private function mediaResponse(PortfolioMedia $media, bool $replayed): JsonResponse
     {
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تمت إضافة الملف',
-            'data' => new PortfolioMediaResource($media),
-            'replayed' => $replayed,
-        ]);
-    }
-
-    private function error(string $message, int $httpStatus, ?string $code = null): JsonResponse
-    {
-        return response()->json([
-            'status' => $httpStatus,
-            'success' => false,
-            'message' => $message,
-            'data' => null,
-            ...($code !== null ? ['code' => $code] : []),
-        ], $httpStatus);
+        return $this->responses->success(
+            new PortfolioMediaResource($media),
+            'تمت إضافة الملف',
+            additional: ['replayed' => $replayed]
+        );
     }
 
     private function assertIdempotencyHeaderMatches(Request $request, string $field): void
@@ -211,10 +186,13 @@ final class PortfolioMediaController extends Controller
             default => [409, 'هذا المشروع غير متاح الآن'],
         };
 
-        return $this->error(
+        // Only a deleted file carries its own code; the rest keep the status code.
+        return $this->responses->error(
             $message,
             $status,
-            $exception->reason === PortfolioOperationException::MEDIA_DELETED ? $exception->reason : null
+            additional: $exception->reason === PortfolioOperationException::MEDIA_DELETED
+                ? ['code' => $exception->reason]
+                : []
         );
     }
 }

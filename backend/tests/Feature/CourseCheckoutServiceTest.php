@@ -1143,6 +1143,56 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame('guided', CourseEnrollment::query()->where('user_id', $user->id)->firstOrFail()->access_plan_snapshot['code']);
     }
 
+    public function test_http_refusal_of_a_second_payment_names_the_pending_checkout(): void
+    {
+        [$user, $course, $service] = $this->fixture(0, 200);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
+        $package = $this->storePackage(350);
+        $first = $service->create($user, $this->input($course) + ['package_id' => $package->id]);
+        $second = $service->create($user, $this->input($course) + ['package_id' => $package->id]);
+        $service->authorize($user, $first['id']);
+        $before = [(int) $user->fresh()->wallet_coins, WalletTransaction::query()->count(), Order::query()->count()];
+
+        $this->actingAs($user, 'api')->postJson('/api/v1/course-checkouts/'.$second['id'].'/authorize')
+            ->assertStatus(409)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', CourseCheckoutRejected::CHECKOUT_ALREADY_PENDING)
+            ->assertJsonPath('retryable', false)
+            ->assertJsonPath('data.active_checkout', ['id' => $first['id'], 'course_id' => (int) $course->id]);
+
+        self::assertSame('quoted', $service->show($user, $second['id'])['status']);
+        self::assertSame($before, [(int) $user->fresh()->wallet_coins, WalletTransaction::query()->count(), Order::query()->count()]);
+    }
+
+    public function test_upgrade_quote_refuses_a_learner_without_the_course_and_reports_the_top_plan_as_active(): void
+    {
+        [$user, $course, $service] = $this->fixture(2000, 0);
+        $this->withoutMiddleware(WebsiteVisitorCount::class);
+        $this->actingAs($user, 'api')->getJson('/api/v1/courses/'.$course->id.'/full-track-upgrade')
+            ->assertForbidden()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', CourseCheckoutRejected::COURSE_ACCESS_REQUIRED);
+
+        $mentor = $service->create($user, array_replace($this->input($course), ['access_plan_code' => 'mentor']));
+        self::assertSame('completed', $service->authorize($user, $mentor['id'])['status']);
+        $before = [(int) $user->fresh()->wallet_coins, WalletTransaction::query()->count(), Order::query()->count()];
+
+        $this->getJson('/api/v1/courses/'.$course->id.'/full-track-upgrade')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('code', 'full_track_already_available')
+            ->assertJsonPath('data.already_upgraded', true)
+            ->assertJsonPath('data.upgrade_available', false)
+            ->assertJsonPath('data.available_plan_codes', [])
+            ->assertJsonPath('data.chat_available', true)
+            ->assertJsonPath('data.course_revision', 1);
+        $this->getJson('/api/v1/courses/'.$course->id.'/full-track-upgrade?target_plan_code=mentor')
+            ->assertStatus(409)
+            ->assertJsonPath('code', CourseCheckoutRejected::FULL_TRACK_UPGRADE_NOT_AVAILABLE);
+
+        self::assertSame($before, [(int) $user->fresh()->wallet_coins, WalletTransaction::query()->count(), Order::query()->count()]);
+    }
+
     public function test_an_existing_pending_intent_is_not_silently_replaced(): void
     {
         [$user, $course, $service] = $this->fixture(0, 200);

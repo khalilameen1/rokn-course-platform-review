@@ -9,6 +9,7 @@ use App\Models\Package;
 use App\Models\Setting;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 
@@ -101,6 +102,26 @@ final class PackageChannelPricingService
             ->multipliedBy((int) $package->coins)
             ->dividedBy(number_format($directPrice, 2, '.', ''), 0, RoundingMode::Up)
             ->toInt();
+    }
+
+    /**
+     * The three smallest purchasable packages that cover a coin shortfall,
+     * offered beside a refused purchase or an upgrade quote.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function recommendedPackages(int $minimumCoins): Collection
+    {
+        return Package::query()
+            ->where('is_active', true)
+            ->where('coins', '>=', $minimumCoins)
+            ->where('coins', '>', 0)
+            ->where('price', '>', 0)
+            ->purchasable()
+            ->orderBy('coins')
+            ->limit(3)
+            ->get()
+            ->map(fn (Package $package): array => $this->packagePayload($package));
     }
 
     /** @return array<string, mixed> */

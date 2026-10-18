@@ -65,8 +65,6 @@ final class AdminEconomyDashboardContractTest extends TestCase
         $model = $this->source('app/Models/Package.php');
         $admin = $this->source('app/Services/AdminPackageAuthoringService.php');
         $api = $this->source('app/Http/Controllers/API/PackageController.php');
-        $purchase = $this->source('app/Http/Controllers/API/CoursePurchaseController.php');
-        $upgrade = $this->source('app/Http/Controllers/API/CourseChatUpgradeController.php');
         $pricing = $this->source('app/Services/PackageChannelPricingService.php');
 
         self::assertStringContainsString('scopePurchasable', $model);
@@ -74,8 +72,6 @@ final class AdminEconomyDashboardContractTest extends TestCase
         self::assertStringContainsString('availableChannels', $model);
         self::assertStringContainsString("'channels' => ['فعّل كاشير", $admin);
         self::assertSame(2, substr_count($api, '->purchasable()'));
-        self::assertStringContainsString('->purchasable()', $purchase);
-        self::assertStringContainsString('->purchasable()', $upgrade);
         self::assertStringContainsString('$channels = $package->availableChannels()', $pricing);
     }
 
@@ -95,19 +91,15 @@ final class AdminEconomyDashboardContractTest extends TestCase
 
     public function test_learner_tasks_have_one_valid_catalogue_and_dashboard_order(): void
     {
+        // The learner catalogue, claim and next-offer behaviour is exercised
+        // over HTTP in CoinEarningTaskLifecycleTest, RewardsProjectionTest and
+        // EngagementExperienceTest.
         $model = $this->source('app/Models/CoinEarningMethod.php');
-        $api = $this->source('app/Http/Controllers/API/CoinEarningMethodController.php');
-        $engagement = $this->source('app/Http/Controllers/API/EngagementController.php');
         $engagementTasks = $this->source('app/Services/EngagementTaskReadService.php');
         $admin = $this->source('app/Http/Controllers/Admin/CoinEarningMethodController.php');
         $read = $this->source('app/Services/AdminEconomyReadService.php');
 
         self::assertStringContainsString('scopeLearnerTask', $model);
-        self::assertStringContainsString('$available->learnerTask()', $api);
-        self::assertStringContainsString('completed_by_learner', $api);
-        self::assertStringContainsString('$lockedMethod->isLearnerTask()', $api);
-        self::assertStringContainsString('EngagementTaskReadService $tasks', $engagement);
-        self::assertStringContainsString('$tasks->next($user, $wallet->rewardCreditRoom((int) $balances[\'reward\']))', $engagement);
         self::assertStringContainsString('CoinEarningMethod::query()->learnerTask()', $engagementTasks);
         self::assertStringContainsString("->orderBy('sort_order')->orderBy('id')", $engagementTasks);
         self::assertStringContainsString("'coins_amount' => ['required', 'integer', 'min:1']", $admin);

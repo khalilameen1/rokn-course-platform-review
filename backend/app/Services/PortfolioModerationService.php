@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\FeedbackReport;
 use App\Models\PortfolioPublication;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +21,8 @@ final class PortfolioModerationService
     public function __construct(
         private readonly PortfolioReviewReadService $reviews,
         private readonly PortfolioShareIdentityService $shareIdentity,
-        private readonly PortfolioMediaReadinessService $mediaReadiness
+        private readonly PortfolioMediaReadinessService $mediaReadiness,
+        private readonly SupportCaseService $cases
     ) {}
 
     public static function invalidate(int $userId, ?int $expectedRevision = null): void
@@ -175,6 +177,23 @@ final class PortfolioModerationService
                 'portfolio_reviewed_by' => $reviewer->id,
                 'portfolio_sharing_rejection_reason' => $decision === 'rejected' ? trim((string) $reason) : null,
             ])->save();
+        });
+    }
+
+    /**
+     * Staff decision on a public-portfolio report: suspend or restore the
+     * owner's public link. Setting the current state again is a no-op, so a
+     * double submit records one case event.
+     */
+    public function setSharingSuspended(FeedbackReport $report, int $actorId, bool $suspend): void
+    {
+        DB::transaction(function () use ($report, $actorId, $suspend): void {
+            $owner = User::query()->lockForUpdate()->findOrFail($report->context['portfolio_owner_id'] ?? null);
+            if ((bool) $owner->portfolio_sharing_suspended_at === $suspend) {
+                return;
+            }
+            $owner->forceFill(['portfolio_sharing_suspended_at' => $suspend ? now() : null])->save();
+            $this->cases->event($report, $actorId, $suspend ? 'portfolio_sharing_suspended' : 'portfolio_sharing_restored');
         });
     }
 

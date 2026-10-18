@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CoursePdf;
 use App\Models\User;
+use App\Services\ApiResponseService;
 use App\Services\CourseAttachmentService;
 use App\Services\CourseModuleAccessService;
 use App\Services\CourseRevisionResolver;
@@ -22,7 +23,8 @@ final class CoursePdfController extends Controller
     public function __construct(
         private CourseModuleAccessService $access,
         private CourseAttachmentService $attachments,
-        private CourseRevisionResolver $revisions
+        private CourseRevisionResolver $revisions,
+        private ApiResponseService $responses
     ) {}
 
     /** Get all active PDFs for an actively enrolled user. */
@@ -30,28 +32,23 @@ final class CoursePdfController extends Controller
     {
         $user = auth('api')->user();
         if (! $user) {
-            return $this->error('سجّل الدخول أولًا', 401);
+            return $this->responses->error('سجّل الدخول أولًا', 401);
         }
 
         $course = Course::find($courseId);
         if (! $course) {
-            return $this->error('الكورس غير متاح', 404);
+            return $this->responses->error('الكورس غير متاح', 404);
         }
         $course = $this->revisions->canonicalFor($course);
         if (! $this->access->hasCourseAccess($user, $course)) {
-            return $this->error('هذا الكورس غير مضاف إلى حسابك', 403);
+            return $this->responses->error('هذا الكورس غير مضاف إلى حسابك', 403);
         }
 
         $pdfs = $course->activePdfs()->get()->map(function (CoursePdf $pdf) use ($course, $user): array {
             return $this->metadata($pdf, $course, $user);
         });
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل مرفقات الكورس',
-            'data' => $pdfs,
-        ]);
+        return $this->responses->success($pdfs, 'تم تحميل مرفقات الكورس');
     }
 
     /** Get entitled PDF metadata without exposing a storage key. */
@@ -59,15 +56,15 @@ final class CoursePdfController extends Controller
     {
         $user = auth('api')->user();
         if (! $user) {
-            return $this->error('سجّل الدخول أولًا', 401);
+            return $this->responses->error('سجّل الدخول أولًا', 401);
         }
         $course = Course::query()->find($courseId);
         if (! $course) {
-            return $this->error('الكورس غير متاح', 404);
+            return $this->responses->error('الكورس غير متاح', 404);
         }
         $course = $this->revisions->canonicalFor($course);
         if (! $this->access->hasCourseAccess($user, $course)) {
-            return $this->error('هذا الكورس غير مضاف إلى حسابك', 403);
+            return $this->responses->error('هذا الكورس غير مضاف إلى حسابك', 403);
         }
 
         $currentPdfId = $this->revisions->currentEntityId(CoursePdf::class, (int) $pdfId)
@@ -78,15 +75,10 @@ final class CoursePdfController extends Controller
             ->where('is_active', true)
             ->first();
         if (! $pdf) {
-            return $this->error('المرفق غير متاح', 404);
+            return $this->responses->error('المرفق غير متاح', 404);
         }
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل مرفق الكورس',
-            'data' => $this->metadata($pdf, $course, $user),
-        ]);
+        return $this->responses->success($this->metadata($pdf, $course, $user), 'تم تحميل مرفق الكورس');
     }
 
     /** Download a course file from native/system clients without a bearer header. */
@@ -126,15 +118,5 @@ final class CoursePdfController extends Controller
     private function metadata(CoursePdf $pdf, Course $course, User $user): array
     {
         return $this->attachments->pdfPayload($user, $course, $pdf);
-    }
-
-    private function error(string $message, int $httpStatus): JsonResponse
-    {
-        return response()->json([
-            'status' => $httpStatus,
-            'success' => false,
-            'message' => $message,
-            'data' => null,
-        ], $httpStatus);
     }
 }

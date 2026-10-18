@@ -74,6 +74,36 @@ class PortfolioEndpointTest extends ApiTestCase
         ]);
     }
 
+    public function test_a_retried_create_returns_the_same_item_and_a_changed_retry_conflicts(): void
+    {
+        $payload = [
+            'client_request_id' => '33333333-3333-4333-8333-333333333333',
+            'title' => 'Retried project',
+            'tools' => ['Figma'],
+            'sort_order' => 2,
+        ];
+        $itemId = $this->actingAs($this->user, 'api')->postJson('/api/v1/portfolio', $payload)
+            ->assertOk()
+            ->assertJsonPath('replayed', false)
+            ->assertJsonPath('data.title', 'Retried project')
+            ->assertJsonPath('data.tools', ['Figma'])
+            ->json('data.id');
+        $count = DB::table('portfolio_items')->count();
+
+        $this->postJson('/api/v1/portfolio', $payload)
+            ->assertOk()
+            ->assertJsonPath('replayed', true)
+            ->assertJsonPath('data.id', $itemId);
+        $this->postJson('/api/v1/portfolio', ['title' => 'Different project'] + $payload)
+            ->assertStatus(409)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', 'conflict');
+
+        self::assertSame($count, DB::table('portfolio_items')->count());
+        self::assertSame('retried-project', DB::table('portfolio_items')->where('id', $itemId)->value('slug'));
+        self::assertSame(0, (int) DB::table('portfolio_items')->where('id', $itemId)->value('is_public'));
+    }
+
     public function test_empty_portfolio_item_cannot_be_published(): void
     {
         $this->actingAs($this->user, 'api')

@@ -338,6 +338,54 @@ final class CourseRewardContributionCapTest extends TestCase
         self::assertSame((int) $forgedUser->id, (int) FinancialAnomaly::query()->value('user_id'));
     }
 
+    public function test_an_unfunded_purchase_debits_nothing_and_offers_only_purchasable_packages(): void
+    {
+        $user = $this->user();
+        $course = $this->course(true);
+        $this->plans($course);
+        $this->creditPaid($user, 10);
+        $channelless = Package::query()->create([
+            'name_ar' => 'باقة بلا قناة', 'name_en' => 'No channel', 'price' => 5, 'coins' => 35,
+            'is_active' => true, 'direct_enabled' => false, 'google_enabled' => false, 'apple_enabled' => false,
+        ]);
+        $direct = Package::query()->create([
+            'name_ar' => 'باقة مباشرة', 'name_en' => 'Direct', 'price' => 60, 'coins' => 60,
+            'is_active' => true, 'direct_enabled' => true,
+        ]);
+        $ledger = WalletTransaction::query()->count();
+
+        $response = $this->actingAs($user, 'api')
+            ->postJson('/api/v1/courses/authorize', [
+                'course_id' => $course->id,
+                'access_plan_code' => CourseAccessPlan::BASIC,
+                'expected_price' => 40,
+                'idempotency_key' => 'unfunded-course-purchase-0001',
+            ])
+            ->assertStatus(400)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', 'insufficient_coins')
+            ->assertJsonPath('retryable', false)
+            ->assertJsonPath('data.required_coins', 40)
+            ->assertJsonPath('data.purchased_balance', 10)
+            ->assertJsonPath('data.spendable_balance', 10)
+            ->assertJsonPath('data.deficit', 30)
+            ->assertJsonPath('data.minimum_paid_coins_required', 0)
+            ->assertJsonPath('data.resume_action', [
+                'type' => 'purchase_course',
+                'course_id' => $course->id,
+                'access_plan_code' => CourseAccessPlan::BASIC,
+            ]);
+        $offered = array_column($response->json('data.recommended_packages'), 'id');
+        self::assertContains($direct->id, $offered);
+        self::assertNotContains($channelless->id, $offered);
+        self::assertNotNull($response->json('server_time'));
+
+        self::assertSame(0, Order::query()->where('course_id', $course->id)->count());
+        self::assertSame(0, CourseEnrollment::query()->where('user_id', $user->id)->count());
+        self::assertSame($ledger, WalletTransaction::query()->count());
+        self::assertSame(10, (int) $user->fresh()->wallet_coins);
+    }
+
     public function test_purchase_returns_actionable_validation_when_dashboard_disables_every_plan(): void
     {
         $user = $this->user();
