@@ -45,9 +45,9 @@
 | `fee7c00c` | حد الطلبات لكل IP على تسجيل الدخول الاجتماعي بقى من الإعدادات (1200/دقيقة، 20000/ساعة) عشان شبكات الموبايل المصرية بتحط آلاف ورا IP واحد | نفس منطق `API_READ_IP_PER_MINUTE` الموجود |
 
 ## الاختبارات اللي اتشغّلت على الجهاز ده
-- **الباك (SQLite):** التشغيل الكامل: `BACKEND_RESULT`.
+- **الباك (SQLite):** التشغيل الكامل زي CI (`phpunit` كله): 2,747 اختبار و24,523 assertion ناجحين، 6 متخطّية (نفس اللي في CI)، صفر فشل. اتشغّل على آخر commit قبل ملف التسليم ده.
 - **الباك (MySQL 8.0.46 محلي، نفس خط CI 8.0.43):** `migrate:fresh` نضيف، `rokn:preflight --schema-only` عدّى، `phpunit.mysql.xml` (17 اختبار) عدّى، `verify-migration-upgrade.php` عدّى (249 ثابت + 147 جديد)، `lock-migrations.php` و`verify-dr-runbook.php` عدّوا.
-- **الموبايل:** `tsc` نضيف، `eslint` (تحذير قديم واحد)، `jest` كله: `MOBILE_RESULT`، `test:release-scripts` 143/143، `licenses:check`، `licenses:native:portable-check`، `audit:release`.
+- **الموبايل:** `tsc` نضيف، `eslint` (تحذير قديم واحد)، `jest` كله: 378 مجموعة و3,451 اختبار ناجحين، `test:release-scripts` 143/143، `licenses:check`، `licenses:native:portable-check`، `audit:release`.
 - **الداش:** `test:admin-upload` 22/22، `test:public-assets` 6/6، `verify:public-assets` و`notices:frontend:check` نضاف (على نسخة HEAD + الفرع)، اختبارات المتصفح بتاعة الرفع والطابور على Chrome headless عدّت.
 - **ما اتعملش:** Redis، جهاز حقيقي أو محاكي، دفع كاشير حقيقي في وضع الاختبار، رفع حقيقي على Bunny، طلب حقيقي لأي موديل ذكاء اصطناعي، اختبار تحمّل.
 
