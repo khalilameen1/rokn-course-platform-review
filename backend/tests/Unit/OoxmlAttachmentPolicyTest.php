@@ -7,6 +7,8 @@ namespace Tests\Unit;
 use App\Services\AiInputAttachmentService;
 use App\Support\DownloadFilename;
 use Illuminate\Http\UploadedFile;
+use PhpOffice\PhpWord\IOFactory as WordIOFactory;
+use PhpOffice\PhpWord\PhpWord;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ZipArchive;
@@ -20,6 +22,7 @@ final class OoxmlAttachmentPolicyTest extends TestCase
         }
         $valid = $this->officePackage('docx', true);
         $fake = $this->officePackage('docx', false);
+        $word = $this->wordDocument();
         try {
             $service = (new ReflectionClass(AiInputAttachmentService::class))
                 ->newInstanceWithoutConstructor();
@@ -28,7 +31,9 @@ final class OoxmlAttachmentPolicyTest extends TestCase
                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                 $service->canonicalMime(new UploadedFile($valid, 'project.docx', 'application/zip', null, true))
             );
-            $octetStream = new class($valid, 'project.docx', 'application/octet-stream', null, true) extends UploadedFile
+            // A real package as PhpWord writes it: the token estimate below
+            // reads it back through PhpWord.
+            $octetStream = new class($word, 'project.docx', 'application/octet-stream', null, true) extends UploadedFile
             {
                 public function getMimeType(): ?string
                 {
@@ -56,6 +61,7 @@ final class OoxmlAttachmentPolicyTest extends TestCase
         } finally {
             @unlink($valid);
             @unlink($fake);
+            @unlink($word);
         }
     }
 
@@ -75,6 +81,17 @@ final class OoxmlAttachmentPolicyTest extends TestCase
         } finally {
             @unlink($path);
         }
+    }
+
+    private function wordDocument(): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'rokn-ooxml-');
+        self::assertIsString($path);
+        $document = new PhpWord;
+        $document->addSection()->addText('محاولة مشروع مكتوبة بوضوح');
+        WordIOFactory::createWriter($document, 'Word2007')->save($path);
+
+        return $path;
     }
 
     private function officePackage(string $type, bool $genuine): string
