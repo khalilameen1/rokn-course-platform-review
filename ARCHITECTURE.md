@@ -183,7 +183,7 @@ Counts of code that still follows a second way. Each may only go down.
 | B2 | Controllers with their own `error()` helper | 6 | 0 |
 | B2 | Controllers hand-building a 500 | 5 | 0 |
 | B6 | GET endpoints that write | 7 | 2 (public portfolio page and admin preview call `PortfolioModerationService::reconcile`) |
-| B8 | Larastan baseline entries | 1550 | 1156 |
+| B8 | Larastan baseline entries | 1550 | 1153 |
 | B8 | Eloquent relations without a return type | 205 | 0 |
 | M1 | Read domains outside TanStack Query | 8 | 0 |
 | M2 | Feature-owned offline queues outside `durableOutbox` | 5 | 0 |
@@ -194,7 +194,7 @@ Counts of code that still follows a second way. Each may only go down.
 | B9 | Hand-written implementations of a protocol or algorithm a proven library provides (TUS upload in the app, TOTP/Base32, OOXML text extraction) | 3 | 0 |
 | B9 | EGP arithmetic outside `App\Support\Money` (float round/compare sites) | 31 | 0 |
 | B9 | Libraries past end of life (Intervention Image 2) | 1 | 0 |
-| D2 | Dashboard controllers with inline request validation | 33 | 1 |
+| D2 | Dashboard controllers with inline request validation | 33 | 0 |
 
 Dashboard JSON endpoints (course studio, uploads) answer `public/admin/assets/js/request.js`'s
 own contract and are outside B2's learner-API scope.

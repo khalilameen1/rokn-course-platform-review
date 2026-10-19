@@ -848,24 +848,6 @@ parameters:
 			path: app/Http/Requests/Admin/AdminNotificationRequest.php
 
 		-
-			message: '#^Match expression does not handle remaining value\: string$#'
-			identifier: match.unhandled
-			count: 1
-			path: app/Http/Requests/Admin/CourseSectionInput.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type App\\Models\\CourseSection\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Requests/Admin/CourseSectionInput.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>module_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Requests/Admin/CourseSectionInput.php
-
-		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\AboutResource\:\:\$about\.$#'
 			identifier: property.notFound
 			count: 1

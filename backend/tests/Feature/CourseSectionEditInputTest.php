@@ -6,7 +6,7 @@ namespace Tests\Feature;
 
 use App\Data\CourseSectionEdit;
 use App\Http\Middleware\RequireAdminMfa;
-use App\Http\Requests\Admin\CourseSectionInput;
+use App\Http\Requests\Admin\CourseSectionRequest;
 use App\Models\BunnyDirectUpload;
 use App\Models\BunnyVideoCleanupCandidate;
 use App\Models\Course;
@@ -30,11 +30,13 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Mockery;
+use Tests\Support\ValidatesFormRequests;
 use Tests\TestCase;
 
 final class CourseSectionEditInputTest extends TestCase
 {
     use RefreshDatabase;
+    use ValidatesFormRequests;
 
     protected function setUp(): void
     {
@@ -136,7 +138,7 @@ final class CourseSectionEditInputTest extends TestCase
             'authoring_version' => 1, 'lesson_description_ar' => null, 'is_opened' => '0',
             'passing_score' => 1, 'list_id' => 999, 'project_requirements_ar' => 'not lesson input',
         ]);
-        $edit = app(CourseSectionInput::class)->validate($request, $course, $section, false);
+        $edit = $this->validatedFormRequest(CourseSectionRequest::class, $request, 'admin.courses.sections.update', ['course' => $course, 'section' => $section])->authoringEdit();
         $request->merge(['section_type' => 'project', 'is_opened' => true, 'lesson_description_ar' => 'later', 'authoring_version' => 99]);
 
         self::assertInstanceOf(CourseSectionEdit::class, $edit);
@@ -210,7 +212,7 @@ final class CourseSectionEditInputTest extends TestCase
             'section_type' => 'lesson', 'module_id' => $module->id,
             'title_ar' => 'المقطع', 'bunny_video_claim' => $claim, 'admin_id' => $other->id,
         ], [], ['lesson_thumbnail' => $image]);
-        $edit = app(CourseSectionInput::class)->validate($request, $course, null, true);
+        $edit = $this->validatedFormRequest(CourseSectionRequest::class, $request, 'admin.courses.sections.store', ['course' => $course])->authoringEdit();
         $bunny = Mockery::mock(BunnyService::class);
         $bunny->shouldReceive('verifyDirectUpload')->once()->with($guid, 1024)->andReturn(true);
         $bunny->shouldReceive('uploadFileToStorage')->once()
@@ -240,7 +242,7 @@ final class CourseSectionEditInputTest extends TestCase
         [$course, $module] = $this->course();
         $section = $this->lesson($course, $module, 1);
         $request = Request::create('/section', 'PATCH', ['authoring_version' => 1]);
-        $edit = app(CourseSectionInput::class)->validate($request, $course, $section, false);
+        $edit = $this->validatedFormRequest(CourseSectionRequest::class, $request, 'admin.courses.sections.update', ['course' => $course, 'section' => $section])->authoringEdit();
         $concurrency = app(CourseAuthoringConcurrencyService::class);
         $request->merge(['authoring_version' => 99]);
         DB::transaction(function () use ($concurrency, $course, $edit): void {

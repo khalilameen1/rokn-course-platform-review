@@ -6,7 +6,8 @@ namespace Tests\Feature;
 
 use App\Data\CourseSectionEdit;
 use App\Http\Controllers\Admin\CourseSectionController;
-use App\Http\Requests\Admin\CourseSectionInput;
+use App\Http\Requests\Admin\CourseSectionOrderRequest;
+use App\Http\Requests\Admin\CourseSectionRequest;
 use App\Models\Course;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
@@ -21,10 +22,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\ValidatesFormRequests;
 use Tests\TestCase;
 
 final class CourseSectionAtomicityTest extends TestCase
 {
+    use ValidatesFormRequests;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -158,7 +162,7 @@ final class CourseSectionAtomicityTest extends TestCase
             ],
         ]);
 
-        $response = app(CourseSectionController::class)->reorder($request, $course);
+        $response = app(CourseSectionController::class)->reorder($this->validatedFormRequest(CourseSectionOrderRequest::class, $request, 'admin.courses.sections.reorder', ['course' => $course]), $course);
 
         self::assertTrue($response->getData(true)['success']);
         self::assertSame(1, (int) $lesson->fresh()->order);
@@ -396,7 +400,7 @@ final class CourseSectionAtomicityTest extends TestCase
         ]);
 
         try {
-            app(CourseSectionInput::class)->validate($request, $course, $section, false);
+            $this->validatedFormRequest(CourseSectionRequest::class, $request, 'admin.courses.sections.update', ['course' => $course, 'section' => $section]);
             self::fail('Oversized project text was accepted.');
         } catch (ValidationException $exception) {
             self::assertArrayHasKey('project_requirements_ar', $exception->errors());

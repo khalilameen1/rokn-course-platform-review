@@ -19,6 +19,13 @@ parameters:
     disallowedStaticCalls:
         -
             method:
+                - 'Illuminate\Validation\Factory::make()'
+                - 'Illuminate\Support\Facades\Validator::make()'
+            message: 'dashboard input validation belongs to FormRequests or Filament schemas (ARCHITECTURE.md D2)'
+            disallowIn:
+                - app/Http/Controllers/Admin/*
+        -
+            method:
                 - 'Illuminate\Database\Eloquent\Model::*()'
                 - 'Illuminate\Database\Connection::select()'
                 - 'Illuminate\Database\Connection::table()'
@@ -38,6 +45,14 @@ parameters:
                 - app/Http/Controllers/*
 
     disallowedMethodCalls:
+        -
+            method:
+                - 'Illuminate\Http\Request::validate()'
+                - 'Illuminate\Http\Request::validateWithBag()'
+                - 'Illuminate\Validation\Factory::make()'
+            message: 'dashboard input validation belongs to FormRequests or Filament schemas (ARCHITECTURE.md D2)'
+            disallowIn:
+                - app/Http/Controllers/Admin/*
         -
             method:
                 - 'Illuminate\Database\Eloquent\Builder::*()'
