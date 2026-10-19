@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Widgets\OrderChannelReport;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\User;
 use App\Services\PaymentChannelReportService;
 use DOMDocument;
 use DOMXPath;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class PaymentChannelReportPresentationTest extends TestCase
@@ -131,9 +134,11 @@ final class PaymentChannelReportPresentationTest extends TestCase
 
     private function renderTable(): DOMXPath
     {
-        $html = view('admin.payments.partials.channel-report', [
-            'paymentChannelReport' => app(PaymentChannelReportService::class)->summary(),
-        ])->render();
+        $this->actingAs(User::query()->forceCreate(['role' => 'admin', 'active' => true]), 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $channels = app(PaymentChannelReportService::class)->summary();
+        $channels['rows'] = $channels['rows']->all();
+        $html = Livewire::test(OrderChannelReport::class, ['report' => ['paymentChannelReport' => $channels]])->assertOk()->html();
         $document = new DOMDocument;
         @$document->loadHTML('<?xml encoding="utf-8" ?>'.$html);
 
@@ -142,12 +147,14 @@ final class PaymentChannelReportPresentationTest extends TestCase
 
     private function cell(DOMXPath $table, string $label, int $column): string
     {
-        return $this->text($table, '//tbody/tr[td[1]//strong[contains(text(), "'.$label.'")]]/td['.$column.']');
+        return $this->text($table, '//tbody/tr[td[1]//a[contains(normalize-space(.), "'.$label.'")]]/td['.$column.']');
     }
 
     private function total(DOMXPath $table, int $column): string
     {
-        return $this->text($table, '//tfoot/tr/th['.$column.']');
+        $label = [4 => 'الإجمالي المؤكد', 5 => 'رسوم مؤكدة', 6 => 'صافي مؤكد'][$column];
+
+        return $this->text($table, '//div[contains(concat(" ", normalize-space(@class), " "), " fi-in-entry ")][.//*[@role="term" and normalize-space()="'.$label.'"]]/*[contains(@class, "fi-in-entry-content-col")]');
     }
 
     private function text(DOMXPath $table, string $selector): string

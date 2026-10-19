@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Filament\Auth\EditStaffProfile;
+use App\Filament\Pages\ContentWorkspace;
 use App\Filament\Resources\PackageResource;
 use App\Models\Classification;
 use App\Models\CoinEarningMethod;
@@ -50,6 +51,16 @@ final class AdminInlineStyleContractTest extends TestCase
         $html = (string) $this->adminGet($admin, route('admin.mfa.setup'))->assertOk()->getContent();
         self::assertSame(0, $this->styleBlockCount($html));
         self::assertStringNotContainsString('[wire\\:loading]', $html);
+    }
+
+    public function test_moderator_home_uses_the_native_panel_without_a_parallel_legacy_workspace(): void
+    {
+        $moderator = $this->dashboardUser('moderator');
+        $this->adminGet($moderator, route('admin.dashboard'))->assertRedirect(ContentWorkspace::getUrl(['page' => 1]));
+        $html = (string) $this->adminGet($moderator, ContentWorkspace::getUrl())->assertOk()->getContent();
+        self::assertStringContainsString('wire:snapshot', $html);
+        self::assertDoesNotMatchRegularExpression(self::RETIRED_PALETTE, $html);
+        self::assertNotContains('admin/assets/css/moderator-workspace.css', $this->linkedLocalAssets($html));
     }
 
     public function test_rendered_admin_pages_have_no_inline_styles(): void
@@ -172,17 +183,10 @@ final class AdminInlineStyleContractTest extends TestCase
         foreach ($this->detailPages() as $name => $url) {
             $pages[$name] = (string) $this->adminGet($admin, $url)->assertOk()->getContent();
         }
-        // The moderator workspace replaces the administrator home.
-        $pages['admin.dashboard (moderator)'] = (string) $this->adminGet(
-            $this->dashboardUser('moderator'),
-            route('admin.dashboard')
-        )->assertOk()->getContent();
-
         // This crawl covers remaining Blade workspaces only. Native pages have
         // their own browser/axe gates; their growing number must not force us
         // to retain obsolete views just to satisfy a historical page count.
         self::assertArrayHasKey('admin.courses.show', $pages);
-        self::assertArrayHasKey('admin.dashboard (moderator)', $pages);
 
         return $pages;
     }

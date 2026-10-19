@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\AppSettings;
+use App\Filament\Pages\ContentWorkspace;
+use App\Filament\Pages\Dashboard;
 use App\Filament\Resources\OrderResource;
 use App\Filament\Resources\StudentResource;
 use App\Filament\Resources\TeacherResource\Pages\EditTeacher;
@@ -53,7 +56,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $this->withoutMiddleware(RequireAdminMfa::class);
 
         foreach ([
-            'admin.dashboard',
+            'filament.operations.pages.dashboard',
             'admin.courses.index',
             'admin.courses.create',
             'filament.operations.resources.students.index',
@@ -64,6 +67,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
                 ->get(route($routeName))
                 ->assertOk();
         }
+        $this->get(route('admin.dashboard'))->assertRedirect(Dashboard::getUrl());
     }
 
     public function test_moderator_daily_course_pages_render_without_financial_data(): void
@@ -82,7 +86,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $this->withoutMiddleware(RequireAdminMfa::class);
 
         foreach ([
-            'admin.dashboard',
+            'filament.operations.pages.content-workspace',
             'admin.courses.index',
             'admin.courses.create',
         ] as $routeName) {
@@ -90,6 +94,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
                 ->get(route($routeName))
                 ->assertOk();
         }
+        $this->get(route('admin.dashboard'))->assertRedirect(ContentWorkspace::getUrl(['page' => 1]));
     }
 
     public function test_administrator_daily_detail_pages_render_existing_records(): void
@@ -161,7 +166,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
             OrderResource::getUrl('view', ['record' => $order->id]),
             route('filament.operations.resources.orders.index'),
             route('filament.operations.resources.orders.report'),
-            route('admin.dashboard'),
+            Dashboard::getUrl(),
         ] as $url) {
             $this->get($url)->assertOk();
         }
@@ -190,13 +195,23 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $this->assertPairedBooleanControl($studioXPath, 'is_main_course');
         $this->assertPairedBooleanControl($studioXPath, 'is_catalog_visible');
 
-        $settings = $this->get(route('admin.settings'))->assertOk();
+        $this->get(route('admin.settings'))->assertRedirect(AppSettings::getUrl());
+        $settings = $this->get(AppSettings::getUrl())->assertOk();
         $settingsDocument = new DOMDocument;
         @$settingsDocument->loadHTML('<?xml encoding="utf-8" ?>'.$settings->getContent());
         $settingsXPath = new DOMXPath($settingsDocument);
         $this->assertUniqueDomIds($settingsXPath);
-        $this->assertPairedBooleanControl($settingsXPath, 'english_translation');
-        $this->assertPairedBooleanControl($settingsXPath, 'bunny_enabled');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $native = Livewire::test(AppSettings::class);
+        foreach (['english_translation', 'bunny_enabled'] as $name) {
+            $field = $native->instance()->getSchema('form')->getFlatFields(withHidden: true)[$name] ?? null;
+            self::assertNotNull($field);
+            $id = $field->getId();
+            self::assertSame(1, $settingsXPath->query('//*[@id="'.$id.'" and @role="switch"]')->length);
+            self::assertSame(1, $settingsXPath->query('//label[@for="'.$id.'"]')->length);
+        }
+        $native->fillForm(['english_translation' => false, 'bunny_enabled' => false])
+            ->assertSet('data.english_translation', false)->assertSet('data.bunny_enabled', false);
     }
 
     public function test_course_studio_restores_submitted_relationship_fields_after_validation_failure(): void

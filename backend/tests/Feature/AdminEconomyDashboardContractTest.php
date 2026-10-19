@@ -133,7 +133,7 @@ final class AdminEconomyDashboardContractTest extends TestCase
         // Moderators opening admin.courses.create is exercised in
         // AdminDailyPagesRuntimeTest::test_moderator_daily_course_pages_render_without_financial_data.
         $moderator = $this->dashboardUser('moderator');
-        foreach ([PackageResource::getUrl(), PackageResource::getUrl('create'), route('admin.coin-earning-methods.index'), CoinEarningMethodResource::getUrl('create')] as $url) {
+        foreach ([PackageResource::getUrl(), PackageResource::getUrl('create'), CoinEarningMethodResource::getUrl(), CoinEarningMethodResource::getUrl('create')] as $url) {
             // Each identity gets its own session; a pinned admin session
             // would otherwise log the moderator out instead of refusing.
             $this->flushSession();
