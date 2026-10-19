@@ -32,6 +32,10 @@ final class OperatingCostResource extends DomainResource
 {
     protected static bool $isDiscovered = true;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'التجارة';
+
+    protected static ?int $navigationSort = 40;
+
     protected static ?string $model = OperatingCostPool::class;
 
     protected static ?string $slug = 'operating-costs';

@@ -17,6 +17,10 @@ final class StudentResource extends ReadResource
 {
     protected static bool $isDiscovered = true;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'الطلبة';
+
+    protected static ?int $navigationSort = 10;
+
     protected static ?string $model = User::class;
 
     protected static ?string $slug = 'students';

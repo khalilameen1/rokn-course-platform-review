@@ -23,6 +23,10 @@ final class ContactResource extends ReadResource
 {
     protected static bool $isDiscovered = true;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'المراجعة';
+
+    protected static ?int $navigationSort = 40;
+
     protected static ?string $model = Contact::class;
 
     protected static ?string $modelLabel = 'رسالة تواصل';

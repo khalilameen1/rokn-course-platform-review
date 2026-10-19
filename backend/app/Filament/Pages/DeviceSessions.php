@@ -25,6 +25,10 @@ final class DeviceSessions extends Page implements HasTable
 
     protected static ?string $title = 'جلسات الأجهزة';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'التشغيل';
+
+    protected static ?int $navigationSort = 40;
+
     protected static ?string $slug = 'device-sessions';
 
     protected string $view = 'filament.pages.device-sessions';

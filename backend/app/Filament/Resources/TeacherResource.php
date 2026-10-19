@@ -31,6 +31,10 @@ final class TeacherResource extends DomainResource
 {
     protected static bool $isDiscovered = true;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'المحتوى';
+
+    protected static ?int $navigationSort = 40;
+
     protected static ?string $model = User::class;
 
     protected static ?string $slug = 'teachers';

@@ -29,6 +29,10 @@ final class CoinEarningMethodResource extends DomainResource
 {
     protected static bool $isDiscovered = true;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'التطبيق';
+
+    protected static ?int $navigationSort = 50;
+
     protected static ?string $model = CoinEarningMethod::class;
 
     protected static ?string $modelLabel = 'مهمة';

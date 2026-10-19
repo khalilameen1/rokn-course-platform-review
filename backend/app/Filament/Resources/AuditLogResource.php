@@ -28,6 +28,10 @@ final class AuditLogResource extends ReadResource
 {
     protected static bool $isDiscovered = true;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'التشغيل';
+
+    protected static ?int $navigationSort = 60;
+
     protected static ?string $model = AdminAuditLog::class;
 
     protected static ?string $slug = 'audit-log';

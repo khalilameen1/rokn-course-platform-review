@@ -27,6 +27,10 @@ final class LevelResource extends DomainResource
 {
     protected static bool $isDiscovered = true;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'التطبيق';
+
+    protected static ?int $navigationSort = 30;
+
     protected static ?string $model = Level::class;
 
     protected static ?string $modelLabel = 'شارة';

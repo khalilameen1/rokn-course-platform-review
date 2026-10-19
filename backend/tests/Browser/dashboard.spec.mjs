@@ -1,6 +1,29 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('grouped native navigation reaches commerce and reward workspaces on desktop and phone', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/operations/students');
+    const navigation = page.getByRole('navigation', { name: 'القائمة الجانبية' });
+    await expect(navigation.getByRole('link', { name: 'الطلبات', exact: true })).toHaveCount(1);
+    await navigation.getByRole('link', { name: 'الطلبات', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'الطلبات', exact: true })).toBeVisible();
+    await expect(navigation.getByRole('link', { name: 'الطلبات', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await page.screenshot({ path: testInfo.outputPath('grouped-navigation-desktop.png'), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('button', { name: 'توسيع القائمة الجانبية', exact: true }).click();
+    await navigation.getByRole('link', { name: 'مهام العملات', exact: true }).scrollIntoViewIfNeeded();
+    await expect(navigation.getByRole('link', { name: 'مهام العملات', exact: true })).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('grouped-navigation-phone.png'), fullPage: true });
+    await navigation.getByRole('link', { name: 'مهام العملات', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'مهام العملات', exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    expect(errors).toEqual([]);
+});
+
 test('support inbox uses native filters and exports exactly the applied search', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

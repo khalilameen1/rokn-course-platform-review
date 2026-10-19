@@ -31,6 +31,10 @@ final class FeedbackResource extends ReadResource
 
     protected static bool $isDiscovered = true;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'المراجعة';
+
+    protected static ?int $navigationSort = 30;
+
     protected static ?string $model = FeedbackReport::class;
 
     protected static ?string $slug = 'feedback';

@@ -27,6 +27,10 @@ final class RewardRuleResource extends DomainResource
 {
     protected static bool $isDiscovered = true;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'التطبيق';
+
+    protected static ?int $navigationSort = 40;
+
     protected static ?string $model = RewardRule::class;
 
     protected static ?string $modelLabel = 'قاعدة مكافأة';

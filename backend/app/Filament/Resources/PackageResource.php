@@ -28,6 +28,10 @@ final class PackageResource extends DomainResource
 {
     protected static bool $isDiscovered = true;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'التجارة';
+
+    protected static ?int $navigationSort = 20;
+
     protected static ?string $model = Package::class;
 
     protected static ?string $modelLabel = 'حزمة متجر';

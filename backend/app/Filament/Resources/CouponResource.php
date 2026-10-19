@@ -34,6 +34,10 @@ final class CouponResource extends DomainResource
 {
     protected static bool $isDiscovered = true;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'التجارة';
+
+    protected static ?int $navigationSort = 30;
+
     protected static ?string $model = Coupon::class;
 
     protected static ?string $modelLabel = 'كود خصم';

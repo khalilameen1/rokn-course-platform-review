@@ -30,6 +30,10 @@ final class AppVersionResource extends DomainResource
 {
     protected static bool $isDiscovered = true;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'التشغيل';
+
+    protected static ?int $navigationSort = 50;
+
     protected static ?string $model = AppVersion::class;
 
     protected static ?string $modelLabel = 'إصدار';

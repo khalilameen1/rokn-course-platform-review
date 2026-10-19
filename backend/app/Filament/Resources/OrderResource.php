@@ -25,6 +25,10 @@ final class OrderResource extends ReadResource
 {
     protected static bool $isDiscovered = true;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'التجارة';
+
+    protected static ?int $navigationSort = 10;
+
     protected static ?string $model = Order::class;
 
     protected static ?string $modelLabel = 'طلب';

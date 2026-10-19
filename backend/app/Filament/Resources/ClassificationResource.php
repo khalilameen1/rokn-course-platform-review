@@ -27,6 +27,10 @@ final class ClassificationResource extends DomainResource
 {
     protected static bool $isDiscovered = true;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'المحتوى';
+
+    protected static ?int $navigationSort = 20;
+
     protected static ?string $model = Classification::class;
 
     protected static ?string $modelLabel = 'صف';

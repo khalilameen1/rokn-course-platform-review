@@ -14,21 +14,21 @@ final class LegacyWorkspaces
     public static function items(): array
     {
         $links = [
-            ['الكورسات', 'المحتوى', 'admin.courses.index'],
-            ['مشاريع الطلاب', 'المراجعة', 'admin.project-submissions.index'],
-            ['مراجعة البورتفوليو', 'المراجعة', 'admin.portfolio-reviews.index'],
-            ['أكواد المنح', 'التجارة', 'admin.course-codes.index'],
-            ['الإشعارات', 'التطبيق', 'admin.notifications.index'],
-            ['صور وهوية التطبيق', 'التطبيق', 'admin.design-settings.index'],
-            ['تشغيل المنتج', 'التشغيل', 'admin.product-operations.index'],
-            ['تحليلات المنتج', 'التشغيل', 'admin.product-analytics.index'],
-            ['الإعدادات', 'الإدارة', 'admin.settings'],
-            ['فريق العمل', 'الإدارة', 'admin.moderators.index'],
-            ['بيانات حسابي', 'الإدارة', 'admin.admin_data'],
+            ['الكورسات', 'المحتوى', 'admin.courses.index', 10],
+            ['مشاريع الطلاب', 'المراجعة', 'admin.project-submissions.index', 10],
+            ['مراجعة البورتفوليو', 'المراجعة', 'admin.portfolio-reviews.index', 20],
+            ['أكواد المنح', 'التجارة', 'admin.course-codes.index', 50],
+            ['الإشعارات', 'التطبيق', 'admin.notifications.index', 10],
+            ['صور وهوية التطبيق', 'التطبيق', 'admin.design-settings.index', 20],
+            ['تشغيل المنتج', 'التشغيل', 'admin.product-operations.index', 10],
+            ['تحليلات المنتج', 'التشغيل', 'admin.product-analytics.index', 20],
+            ['الإعدادات', 'الإدارة', 'admin.settings', 10],
+            ['فريق العمل', 'الإدارة', 'admin.moderators.index', 20],
+            ['بيانات حسابي', 'الإدارة', 'admin.admin_data', 50],
         ];
 
         return array_map(static fn (array $link): NavigationItem => NavigationItem::make($link[0])
-            ->group($link[1])->url(fn (): string => route($link[2]))
+            ->group($link[1])->sort($link[3])->url(fn (): string => route($link[2]))
             ->visible(fn (): bool => app(AdminPermissionMatrix::class)->allows(auth('web')->user(), $link[2], 'GET')), $links);
     }
 }

@@ -11,6 +11,10 @@ final class OperationsStatus extends Page
 {
     protected static ?string $title = 'صحة التشغيل';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'التشغيل';
+
+    protected static ?int $navigationSort = 30;
+
     protected static ?string $slug = 'system-status';
 
     protected string $view = 'filament.pages.operations-status';

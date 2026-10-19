@@ -23,6 +23,10 @@ final class StaffMemberResource extends Resource
 {
     protected static ?string $model = StaffMember::class;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'الإدارة';
+
+    protected static ?int $navigationSort = 30;
+
     protected static ?string $modelLabel = 'صلاحيات حساب';
 
     protected static ?string $pluralModelLabel = 'صلاحيات الفريق';

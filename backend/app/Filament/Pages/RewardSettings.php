@@ -27,6 +27,10 @@ final class RewardSettings extends Page
 {
     protected static ?string $title = 'إعدادات المكافآت';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'التطبيق';
+
+    protected static ?int $navigationSort = 60;
+
     protected static ?string $slug = 'reward-settings';
 
     protected string $view = 'filament.pages.reward-settings';

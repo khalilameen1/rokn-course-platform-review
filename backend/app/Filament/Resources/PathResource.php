@@ -25,6 +25,10 @@ final class PathResource extends DomainResource
 {
     protected static bool $isDiscovered = true;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'المحتوى';
+
+    protected static ?int $navigationSort = 30;
+
     protected static ?string $model = Path::class;
 
     protected static ?string $modelLabel = 'مسار';
