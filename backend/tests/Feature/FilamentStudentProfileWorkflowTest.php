@@ -10,6 +10,7 @@ use App\Filament\Resources\StudentResource\Pages\EditStudent;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\User;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +40,7 @@ final class FilamentStudentProfileWorkflowTest extends TestCase
     {
         $page = Livewire::test(CreateStudent::class);
         $page->assertFormFieldExists('phone', fn (TextInput $field): bool => $field->getExtraInputAttributes()['dir'] === 'ltr')
+            ->assertFormFieldExists('image', fn (FileUpload $field): bool => $field->getVisibleJs() === null)
             ->assertFormFieldDoesNotExist('password')->assertFormFieldDoesNotExist('role');
         $data = ['name' => 'طالب جديد', 'email' => ' NEW@native.test ', 'phone' => '٠١٠٠٠٠٠٠٠٠١',
             'image' => UploadedFile::fake()->image('student.png', 24, 24)];

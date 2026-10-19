@@ -30,7 +30,7 @@ final class OperationsPanelProvider extends PanelProvider
         // Otherwise their older Livewire snapshots can replace restored values.
         FileUpload::configureUsing(static function (FileUpload $field): void {
             $field->visibleJs(static fn (Component $livewire): ?string => method_exists($livewire, 'authoringDraftConfig')
-                ? '$wire.authoringDraftReady' : null);
+                && $livewire->authoringDraftConfig()['fields'] !== [] ? '$wire.authoringDraftReady' : null);
         });
     }
 
