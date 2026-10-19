@@ -53,7 +53,7 @@ final class AdminEconomyHttpInputTest extends TestCase
 
     public function test_operating_cost_index_accepts_end_date_only_and_rejects_an_inverted_range(): void
     {
-        $this->get(route('admin.operating-costs.index', ['to' => '2026-10-19']))->assertOk()->assertSessionHasNoErrors();
+        $this->get(route('admin.operating-costs.index', ['to' => '2026-10-19']))->assertRedirect()->assertSessionHasNoErrors();
         $this->get(route('admin.operating-costs.index', ['from' => '2026-10-20', 'to' => '2026-10-19']))->assertSessionHasErrors('to');
     }
 }

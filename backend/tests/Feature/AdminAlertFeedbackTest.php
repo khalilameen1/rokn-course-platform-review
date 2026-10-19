@@ -119,7 +119,6 @@ final class AdminAlertFeedbackTest extends TestCase
             'payment reconciliation' => ['admin.payment-reconciliation-findings.index'],
             'notification create' => ['admin.notifications.create'],
             'students' => ['admin.users.index'],
-            'operating costs' => ['admin.operating-costs.index'],
         ];
     }
 

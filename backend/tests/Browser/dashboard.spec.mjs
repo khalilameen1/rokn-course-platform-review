@@ -1,6 +1,51 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('operating invoices use native forms with exact invoice currency and filtered totals', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    const name = 'فاتورة متصفح ' + Date.now();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/operating-costs/create');
+    await page.getByLabel(/اسم الفاتورة/).fill(name);
+    await page.getByLabel(/الخدمة/).selectOption('infrastructure');
+    await page.getByLabel(/بداية الفترة/).fill('2026-10-01');
+    await page.getByLabel(/نهاية الفترة/).fill('2026-10-19');
+    await page.getByLabel(/المبلغ/).fill('12.3456');
+    await page.getByLabel(/عملة الفاتورة/).selectOption('USD');
+    await page.getByLabel(/سعر الدولار لهذه الفاتورة/).fill('50');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('cost-create-phone.png'), fullPage: true });
+    await page.getByRole('button', { name: 'إضافة', exact: true }).click();
+    await expect(page).toHaveURL(/\/operations\/operating-costs$/);
+    const row = page.getByRole('row').filter({ hasText: name });
+    await expect(row.getByText('12.3456 USD', { exact: true })).toBeVisible();
+    await expect(row.getByText('617.28 ج.م', { exact: true })).toBeVisible();
+    await row.getByRole('button', { name: 'إجراءات الفاتورة', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'تعديل', exact: true }).click();
+    await page.getByLabel(/المبلغ/).fill('20');
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page.getByText('تم الحفظ', { exact: true })).toBeVisible();
+    await page.goto('/operations/operating-costs');
+    await expect(page.getByRole('row').filter({ hasText: name }).getByText('1,000.00 ج.م', { exact: true })).toBeVisible();
+    await page.getByRole('searchbox', { name: 'بحث', exact: true }).fill(name);
+    await expect(page.locator('.fi-wi-stats-overview-stat').filter({ hasText: 'فواتير نهائية بالجنيه' }).locator('.fi-wi-stats-overview-stat-value')).toHaveText('1,000.00');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('cost-list-phone.png'), fullPage: true });
+    await page.getByRole('button', { name: 'سعر تحويل OpenRouter', exact: true }).click();
+    await page.getByLabel(/الدولار بالجنيه/).fill('52');
+    await page.getByRole('button', { name: 'حفظ سعر التحويل', exact: true }).click();
+    await expect(page.getByText('تم حفظ سعر التحويل', { exact: true })).toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: name }).getByText('1,000.00 ج.م', { exact: true })).toBeVisible();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'المصروفات', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('cost-list-desktop.png'), fullPage: true });
+    expect(errors).toEqual([]);
+});
+
 test('coupon native editor preserves its image and local start time through the actual browser', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
