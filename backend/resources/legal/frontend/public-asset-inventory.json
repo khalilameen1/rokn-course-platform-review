@@ -24,11 +24,6 @@
       "family": "animate"
     },
     {
-      "path": "public/admin/assets/css/app-versions.css",
-      "sha256": "36c467f4dd038fc00da935204c636e0a08a457db9de6ee87be4f683cab93cfd9",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/bootstrap.min.css",
       "sha256": "c5f61edec6b397e80cc0b467d1154e0c9866655e5a237b9a3402a1c4f72a7212",
       "classification": "third_party",
@@ -76,23 +71,8 @@
       "family": "font-awesome"
     },
     {
-      "path": "public/admin/assets/css/home-dashboard.css",
-      "sha256": "e03310ae6d72bda98761a07045eda06bef7c4a4a676cd9b6251ed72c67a4e205",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/levels-dashboard.css",
-      "sha256": "6a600146550aac3e4e77164dee1aca6a301cfe15a45bf59a748baed28021f24b",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/login.css",
       "sha256": "2fd82a9d2d4e4ab4a4143e5db5221381e49dedcce05e576fc59e9fc08093693c",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/moderator-workspace.css",
-      "sha256": "9e619a001f93bb8c2a51fe41a2127d4bbb345bf88fcae3628bfa8e4931e5c290",
       "classification": "first_party"
     },
     {
@@ -100,11 +80,6 @@
       "sha256": "afca658fee651196161571e464f15613518a36a50b152f90502ceeb9120525ff",
       "classification": "third_party",
       "family": "normalize"
-    },
-    {
-      "path": "public/admin/assets/css/orders-index.css",
-      "sha256": "392b3202b974bc4728db95d0ed1bce85cc55f08909e01d6bc9877d670c17efb0",
-      "classification": "first_party"
     },
     {
       "path": "public/admin/assets/css/themify-icons.css",
@@ -582,7 +557,7 @@
     },
     {
       "path": "public/THIRD_PARTY_NOTICES.frontend.md",
-      "sha256": "86cf95cb7ffa2f1bcb5a35563e89a186e343ee0da389b57db20b8a62efb1e9e1",
+      "sha256": "7e21108af8692d913fe7e84d8c84f0c8e0464533203c5eaaee1a55578096eaa1",
       "classification": "generated"
     },
     {

@@ -149,14 +149,7 @@ export const thirdPartyFamilies = [
     },
 ];
 
-export const externalStaticAssets = [
-    {
-        name: 'Chart.js', version: '4.5.1', license: 'MIT',
-        url: 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js',
-        integrity: 'sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ',
-        legal: [['Chart.js 4.5.1', 'node_modules/chart.js/LICENSE.md']],
-    },
-];
+export const externalStaticAssets = [];
 
 export const dynamicExternalExceptions = [
     {
