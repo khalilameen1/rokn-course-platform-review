@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers\Filament;
 
+use App\Filament\Auth\EditStaffProfile;
 use App\Filament\Navigation\LegacyWorkspaces;
 use App\Filament\Pages\Dashboard;
 use App\Http\Middleware\ApplyLocale;
@@ -28,6 +29,7 @@ final class OperationsPanelProvider extends PanelProvider
             ->id('operations')
             ->path('operations')
             ->authGuard('web')
+            ->profile(EditStaffProfile::class, isSimple: false)
             ->plugin(FilamentShieldPlugin::make()->navigationGroup('الإدارة')->navigationLabel('الأدوار')->navigationSort(40))
             ->login(fn () => redirect()->route('login'))
             ->brandName('رُكن')

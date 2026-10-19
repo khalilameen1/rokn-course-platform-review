@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Auth\AdminSessionIdentity;
+use App\Filament\Auth\EditStaffProfile;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,7 +41,7 @@ final class DashboardAccountSettingsTest extends TestCase
                 app(AdminSessionIdentity::class)->fingerprint($moderator->fresh())
             );
 
-        $this->get(route('admin.admin_data'))->assertOk()->assertSee('name="current_password"', false);
+        $this->get(route('admin.admin_data'))->assertRedirect(EditStaffProfile::getUrl());
         $this->assertAuthenticatedAs($moderator);
         self::assertTrue(Hash::check('new-password-123', $moderator->fresh()->password));
     }

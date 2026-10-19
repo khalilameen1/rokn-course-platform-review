@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Auth\AdminSessionIdentity;
+use App\Filament\Auth\EditStaffProfile;
 use App\Filament\Pages\AppSettings;
 use App\Filament\Resources\BunnyCleanupResource;
 use App\Http\Controllers\Controller;
@@ -14,10 +15,10 @@ use App\Models\BunnyVideoCleanupCandidate;
 use App\Services\AdminAppSettingsAuthoringService;
 use App\Services\AdminBunnyCleanupReviewService;
 use App\Services\AdminBunnyConnectionService;
+use App\Services\AdminSelfAccountAuthoringService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class SettingsController extends Controller
 {
@@ -76,13 +77,13 @@ class SettingsController extends Controller
 
     public function adminData()
     {
-        return view('admin.settings.admin_data');
+        return redirect(EditStaffProfile::getUrl());
     }
 
     /**
      * @return RedirectResponse
      */
-    public function updateAdminData(StaffSelfAccountRequest $request, AdminSessionIdentity $sessionIdentity)
+    public function updateAdminData(StaffSelfAccountRequest $request, AdminSessionIdentity $sessionIdentity, AdminSelfAccountAuthoringService $authoring)
     {
         $user = $request->user();
         abort_unless($user, 403);
@@ -90,14 +91,8 @@ class SettingsController extends Controller
         // Re-authenticate before changing login credentials (Laravel's
         // current_password rule, as in Jetstream/Fortify password updates),
         // so an unattended session cannot take over the account.
-        $validated = $request->validated();
-
-        // This form only updates the administrator's login credentials.
-        $user->email = strtolower(trim($validated['email']));
-        if (! empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
-        }
-        $user->save();
+        $user = $authoring->fromPlaintext((int) $user->getKey(), $request->validated());
+        auth('web')->setUser($user);
         $request->session()->put(
             AdminSessionIdentity::SESSION_KEY,
             $sessionIdentity->fingerprint($user)

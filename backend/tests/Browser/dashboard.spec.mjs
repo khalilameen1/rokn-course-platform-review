@@ -1,6 +1,34 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('staff profile native form keeps the signed-in session after changing login details', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/profile');
+    const email = page.getByRole('textbox', { name: /^البريد الإلكتروني/ });
+    await expect(email).toHaveValue('admin@dashboard.example.test');
+    await email.fill('browser-profile-updated@dashboard.example.test');
+    await page.getByRole('textbox', { name: /^كلمة السر الحالية/ }).fill('Local-browser-fixture-2026');
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page.getByText('تم الحفظ', { exact: true })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: /^كلمة السر الحالية/ })).toHaveValue('');
+    await page.reload();
+    await expect(email).toHaveValue('browser-profile-updated@dashboard.example.test');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('staff-profile-phone.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.reload();
+    await expect(email).toHaveValue('browser-profile-updated@dashboard.example.test');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('staff-profile-desktop.png'), fullPage: true });
+    await email.fill('admin@dashboard.example.test');
+    await page.getByRole('textbox', { name: /^كلمة السر الحالية/ }).fill('Local-browser-fixture-2026');
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: /^كلمة السر الحالية/ })).toHaveValue('');
+    await page.reload();
+    await expect(email).toHaveValue('admin@dashboard.example.test');
+});
+
 test('app settings native phone form saves links without persisting secret fields', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/operations/app-settings');

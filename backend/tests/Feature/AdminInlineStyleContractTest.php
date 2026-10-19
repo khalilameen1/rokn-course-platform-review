@@ -90,18 +90,13 @@ final class AdminInlineStyleContractTest extends TestCase
         }
     }
 
-    public function test_account_settings_screen_loads_its_stylesheet_and_form(): void
+    public function test_account_settings_uses_the_native_profile_form(): void
     {
         $admin = $this->dashboardUser('admin');
-        $html = (string) $this->adminGet($admin, route('admin.admin_data'))->assertOk()->getContent();
-        $xpath = $this->dom($html);
-
-        $this->assertLinksStylesheet($html, 'settings-admin-data.css', 'account settings');
-        self::assertGreaterThan(0, $xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " admin-page ")]')->length);
-        $form = '//form[@action="'.route('admin.update_admin_data').'"]';
-        self::assertSame(1, $xpath->query($form)->length);
-        self::assertSame(1, $xpath->query($form.'//input[@name="email"]')->length);
-        self::assertSame(1, $xpath->query($form.'//input[@name="password"]')->length);
+        $this->adminGet($admin, route('admin.admin_data'))->assertRedirect(\App\Filament\Auth\EditStaffProfile::getUrl());
+        \Filament\Facades\Filament::setCurrentPanel(\Filament\Facades\Filament::getPanel('operations'));
+        \Livewire\Livewire::test(\App\Filament\Auth\EditStaffProfile::class)->assertFormFieldExists('email')
+            ->assertFormFieldExists('password')->assertFormFieldExists('current_password');
     }
 
     public function test_course_attachments_are_edited_inside_the_course_studio(): void
