@@ -1,6 +1,44 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('native commercial report preserves scope and student details on phones', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/commercial-report');
+    await expect(page.getByRole('heading', { name: 'اقتصاديات التشغيل', level: 1, exact: true })).toBeVisible();
+    const services = page.getByRole('region', { name: 'الخدمات المدفوعة', exact: true });
+    await services.getByRole('button').click();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await services.getByRole('button').click();
+    await page.evaluate(() => scrollTo(0, 0));
+    await expect(page.getByRole('heading', { name: 'اقتصاديات التشغيل', level: 1, exact: true })).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('commercial-phone.png'), fullPage: true });
+    await page.getByRole('combobox', { name: /^الفترة/ }).selectOption('7d');
+    await page.getByRole('textbox', { name: 'طالب أو كورس', exact: true }).fill('client@dashboard.example.test');
+    await page.getByRole('button', { name: 'عرض التقرير', exact: true }).click();
+    await expect(page.getByText('الفلاتر تمثل الطلاب وفئاتهم ومصادر إتاحتهم الحالية ولا تُنسب فواتير المنصة إلى هذا التجمع', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole('combobox', { name: /^الفترة/ })).toHaveValue('7d');
+    await expect(page.getByRole('textbox', { name: 'طالب أو كورس', exact: true })).toHaveValue('client@dashboard.example.test');
+    const row = page.getByRole('table', { name: 'استهلاك ودخل الطلاب خلال الفترة', exact: true }).getByRole('row').filter({ hasText: 'حساب المتصفح client' });
+    await row.scrollIntoViewIfNeeded();
+    await expect(row.getByRole('button', { name: 'التفاصيل', exact: true })).toBeInViewport({ ratio: 1 });
+    await row.getByRole('button', { name: 'التفاصيل', exact: true }).click();
+    await expect(page.getByRole('dialog').getByText('client@dashboard.example.test', { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('commercial-student-phone.png') });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/operations/commercial-report');
+    await page.getByRole('tab', { name: 'الكورسات والفئات', exact: true }).click();
+    await expect(page.getByRole('link', { name: 'كورس المتصفح', exact: true })).toHaveAttribute('href', /commercial-report/);
+    await page.evaluate(() => scrollTo(0, 0));
+    await expect(page.getByRole('heading', { name: 'اقتصاديات التشغيل', level: 1, exact: true })).toBeInViewport();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('commercial-courses-desktop.png'), fullPage: true });
+});
+
 test('native playback monitor opens anonymous details and terminates one stale session', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/operations/playback-operations');

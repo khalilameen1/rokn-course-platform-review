@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Pages\CommercialReport;
 use App\Filament\Resources\OperatingCostResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\EditorVersionRequest;
@@ -14,13 +15,10 @@ use App\Http\Requests\Admin\OperatingCostReportRequest;
 use App\Models\OperatingCostPool;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminOperatingCostAuthoringService;
-use App\Services\AdminOperatingCostReadService;
 use App\Services\CourseCostReportService;
 use App\Services\PlatformCommercialReportService;
 use App\Support\CsvCell;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\View\View;
 
 final class OperatingCostPoolController extends Controller
 {
@@ -82,27 +80,11 @@ final class OperatingCostPoolController extends Controller
         return back()->with('success', 'تم تحديث سعر تحويل تكلفة OpenRouter للتقارير الجديدة.');
     }
 
-    public function report(OperatingCostReportRequest $request, PlatformCommercialReportService $reports): View
+    public function report(OperatingCostReportRequest $request): RedirectResponse
     {
         $filters = $request->validated();
-        $report = $reports->report($filters);
-        $studentRows = $report['student_rows'];
-        $page = LengthAwarePaginator::resolveCurrentPage();
-        $perPage = (int) ($filters['per_page'] ?? 30);
-        $students = new LengthAwarePaginator(
-            $studentRows->forPage($page, $perPage)->values(),
-            $studentRows->count(),
-            $perPage,
-            $page,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
-        $courses = app(AdminOperatingCostReadService::class)->courses()
-            ->orderBy('name_ar')
-            ->get(['id', 'name_ar']);
 
-        return view('admin.operating-costs.report', compact(
-            'report', 'students', 'courses', 'filters'
-        ));
+        return redirect(CommercialReport::getUrl(['filters' => ['period' => $filters['period'] ?? 'all'] + $filters]));
     }
 
     public function exportReport(OperatingCostReportRequest $request, PlatformCommercialReportService $reports)

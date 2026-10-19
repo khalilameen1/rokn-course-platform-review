@@ -126,22 +126,22 @@ final class PlatformOperatingCostPeriodTest extends TestCase
         self::assertNull($report['student_rows']->first()['service_cost_egp']);
     }
 
-    public function test_controller_preserves_valid_period_in_pagination_and_exports_no_estimated_money(): void
+    public function test_controller_preserves_valid_period_in_native_report_link_and_exports_no_estimated_money(): void
     {
         $request = $this->validatedFormRequest(OperatingCostReportRequest::class, Request::create('/dashboard/operating-costs/report', 'GET', ['period' => '7d', 'course_id' => 10]));
         $controller = app(OperatingCostPoolController::class);
         $service = app(PlatformCommercialReportService::class);
-        $data = $controller->report($request, $service)->getData();
-        self::assertSame('7d', $data['report']['period']->key);
-        self::assertStringContainsString('period=7d', $data['students']->url(2));
-        self::assertStringContainsString('course_id=10', $data['students']->url(2));
+        $redirect = $controller->report($request)->getTargetUrl();
+        parse_str(parse_url($redirect, PHP_URL_QUERY) ?? '', $query);
+        self::assertSame('7d', $query['filters']['period']);
+        self::assertSame('10', $query['filters']['course_id']);
         ob_start();
         $controller->exportReport($request, $service)->sendContent();
         $csv = ob_get_clean();
         self::assertStringContainsString('تكلفة OpenRouter المؤكدة USD', $csv);
         self::assertStringNotContainsString('تقدير', $csv);
         $this->expectException(ValidationException::class);
-        $controller->report($this->validatedFormRequest(OperatingCostReportRequest::class, Request::create('/report', 'GET', ['period' => 'future'])), $service);
+        $controller->report($this->validatedFormRequest(OperatingCostReportRequest::class, Request::create('/report', 'GET', ['period' => 'future'])));
     }
 
     public function test_course_rows_exclude_authoring_copies_and_empty_drafts_without_reading_a_third_window(): void

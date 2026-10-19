@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\CommercialReport;
 use App\Filament\Pages\ProductAnalytics;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\AiUsageEvent;
@@ -326,17 +327,16 @@ final class PlatformReportPeriodTest extends TestCase
         $enrollment = $this->enrollment($admin, $this->course());
         $usage = $this->usage($enrollment, now()->toImmutable()->subMinute(), .025, 'reservation_fallback');
         $this->actingAs($admin, 'web');
-        $pending = $this->get('/dashboard/operating-costs-report?period=7d')->assertOk()
-            ->assertSee(versioned_asset('admin/assets/css/admin-reports.css'), false)
+        $pending = $this->commercial(['period' => '7d'])->assertOk()
             ->assertSee('بانتظار التأكيد')
             ->assertDontSee('$0.025000');
-        self::assertNull($pending->viewData('report')['ai_cost_per_1000_tokens_usd']);
-        self::assertStringNotContainsString('فاتورة مزود مسجلة؛', $pending->getContent());
+        self::assertNull($pending->instance()->report()['ai_cost_per_1000_tokens_usd']);
+        $pending->assertDontSee('فاتورة مزود مسجلة؛');
 
         $usage->update(['cost_usd' => 0, 'metadata' => ['cost_usage_source' => 'provider']]);
-        $confirmed = $this->get('/dashboard/operating-costs-report?period=7d')->assertOk()
+        $confirmed = $this->commercial(['period' => '7d'])->assertOk()
             ->assertSee('$0.000000')->assertDontSee('بانتظار التأكيد');
-        self::assertTrue($confirmed->viewData('report')['ai_cost_complete']);
+        self::assertTrue($confirmed->instance()->report()['ai_cost_complete']);
     }
 
     public function test_moderators_do_not_resolve_new_financial_services(): void
@@ -362,6 +362,15 @@ final class PlatformReportPeriodTest extends TestCase
 
         return Livewire::withQueryParams($query)->test(ProductAnalytics::class);
     }
+    private function commercial(array $filters): Testable
+    {
+        $redirect = $this->get(route('admin.operating-costs.report', $filters))->assertRedirect();
+        parse_str(parse_url($redirect->headers->get('Location'), PHP_URL_QUERY) ?? '', $query);
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+
+        return Livewire::withQueryParams($query)->test(CommercialReport::class);
+    }
+
 
     private function analyticsEntry(Testable $page, string $field): TextEntry
     {
