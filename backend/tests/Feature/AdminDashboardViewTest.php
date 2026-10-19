@@ -69,8 +69,6 @@ final class AdminDashboardViewTest extends TestCase
             'settings dashboard' => route('admin.settings'),
             'home dashboard' => route('admin.dashboard'),
             'course code details' => route('admin.course-codes.show', $code),
-            'course code create' => route('admin.course-codes.create'),
-            'course code edit' => route('admin.course-codes.edit', $code),
             'courses list' => route('admin.courses.index'),
             'course details' => route('admin.courses.show', $course),
             'course create' => route('admin.courses.create'),
@@ -81,6 +79,8 @@ final class AdminDashboardViewTest extends TestCase
         $this->adminGet($admin, route('admin.project-submissions.index'))->assertRedirect(ProjectSubmissionResource::listUrl());
         $this->adminGet($admin, route('admin.course-codes.index'))->assertRedirect(CourseCodeResource::listUrl());
         $this->adminGet($admin, CourseCodeResource::getUrl())->assertOk()->assertSee($code->code);
+        $this->adminGet($admin, route('admin.course-codes.create'))->assertRedirect(CourseCodeResource::getUrl('create'));
+        $this->adminGet($admin, route('admin.course-codes.edit', $code))->assertRedirect(CourseCodeResource::getUrl('edit', ['record' => $code->id]));
         $this->adminGet($admin, ProjectSubmissionResource::getUrl())->assertOk()->assertSee($submission->public_id);
         $this->adminGet($admin, route('admin.project-submissions.show', $submission))
             ->assertRedirect(ProjectSubmissionResource::getUrl('view', ['record' => $submission]));

@@ -15,6 +15,7 @@ use App\Services\AdminCourseCodeAuthoringService;
 use App\Services\AdminCourseCodeReadService;
 use App\Support\BusinessClock;
 use App\Support\CourseCodeEditorVersion;
+use App\Support\CourseCodeFormData;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -46,16 +47,11 @@ class CourseCodeController extends Controller
     }
 
     /**
-     * Show the form for creating a new resource.
-     *
-     * @return Response
+     * Redirect saved create bookmarks to the native editor.
      */
-    public function create()
+    public function create(): RedirectResponse
     {
-        $courses = $this->reader->courseOptions();
-        $designSettings = $this->getDesignSettings();
-
-        return view('admin.course-codes.create', compact('courses', 'designSettings'));
+        return redirect()->to(CourseCodeResource::getUrl('create'));
     }
 
     /**
@@ -68,18 +64,7 @@ class CourseCodeController extends Controller
         try {
             $numberOfCodes = max(1, (int) $request->input('number_of_codes', 1));
 
-            $payload = [
-                'name' => $request->input('name'),
-                'type' => $request->input('type'),
-                'start_date' => BusinessClock::localInputToUtc($request->input('start_date')),
-                'expiry_date' => BusinessClock::localInputToUtc($request->input('expiry_date')),
-                'max_uses' => $request->input('max_uses'),
-                'description' => $request->input('description'),
-                'allowed_email_domains' => $this->emailDomains($request->input('allowed_email_domains')),
-                'is_grant' => $request->boolean('is_grant'),
-                // Partial lesson grants require scoped access from dashboard to player.
-                'course_id' => $request->integer('course_id'),
-            ];
+            $payload = CourseCodeFormData::payload($request->validated());
             $this->authoring->createBatch($payload, $numberOfCodes, function (CourseCode $first) use ($request, $createIntents): void {
                 $createIntents->completeRedirect(
                     $request,
@@ -134,17 +119,11 @@ class CourseCodeController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
-     *
-     * @return Response
+     * Redirect saved edit bookmarks to the native editor.
      */
-    public function edit(CourseCode $courseCode)
+    public function edit(CourseCode $courseCode): RedirectResponse
     {
-        $courses = $this->reader->courseOptions();
-        $designSettings = $this->getDesignSettings();
-        $editorVersion = CourseCodeEditorVersion::for($courseCode);
-
-        return view('admin.course-codes.edit', compact('courseCode', 'courses', 'designSettings', 'editorVersion'));
+        return redirect()->to(CourseCodeResource::getUrl('edit', ['record' => $courseCode->id]));
     }
 
     /**
@@ -155,20 +134,8 @@ class CourseCodeController extends Controller
     public function update(CourseCodeRequest $request, CourseCode $courseCode)
     {
         try {
-            $data = $request->validated();
-
-            // Remove fields that shouldn't be updated
-            $editorVersion = (string) $data['editor_version'];
-            unset($data['number_of_codes'], $data['authoring_request_id'], $data['editor_version']);
-            $data['allowed_email_domains'] = $this->emailDomains(
-                $request->input('allowed_email_domains')
-            );
-            $data['is_grant'] = $request->boolean('is_grant');
-            foreach (['start_date', 'expiry_date'] as $field) {
-                if (array_key_exists($field, $data)) {
-                    $data[$field] = BusinessClock::localInputToUtc($data[$field]);
-                }
-            }
+            $data = CourseCodeFormData::payload($request->validated());
+            $editorVersion = (string) $request->validated('editor_version');
 
             $this->authoring->update((int) $courseCode->id, $data, $editorVersion);
 
@@ -204,18 +171,6 @@ class CourseCodeController extends Controller
 
         return redirect()->route('admin.course-codes.index')
             ->with('success', 'تم حذف الكود بنجاح');
-    }
-
-    private function emailDomains(?string $value): ?array
-    {
-        $domains = collect(preg_split('/[,\r\n]+/', (string) $value))
-            ->map(fn ($domain) => ltrim(mb_strtolower(trim((string) $domain)), '@'))
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-
-        return $domains ?: null;
     }
 
     /**

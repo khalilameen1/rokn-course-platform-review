@@ -341,21 +341,9 @@ parameters:
 			path: app/Http/Controllers/Admin/CourseCodeController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\CourseCodeController\:\:create\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/CourseCodeController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\Admin\\CourseCodeController\:\:destroy\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
 			identifier: return.type
 			count: 2
-			path: app/Http/Controllers/Admin/CourseCodeController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\CourseCodeController\:\:edit\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
 			path: app/Http/Controllers/Admin/CourseCodeController.php
 
 

@@ -35,8 +35,6 @@ final class AdminInlineStyleContractTest extends TestCase
 
     /** Pages that print the course-code, course-card and order dynamic style partials. */
     private const STYLE_BLOCK_PAGES = [
-        'admin.course-codes.create',
-        'admin.course-codes.edit',
         'admin.course-codes.show',
         'admin.courses.index',
         'admin.courses.show',
@@ -235,7 +233,6 @@ final class AdminInlineStyleContractTest extends TestCase
             'admin.teachers.show' => route('admin.teachers.show', $teacher),
             'admin.moderators.edit' => route('admin.moderators.edit', $moderator),
             'admin.course-codes.show' => route('admin.course-codes.show', $code),
-            'admin.course-codes.edit' => route('admin.course-codes.edit', $code),
         ];
         $template = AdminNotification::query()->first();
         if ($template !== null) {

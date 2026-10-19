@@ -45,16 +45,6 @@
       "classification": "first_party"
     },
     {
-      "path": "public/admin/assets/css/course-codes-create.css",
-      "sha256": "3a6dbc3f082ed76093a41ca3fc914e3965b847cc314867b01acd7290459b28ea",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/course-codes-edit.css",
-      "sha256": "f7c3f3bfb69491e0cf6aba0a03578dd54ffd0687f401e3de392996998591fe1e",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/course-codes-show.css",
       "sha256": "ce9f7e4e775650023a1f892fd4b3829a1f6a1c65f16063c57453e3e46878e291",
       "classification": "first_party"

@@ -9,13 +9,20 @@ use App\Filament\Resources\CourseCodeResource\Pages\ListCourseCodes;
 use App\Models\CourseCode;
 use App\Services\AdminCourseCodeReadService;
 use App\Support\BusinessClock;
+use App\Support\UnicodeText;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
@@ -23,6 +30,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\Rule;
 
 /** @extends DomainResource<CourseCode> */
 final class CourseCodeResource extends DomainResource
@@ -58,6 +66,40 @@ final class CourseCodeResource extends DomainResource
         return app(AdminCourseCodeReadService::class)->query([]);
     }
 
+    public static function form(Schema $schema): Schema
+    {
+        return $schema->components([
+            self::draftRecovery(),
+            Hidden::make('type')->default('course')->required()->in(['course']),
+            Section::make('إتاحة الكورس')->columns(2)->schema([
+                TextInput::make('name')->label('اسم الدفعة')->maxLength(255)
+                    ->mutateStateForValidationUsing(fn ($state) => UnicodeText::clean($state, false))
+                    ->dehydrateStateUsing(fn ($state) => UnicodeText::clean($state, false)),
+                Select::make('course_id')->label('الكورس')->required()->searchable()
+                    ->options(fn (): array => app(AdminCourseCodeReadService::class)->courseOptions()->mapWithKeys(fn ($course): array => [$course->id => $course->title])->all())
+                    ->rules(['integer', Rule::exists('courses', 'id')]),
+                TextInput::make('number_of_codes')->label('عدد الأكواد')->default(1)->required()->integer()->minValue(1)->maxValue(100)->visibleOn('create')->dehydrated(fn (string $operation): bool => $operation === 'create'),
+                TextInput::make('max_uses')->label('عدد المستخدمين لكل كود')->default(1)->required()->integer()
+                    ->minValue(fn (?CourseCode $record): int => max(1, (int) ($record->used_count ?? 0)))->maxValue(10000),
+                Toggle::make('is_grant')->label('منحة جهة')->default(false)
+                    ->helperText('يُتاح أقل اشتراك في الكورس حسب مزاياه المحددة'),
+                Toggle::make('is_active')->label('مفعّل')->hiddenOn('create')->dehydrated(fn (string $operation): bool => $operation !== 'create'),
+                Textarea::make('allowed_email_domains')->label('نطاقات البريد المسموح بها')->maxLength(2000)->rows(2)->columnSpanFull()
+                    ->helperText('اتركها فارغة للجميع أو افصل النطاقات بفاصلة')->extraInputAttributes(['dir' => 'ltr']),
+            ])->columnSpanFull(),
+            Section::make('التوقيت والملاحظات')->columns(2)->schema([
+                // Local wall time is converted exactly once by CourseCodeFormData.
+                TextInput::make('start_date')->label('يبدأ بتوقيت القاهرة')->type('datetime-local')
+                    ->rules(fn (string $operation): array => ['nullable', 'date', ...($operation === 'create' ? ['after_or_equal:'.BusinessClock::now()->startOfMinute()->format('Y-m-d\TH:i')] : [])]),
+                TextInput::make('expiry_date')->label('ينتهي بتوقيت القاهرة')->type('datetime-local')
+                    ->rules(fn (Get $get): array => ['nullable', 'date', ...(filled($get('start_date')) ? ['after:data.start_date'] : [])]),
+                Textarea::make('description')->label('ملاحظات داخلية')->maxLength(1000)->rows(3)->columnSpanFull()
+                    ->mutateStateForValidationUsing(fn ($state) => UnicodeText::clean($state))
+                    ->dehydrateStateUsing(fn ($state) => UnicodeText::clean($state)),
+            ])->columnSpanFull(),
+        ]);
+    }
+
     public static function table(Table $table): Table
     {
         return $table->columns([
@@ -86,7 +128,7 @@ final class CourseCodeResource extends DomainResource
             ->defaultSort('id', 'desc')->defaultPaginationPageOption(25)->poll('30s')->emptyStateHeading('لا توجد أكواد بهذه التصفيات')->emptyStateDescription('')
             ->recordUrl(null)->recordActions([ActionGroup::make([
                 Action::make('view')->label('التفاصيل')->url(fn (CourseCode $record): string => route('admin.course-codes.show', $record)),
-                Action::make('edit')->label('تعديل')->authorize(fn (CourseCode $record): bool => self::canEdit($record))->url(fn (CourseCode $record): string => route('admin.course-codes.edit', $record)),
+                Action::make('edit')->label('تعديل')->authorize(fn (CourseCode $record): bool => $record->type === 'course' && self::canEdit($record))->url(fn (CourseCode $record): string => self::getUrl('edit', ['record' => $record->id])),
                 Action::make('remove')->label('حذف')->color('danger')->requiresConfirmation()->authorize(fn (CourseCode $record): bool => self::canDelete($record))
                     ->modalDescription('الكود المستخدم يُوقَف مع الاحتفاظ بسجله')
                     ->mountUsing(fn (CourseCode $record, ListCourseCodes $livewire) => $livewire->remember(collect([$record]), 'remove'))
@@ -113,6 +155,8 @@ final class CourseCodeResource extends DomainResource
 
     public static function getPages(): array
     {
-        return ['index' => ListCourseCodes::route('/')];
+        return ['index' => ListCourseCodes::route('/'),
+            'create' => CourseCodeResource\Pages\CreateCourseCode::route('/create'),
+            'edit' => CourseCodeResource\Pages\EditCourseCode::route('/{record}/edit')];
     }
 }

@@ -15,8 +15,11 @@ final class ProductionCourseCodeSchema
         if (DB::connection()->getDriverName() !== 'sqlite') {
             return;
         }
-        if (! app()->environment('testing') || DB::connection()->getDatabaseName() !== ':memory:') {
-            throw new \LogicException('The course-code schema bridge is restricted to in-memory tests.');
+        $database = DB::connection()->getDatabaseName();
+        $browserDatabase = realpath(base_path('storage/framework/dashboard-browser/database.sqlite'));
+        $isBrowserFixture = $browserDatabase !== false && realpath($database) === $browserDatabase;
+        if (! app()->environment('testing') || ($database !== ':memory:' && ! $isBrowserFixture)) {
+            throw new \LogicException('The course-code schema bridge is restricted to isolated test databases.');
         }
         // Historical SQLite migrations skip table rebuilds to preserve inbound
         // foreign keys. Native DROP COLUMN removes only these retired fields.

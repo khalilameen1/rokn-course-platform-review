@@ -1,6 +1,44 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('grant code native editor creates a batch and persists a phone edit', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/course-codes/create');
+    await page.getByLabel('اسم الدفعة', { exact: true }).fill('دفعة النموذج الجديد');
+    await page.getByRole('button', { name: /^الكورس/ }).click();
+    await page.getByRole('option', { name: 'كورس المتصفح', exact: true }).click();
+    await page.getByLabel(/عدد الأكواد/).fill('2');
+    await page.getByLabel(/عدد المستخدمين لكل كود/).fill('5');
+    await page.getByLabel('نطاقات البريد المسموح بها', { exact: true }).fill('rokn.app');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('grant-code-create-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.getByRole('button', { name: 'إضافة', exact: true }).click();
+    await page.waitForURL('**/operations/course-codes');
+    const rows = page.getByRole('row').filter({ hasText: 'دفعة النموذج الجديد' });
+    await expect(rows).toHaveCount(2);
+    await rows.first().getByRole('button', { name: 'إجراءات الكود', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'تعديل', exact: true }).click();
+    await page.getByLabel('اسم الدفعة', { exact: true }).fill('الدفعة المعتمدة');
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page.getByText('تم الحفظ', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel('اسم الدفعة', { exact: true })).toHaveValue('الدفعة المعتمدة');
+    await expect(page.getByLabel('نطاقات البريد المسموح بها', { exact: true })).toHaveValue('rokn.app');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('grant-code-edit-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.reload();
+    await expect(page.getByRole('heading', { level: 1, name: 'تعديل كود منحة', exact: true })).toBeInViewport();
+    await page.evaluate(() => scrollTo(0, 0));
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'أكواد المنح', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await page.screenshot({ path: testInfo.outputPath('grant-code-edit-desktop.png'), fullPage: true, animations: 'disabled' });
+    expect(errors).toEqual([]);
+});
+
 test('project queue filters pending attempts and opens the existing full review', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

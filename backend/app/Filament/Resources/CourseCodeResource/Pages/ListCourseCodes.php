@@ -70,7 +70,7 @@ final class ListCourseCodes extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [Action::make('create')->label('إنشاء أكواد')->visible(fn (): bool => CourseCodeResource::canCreate())->url(route('admin.course-codes.create')),
+        return [Action::make('create')->label('إنشاء أكواد')->visible(fn (): bool => CourseCodeResource::canCreate())->url(CourseCodeResource::getUrl('create')),
             Action::make('csv')->label('تصدير CSV')->url(fn (): string => $this->exportUrl('csv'))->visible(fn (): bool => CourseCodeResource::allows('export', 'GET')),
             Action::make('pdf')->label('تصدير PDF')->url(fn (): string => $this->exportUrl('pdf'))->visible(fn (): bool => CourseCodeResource::allows('export-pdf', 'GET'))];
     }

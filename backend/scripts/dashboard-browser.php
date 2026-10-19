@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
+use Tests\Support\ProductionCourseCodeSchema;
 
 /** Disposable local HTTP harness. No auth bypass routes; tests use password + TOTP. */
 if (! in_array(PHP_SAPI, ['cli', 'cli-server'], true)) {
@@ -116,6 +117,8 @@ try {
     }
     Model::clearBootedModels();
     Artisan::call('migrate:fresh', ['--force' => true]);
+    require_once $root.'/tests/Support/ProductionCourseCodeSchema.php';
+    ProductionCourseCodeSchema::applySqliteBridge();
     Model::clearBootedModels();
     foreach (['admin', 'moderator', 'client'] as $role) {
         $user = User::query()->firstOrNew(['email' => $role.'@dashboard.example.test']);
@@ -141,7 +144,7 @@ try {
     $reportProject = Project::query()->create(['requirements_text' => 'نفذ حملة إعلانية', 'passing_score' => 50]);
     $reportSection = CourseSection::query()->create(['course_id' => $course->id, 'module_id' => $module->id, 'title' => 'مشروع التقرير',
         'section_type' => 'project', 'sectionable_type' => Project::class, 'sectionable_id' => $reportProject->id, 'order' => 2]);
-    $enrollment = CourseEnrollment::query()->forceCreate(['tenant_id' => 1, 'user_id' => $student->id, 'course_id' => $course->id, 'is_active' => true, 'enrolled_at' => now()]);
+    $enrollment = CourseEnrollment::query()->forceCreate(['user_id' => $student->id, 'course_id' => $course->id, 'is_active' => true, 'enrolled_at' => now()]);
     $terms = ['project_feedback_level' => 'report', 'project_feedback_token_budget' => 4000,
         'project_feedback_budget_usd' => '.2', 'project_feedback_reserve_usd' => '.02', 'max_output_tokens' => 320];
     $reportSubmission = ProjectSubmission::query()->create(['public_id' => (string) Str::uuid(), 'user_id' => $student->id, 'project_id' => $reportProject->id,
@@ -160,9 +163,9 @@ try {
         'mime_type' => 'text/plain', 'size_bytes' => 32, 'sha256' => hash('sha256', 'Private project browser evidence'), 'status' => 'ready']);
     DB::table('student_section_progress')->insert(['user_id' => $student->id, 'course_section_id' => $reportSection->id,
         'is_completed' => true, 'completed_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
-    CourseCode::query()->forceCreate(['tenant_id' => 1, 'code' => 'BROWSER-GRANT', 'name' => 'منحة المتصفح', 'course_id' => $course->id,
+    CourseCode::query()->forceCreate(['code' => 'BROWSER-GRANT', 'name' => 'منحة المتصفح', 'course_id' => $course->id,
         'type' => 'course', 'max_uses' => 10, 'used_count' => 0, 'is_active' => true, 'is_grant' => true]);
-    CourseCode::query()->forceCreate(['tenant_id' => 1, 'code' => 'BROWSER-INACTIVE', 'name' => 'منحة المتصفح', 'course_id' => $course->id,
+    CourseCode::query()->forceCreate(['code' => 'BROWSER-INACTIVE', 'name' => 'منحة المتصفح', 'course_id' => $course->id,
         'type' => 'course', 'max_uses' => 10, 'used_count' => 0, 'is_active' => false, 'is_grant' => true]);
     FeedbackReport::query()->firstOrCreate(['message' => 'رسالة دعم المتصفح'], [
         'public_id' => (string) Str::ulid(), 'user_id' => $student->id, 'category' => 'playback',
