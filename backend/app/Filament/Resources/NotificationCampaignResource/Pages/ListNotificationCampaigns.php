@@ -15,7 +15,7 @@ final class ListNotificationCampaigns extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [Action::make('create')->label('إشعار جديد')->url(route('admin.notifications.create'))->visible(fn (): bool => NotificationCampaignResource::allows('store')),
+        return [Action::make('create')->label('إشعار جديد')->url(NotificationCampaignResource::getUrl('create'))->visible(fn (): bool => NotificationCampaignResource::canCreate()),
             Action::make('templates')->label('القوالب')->url(route('admin.admin_notifications.index'))
                 ->visible(fn (): bool => app(AdminPermissionMatrix::class)->allows(auth('web')->user(), 'admin.admin_notifications.index', 'GET'))];
     }

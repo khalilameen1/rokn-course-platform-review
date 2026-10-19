@@ -58,23 +58,10 @@ final class AdminNotificationAuthoringContractTest extends TestCase
 
     public function test_broadcast_form_exposes_the_complete_campaign_contract(): void
     {
-        // Draft isolation between recipients is exercised in
-        // scripts/tests/notification-authoring-recipient.browser.mjs.
         $student = $this->student();
-        $html = $this->actingAs($this->admin, 'web')
+        $this->actingAs($this->admin, 'web')
             ->get(route('admin.notifications.create', ['user_id' => $student->id]))
-            ->assertOk()
-            ->getContent();
-        $form = '//form[@method="POST" and @action="'.route('admin.notifications.store').'"]';
-        $xpath = $this->xpath($html);
-
-        foreach (['user_id', 'title_ar', 'message_ar', 'image', 'action_label', 'action_link', 'audience', 'send_at'] as $field) {
-            self::assertGreaterThan(0, $xpath->query($form.'//*[@name="'.$field.'"]')->length, $field);
-        }
-        self::assertSame(
-            (string) $student->id,
-            $xpath->query($form.'//input[@name="user_id"]')->item(0)?->getAttribute('value')
-        );
+            ->assertRedirect(NotificationCampaignResource::getUrl('create-for-student', ['student' => $student->id]));
     }
 
     public function test_campaign_list_does_not_expose_internal_codes_or_raw_deep_links(): void

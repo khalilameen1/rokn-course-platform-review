@@ -1,6 +1,76 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('notification campaign native editor schedules reviewed artwork without delivering it', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/notifications/create');
+    await page.getByRole('combobox', { name: /^الجمهور/ }).selectOption('all');
+    await page.getByRole('combobox', { name: /^نوع الإشعار العام/ }).selectOption('service');
+    await page.getByRole('textbox', { name: /^العنوان بالعربية/ }).fill('حملة النموذج الجديد');
+    await page.getByRole('textbox', { name: /^النص بالعربية/ }).fill('رسالة الحملة المجدولة في المتصفح');
+    await page.locator('.fi-fo-file-upload').scrollIntoViewIfNeeded();
+    await expect(page.locator('.filepond--root')).toBeVisible();
+    await page.locator('.filepond--root input[type=file]').setInputFiles('public/assets/app-artwork/v1/coin-stack.png');
+    await expect(page.locator('[data-filepond-item-state="processing-complete"]')).toBeVisible();
+    await page.getByRole('textbox', { name: /^موعد الإرسال بتوقيت القاهرة/ }).fill(new Date(Date.now() + 86400000).toISOString().slice(0, 16));
+    await expect(page.getByText('1 طالب — يُراجع العدد عند الإرسال', { exact: true })).toBeVisible();
+    await page.getByRole('checkbox', { name: 'راجعت الجمهور والنص وأؤكد الإرسال', exact: true }).check();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('notification-campaign-create-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.getByRole('button', { name: 'تأكيد الإرسال', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'حملة النموذج الجديد', exact: true })).toBeVisible();
+    await expect(page.getByText('مجدولة', { exact: true })).toBeVisible();
+    await expect(page.getByText('رسالة الحملة المجدولة في المتصفح', { exact: true }).first()).toBeVisible();
+    expect(errors).toEqual([]);
+});
+
+test('notification campaign native desktop editor previews uploaded artwork', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/operations/notifications/create');
+    await page.getByRole('combobox', { name: /^الجمهور/ }).selectOption('all');
+    await page.getByRole('combobox', { name: /^نوع الإشعار العام/ }).selectOption('service');
+    await page.getByRole('textbox', { name: /^العنوان بالعربية/ }).fill('حملة النموذج الجديد');
+    await page.getByRole('textbox', { name: /^النص بالعربية/ }).fill('رسالة الحملة المجدولة في المتصفح');
+    await page.locator('.fi-fo-file-upload').scrollIntoViewIfNeeded();
+    await expect(page.locator('.filepond--root')).toBeVisible();
+    await page.locator('.filepond--root input[type=file]').setInputFiles('public/assets/app-artwork/v1/coin-stack.png');
+    await expect(page.locator('[data-filepond-item-state="processing-complete"]')).toBeVisible();
+    await expect(page.locator('.filepond--image-preview')).toHaveCSS('opacity', '1');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('notification-campaign-create-desktop.png'), fullPage: true, animations: 'disabled' });
+});
+
+test('notification campaign native drafts isolate an individual from a broadcast', async ({ page }, testInfo) => {
+    page.on('dialog', dialog => dialog.accept());
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/notifications/create/for/3');
+    await expect(page.locator('[data-authoring-draft]')).toHaveAttribute('data-draft-ready', 'true');
+    await expect(page.getByText('حساب المتصفح client — client@dashboard.example.test', { exact: true })).toBeVisible();
+    const title = page.getByRole('textbox', { name: /^العنوان بالعربية/ });
+    await title.fill('مسودة خاصة بالطالب');
+    await page.getByRole('textbox', { name: /^النص بالعربية/ }).fill('تفاصيل الطالب فقط');
+    await expect.poll(() => page.evaluate(() => Object.values(localStorage).some(value => value.includes('مسودة خاصة بالطالب')))).toBe(true);
+    await page.goto('/operations/notifications/create');
+    await expect(page.locator('[data-authoring-draft]')).toHaveAttribute('data-draft-ready', 'true');
+    await expect(title).toHaveValue('');
+    await title.fill('مسودة جماعية');
+    await expect.poll(() => page.evaluate(() => Object.values(localStorage).some(value => value.includes('مسودة جماعية')))).toBe(true);
+    await page.goto('/operations/notifications/create/for/3');
+    await expect(title).toHaveValue('مسودة خاصة بالطالب');
+    await expect(page.getByRole('textbox', { name: /^النص بالعربية/ })).toHaveValue('تفاصيل الطالب فقط');
+    await page.locator('.fi-fo-file-upload').scrollIntoViewIfNeeded();
+    await expect(page.locator('.filepond--root')).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('notification-campaign-individual-phone.png'), fullPage: true, animations: 'disabled' });
+});
+
 test('notification template native editor persists copy artwork and welcome policy', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

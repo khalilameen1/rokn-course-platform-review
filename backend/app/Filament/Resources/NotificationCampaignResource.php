@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources;
 
 use App\Auth\AdminPermissionMatrix;
+use App\Filament\Resources\NotificationCampaignResource\NotificationCampaignSchema;
 use App\Filament\Support\NotificationCampaignAction;
 use App\Models\NotificationCampaign;
 use App\Services\AdminNotificationCampaignReadService;
@@ -19,11 +20,14 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
+use UnitEnum;
 
-/** @extends ReadResource<NotificationCampaign> */
-final class NotificationCampaignResource extends ReadResource
+/** @extends DomainResource<NotificationCampaign> */
+final class NotificationCampaignResource extends DomainResource
 {
     public const STATES = ['scheduled' => 'مجدولة', 'queued' => 'في القائمة', 'delivering' => 'جارٍ التوزيع', 'completed' => 'اكتملت', 'failed' => 'تعذّر الإرسال', 'cancelled' => 'أُلغيت قبل الإرسال'];
 
@@ -41,7 +45,28 @@ final class NotificationCampaignResource extends ReadResource
 
     protected static ?int $navigationSort = 10;
 
-    protected static string $legacyListRoute = 'admin.notifications.index';
+    protected static string $permissionRoute = 'admin.notifications';
+
+    public static function getAuthorizationResponse(string|UnitEnum $action, ?Model $record = null): Response
+    {
+        return in_array($action, ['viewAny', 'view', 'create'], true)
+            ? parent::getAuthorizationResponse($action, $record) : Response::deny();
+    }
+
+    public static function draftFields(): array
+    {
+        return ['course_id', 'audience', 'notification_kind', 'title_ar', 'message_ar', 'title_en', 'message_en', 'action_label', 'action_link', 'send_at'];
+    }
+
+    public static function draftFileFields(): array
+    {
+        return ['image'];
+    }
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema->components([self::draftRecovery(), ...NotificationCampaignSchema::components()]);
+    }
 
     public static function allows(string $operation): bool
     {
@@ -142,6 +167,8 @@ final class NotificationCampaignResource extends ReadResource
     public static function getPages(): array
     {
         return ['index' => NotificationCampaignResource\Pages\ListNotificationCampaigns::route('/'),
+            'create' => NotificationCampaignResource\Pages\CreateNotificationCampaign::route('/create'),
+            'create-for-student' => NotificationCampaignResource\Pages\CreateNotificationCampaign::route('/create/for/{student}'),
             'view' => NotificationCampaignResource\Pages\ViewNotificationCampaign::route('/{record}')];
     }
 }

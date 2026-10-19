@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\NotificationCampaignResource;
 use App\Filament\Resources\TeacherResource\Pages\CreateTeacher;
 use App\Filament\Resources\TeacherResource\Pages\EditTeacher;
 use App\Models\Classification;
@@ -33,8 +34,6 @@ final class AdminCourseOperationsViewTest extends TestCase
 
         foreach ([
             'teacher details' => route('admin.teachers.show', $teacher),
-            'notifications list' => route('admin.notifications.index'),
-            'notifications create' => route('admin.notifications.create'),
         ] as $page => $url) {
             $html = (string) $this->adminGet($admin, $url)->assertOk()->getContent();
             self::assertGreaterThan(
@@ -43,6 +42,8 @@ final class AdminCourseOperationsViewTest extends TestCase
                 $page
             );
         }
+        $this->adminGet($admin, route('admin.notifications.index'))->assertRedirect(NotificationCampaignResource::getUrl());
+        $this->adminGet($admin, route('admin.notifications.create'))->assertRedirect(NotificationCampaignResource::getUrl('create'));
     }
 
     public function test_course_module_and_section_authoring_has_no_parallel_page(): void

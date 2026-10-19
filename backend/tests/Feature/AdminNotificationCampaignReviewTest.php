@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\NotificationCampaignResource;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Jobs\SendStudentNotification;
 use App\Models\NotificationCampaign;
@@ -32,12 +33,7 @@ final class AdminNotificationCampaignReviewTest extends TestCase
     {
         $this->actingAs($this->user('admin'))
             ->get(route('admin.notifications.create'))
-            ->assertOk()
-            ->assertSee('<option value="" selected>اختر الجمهور</option>', false)
-            ->assertDontSee('<option value="all" selected', false)
-            ->assertSee('name="confirm_send"', false)
-            ->assertSee(route('admin.notifications.audience-preview'), false)
-            ->assertSee(route('admin.notifications.test'), false);
+            ->assertRedirect(NotificationCampaignResource::getUrl('create'));
     }
 
     public function test_broadcast_is_refused_without_audience_or_confirmation(): void
@@ -84,7 +80,7 @@ final class AdminNotificationCampaignReviewTest extends TestCase
 
         $this->actingAs($admin)
             ->postJson(route('admin.notifications.test'), $this->payload(['test_email' => 'TESTER@rokn.test', 'confirm_send' => null]))
-            ->assertOk()->assertJsonPath('message', 'أُرسلت نسخة تجريبية إلى tester@rokn.test');
+            ->assertOk()->assertJsonPath('message', 'أُضيفت التجربة إلى قائمة الإرسال');
         $campaign = NotificationCampaign::query()->sole();
         self::assertSame([(int) $tester->id], array_map('intval', (array) $campaign->user_ids));
         self::assertSame('admin_message', $campaign->notification_type);

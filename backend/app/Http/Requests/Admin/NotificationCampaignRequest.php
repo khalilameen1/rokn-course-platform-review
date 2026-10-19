@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Admin;
 
-use App\Support\RoknAppLink;
+use App\Rules\RoknNotificationDestination;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class NotificationCampaignRequest extends FormRequest
@@ -31,11 +31,7 @@ final class NotificationCampaignRequest extends FormRequest
                 'nullable',
                 'string',
                 'max:2000',
-                static function (string $attribute, mixed $value, \Closure $fail): void {
-                    if (trim((string) $value) !== '' && RoknAppLink::normalize($value) === null) {
-                        $fail('اختر وجهة صحيحة داخل ركن');
-                    }
-                },
+                new RoknNotificationDestination,
             ],
             'send_at' => ['nullable', 'date_format:Y-m-d\\TH:i'],
         ];

@@ -56,7 +56,7 @@ trait RestoresAuthoringDraft
                 request(), $draft['receipt'], $resource::draftOperation(), [], $resource::getModel()
             );
             if ($receipt['state'] === 'completed') {
-                return ['state' => 'completed', 'url' => $resource::getUrl('edit', ['record' => $receipt['resource_id']])];
+                return ['state' => 'completed', 'url' => $this->completedAuthoringDraftUrl($receipt['resource_id'])];
             }
             $this->creationIntent = $draft['receipt'];
         }
@@ -68,6 +68,11 @@ trait RestoresAuthoringDraft
     protected function afterCreate(): void
     {
         $this->acknowledgeAuthoringDraft('');
+    }
+
+    protected function completedAuthoringDraftUrl(string $recordId): string
+    {
+        return static::getResource()::getUrl('edit', ['record' => $recordId]);
     }
 
     protected function afterSave(): void

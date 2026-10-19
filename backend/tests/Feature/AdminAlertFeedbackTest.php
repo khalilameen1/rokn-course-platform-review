@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\NotificationCampaignResource;
+use App\Filament\Resources\NotificationTemplateResource;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Contact;
 use App\Models\FeedbackReport;
@@ -40,25 +42,11 @@ final class AdminAlertFeedbackTest extends TestCase
     }
 
     #[DataProvider('shellOwnedFlashPages')]
-    public function test_admin_page_shows_each_redirect_flash_once_through_the_shell(string $page): void
+    public function test_retired_notification_shell_pages_redirect_to_native_workspaces(string $page): void
     {
         $url = $this->pageUrl($page);
-
-        foreach (['success', 'error', 'warning'] as $key) {
-            $this->flushSession();
-            $this->actingAsAdministrator();
-            $message = "رسالة {$key} للاختبار";
-            $content = (string) $this->withSession([$key => $message])->get($url)->assertOk()->getContent();
-
-            self::assertSame(1, substr_count($content, $message), "{$page} rendered {$key} flash more than once");
-        }
-
-        $this->flushSession();
-        $this->actingAsAdministrator();
-        $errors = (new ViewErrorBag)->put('default', new MessageBag(['name' => 'خطأ تحقق للاختبار']));
-        $content = (string) $this->withSession(['errors' => $errors])->get($url)->assertOk()->getContent();
-        self::assertSame(1, substr_count($content, 'حدثت أخطاء في النموذج'), "{$page} rendered a second error summary");
-        self::assertSame(1, substr_count($content, 'خطأ تحقق للاختبار'), "{$page} rendered validation errors twice");
+        $this->get($url)->assertRedirect($page === 'admin.notifications.create'
+            ? NotificationCampaignResource::getUrl('create') : NotificationTemplateResource::getUrl());
     }
 
     public function test_shared_moderator_form_leaves_validation_to_its_admin_shell(): void

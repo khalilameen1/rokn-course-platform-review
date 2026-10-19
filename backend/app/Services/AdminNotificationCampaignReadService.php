@@ -7,11 +7,35 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\NotificationCampaign;
 use App\Models\User;
+use App\Support\AdminStudentSearch;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
 
 final class AdminNotificationCampaignReadService
 {
+    public function student(int $id): User
+    {
+        return User::query()->students()->findOrFail($id);
+    }
+
+    public function courseOptions(string $search): array
+    {
+        $search = trim($search);
+
+        return Course::query()->where('is_coming_soon', false)
+            ->when($search !== '', fn (Builder $query) => $query->where(function (Builder $query) use ($search): void {
+                $literal = '%'.AdminStudentSearch::escape($search).'%';
+                $query->whereRaw("name_ar LIKE ? ESCAPE '!'", [$literal])->orWhereRaw("name_en LIKE ? ESCAPE '!'", [$literal]);
+                if (ctype_digit($search)) {
+                    $query->orWhereKey((int) $search);
+                }
+            }))->orderByDesc('id')->limit(50)->pluck('name_ar', 'id')->all();
+    }
+
+    public function courseName(int $id): ?string
+    {
+        return Course::query()->whereKey($id)->value('name_ar');
+    }
+
     /** @return Builder<NotificationCampaign> */
     public function query(): Builder
     {
@@ -25,31 +49,5 @@ final class AdminNotificationCampaignReadService
                 'notifications as push_partial_count' => fn ($query) => $query
                     ->whereNotNull('push_sent_at')->whereNotNull('push_failed_at'),
             ]);
-    }
-
-    /** @return array{courses:Collection,targetStudent:?User} */
-    public function authoringContext(?int $targetUserId, ?string $courseSearch = null): array
-    {
-        $courseSearch = trim((string) $courseSearch);
-        $courses = Course::query()
-            ->where('is_coming_soon', false)
-            ->when($courseSearch !== '', static function ($query) use ($courseSearch): void {
-                $query->where(static function ($courseQuery) use ($courseSearch): void {
-                    $courseQuery
-                        ->where('name_ar', 'like', '%'.$courseSearch.'%')
-                        ->orWhere('name_en', 'like', '%'.$courseSearch.'%');
-                    if (ctype_digit($courseSearch)) {
-                        $courseQuery->orWhereKey((int) $courseSearch);
-                    }
-                });
-            })
-            ->orderByDesc('id')
-            ->limit(50)
-            ->get(['id', 'name_ar', 'name_en']);
-        $targetStudent = $targetUserId
-            ? User::query()->students()->findOrFail($targetUserId)
-            : null;
-
-        return compact('courses', 'targetStudent', 'courseSearch');
     }
 }

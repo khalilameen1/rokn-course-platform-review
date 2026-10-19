@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Auth\AdminPermissionMatrix;
+use App\Filament\Resources\NotificationCampaignResource;
 use App\Filament\Resources\StudentResource\Pages\ViewStudent;
 use App\Filament\Resources\StudentResource\RelationManagers\OrdersRelationManager;
 use App\Http\Middleware\RequireAdminMfa;
@@ -199,9 +200,8 @@ final class ModeratorCourseWorkspaceContractTest extends TestCase
         self::assertSame(0, $studio->query('//*[contains(concat(" ", normalize-space(@class), " "), " breadcrumbs ")]')->length);
 
         $this->flushSession();
-        $notifications = $this->dom($this->actingAs($this->user('admin'), 'web')
-            ->get(route('admin.notifications.create'))->assertOk());
-        self::assertSame(1, $notifications->query('//*[contains(concat(" ", normalize-space(@class), " "), " breadcrumbs ")]')->length);
+        $this->actingAs($this->user('admin'), 'web')->get(route('admin.notifications.create'))
+            ->assertRedirect(NotificationCampaignResource::getUrl('create'));
     }
 
     public function test_administrator_home_leads_with_operational_follow_up(): void

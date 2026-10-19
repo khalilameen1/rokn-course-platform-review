@@ -11,16 +11,11 @@ use App\Http\Requests\Admin\NotificationAudienceRequest;
 use App\Http\Requests\Admin\NotificationCampaignRequest;
 use App\Http\Requests\Admin\NotificationCreateContextRequest;
 use App\Models\NotificationCampaign;
-use App\Models\User;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminNotificationCampaignAuthoringService;
-use App\Services\AdminNotificationCampaignReadService;
 use App\Services\NotificationCampaignService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
 
 final class NotificationsController extends Controller
 {
@@ -29,17 +24,13 @@ final class NotificationsController extends Controller
         return redirect()->to(NotificationCampaignResource::getUrl());
     }
 
-    public function create(NotificationCreateContextRequest $request, AdminNotificationCampaignReadService $notifications): View
+    public function create(NotificationCreateContextRequest $request): RedirectResponse
     {
         $validated = $request->validated();
 
-        return view(
-            'admin.notifications.create',
-            $notifications->authoringContext(
-                isset($validated['user_id']) ? (int) $validated['user_id'] : null,
-                $validated['course_search'] ?? null
-            )
-        );
+        return redirect()->to(isset($validated['user_id'])
+            ? NotificationCampaignResource::getUrl('create-for-student', ['student' => $validated['user_id']])
+            : NotificationCampaignResource::getUrl('create'));
     }
 
     public function store(
@@ -103,28 +94,8 @@ final class NotificationsController extends Controller
         AdminNotificationCampaignAuthoringService $notifications
     ): JsonResponse|RedirectResponse {
         $validated = $request->validated();
-        $student = User::query()->students()
-            ->where('email', strtolower(trim($validated['test_email'])))
-            ->first();
-        if (! $student) {
-            throw ValidationException::withMessages([
-                'test_email' => ['لا يوجد حساب طالب بهذا البريد'],
-            ]);
-        }
-        unset($validated['test_email']);
-        $validated['user_id'] = (int) $student->id;
-        $validated['send_at'] = null;
-        $validated['authoring_request_id'] = (string) Str::uuid();
-        $validated['title_ar'] = Str::limit('تجربة: '.trim($validated['title_ar']), 80, '');
-        if (! empty($validated['title_en'])) {
-            $validated['title_en'] = Str::limit('[Test] '.trim($validated['title_en']), 80, '');
-        }
-
-        $notifications->author(
-            NotificationAuthoringInput::fromValidated((int) ($request->user()?->getAuthIdentifier() ?? 0), $validated),
-            static function (?NotificationCampaign $campaign): void {}
-        );
-        $message = 'أُرسلت نسخة تجريبية إلى '.$student->email;
+        $notifications->authorTest((int) $request->user()->getAuthIdentifier(), $validated, $validated['test_email']);
+        $message = 'أُضيفت التجربة إلى قائمة الإرسال';
 
         return $request->expectsJson()
             ? response()->json(['message' => $message])

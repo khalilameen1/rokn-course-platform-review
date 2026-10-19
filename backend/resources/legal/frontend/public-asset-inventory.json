@@ -112,11 +112,6 @@
       "family": "normalize"
     },
     {
-      "path": "public/admin/assets/css/notifications-dashboard.css",
-      "sha256": "da63509a1bebaa41169f9dc9fd00b43926efa93f9500fbbbabe52723afb760be",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/orders-index.css",
       "sha256": "392b3202b974bc4728db95d0ed1bce85cc55f08909e01d6bc9877d670c17efb0",
       "classification": "first_party"
