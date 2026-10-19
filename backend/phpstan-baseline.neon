@@ -485,24 +485,6 @@ parameters:
 			count: 4
 			path: app/Http/Controllers/Admin/CourseSectionController.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\FeedbackAttachment\:\:\$scan_status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$order_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$requester_email\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/FeedbackController.php
-
 
 
 

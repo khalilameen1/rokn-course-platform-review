@@ -17,7 +17,6 @@
 
 <div class="admin-page">
     @if($feedback->screen_key === 'public_portfolio_report')
-        @php($portfolioOwner = \App\Models\User::find($feedback->context['portfolio_owner_id'] ?? null))
         @if($portfolioOwner)
             <div class="card admin-card mb-4"><div class="card-body">
                 <h2 class="h5">بلاغ عن أعمال {{ $portfolioOwner->name }}</h2>

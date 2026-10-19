@@ -168,6 +168,16 @@ final class AdminSupportExportFilterParityTest extends TestCase
         }
     }
 
+    public function test_search_preserves_literal_underscores_and_percent_in_the_inbox_and_export(): void
+    {
+        $literal = $this->report(['message' => 'رفع project_50% توقف']);
+        $this->report(['message' => 'رفع projectX500 توقف']);
+        $filters = ['q' => 'project_50%'];
+        self::assertSame([$literal->public_id], $this->get(route('admin.feedback.index', $filters))
+            ->assertOk()->viewData('reports')->pluck('public_id')->all());
+        self::assertSame([strtoupper(substr($literal->public_id, -8))], array_column($this->exportRows($filters), 0));
+    }
+
     private function exportRows(array $filters): array
     {
         $response = $this->get(route('admin.feedback.export', $filters))->assertOk();
