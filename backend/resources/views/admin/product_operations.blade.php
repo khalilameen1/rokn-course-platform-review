@@ -78,14 +78,7 @@
                     @endforelse
                     @if(data_get($runtime, 'failed_jobs.failed_jobs', 0) > 0)
                         <small class="d-block text-muted mt-2">لا يوجد زر إعادة عام لأن بعض المهام غير قابلة للتكرار بأمان. أصلح السبب ثم أعد المهمة المعروفة فقط.</small>
-                        @foreach(data_get($runtime, 'failed_jobs.recent', []) as $job)
-                            <form method="POST" action="{{ route('admin.product-operations.failed-jobs.acknowledge', $job['id']) }}" class="border rounded p-2 mt-2">
-                                @csrf
-                                <div class="d-flex justify-content-between"><strong>{{ $job['queue'] }}</strong><small>#{{ $job['id'] }}</small></div>
-                                <input class="form-control form-control-sm my-2" name="reason" minlength="8" maxlength="190" placeholder="ما الذي عولج" required>
-                                <button class="btn btn-sm btn-outline-secondary" type="submit">إغلاق دون إعادة</button>
-                            </form>
-                        @endforeach
+                        <a class="btn btn-sm btn-outline-primary" href="{{ \App\Filament\Pages\OperationalRecovery::getUrl() }}">استعادة المهام</a>
                     @endif
                 </div>
                 <div class="col-lg-7 mb-3">
@@ -96,25 +89,7 @@
                         <span class="badge badge-dark ml-2">تم تجاوزه {{ number_format(data_get($runtime, 'outbox.skipped', 0)) }}</span>
                         <span class="badge badge-danger">فشل {{ number_format(data_get($runtime, 'outbox.failed', 0)) }}</span>
                     </div>
-                    @forelse(data_get($runtime, 'outbox.failed_events', []) as $event)
-                        <div class="border rounded p-2 mb-2">
-                            <div class="d-flex flex-wrap justify-content-between admin-gap">
-                                <div><strong>{{ $event->topic }}</strong><br><small class="text-muted">حدث #{{ $event->id }} · {{ number_format($event->attempts) }} محاولات</small></div>
-                                <form method="POST" action="{{ route('admin.product-operations.outbox.retry', $event->id) }}" class="form-inline" onsubmit="return confirm('إعادة هذا الحدث بنفس هويته؟')">
-                                    @csrf
-                                    <input class="form-control form-control-sm ml-2" name="reason" minlength="8" maxlength="190" placeholder="سبب الإعادة" required>
-                                    <button class="btn btn-sm btn-outline-primary" type="submit">إعادة آمنة</button>
-                                </form>
-                                <form method="POST" action="{{ route('admin.product-operations.outbox.skip', $event->id) }}" class="form-inline mt-2" onsubmit="return confirm('تجاوز هذا الحدث يسمح لما بعده بالوصول قبله؟')">
-                                    @csrf
-                                    <input class="form-control form-control-sm ml-2" name="reason" minlength="8" maxlength="190" placeholder="سبب التجاوز" required>
-                                    <button class="btn btn-sm btn-outline-danger" type="submit">تجاوز موثق</button>
-                                </form>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="alert alert-success mb-0">لا توجد أحداث webhook فاشلة</div>
-                    @endforelse
+                    <a class="btn btn-sm btn-outline-primary" href="{{ \App\Filament\Pages\OperationalRecovery::getUrl() }}">استعادة المهام</a>
                 </div>
             </div>
             <div class="d-flex flex-wrap admin-gap border-top pt-3">

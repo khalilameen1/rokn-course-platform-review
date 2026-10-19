@@ -15,6 +15,7 @@ use App\Models\CourseSection;
 use App\Models\FeedbackReport;
 use App\Models\NotificationCampaign;
 use App\Models\Order;
+use App\Models\OutboxEvent;
 use App\Models\Package;
 use App\Models\PaymentReconciliationFinding;
 use App\Models\PortfolioItem;
@@ -183,6 +184,11 @@ try {
         'status' => NotificationCampaign::STATUS_SCHEDULED, 'scheduled_at' => now()->addDay(), 'user_ids' => [], 'exclude_user_ids' => []]);
     $template = AdminNotification::query()->create(['surface' => 'announcement', 'title_ar' => 'إعلان المتصفح المصور', 'description_ar' => 'نص الإعلان المحلي',
         'is_active' => true, 'priority' => 15, 'cooldown_hours' => 24]);
+    OutboxEvent::query()->create(['event_key' => (string) Str::uuid(), 'topic' => 'browser.recovery',
+        'aggregate_type' => 'course', 'aggregate_id' => (string) $course->id, 'payload' => ['fixture' => true],
+        'status' => OutboxEvent::STATUS_FAILED, 'attempts' => 3]);
+    DB::table('failed_jobs')->insert(['connection' => 'database', 'queue' => 'browser-review',
+        'payload' => 'isolated local fixture', 'exception' => 'isolated local fixture', 'failed_at' => now()]);
     Storage::disk('public')->put('notification-fixture/coins.png', file_get_contents($root.'/public/assets/app-artwork/v1/coin-stack.png'));
     $template->allPhotos()->create(['type' => 'featured', 'path' => 'notification-fixture/coins.png']);
     FeedbackReport::query()->firstOrCreate(['message' => 'رسالة دعم المتصفح'], [

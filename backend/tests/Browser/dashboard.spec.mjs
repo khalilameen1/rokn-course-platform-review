@@ -1,6 +1,30 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('operational recovery confirms a documented action on the selected phone row', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/operational-recovery');
+    const event = page.getByRole('row').filter({ hasText: 'browser.recovery' });
+    await expect(event.getByRole('button', { name: 'إجراءات الاستعادة', exact: true })).toBeInViewport({ ratio: 1 });
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('operational-recovery-phone.png'), fullPage: true });
+    await event.getByRole('button', { name: 'إجراءات الاستعادة', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'تجاوز الحدث', exact: true }).click();
+    const modal = page.getByRole('alertdialog');
+    await modal.getByRole('textbox', { name: /^سبب الإجراء/ }).fill('Reviewed obsolete isolated browser fixture');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('operational-recovery-modal-phone.png'), fullPage: true });
+    await modal.getByRole('button', { name: 'تجاوز الحدث', exact: true }).click();
+    await expect(page.getByText('تم تسجيل إجراء الاستعادة', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(event).toHaveCount(0);
+    await expect(page.getByRole('row').filter({ hasText: 'browser-review' })).toBeVisible();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.reload();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('operational-recovery-desktop.png'), fullPage: true });
+});
+
 test('product feature switches use a compact phone table and documented native decision', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/operations/product-feature-switches');
