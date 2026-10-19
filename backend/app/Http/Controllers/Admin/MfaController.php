@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Auth\Totp;
+use App\Auth\TwoFactorAuthenticationProvider;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\AdminMfaCodeRequest;
 use App\Models\User;
 use App\Services\AdminMfaService;
 use Illuminate\Http\RedirectResponse;
@@ -13,14 +14,13 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Validation\ValidationException;
 
 class MfaController extends Controller
 {
     private const GENERIC_ERROR = 'The verification code is invalid or has already been used.';
 
     public function __construct(
-        private readonly Totp $totp,
+        private readonly TwoFactorAuthenticationProvider $provider,
         private readonly AdminMfaService $mfa
     ) {}
 
@@ -40,7 +40,7 @@ class MfaController extends Controller
             === (int) $user->getAuthIdentifier();
 
         if (! $belongsToUser || $secret === '' || $startedAt <= 0 || (time() - $startedAt) > $setupTtl) {
-            $secret = $this->totp->generateSecret();
+            $secret = $this->provider->generateSecretKey();
             $request->session()->put([
                 'admin_mfa_setup_secret_ciphertext' => Crypt::encryptString($secret),
                 'admin_mfa_setup_user_id' => (int) $user->getAuthIdentifier(),
@@ -48,24 +48,18 @@ class MfaController extends Controller
             ]);
         }
 
+        $issuer = trim((string) config('admin_security.issuer', 'Rokn')) ?: 'Rokn';
+
         return $this->noStoreView('admin.auth.mfa-setup', [
             'secret' => $secret,
-            'otpauthUri' => $this->totp->otpauthUri($secret, (string) $user->email),
+            'otpauthUri' => $this->provider->qrCodeUrl($issuer, (string) $user->email, $secret),
         ]);
     }
 
-    public function confirmSetup(Request $request): RedirectResponse
+    public function confirmSetup(AdminMfaCodeRequest $request): RedirectResponse
     {
-        try {
-            $validated = $request->validate([
-                'code' => ['required', 'string', 'regex:/^[0-9]{6}$/D'],
-            ]);
-        } catch (ValidationException $exception) {
-            $request->request->remove('code');
-            throw $exception;
-        }
+        $validated = $request->validated();
         $submittedCode = $validated['code'];
-        $request->request->remove('code');
         $user = $request->user();
         abort_unless($user, 403);
 
@@ -111,21 +105,13 @@ class MfaController extends Controller
         return $this->noStoreView('admin.auth.mfa-challenge');
     }
 
-    public function verifyChallenge(Request $request): RedirectResponse
+    public function verifyChallenge(AdminMfaCodeRequest $request): RedirectResponse
     {
-        try {
-            $validated = $request->validate([
-                'code' => ['required', 'string', 'min:6', 'max:32'],
-            ]);
-        } catch (ValidationException $exception) {
-            $request->request->remove('code');
-            throw $exception;
-        }
+        $validated = $request->validated();
         $user = $request->user();
         abort_unless($user, 403);
 
         $code = trim($validated['code']);
-        $request->request->remove('code');
         if (! $this->mfa->verifyChallenge($user, $code)) {
             return $this->invalidCodeResponse();
         }
@@ -164,7 +150,7 @@ class MfaController extends Controller
         $request->session()->put([
             'admin_mfa_verified_user_id' => $userId,
             'admin_mfa_verified_at' => time(),
-            'admin_mfa_secret_fingerprint' => $this->totp->secretFingerprint($secret),
+            'admin_mfa_secret_fingerprint' => $this->mfa->secretFingerprint($secret),
         ]);
         if (Schema::hasColumn('users', 'last_dashboard_login_at')) {
             User::query()->whereKey($userId)->update(['last_dashboard_login_at' => now()]);

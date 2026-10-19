@@ -70,6 +70,12 @@ The HTTP gate additionally admits raw OOXML container MIME aliases, but actual
 content inspection still decides whether the file is genuine DOCX/PPTX. Those
 transport aliases must not appear as learner-selectable formats.
 
+Text of a DOCX for AI review is read by PhpWord; text of a PPTX is read from
+the package in ECMA-376 slide order (`p:sldIdLst` + relationships, every `a:p`
+of each slide), both through `App\Support\OfficeDocumentText`.
+`AiInputAttachmentService` bounds the package first (entries, expanded bytes,
+XML part sizes, slide count). Coverage: `AiInputAttachmentOfficeTextTest`.
+
 Follow-up conversation attachments are not the course's project deliverable.
 They keep the conversation's supported formats while sharing the provider size
 cap. Do not apply the course's deliverable whitelist to follow-up questions.

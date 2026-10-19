@@ -29,6 +29,7 @@ export type PersistedQueryPolicy = {
 const HOUR = 60 * 60 * 1000;
 const CATALOGUE_PAGE_LIMIT = 4;
 const COURSE_COVER_FALLBACK = require('../../assets/images/courseSlider.jpg');
+const PORTFOLIO_COVER_FALLBACK = require('../../assets/images/courseSliderBackground.jpg');
 
 type InfinitePages<T> = {pages: T[]; pageParams: unknown[]};
 
@@ -264,12 +265,143 @@ const walletPolicy = (
   revive: data => (valid(data) ? data : null),
 });
 
+const nonEmptyString = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
+
+const validSavedLesson = (value: unknown) =>
+  isApiRecord(value) &&
+  nonEmptyString(value.id) &&
+  nonEmptyString(value.folderId) &&
+  nonEmptyString(value.courseId) &&
+  typeof value.folderName === 'string' &&
+  typeof value.title === 'string' &&
+  typeof value.courseTitle === 'string' &&
+  typeof value.duration === 'string' &&
+  (value.imageUrl === undefined || typeof value.imageUrl === 'string');
+
+/**
+ * Saved library: the first page of all saved lessons, 24 hours, per account,
+ * as the previous page cache kept it. Offline the copy is one closed page (no
+ * "عرض المزيد"); folder lists were never kept and still are not.
+ */
+const savedLessonsPolicy: PersistedQueryPolicy = {
+  maxAgeMs: 24 * HOUR,
+  accepts: queryKey =>
+    isAccountScope(queryKey[0]) &&
+    queryKey[1] === 'saved-lessons' &&
+    queryKey[2] === 'all',
+  dehydrate: data =>
+    isInfinitePages(data)
+      ? {pages: data.pages.slice(0, 1), pageParams: data.pageParams.slice(0, 1)}
+      : data,
+  revive: data => {
+    if (!isInfinitePages(data) || data.pages.length === 0) return null;
+    const first = data.pages[0];
+    if (
+      !isApiRecord(first) ||
+      !Array.isArray(first.lessons) ||
+      !first.lessons.every(validSavedLesson)
+    ) {
+      return null;
+    }
+    return {
+      pages: [
+        {
+          lessons: first.lessons,
+          page: 1,
+          hasMore: false,
+          total: first.lessons.length,
+        },
+      ],
+      pageParams: [1],
+    };
+  },
+};
+
+const optional = (value: unknown, check: (value: unknown) => boolean) =>
+  value === undefined || check(value);
+const isString = (value: unknown) => typeof value === 'string';
+const isBoolean = (value: unknown) => typeof value === 'boolean';
+const isCount = (value: unknown) =>
+  Number.isSafeInteger(value) && Number(value) >= 0;
+
+const validPortfolioMedia = (value: unknown) =>
+  isApiRecord(value) &&
+  nonEmptyString(value.id) &&
+  (value.type === 'image' || value.type === 'video') &&
+  ['ready', 'processing', 'failed'].includes(String(value.status)) &&
+  optional(value.uri, isString) &&
+  optional(value.caption, isString) &&
+  optional(value.urlExpiresAt, isString);
+
+/** A gallery project as the screen models it, less its bundled cover asset. */
+const validPortfolioProject = (value: unknown) =>
+  isApiRecord(value) &&
+  /^\d+$/.test(String(value.id)) &&
+  typeof value.title === 'string' &&
+  typeof value.summary === 'string' &&
+  Array.isArray(value.tools) &&
+  value.tools.every(isString) &&
+  Array.isArray(value.media) &&
+  value.media.every(validPortfolioMedia) &&
+  typeof value.shareReady === 'boolean' &&
+  optional(value.publicId, isString) &&
+  optional(value.coverMediaId, isString) &&
+  optional(value.role, isString) &&
+  optional(value.externalUrl, isString) &&
+  optional(value.hidden, isBoolean) &&
+  optional(value.featured, isBoolean) &&
+  optional(value.sortOrder, isCount) &&
+  optional(value.courseName, isString) &&
+  optional(value.courseId, isString) &&
+  optional(value.sourceProjectId, isString) &&
+  optional(value.uploadedMediaCount, isCount) &&
+  optional(value.expectedMediaCount, isCount);
+
+const remoteCover = (cover: unknown) =>
+  isApiRecord(cover) && nonEmptyString(cover.uri) ? {uri: cover.uri} : undefined;
+
+/**
+ * Portfolio gallery: the owner's project list with no age limit, as the
+ * previous `@rokn/portfolio-cache/v1` record. Covers are kept as remote URLs
+ * only; the bundled fallback artwork is build-specific and restored by id.
+ * `shareReady` (publication state and `is_live`) travels as the screen
+ * computed it, so an offline gallery shows the same share actions as before.
+ */
+const portfolioPolicy: PersistedQueryPolicy = {
+  maxAgeMs: Number.POSITIVE_INFINITY,
+  accepts: queryKey =>
+    isAccountScope(queryKey[0]) && queryKey[1] === 'portfolio',
+  dehydrate: data =>
+    Array.isArray(data)
+      ? data.map(project =>
+          isApiRecord(project)
+            ? {...project, cover: remoteCover(project.cover)}
+            : project,
+        )
+      : data,
+  revive: data => {
+    if (!Array.isArray(data) || !data.every(validPortfolioProject)) {
+      return null;
+    }
+    const ids = new Set(data.map(project => String(project.id)));
+    if (ids.size !== data.length) return null;
+    return data.map(project => ({
+      ...project,
+      cover: remoteCover(project.cover) ?? PORTFOLIO_COVER_FALLBACK,
+      source: 'remote',
+    }));
+  },
+};
+
 const policies: Record<string, PersistedQueryPolicy> = {
   catalogue: cataloguePolicy,
   'course-details': courseDetailsPolicy,
   'learning-dashboard': learningDashboardPolicy,
   wallet: walletPolicy('wallet', validWallet),
   'coin-tasks': walletPolicy('coin-tasks', validTasks),
+  'saved-lessons': savedLessonsPolicy,
+  portfolio: portfolioPolicy,
 };
 
 export const persistedQueryPolicy = (

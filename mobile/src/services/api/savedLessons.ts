@@ -1,13 +1,9 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {publicRequest} from '../../constants/api';
 import {
-  accountScopedStorageKey,
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
   type AccountSessionBoundary,
 } from '../../constants/helpers';
-import {isServerTimestampFresh, serverNowMs} from '../../utils/serverClock';
-import {settleWithin} from '../../utils/settleWithin';
 import {isApiRecord, payload} from './common';
 
 type SavedFolderDto = {id?: unknown; name?: unknown};
@@ -41,92 +37,22 @@ export type SavedLesson = {
   imageUrl?: string;
 };
 
+/**
+ * One page of a saved-lessons list. The device copy of the first page of all
+ * lessons lives in the TanStack Query snapshot (`persistedQueryPolicies`,
+ * family `saved-lessons`), not here.
+ */
 export type SavedLessonsPage = {
   lessons: SavedLesson[];
   page: number;
   hasMore: boolean;
   total: number;
-  fromCache: boolean;
+  /** The folder a folder page belongs to, as the server names it. */
+  folderName?: string;
 };
 
-const CACHE_KEY = '@rokn/saved-lessons/v2';
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const libraryRevisions = new Map<string, number>();
-const cacheWrites = new Map<string, Promise<void>>();
-const ownerKey = (boundary: AccountSessionBoundary) =>
-  `${boundary.scope}:${boundary.epoch}`;
-const libraryRevision = (boundary: AccountSessionBoundary) =>
-  libraryRevisions.get(ownerKey(boundary)) ?? 0;
-
-// Replacements and acknowledged removals share the existing cache's write
-// order. A removal must read inside this queue, not prepare an older snapshot.
-const updateCache = (
-  boundary: AccountSessionBoundary,
-  update: (key: string) => Promise<SavedLesson[] | null>,
-): Promise<void> => {
-  const scope = boundary.scope;
-  const write = (cacheWrites.get(scope) ?? Promise.resolve()).then(async () => {
-    const key = await accountScopedStorageKey(CACHE_KEY, boundary);
-    assertAccountSessionBoundary(boundary);
-    const lessons = await update(key);
-    assertAccountSessionBoundary(boundary);
-    if (lessons === null) return;
-    await AsyncStorage.setItem(
-      key,
-      JSON.stringify({version: 2, savedAt: serverNowMs(), lessons}),
-    );
-  });
-  const settled = write.catch(() => undefined);
-  cacheWrites.set(scope, settled);
-  void settled.then(() => {
-    if (cacheWrites.get(scope) === settled) cacheWrites.delete(scope);
-  });
-  return write;
-};
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-
-const cacheKey = (capturedKey?: string) =>
-  capturedKey
-    ? Promise.resolve(capturedKey)
-    : accountScopedStorageKey(CACHE_KEY);
-
-const readCache = async (
-  capturedKey?: string,
-): Promise<SavedLesson[] | null> => {
-  try {
-    const raw = await AsyncStorage.getItem(await cacheKey(capturedKey));
-    if (!raw) return null;
-    const cached = JSON.parse(raw) as {
-      version?: unknown;
-      savedAt?: unknown;
-      lessons?: unknown;
-    };
-    if (
-      cached.version !== 2 ||
-      !isServerTimestampFresh(Number(cached.savedAt), CACHE_TTL_MS) ||
-      !Array.isArray(cached.lessons) ||
-      cached.lessons.some(
-        lesson =>
-          !isRecord(lesson) ||
-          typeof lesson.id !== 'string' ||
-          !lesson.id ||
-          typeof lesson.folderId !== 'string' ||
-          !lesson.folderId ||
-          typeof lesson.courseId !== 'string' ||
-          !lesson.courseId ||
-          typeof lesson.title !== 'string' ||
-          typeof lesson.courseTitle !== 'string' ||
-          typeof lesson.duration !== 'string',
-      )
-    ) {
-      return null;
-    }
-    return cached.lessons as SavedLesson[];
-  } catch {
-    return null;
-  }
-};
 
 const mapSavedLessonsPage = (
   raw: unknown,
@@ -176,7 +102,9 @@ const mapSavedLessonsPage = (
     page: requestedPage,
     hasMore: requestedPage < Number(pagination.last_page),
     total: Math.max(0, Number(pagination.total ?? lessons.length) || 0),
-    fromCache: false,
+    ...(folderId && isRecord(folder)
+      ? {folderName: String(folder.name).trim()}
+      : {}),
   };
 };
 
@@ -190,7 +118,6 @@ export const getSavedFolderLessonsPage = async (
     throw new Error('INVALID_SAVED_FOLDER_ROUTE');
   }
   const boundary = await captureAccountSessionBoundary();
-  // A global first-page cache is not a complete page of this folder.
   return readSavedLessonsPage(boundary, page, perPage, normalizedFolderId);
 };
 
@@ -210,57 +137,15 @@ const readSavedLessonsPage = async (
 ): Promise<SavedLessonsPage> => {
   const safePage = Math.max(1, Math.floor(page));
   const safePerPage = Math.min(50, Math.max(1, Math.floor(perPage)));
-  const capturedCacheKey = folderId
-    ? null
-    : await accountScopedStorageKey(CACHE_KEY, boundary);
-
-  for (;;) {
-    assertAccountSessionBoundary(boundary);
-    const revision = libraryRevision(boundary);
-    const isCurrent = () => libraryRevision(boundary) === revision;
-    try {
-      const raw = payload<unknown>(
-        await publicRequest.get(
-          folderId ? `saved-folders/${folderId}/lessons` : 'saved-lessons',
-          {params: {page: safePage, per_page: safePerPage}},
-        ),
-      );
-      assertAccountSessionBoundary(boundary);
-      // Only a confirmed mutation overtaking this read warrants another GET.
-      // Keep the original account and page; never replay the mutation.
-      if (!isCurrent()) continue;
-      const result = mapSavedLessonsPage(raw, safePage, folderId);
-      if (capturedCacheKey && result.page === 1) {
-        void updateCache(boundary, async () =>
-          isCurrent() ? result.lessons : null,
-        ).catch(() => undefined);
-      }
-      return result;
-    } catch (error) {
-      assertAccountSessionBoundary(boundary);
-      if (!isCurrent()) continue;
-      const cached =
-        capturedCacheKey && safePage === 1
-          ? await settleWithin(
-              (async () => {
-                await cacheWrites.get(boundary.scope);
-                return readCache(capturedCacheKey);
-              })(),
-              null,
-            )
-          : null;
-      assertAccountSessionBoundary(boundary);
-      if (!isCurrent()) continue;
-      if (!cached) throw error;
-      return {
-        lessons: cached,
-        page: 1,
-        hasMore: false,
-        total: cached.length,
-        fromCache: true,
-      };
-    }
-  }
+  assertAccountSessionBoundary(boundary);
+  const raw = payload<unknown>(
+    await publicRequest.get(
+      folderId ? `saved-folders/${folderId}/lessons` : 'saved-lessons',
+      {params: {page: safePage, per_page: safePerPage}},
+    ),
+  );
+  assertAccountSessionBoundary(boundary);
+  return mapSavedLessonsPage(raw, safePage, folderId);
 };
 
 const invalidSavedLesson = (lesson: SavedLessonDto): boolean => {
@@ -304,61 +189,4 @@ const mapSavedLesson = (lesson: SavedLessonDto): SavedLesson[] => {
     )}:${String(durationSeconds % 60).padStart(2, '0')}`,
     imageUrl: imageUrl || undefined,
   }));
-};
-
-export const getSavedLessons = async (): Promise<SavedLesson[]> =>
-  (await getSavedLessonsPage()).lessons;
-
-const filterCache = async (
-  keep: (lesson: SavedLesson) => boolean,
-  ownerBoundary?: AccountSessionBoundary,
-) => {
-  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
-  assertAccountSessionBoundary(boundary);
-  libraryRevisions.set(ownerKey(boundary), libraryRevision(boundary) + 1);
-  await updateCache(boundary, async key => {
-    const cached = await readCache(key);
-    return cached ? cached.filter(keep) : null;
-  });
-  assertAccountSessionBoundary(boundary);
-};
-
-export const removeSavedLessonFromCache = (
-  folderId: string,
-  lessonId: string,
-  ownerBoundary?: AccountSessionBoundary,
-) =>
-  filterCache(
-    lesson => lesson.folderId !== folderId || lesson.id !== lessonId,
-    ownerBoundary,
-  );
-
-export const removeSavedFolderFromCache = (
-  folderId: string,
-  ownerBoundary?: AccountSessionBoundary,
-) => filterCache(lesson => lesson.folderId !== folderId, ownerBoundary);
-
-export const removeSavedLessonEverywhereFromCache = (
-  lessonId: string,
-  ownerBoundary?: AccountSessionBoundary,
-) => filterCache(lesson => lesson.id !== lessonId, ownerBoundary);
-
-export const deleteSavedLesson = async (folderId: string, lessonId: string) => {
-  const normalizedFolderId = String(folderId).trim();
-  const normalizedLessonId = String(lessonId).trim();
-  if (!/^\d+$/.test(normalizedFolderId) || !/^\d+$/.test(normalizedLessonId)) {
-    throw new Error('INVALID_SAVED_LESSON_ROUTE');
-  }
-  const boundary = await captureAccountSessionBoundary();
-  const response = await publicRequest.delete(
-    `saved-folders/${normalizedFolderId}/lessons/${normalizedLessonId}`,
-  );
-  assertAccountSessionBoundary(boundary);
-  await removeSavedLessonFromCache(
-    normalizedFolderId,
-    normalizedLessonId,
-    boundary,
-  ).catch(() => undefined);
-  assertAccountSessionBoundary(boundary);
-  return response;
 };

@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Auth\Totp;
+use App\Services\AdminMfaService;
 use App\Support\DatabaseCapabilities;
 use Closure;
 use Illuminate\Http\Request;
 
 final class RequireAdminMfa
 {
-    public function __construct(private readonly Totp $totp) {}
+    public function __construct(private readonly AdminMfaService $mfa) {}
 
     public function handle(Request $request, Closure $next)
     {
@@ -59,7 +59,7 @@ final class RequireAdminMfa
             && $verifiedAt > 0
             && $ageSeconds >= 0
             && $ageSeconds <= $ttlSeconds
-            && hash_equals($this->totp->secretFingerprint($secret), $fingerprint);
+            && hash_equals($this->mfa->secretFingerprint($secret), $fingerprint);
 
         if ($isVerified) {
             return $next($request);

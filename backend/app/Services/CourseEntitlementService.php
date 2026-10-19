@@ -9,6 +9,7 @@ use App\Models\CourseEnrollment;
 use App\Models\FinancialEntitlementHold;
 use App\Models\Order;
 use App\Support\FinancialProvenanceSchema;
+use App\Support\Money;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -247,7 +248,7 @@ final class CourseEntitlementService
         return $order !== null
             && $order->isFinanciallyEffective()
             && $order->payment_method !== Order::PAYMENT_METHOD_COURSE_CODE
-            && ((int) $order->total_coins > 0 || (float) $order->final_amount > 0);
+            && ((int) $order->total_coins > 0 || Money::ofEgp($order->final_amount)->isPositive());
     }
 
     private function isGrantEnrollment(CourseEnrollment $enrollment): bool

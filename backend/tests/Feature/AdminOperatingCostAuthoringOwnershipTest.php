@@ -145,7 +145,7 @@ final class AdminOperatingCostAuthoringOwnershipTest extends TestCase
         self::assertSame(52.0, (float) $settings->fresh()->openrouter_usd_to_egp_rate);
         self::assertSame('رُكن للتعلم', $settings->fresh()->site_name_ar);
         self::assertSame(40.0, (float) $invoice->fresh()->fx_rate_to_egp);
-        self::assertSame(800.0, $invoice->fresh()->amountEgp());
+        self::assertSame(800.0, $invoice->fresh()->amountEgp()?->toFloat());
         try {
             $writer->updateExchangeRate(45, $version);
             self::fail('A stale rate editor must not overwrite the newer rate.');

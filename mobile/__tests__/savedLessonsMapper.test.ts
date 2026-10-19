@@ -98,7 +98,6 @@ describe('saved lesson canonical mapper', () => {
       page: 1,
       hasMore: true,
       total: 21,
-      fromCache: false,
     });
     expect(apiGet).toHaveBeenCalledWith('saved-folders/7/lessons', {
       params: {page: 1, per_page: 20},
@@ -183,28 +182,6 @@ describe('saved lesson canonical mapper', () => {
     },
   );
 
-  it('never presents the cached global first page as complete folder contents', async () => {
-    const data = folderResponse().data.data;
-    apiGet.mockResolvedValue({
-      data: {
-        data: {
-          ...data,
-          lessons: data.lessons.map(lesson => ({
-            ...lesson,
-            folder_memberships: [data.folder],
-          })),
-        },
-      },
-    } as never);
-    await getSavedLessonsPage();
-    apiGet.mockRejectedValue(new Error('offline'));
-    await expect(getSavedFolderLessonsPage('7')).rejects.toThrow('offline');
-    await expect(getSavedLessonsPage()).resolves.toMatchObject({
-      fromCache: true,
-    });
-    expect(AsyncStorage.setItem).toHaveBeenCalled();
-  });
-
   it('rejects a folder response after its account boundary expires', async () => {
     apiGet.mockResolvedValue(folderResponse() as never);
     jest.mocked(assertAccountSessionBoundary).mockImplementationOnce(() => {
@@ -213,6 +190,5 @@ describe('saved lesson canonical mapper', () => {
     await expect(getSavedFolderLessonsPage('7')).rejects.toThrow(
       'ACCOUNT_CHANGED_DURING_REQUEST',
     );
-    expect(AsyncStorage.setItem).not.toHaveBeenCalled();
   });
 });

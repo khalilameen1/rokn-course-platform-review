@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\WalletDebitAllocation;
+use App\Support\Money;
 use Illuminate\Support\Collection;
 
 /** Attributes accepted course debits to evidenced source cash, never catalogue prices. */
@@ -36,10 +37,10 @@ final class CourseCashAttributionService
         Collection $allocationsByOrder,
         Collection $coinAllocationsByOrder
     ): array {
-        $gross = 0.0;
-        $estimatedGross = 0.0;
-        $netKnown = 0.0;
-        $pendingGross = 0.0;
+        $gross = Money::zero();
+        $estimatedGross = Money::zero();
+        $netKnown = Money::zero();
+        $pendingGross = Money::zero();
         $allocatedCoins = 0;
         $reconciliationMissing = false;
         $foreignCurrencyAmounts = [];
@@ -110,11 +111,12 @@ final class CourseCashAttributionService
                     continue;
                 }
 
-                $ratio = min(1, $coins / $lotCoins);
-                $sourceGross = (float) ($source->gateway_gross_amount ?? $source->final_amount ?? 0);
+                // This debit's share of the lot: at most the whole lot.
+                $share = static fn (Money $amount): Money => $amount->prorate(min($coins, $lotCoins), $lotCoins);
+                $sourceGross = Money::ofEgp($source->gateway_gross_amount ?? $source->final_amount ?? 0);
                 $sourceGrossKnown = $source->gateway_gross_amount !== null
                     && $source->gateway_settlement_status !== 'catalog_estimate';
-                $attributedGross = $sourceGross * $ratio;
+                $attributedGross = $share($sourceGross);
                 $method = (string) $source->payment_method;
                 $sourceCurrency = strtoupper((string) (
                     $source->gateway_currency
@@ -145,10 +147,10 @@ final class CourseCashAttributionService
                 }
                 if ($sourceCurrency !== 'EGP') {
                     $foreignCurrencyAmounts[$sourceCurrency] =
-                        ($foreignCurrencyAmounts[$sourceCurrency] ?? 0.0) + $attributedGross;
+                        ($foreignCurrencyAmounts[$sourceCurrency] ?? Money::zero())->add($attributedGross);
                     $channels[$method]['foreign_currency_amounts'][$sourceCurrency] =
-                        ($channels[$method]['foreign_currency_amounts'][$sourceCurrency] ?? 0.0)
-                        + $attributedGross;
+                        ($channels[$method]['foreign_currency_amounts'][$sourceCurrency] ?? Money::zero())
+                            ->add($attributedGross);
                     $channels[$method]['net_complete'] = false;
                     $channels[$method]['gross_complete'] = false;
                     $reconciliationMissing = true;
@@ -156,25 +158,25 @@ final class CourseCashAttributionService
                     continue;
                 }
                 if ($sourceGrossKnown) {
-                    $gross += $attributedGross;
-                    $channels[$method]['gross_egp'] += $attributedGross;
+                    $gross = $gross->add($attributedGross);
+                    $channels[$method]['gross_egp'] = $channels[$method]['gross_egp']->add($attributedGross);
                 } else {
-                    $estimatedGross += $attributedGross;
-                    $channels[$method]['estimated_gross_egp'] += $attributedGross;
+                    $estimatedGross = $estimatedGross->add($attributedGross);
+                    $channels[$method]['estimated_gross_egp'] = $channels[$method]['estimated_gross_egp']->add($attributedGross);
                     $channels[$method]['gross_complete'] = false;
                 }
 
                 if ($source->gateway_net_amount !== null) {
-                    $attributedNet = (float) $source->gateway_net_amount * $ratio;
-                    $netKnown += $attributedNet;
-                    $channels[$method]['net_known_egp'] += $attributedNet;
+                    $attributedNet = $share(Money::ofEgp($source->gateway_net_amount));
+                    $netKnown = $netKnown->add($attributedNet);
+                    $channels[$method]['net_known_egp'] = $channels[$method]['net_known_egp']->add($attributedNet);
                 } elseif ($source->gateway_fee_amount !== null) {
-                    $attributedNet = max(0, $sourceGross - (float) $source->gateway_fee_amount) * $ratio;
-                    $netKnown += $attributedNet;
-                    $channels[$method]['net_known_egp'] += $attributedNet;
+                    $attributedNet = $share($sourceGross->sub($source->gateway_fee_amount)->max(0));
+                    $netKnown = $netKnown->add($attributedNet);
+                    $channels[$method]['net_known_egp'] = $channels[$method]['net_known_egp']->add($attributedNet);
                 } else {
-                    $pendingGross += $attributedGross;
-                    $channels[$method]['pending_settlement_egp'] += $attributedGross;
+                    $pendingGross = $pendingGross->add($attributedGross);
+                    $channels[$method]['pending_settlement_egp'] = $channels[$method]['pending_settlement_egp']->add($attributedGross);
                     $channels[$method]['net_complete'] = false;
                 }
             }
@@ -193,50 +195,44 @@ final class CourseCashAttributionService
         }
 
         return [
-            'cash_gross_egp' => round($gross, 2),
-            'cash_estimated_gross_egp' => round($estimatedGross, 2),
+            'cash_gross_egp' => $gross->toFloat(),
+            'cash_estimated_gross_egp' => $estimatedGross->toFloat(),
             'cash_gross_complete' => collect($channels)->every(
                 fn (array $channel): bool => (bool) $channel['gross_complete']
             ),
-            'cash_net_known_egp' => round($netKnown, 2),
-            'cash_pending_settlement_egp' => round($pendingGross, 2),
-            'cash_net_complete' => $pendingGross < 0.005 && ! $reconciliationMissing,
+            'cash_net_known_egp' => $netKnown->toFloat(),
+            'cash_pending_settlement_egp' => $pendingGross->toFloat(),
+            'cash_net_complete' => $pendingGross->compareTo('0.005') < 0 && ! $reconciliationMissing,
             'allocated_paid_coins' => $allocatedCoins,
             'cash_foreign_currency_amounts' => collect($foreignCurrencyAmounts)
-                ->map(fn (float $amount): float => round($amount, 2))
+                ->map(fn (Money $amount): float => $amount->toFloat())
                 ->all(),
             'cash_channels' => collect($channels)->map(function (array $channel): array {
-                $channel['gross_egp'] = round((float) $channel['gross_egp'], 2);
-                $channel['estimated_gross_egp'] = round(
-                    (float) $channel['estimated_gross_egp'],
-                    2
-                );
-                $channel['net_known_egp'] = round((float) $channel['net_known_egp'], 2);
-                $channel['pending_settlement_egp'] = round(
-                    (float) $channel['pending_settlement_egp'],
-                    2
-                );
+                $channel['gross_egp'] = $channel['gross_egp']->toFloat();
+                $channel['estimated_gross_egp'] = $channel['estimated_gross_egp']->toFloat();
+                $channel['net_known_egp'] = $channel['net_known_egp']->toFloat();
+                $channel['pending_settlement_egp'] = $channel['pending_settlement_egp']->toFloat();
                 $channel['foreign_currency_amounts'] = collect(
                     $channel['foreign_currency_amounts']
-                )->map(fn (float $amount): float => round($amount, 2))->all();
+                )->map(fn (Money $amount): float => $amount->toFloat())->all();
 
                 return $channel;
             })->all(),
         ];
     }
 
-    /** @return array<string, int|float|bool|string|array> */
+    /** @return array<string, int|Money|bool|string|array> */
     private function emptyChannel(string $method, string $label, bool $complete = true): array
     {
         return [
             'method' => $method,
             'label' => $label,
             'paid_coins' => 0,
-            'gross_egp' => 0.0,
-            'estimated_gross_egp' => 0.0,
+            'gross_egp' => Money::zero(),
+            'estimated_gross_egp' => Money::zero(),
             'gross_complete' => $complete,
-            'net_known_egp' => 0.0,
-            'pending_settlement_egp' => 0.0,
+            'net_known_egp' => Money::zero(),
+            'pending_settlement_egp' => Money::zero(),
             'net_complete' => $complete,
             'foreign_currency_amounts' => [],
         ];

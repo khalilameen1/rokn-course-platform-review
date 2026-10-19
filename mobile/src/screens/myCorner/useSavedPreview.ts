@@ -2,19 +2,11 @@ import {useFocusEffect} from '@react-navigation/native';
 import {useQuery} from '@tanstack/react-query';
 import {useCallback} from 'react';
 
-// The folder index alone, not the player runtime behind courseLearningApi.
-import {
-  getSavedFolderOptions,
-  type SavedFolderOption,
-} from '../../components/VideoPlayer/courseLearning/savedFolderIndex';
+import type {SavedFolderOption} from '../../components/VideoPlayer/courseLearning/savedFolderIndex';
 import {isWatchLaterFolderName} from '../../components/VideoPlayer/courseLearning/savedFolderNames';
-import {assertAccountSessionBoundary} from '../../constants/helpers';
 import {useAppForegroundState} from '../../hooks/useAppActiveState';
-import {
-  captureScopedBoundary,
-  useAccountQueryScope,
-} from '../../services/query/accountQueryScope';
-import {accountQueryKeys} from '../../services/query/queryKeys';
+import {useAccountQueryScope} from '../../services/query/accountQueryScope';
+import {savedFoldersQueryOptions} from '../../services/query/savedLibraryQueries';
 
 export type SavedPreviewStatus = 'loading' | 'ready' | 'error';
 
@@ -60,26 +52,21 @@ export const savedCollections = (
 };
 
 /**
- * The learner's saved lists for ركني, as one account-scoped query. It reads
- * through the same account-scoped folder index (and its offline copy) as the
- * full library and the player sheet; confirmed save/remove/folder changes
- * invalidate it (`invalidateFolderList`). Every focus and return to the app
- * reads again; a failed refresh keeps the cards already shown.
+ * The learner's saved lists for ركني, observing the same account-scoped
+ * saved-folders query as the full library (`savedFoldersQueryOptions`), which
+ * reads through the player sheet's folder index and its offline copy;
+ * confirmed save/remove/folder changes invalidate it (`invalidateFolderList`).
+ * Every focus and return to the app reads again; a failed refresh keeps the
+ * cards already shown.
  */
 export const useSavedPreview = (identityKey: string, enabled: boolean) => {
   const appIsActive = useAppForegroundState();
   const {scope} = useAccountQueryScope(identityKey);
   const folders = useQuery({
-    queryKey: accountQueryKeys(scope).savedFolders(),
-    queryFn: async () => {
-      const boundary = await captureScopedBoundary(scope!);
-      const options = await getSavedFolderOptions();
-      assertAccountSessionBoundary(boundary);
-      return savedCollections(options);
-    },
+    ...savedFoldersQueryOptions(scope),
+    select: savedCollections,
     // A manual query: ركني reads on every focus and foreground return.
     enabled: false,
-    staleTime: 0,
   });
 
   const refetch = folders.refetch;

@@ -4,89 +4,42 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Pages\CommercialReport;
+use App\Filament\Resources\OperatingCostResource;
 use App\Http\Controllers\Controller;
-use App\Models\Course;
-use App\Models\CourseAuthoringRevision;
+use App\Http\Requests\Admin\EditorVersionRequest;
+use App\Http\Requests\Admin\OperatingCostExchangeRateRequest;
+use App\Http\Requests\Admin\OperatingCostIndexRequest;
+use App\Http\Requests\Admin\OperatingCostProfileRequest;
+use App\Http\Requests\Admin\OperatingCostReportRequest;
 use App\Models\OperatingCostPool;
-use App\Models\Setting;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminOperatingCostAuthoringService;
 use App\Services\CourseCostReportService;
 use App\Services\PlatformCommercialReportService;
 use App\Support\CsvCell;
-use App\Support\OperatingCostEditorVersion;
-use App\Support\ReportPeriod;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 
 final class OperatingCostPoolController extends Controller
 {
     public function __construct(private readonly AdminOperatingCostAuthoringService $authoring) {}
 
-    public function index(Request $request): View
+    public function index(OperatingCostIndexRequest $request): RedirectResponse
     {
-        $filters = $request->validate([
-            'service_key' => ['nullable', Rule::in(array_keys(OperatingCostPool::SERVICES))],
-            'course_id' => ['nullable', 'integer', 'exists:courses,id'],
-            'from' => ['nullable', 'date'],
-            'to' => ['nullable', 'date', 'after_or_equal:from'],
-        ]);
-        $poolQuery = OperatingCostPool::query()
-            ->when($filters['service_key'] ?? null, fn ($query, $service) => $query->where('service_key', $service))
-            ->when($filters['course_id'] ?? null, fn ($query, $courseId) => $query->where('course_id', $courseId))
-            ->when($filters['from'] ?? null, fn ($query, $from) => $query->where('period_end', '>=', $from))
-            ->when($filters['to'] ?? null, fn ($query, $to) => $query->where('period_start', '<=', $to));
-        $summaryRows = (clone $poolQuery)
-            ->select(['service_key', 'is_final'])
-            ->selectRaw("SUM(CASE WHEN currency = 'EGP' THEN amount WHEN currency = 'USD' AND COALESCE(fx_rate_to_egp, 0) > 0 THEN amount * fx_rate_to_egp ELSE 0 END) AS amount_egp")
-            ->selectRaw("SUM(CASE WHEN currency = 'USD' AND COALESCE(fx_rate_to_egp, 0) <= 0 THEN 1 ELSE 0 END) AS missing_fx")
-            ->groupBy('service_key', 'is_final')
-            ->get();
-        $pools = (clone $poolQuery)
-            ->with(['course' => fn ($query) => $query->withTrashed()])
-            ->latest('period_end')
-            ->latest('id')
-            ->paginate(30)
-            ->withQueryString();
-        $courses = $this->invoiceCourses()
-            ->withCount('activeEnrollments')
-            ->orderBy('name_ar')
-            ->get(['id', 'name_ar', 'deleted_at']);
-        $settings = Setting::query()->first() ?? new Setting;
-        $editPool = $request->filled('edit_cost')
-            ? OperatingCostPool::query()->with(['course' => fn ($query) => $query->withTrashed()])->findOrFail((int) $request->input('edit_cost'))
-            : null;
-        $poolEditorVersions = $pools->getCollection()->mapWithKeys(
-            fn (OperatingCostPool $pool): array => [$pool->id => OperatingCostEditorVersion::for($pool)]
-        );
-        $editPoolEditorVersion = $editPool ? OperatingCostEditorVersion::for($editPool) : null;
-        $exchangeRateEditorVersion = OperatingCostEditorVersion::exchangeRate($settings);
+        $filters = $request->validated();
+        if ($request->filled('edit_cost')) {
+            return redirect(OperatingCostResource::getUrl('edit', ['record' => (int) $request->input('edit_cost')]));
+        }
 
-        $actualRows = $summaryRows->filter(fn ($row): bool => (bool) $row->is_final);
-        $estimatedRows = $summaryRows->reject(fn ($row): bool => (bool) $row->is_final);
-        $totals = [
-            'actual_egp' => round((float) $actualRows->sum('amount_egp'), 2),
-            'estimated_egp' => round((float) $estimatedRows->sum('amount_egp'), 2),
-            'missing_fx' => (int) $summaryRows->sum('missing_fx'),
-        ];
-        $serviceSummary = $summaryRows->groupBy('service_key')->map(fn ($serviceRows) => [
-            'actual_egp' => round((float) $serviceRows->filter(fn ($row): bool => (bool) $row->is_final)->sum('amount_egp'), 2),
-            'estimated_egp' => round((float) $serviceRows->reject(fn ($row): bool => (bool) $row->is_final)->sum('amount_egp'), 2),
-        ]);
-
-        return view('admin.operating-costs.index', compact(
-            'pools', 'courses', 'settings', 'editPool', 'filters', 'totals', 'serviceSummary',
-            'poolEditorVersions', 'editPoolEditorVersion', 'exchangeRateEditorVersion'
-        ));
+        return redirect(OperatingCostResource::getUrl('index', ['filters' => [
+            'service_key' => ['value' => $filters['service_key'] ?? null],
+            'criteria' => array_intersect_key($filters, array_flip(['course_id', 'from', 'to'])),
+        ]]));
     }
 
-    public function store(Request $request, AdminAuthoringCreateIntentService $createIntents): RedirectResponse
+    public function store(OperatingCostProfileRequest $request, AdminAuthoringCreateIntentService $createIntents): RedirectResponse
     {
-        $data = $this->validated($request);
+        $data = $request->authoringData();
         $this->authoring->create($data, (int) $request->user()->id, function (OperatingCostPool $pool) use ($request, $createIntents): void {
             $createIntents->completeRedirect($request, url()->previous(), 302, OperatingCostPool::class, $pool->id);
         });
@@ -96,32 +49,29 @@ final class OperatingCostPoolController extends Controller
             : 'تم حفظ الفاتورة غير النهائية؛ لا تدخل في التكاليف المؤكدة.');
     }
 
-    public function update(Request $request, OperatingCostPool $operatingCost): RedirectResponse
+    public function update(OperatingCostProfileRequest $request, OperatingCostPool $operatingCost): RedirectResponse
     {
-        $version = $request->validate(['editor_version' => 'required|string|size:64']);
+        $version = $request->validated();
         $this->authoring->update(
             (int) $operatingCost->id,
-            $this->validated($request),
+            $request->authoringData(),
             (string) $version['editor_version']
         );
 
         return back()->with('success', 'تم تحديث تكلفة التشغيل.');
     }
 
-    public function destroy(Request $request, OperatingCostPool $operatingCost): RedirectResponse
+    public function destroy(EditorVersionRequest $request, OperatingCostPool $operatingCost): RedirectResponse
     {
-        $validated = $request->validate(['editor_version' => 'required|string|size:64']);
+        $validated = $request->validated();
         $this->authoring->delete((int) $operatingCost->id, (string) $validated['editor_version']);
 
         return back()->with('success', 'تم حذف بند التكلفة.');
     }
 
-    public function updateExchangeRate(Request $request): RedirectResponse
+    public function updateExchangeRate(OperatingCostExchangeRateRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'openrouter_usd_to_egp_rate' => ['required', 'numeric', 'min:0.0001', 'max:10000'],
-            'editor_version' => ['required', 'string', 'size:64'],
-        ]);
+        $data = $request->validated();
         $this->authoring->updateExchangeRate(
             (float) $data['openrouter_usd_to_egp_rate'],
             (string) $data['editor_version']
@@ -130,32 +80,16 @@ final class OperatingCostPoolController extends Controller
         return back()->with('success', 'تم تحديث سعر تحويل تكلفة OpenRouter للتقارير الجديدة.');
     }
 
-    public function report(Request $request, PlatformCommercialReportService $reports): View
+    public function report(OperatingCostReportRequest $request): RedirectResponse
     {
-        $filters = $this->reportFilters($request);
-        $report = $reports->report($filters);
-        $studentRows = $report['student_rows'];
-        $page = LengthAwarePaginator::resolveCurrentPage();
-        $perPage = (int) ($filters['per_page'] ?? 30);
-        $students = new LengthAwarePaginator(
-            $studentRows->forPage($page, $perPage)->values(),
-            $studentRows->count(),
-            $perPage,
-            $page,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
-        $courses = $this->invoiceCourses()
-            ->orderBy('name_ar')
-            ->get(['id', 'name_ar']);
+        $filters = $request->validated();
 
-        return view('admin.operating-costs.report', compact(
-            'report', 'students', 'courses', 'filters'
-        ));
+        return redirect(CommercialReport::getUrl(['filters' => ['period' => $filters['period'] ?? 'all'] + $filters]));
     }
 
-    public function exportReport(Request $request, PlatformCommercialReportService $reports)
+    public function exportReport(OperatingCostReportRequest $request, PlatformCommercialReportService $reports)
     {
-        $filters = $this->reportFilters($request);
+        $filters = $request->validated();
         $report = $reports->report($filters);
         $labels = CourseCostReportService::serviceLabels();
 
@@ -208,49 +142,5 @@ final class OperatingCostPoolController extends Controller
         }, 'rokn-platform-unit-economics.csv', [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
-    }
-
-    /** @return array<string, mixed> */
-    private function validated(Request $request): array
-    {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:160'],
-            'service_key' => ['required', Rule::in(array_keys(OperatingCostPool::SERVICES))],
-            'course_id' => ['nullable', 'integer', 'exists:courses,id'],
-            'period_start' => ['required', 'date'],
-            'period_end' => ['required', 'date', 'after_or_equal:period_start'],
-            'amount' => ['required', 'numeric', 'min:0', 'max:1000000000'],
-            'currency' => ['required', Rule::in(['EGP', 'USD'])],
-            'fx_rate_to_egp' => ['nullable', 'required_if:currency,USD', 'numeric', 'min:0.0001', 'max:10000'],
-            'allocation_driver' => ['required', Rule::in(array_keys(OperatingCostPool::DRIVERS))],
-            'is_final' => ['nullable', 'boolean'],
-            'notes' => ['nullable', 'string', 'max:2000'],
-            'authoring_request_id' => [$request->isMethod('post') ? 'required' : 'nullable', 'uuid'],
-        ]);
-        unset($data['authoring_request_id']);
-        $data['is_final'] = $request->boolean('is_final');
-
-        return $data;
-    }
-
-    /** @return array<string, mixed> */
-    private function reportFilters(Request $request): array
-    {
-        return $request->validate([
-            'period' => ['nullable', Rule::in(array_keys(ReportPeriod::labels()))],
-            'course_id' => ['nullable', 'integer', 'exists:courses,id'],
-            'plan' => ['nullable', 'string', 'max:100'],
-            'source' => ['nullable', Rule::in([
-                'purchase', 'grant', 'course_code', 'grant_plus_purchase', 'code_plus_purchase',
-            ])],
-            'q' => ['nullable', 'string', 'max:160'],
-            'per_page' => ['nullable', Rule::in([20, 30, 50, 100])],
-        ]);
-    }
-
-    private function invoiceCourses(): Builder
-    {
-        return Course::withTrashed()->whereNotIn('courses.id',
-            CourseAuthoringRevision::query()->select('revision_course_id'));
     }
 }

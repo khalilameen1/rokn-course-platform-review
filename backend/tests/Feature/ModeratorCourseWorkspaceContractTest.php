@@ -5,6 +5,16 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Auth\AdminPermissionMatrix;
+use App\Filament\Pages\ContentWorkspace;
+use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\FinancialOverview;
+use App\Filament\Pages\PlaybackOperations;
+use App\Filament\Pages\ProductOperations;
+use App\Filament\Resources\NotificationCampaignResource;
+use App\Filament\Resources\OrderResource;
+use App\Filament\Resources\ProjectSubmissionResource;
+use App\Filament\Resources\StudentResource\Pages\ViewStudent;
+use App\Filament\Resources\StudentResource\RelationManagers\OrdersRelationManager;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Classification;
 use App\Models\Course;
@@ -21,6 +31,7 @@ use App\Services\CoursePublishingService;
 use App\Services\CourseStagedAuthoringService;
 use DOMDocument;
 use DOMXPath;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -29,6 +40,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class ModeratorCourseWorkspaceContractTest extends TestCase
@@ -171,20 +183,14 @@ final class ModeratorCourseWorkspaceContractTest extends TestCase
         $incomplete = $this->draft('مسودة ناقصة');
         $incomplete->forceFill(['updated_at' => now()->subDays(3)])->saveQuietly();
 
-        $xpath = $this->dom($this->actingAs($this->user('moderator'), 'web')
-            ->get(route('admin.dashboard'))->assertOk()->assertViewIs('admin.home.moderator'));
-
-        $rows = array_map(
-            static fn (\DOMElement $row): string => trim($row->textContent),
-            iterator_to_array($xpath->query('//*[contains(@class, "moderator-course-row")]//h3'))
-        );
-        self::assertSame(['مسودة ناقصة', 'كورس جاهز'], $rows);
-        self::assertSame('يحتاج تدخلًا الآن', trim($xpath->evaluate('string(//*[contains(@class, "moderator-workspace__section-heading")]//h2)')));
-        foreach ($this->hrefs($xpath, '//*[contains(@class, "moderator-course-row")]//a') as $href) {
-            self::assertContains($href, [route('admin.courses.show', $incomplete), route('admin.courses.show', $ready)]);
-        }
-        // The flat, gradient-free workspace styling is presentation only and has no
-        // rendered-behaviour contract to assert here.
+        $this->actingAs($this->user('moderator'), 'web')->get(route('admin.dashboard'))
+            ->assertRedirect(ContentWorkspace::getUrl(['page' => 1]));
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $page = Livewire::test(ContentWorkspace::class)->assertOk()->assertSee('عناصر مطلوبة في البيانات الأساسية');
+        $rows = $page->instance()->getTableRecords()->getCollection();
+        self::assertSame(['مسودة ناقصة', 'كورس جاهز'], $rows->pluck('title')->all());
+        self::assertSame([route('admin.courses.show', $incomplete), route('admin.courses.show', $ready)], $rows->pluck('url')->all());
+        self::assertSame(['مسودة', 'منشور'], $rows->pluck('status')->all());
     }
 
     public function test_shared_layout_does_not_render_an_empty_breadcrumb_row(): void
@@ -195,22 +201,18 @@ final class ModeratorCourseWorkspaceContractTest extends TestCase
         self::assertSame(0, $studio->query('//*[contains(concat(" ", normalize-space(@class), " "), " breadcrumbs ")]')->length);
 
         $this->flushSession();
-        $notifications = $this->dom($this->actingAs($this->user('admin'), 'web')
-            ->get(route('admin.notifications.create'))->assertOk());
-        self::assertSame(1, $notifications->query('//*[contains(concat(" ", normalize-space(@class), " "), " breadcrumbs ")]')->length);
+        $this->actingAs($this->user('admin'), 'web')->get(route('admin.notifications.create'))
+            ->assertRedirect(NotificationCampaignResource::getUrl('create'));
     }
 
     public function test_administrator_home_leads_with_operational_follow_up(): void
     {
-        $xpath = $this->dom($this->actingAs($this->user('admin'), 'web')
-            ->get(route('admin.dashboard'))->assertOk());
-
-        self::assertSame([
-            route('admin.product-operations.index'),
-            route('admin.playback-operations.index'),
-            route('admin.project-submissions.index'),
-            route('admin.orders.index'),
-        ], $this->hrefs($xpath, '//nav[contains(@class, "dashboard-priority-nav")]/a'));
+        $this->actingAs($this->user('admin'), 'web')->get(route('admin.dashboard'))->assertRedirect(Dashboard::getUrl());
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(FinancialOverview::class)->assertActionHasUrl('operations', ProductOperations::getUrl())
+            ->assertActionHasUrl('playback', PlaybackOperations::getUrl())
+            ->assertActionHasUrl('projects', ProjectSubmissionResource::getUrl())
+            ->assertActionHasUrl('payments', OrderResource::getUrl());
     }
 
     public function test_administrator_student_view_leads_with_what_the_learner_paid_from_the_ledger(): void
@@ -237,15 +239,11 @@ final class ModeratorCourseWorkspaceContractTest extends TestCase
             'approved_at' => now(),
         ]);
 
-        $xpath = $this->dom($this->actingAs($this->user('admin'), 'web')
-            ->get(route('admin.users.show', $student))->assertOk());
-
-        self::assertSame(1, $xpath->query('//nav[contains(@class, "student-operations")]')->length);
-        self::assertStringContainsString('ما دفعه الطالب', $xpath->evaluate('string(//*[@id="studentPurchases"]//thead)'));
-        $paid = preg_replace('/\s+/u', ' ', $xpath->evaluate('string(//*[@id="studentPurchases"]//tbody/tr[1]/td[4])'));
-        self::assertStringContainsString('350 مدفوعة', $paid);
-        self::assertStringContainsString('150 مكافآت', $paid);
-        self::assertStringNotContainsString('غير مكتملة', $paid);
+        $this->actingAs($this->user('admin'), 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(OrdersRelationManager::class, [
+            'ownerRecord' => $student, 'pageClass' => ViewStudent::class,
+        ])->assertSee('350 مدفوعة')->assertSee('150 مكافآت')->assertDontSee('ربط الدفتر غير مكتمل');
     }
 
     public function test_course_commercial_report_presents_per_learner_ledger_evidence(): void

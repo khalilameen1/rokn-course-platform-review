@@ -175,6 +175,8 @@ class Order extends Model
 
     /**
      * Get the user that owns the order.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {
@@ -183,8 +185,10 @@ class Order extends Model
 
     /**
      * Get the course for this order.
+     *
+     * @return BelongsTo<Course, $this>
      */
-    public function course()
+    public function course(): BelongsTo
     {
         // Financial history must remain readable after a course is retired.
         return $this->belongsTo(Course::class)->withTrashed();
@@ -192,6 +196,8 @@ class Order extends Model
 
     /**
      * Get the course code used for this order.
+     *
+     * @return BelongsTo<CourseCode, $this>
      */
     public function courseCode(): BelongsTo
     {
@@ -232,6 +238,8 @@ class Order extends Model
 
     /**
      * Get the package being purchased in this order.
+     *
+     * @return BelongsTo<Package, $this>
      */
     public function package(): BelongsTo
     {

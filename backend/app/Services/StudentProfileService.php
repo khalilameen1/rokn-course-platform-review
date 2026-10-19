@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Intervention\Image\Facades\Image;
+use Intervention\Image\Encoders\JpegEncoder;
+use Intervention\Image\Laravel\Facades\Image;
 use Throwable;
 
 /**
@@ -142,25 +143,17 @@ final readonly class StudentProfileService
 
     private function storeSafeProfileImage(UploadedFile $file): string
     {
-        $image = Image::make($file->getRealPath());
-        // EXIF orientation is optional in PHP. A perfectly valid raster must
-        // never turn into a 500 merely because a lightweight production image
-        // omits the EXIF extension.
-        if (function_exists('exif_read_data')) {
-            $image->orientate();
-        }
-        $image->resize(1024, 1024, static function ($constraint): void {
-            $constraint->aspectRatio();
-            $constraint->upsize();
-        });
-
-        $canvas = Image::canvas($image->width(), $image->height(), '#ffffff')
-            ->insert($image)
-            ->encode('jpg', 86);
+        // Decoding applies the EXIF orientation (intervention-image.options
+        // .autoOrientation) and skips it, instead of failing, when the
+        // lightweight production image omits the EXIF extension.
+        $image = Image::decodePath($file->getRealPath())->scaleDown(1024, 1024);
+        // The JPEG encoder flattens transparency onto the configured white
+        // background, so an uploaded PNG never keeps a black alpha fill.
+        $canvas = $image->encode(new JpegEncoder(quality: 86))->toString();
         $path = 'profiles/'.Str::uuid().'.jpg';
         $this->files->trackPotentialOrphan('public', $path, 60);
 
-        if (! Storage::disk('public')->put($path, (string) $canvas)) {
+        if (! Storage::disk('public')->put($path, $canvas)) {
             throw new \RuntimeException('Could not store profile image.');
         }
 

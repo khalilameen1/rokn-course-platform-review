@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Package;
 use App\Models\PaymentReconciliationFinding;
 use App\Models\User;
+use App\Support\Money;
 use App\Support\StudentNotificationIntent;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -276,7 +277,7 @@ final readonly class KashierOrderSettlementService
             || ! $order->package_id
             || ! $order->package
             || $order->packageCoinAmount() <= 0
-            || (float) $order->final_amount <= 0
+            || Money::ofEgp($order->final_amount)->isNegativeOrZero()
         ) {
             throw new \RuntimeException('Invalid Kashier package order.');
         }

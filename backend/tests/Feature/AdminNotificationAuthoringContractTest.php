@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\NotificationCampaignResource;
+use App\Filament\Resources\NotificationCampaignResource\Pages\ListNotificationCampaigns;
+use App\Filament\Resources\NotificationTemplateResource;
+use App\Filament\Resources\NotificationTemplateResource\Pages\ListNotificationTemplates;
+use App\Filament\Resources\StudentResource;
 use App\Http\Controllers\Admin\UsersController;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\AdminNotification;
@@ -18,6 +23,7 @@ use App\Services\CourseContentNotificationService;
 use App\Services\CoursePublishingService;
 use DOMDocument;
 use DOMXPath;
+use Filament\Facades\Filament;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -26,6 +32,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Livewire\Livewire;
 use Mockery;
 use Tests\TestCase;
 
@@ -51,23 +58,10 @@ final class AdminNotificationAuthoringContractTest extends TestCase
 
     public function test_broadcast_form_exposes_the_complete_campaign_contract(): void
     {
-        // Draft isolation between recipients is exercised in
-        // scripts/tests/notification-authoring-recipient.browser.mjs.
         $student = $this->student();
-        $html = $this->actingAs($this->admin, 'web')
+        $this->actingAs($this->admin, 'web')
             ->get(route('admin.notifications.create', ['user_id' => $student->id]))
-            ->assertOk()
-            ->getContent();
-        $form = '//form[@method="POST" and @action="'.route('admin.notifications.store').'"]';
-        $xpath = $this->xpath($html);
-
-        foreach (['user_id', 'title_ar', 'message_ar', 'image', 'action_label', 'action_link', 'audience', 'send_at'] as $field) {
-            self::assertGreaterThan(0, $xpath->query($form.'//*[@name="'.$field.'"]')->length, $field);
-        }
-        self::assertSame(
-            (string) $student->id,
-            $xpath->query($form.'//input[@name="user_id"]')->item(0)?->getAttribute('value')
-        );
+            ->assertRedirect(NotificationCampaignResource::getUrl('create-for-student', ['student' => $student->id]));
     }
 
     public function test_campaign_list_does_not_expose_internal_codes_or_raw_deep_links(): void
@@ -80,6 +74,8 @@ final class AdminNotificationAuthoringContractTest extends TestCase
 
         $this->actingAs($this->admin, 'web')
             ->get(route('admin.notifications.index'))
+            ->assertRedirect(NotificationCampaignResource::getUrl());
+        $this->get(NotificationCampaignResource::getUrl())
             ->assertOk()
             ->assertSee('توقف توزيع الحملة قبل اكتماله')
             ->assertSee('الكورس')
@@ -89,12 +85,9 @@ final class AdminNotificationAuthoringContractTest extends TestCase
 
     public function test_template_authoring_cannot_create_unwired_event_keys(): void
     {
-        $html = $this->actingAs($this->admin, 'web')
+        $this->actingAs($this->admin, 'web')
             ->get(route('admin.admin_notifications.create'))
-            ->assertOk()
-            ->getContent();
-        $xpath = $this->xpath($html);
-        self::assertSame(1, $xpath->query('//input[@name="system_key" and @type="hidden" and @value=""]')->length);
+            ->assertRedirect(NotificationTemplateResource::getUrl('create'));
 
         foreach (['made_up_event', 'new_quiz'] as $key) {
             $this->postTemplate(['system_key' => $key, 'surface' => 'transactional'])
@@ -118,7 +111,7 @@ final class AdminNotificationAuthoringContractTest extends TestCase
 
         $student = $this->student();
         $html = $this->actingAs($this->admin, 'web')
-            ->get(route('admin.users.show', $student))
+            ->get(StudentResource::getUrl('view', ['record' => $student->id]))
             ->assertOk()
             ->getContent();
         $href = route('admin.notifications.create', ['user_id' => $student->id]);
@@ -135,13 +128,14 @@ final class AdminNotificationAuthoringContractTest extends TestCase
             ]);
         }
 
-        $campaigns = $this->actingAs($this->admin, 'web')
-            ->get(route('admin.notifications.index'))->assertOk()->viewData('campaigns');
+        $this->actingAs($this->admin, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $campaigns = Livewire::test(ListNotificationCampaigns::class)->instance()->getTableRecords();
         self::assertSame(30, $campaigns->perPage());
         self::assertCount(30, $campaigns->items());
 
-        $templates = $this->actingAs($this->admin, 'web')
-            ->get(route('admin.admin_notifications.index'))->assertOk()->viewData('admin_notifications');
+        $this->get(route('admin.admin_notifications.index'))->assertRedirect(NotificationTemplateResource::getUrl());
+        $templates = Livewire::test(ListNotificationTemplates::class)->instance()->getTableRecords();
         self::assertSame(30, $templates->perPage());
         self::assertCount(30, $templates->items());
     }
@@ -180,9 +174,8 @@ final class AdminNotificationAuthoringContractTest extends TestCase
 
     public function test_manual_messages_cannot_be_saved_to_an_unread_surface_or_with_a_dead_action(): void
     {
-        $xpath = $this->xpath($this->actingAs($this->admin, 'web')
-            ->get(route('admin.admin_notifications.create'))->assertOk()->getContent());
-        self::assertSame(1, $xpath->query('//input[@name="surface" and @type="hidden" and @value="announcement"]')->length);
+        $this->actingAs($this->admin, 'web')->get(route('admin.admin_notifications.create'))
+            ->assertRedirect(NotificationTemplateResource::getUrl('create'));
 
         $this->postTemplate(['surface' => 'transactional'])->assertSessionHasErrors('surface');
         $this->flushSession();
@@ -196,10 +189,10 @@ final class AdminNotificationAuthoringContractTest extends TestCase
             [...$this->templatePayload(), 'title_ar' => 'إعلان مصور'], (string) Str::uuid(),
             UploadedFile::fake()->image('announcement.png', 24, 24), static function (): void {}
         );
-        $imageUrl = $template->fresh()->public_image_url;
+        $imageUrl = $template->fresh()->photo?->assetPath();
         self::assertNotNull($imageUrl);
         $listing = $this->xpath($this->actingAs($this->admin, 'web')
-            ->get(route('admin.admin_notifications.index'))->assertOk()->getContent());
+            ->get(NotificationTemplateResource::getUrl())->assertOk()->getContent());
         self::assertSame(1, $listing->query('//img[@src="'.$imageUrl.'"]')->length);
     }
 

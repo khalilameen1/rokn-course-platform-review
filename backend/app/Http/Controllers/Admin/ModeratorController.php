@@ -4,37 +4,34 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\ModeratorResource;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ModeratorMfaResetRequest;
+use App\Http\Requests\Admin\ModeratorProfileRequest;
 use App\Models\User;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminMfaResetService;
 use App\Services\AdminModeratorAuthoringService;
-use App\Support\ModeratorEditorVersion;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
 
 final class ModeratorController extends Controller
 {
     public function __construct(private readonly AdminModeratorAuthoringService $authoring) {}
 
-    public function index(): View
+    public function index(): RedirectResponse
     {
-        $moderators = User::query()->where('role', 'moderator')->latest('id')->paginate(25);
-
-        return view('admin.moderators.index', compact('moderators'));
+        return redirect(ModeratorResource::getUrl());
     }
 
-    public function create(): View
+    public function create(): RedirectResponse
     {
-        return view('admin.moderators.create');
+        return redirect(ModeratorResource::getUrl('create'));
     }
 
-    public function store(Request $request, AdminAuthoringCreateIntentService $createIntents): RedirectResponse
+    public function store(ModeratorProfileRequest $request, AdminAuthoringCreateIntentService $createIntents): RedirectResponse
     {
-        $this->authoring->create($this->validated($request), function (User $moderator) use ($request, $createIntents): void {
+        $this->authoring->create($request->validated(), function (User $moderator) use ($request, $createIntents): void {
             $createIntents->completeRedirect(
                 $request, route('admin.moderators.index'), 302, User::class, $moderator->id
             );
@@ -44,18 +41,17 @@ final class ModeratorController extends Controller
             ->with('success', 'تم إنشاء حساب مسؤول المحتوى. سيُطلب منه إعداد التحقق بخطوتين عند الدخول.');
     }
 
-    public function edit(User $moderator): View
+    public function edit(User $moderator): RedirectResponse
     {
         $this->assertModerator($moderator);
-        $editorVersion = ModeratorEditorVersion::for($moderator);
 
-        return view('admin.moderators.edit', compact('moderator', 'editorVersion'));
+        return redirect(ModeratorResource::getUrl('edit', ['record' => $moderator->id]));
     }
 
-    public function update(Request $request, User $moderator): RedirectResponse
+    public function update(ModeratorProfileRequest $request, User $moderator): RedirectResponse
     {
         $this->assertModerator($moderator);
-        $data = $this->validated($request, $moderator);
+        $data = $request->validated();
         $this->authoring->update((int) $moderator->id, $data, (string) $data['editor_version']);
 
         return redirect()->route('admin.moderators.index')->with('success', 'تم تحديث حساب مسؤول المحتوى.');
@@ -66,15 +62,10 @@ final class ModeratorController extends Controller
      * recovery codes. Destructive, so it uses GitHub's "type the name to
      * confirm" pattern: the administrator must type the moderator's email.
      */
-    public function resetMfa(Request $request, User $moderator, AdminMfaResetService $resets): RedirectResponse
+    public function resetMfa(ModeratorMfaResetRequest $request, User $moderator, AdminMfaResetService $resets): RedirectResponse
     {
         $this->assertModerator($moderator);
         abort_if((int) $moderator->getKey() === (int) $request->user()?->getKey(), 403);
-        $request->validate([
-            'confirm_email' => ['required', 'string', 'max:255'],
-        ], [
-            'confirm_email.required' => 'اكتب بريد الحساب لتأكيد إعادة الضبط',
-        ]);
         if (! hash_equals(
             strtolower(trim((string) $moderator->email)),
             strtolower(trim((string) $request->input('confirm_email')))
@@ -88,35 +79,6 @@ final class ModeratorController extends Controller
 
         return redirect()->route('admin.moderators.edit', $moderator)
             ->with('success', 'أُعيد ضبط التحقق بخطوتين. سيُطلب من مسؤول المحتوى إعداد تطبيق المصادقة عند دخوله التالي.');
-    }
-
-    /** @return array<string, mixed> */
-    private function validated(Request $request, ?User $moderator = null): array
-    {
-        $isEdit = $moderator !== null;
-        $manageCredentials = ! $isEdit || $request->boolean('manage_credentials');
-
-        return $request->validate([
-            'name_ar' => ['required', 'string', 'max:255'],
-            'name_en' => ['nullable', 'string', 'max:255'],
-            'manage_credentials' => $isEdit ? ['nullable', 'boolean'] : ['prohibited'],
-            'email' => $manageCredentials
-                ? ['required', 'email:rfc', 'max:255', Rule::unique('users', 'email')->ignore($moderator?->id)]
-                : ['exclude'],
-            'phone' => [
-                'nullable', 'string', 'max:20',
-                Rule::unique('users', 'phone')->ignore($moderator?->id),
-            ],
-            'password' => $manageCredentials
-                ? [$isEdit ? 'nullable' : 'required', 'string', 'min:10', 'confirmed']
-                : ['exclude'],
-            'password_confirmation' => $manageCredentials
-                ? [$isEdit ? 'nullable' : 'required', 'same:password']
-                : ['exclude'],
-            'active' => ['nullable', 'boolean'],
-            'authoring_request_id' => [$moderator ? 'nullable' : 'required', 'uuid'],
-            'editor_version' => [$moderator ? 'required' : 'nullable', 'string', 'size:64'],
-        ]);
     }
 
     private function assertModerator(User $user): void

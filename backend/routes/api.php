@@ -317,9 +317,9 @@ $registerCourseApiRoutes = function () {
 
         // Visitor Statistics Routes
         Route::get('visitors/stats', [VisitorController::class, 'getStats'])
-            ->middleware(['auth:api', 'admin']);
+            ->middleware(['auth:api', 'admin.only'])->name('api.visitors.stats');
         Route::get('visitors/recent', [VisitorController::class, 'getRecentVisitors'])
-            ->middleware(['auth:api', 'admin']);
+            ->middleware(['auth:api', 'admin.only'])->name('api.visitors.recent');
 
         // Grades routes
         Route::apiResource('grades', GradeController::class)

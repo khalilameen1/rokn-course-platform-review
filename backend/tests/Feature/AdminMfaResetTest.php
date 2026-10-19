@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Auth\Totp;
+use App\Auth\TwoFactorAuthenticationProvider;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\AdminAuditLog;
 use App\Models\User;
+use App\Services\AdminMfaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -102,16 +103,15 @@ final class AdminMfaResetTest extends TestCase
 
     private function enrolled(string $role, string $email): User
     {
-        $totp = app(Totp::class);
         $user = User::query()->forceCreate([
             'name' => ucfirst($role), 'email' => $email, 'role' => $role, 'active' => true,
             'password' => bcrypt(Str::random(20)), 'remember_token' => Str::random(60),
         ]);
         $user->forceFill([
-            'admin_totp_secret' => $totp->generateSecret(),
+            'admin_totp_secret' => app(TwoFactorAuthenticationProvider::class)->generateSecretKey(),
             'admin_totp_confirmed_at' => now(),
             'admin_totp_last_used_step' => 1,
-            'admin_mfa_backup_codes' => [$totp->hashRecoveryCode('ABCD-EFGH-1234')],
+            'admin_mfa_backup_codes' => [app(AdminMfaService::class)->hashRecoveryCode('ABCD-EFGH-1234')],
         ])->save();
 
         return $user;

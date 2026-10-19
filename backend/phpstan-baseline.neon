@@ -12,11 +12,6 @@ parameters:
 			count: 2
 			path: app/Console/Commands/AuditOrderState.php
 
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Console/Commands/AuditOrderState.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Order\:\:\$provider\.$#'
@@ -24,17 +19,7 @@ parameters:
 			count: 6
 			path: app/Console/Commands/FinishedOrders.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$access_token\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Console/Commands/FinishedOrders.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$device_os\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Console/Commands/FinishedOrders.php
 
 		-
 			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
@@ -162,41 +147,11 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/API/CourseChatController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$description_ar\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CourseCodeController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 6
-			path: app/Http/Controllers/API/CourseCodeController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_ar\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Http/Controllers/API/CourseCodeController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CourseCodeController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$used_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CourseCodeController.php
 
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\CourseCode\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/CourseCodeController.php
 
 		-
 			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\User\|null given\.$#'
@@ -264,41 +219,11 @@ parameters:
 			count: 2
 			path: app/Http/Controllers/API/PathController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/ProjectController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/ProjectController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$module\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/ProjectController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/ProjectController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/ProjectController.php
 
-		-
-			message: '#^Parameter \#2 \$section of method App\\Services\\CourseSectionAccessService\:\:canAccessSection\(\) expects App\\Models\\CourseSection, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/ProjectController.php
 
 		-
 			message: '#^Match expression does not handle remaining value\: string$#'
@@ -330,11 +255,6 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/API/WatchHistoryController.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/WatchHistoryController.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>duration_seconds" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -390,71 +310,6 @@ parameters:
 			count: 2
 			path: app/Http/Controllers/API/WhatsAppConnectionController.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\AdminNotification model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Admin/AdminNotificationsController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\AppVersionController\:\:create\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/AppVersionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\AppVersionController\:\:destroy\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 2
-			path: app/Http/Controllers/Admin/AppVersionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\AppVersionController\:\:edit\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/AppVersionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\AppVersionController\:\:edit\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/AppVersionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\AppVersionController\:\:index\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/AppVersionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\AppVersionController\:\:show\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/AppVersionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\AppVersionController\:\:store\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/AppVersionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\AppVersionController\:\:toggleActive\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 2
-			path: app/Http/Controllers/Admin/AppVersionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\AppVersionController\:\:update\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/AppVersionController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\:\:getCollection\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/CoinEarningMethodController.php
 
 		-
 			message: '#^Call to an undefined method Barryvdh\\DomPDF\\PDF\:\:setAuthor\(\)\.$#'
@@ -481,34 +336,12 @@ parameters:
 			path: app/Http/Controllers/Admin/CourseCodeController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\CourseCodeController\:\:create\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/CourseCodeController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\Admin\\CourseCodeController\:\:destroy\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
 			identifier: return.type
 			count: 2
 			path: app/Http/Controllers/Admin/CourseCodeController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\CourseCodeController\:\:edit\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/CourseCodeController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\CourseCodeController\:\:index\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/CourseCodeController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\CourseCodeController\:\:show\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/CourseCodeController.php
 
 		-
 			message: '#^Method App\\Http\\Controllers\\Admin\\CourseCodeController\:\:store\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
@@ -522,11 +355,6 @@ parameters:
 			count: 2
 			path: app/Http/Controllers/Admin/CourseCodeController.php
 
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\>\:\:mapWithKeys\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\|string\)\: array\<int\<0, max\>, string\>, Closure\(App\\Models\\CourseCode\)\: non\-empty\-array\<int\<0, max\>, string\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Admin/CourseCodeController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'
@@ -570,59 +398,11 @@ parameters:
 			count: 4
 			path: app/Http/Controllers/Admin/CourseSectionController.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\FeedbackAttachment\:\:\$scan_status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/FeedbackController.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$order_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Admin/FeedbackController.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\FeedbackReport\:\:\$requester_email\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/FeedbackController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\LevelController\:\:create\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/LevelController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\LevelController\:\:destroy\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 2
-			path: app/Http/Controllers/Admin/LevelController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\LevelController\:\:edit\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/LevelController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\LevelController\:\:index\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/LevelController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\LevelController\:\:store\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/LevelController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\LevelController\:\:update\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/LevelController.php
 
 		-
 			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\User\|null given\.$#'
@@ -643,12 +423,6 @@ parameters:
 			path: app/Http/Controllers/Admin/ModeratorController.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\Relation\<\*, \*, \*\>\:\:withTrashed\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: app/Http/Controllers/Admin/OperatingCostPoolController.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -660,41 +434,10 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/Admin/OrdersController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/OrdersController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/OrdersController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_ar\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/OrdersController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_en\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/OrdersController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$phone\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/OrdersController.php
-
-		-
-			message: '#^PHPDoc tag @param for parameter \$request with type Illuminate\\Http\\Request is not subtype of native type App\\Http\\Requests\\Admin\\OrderIndexRequest\.$#'
-			identifier: parameter.phpDocType
-			count: 1
-			path: app/Http/Controllers/Admin/OrdersController.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>name_ar" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -708,89 +451,11 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/Admin/OrdersController.php
 
-		-
-			message: '#^Call to an undefined method Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\:\:getCollection\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/PackageController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PackageController\:\:create\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PackageController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PackageController\:\:destroy\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 2
-			path: app/Http/Controllers/Admin/PackageController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PackageController\:\:edit\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PackageController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PackageController\:\:index\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PackageController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PackageController\:\:show\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PackageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PackageController\:\:store\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PackageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PackageController\:\:update\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PackageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PathController\:\:create\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PathController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PathController\:\:destroy\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 2
-			path: app/Http/Controllers/Admin/PathController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PathController\:\:edit\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PathController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PathController\:\:index\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PathController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PathController\:\:store\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PathController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PathController\:\:update\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PathController.php
 
 		-
 			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\PortfolioMedia\|null given\.$#'
@@ -804,59 +469,14 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/Admin/SettingsController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\TeacherController\:\:create\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/TeacherController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\TeacherController\:\:deactive\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/TeacherController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\TeacherController\:\:destroy\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 2
-			path: app/Http/Controllers/Admin/TeacherController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\TeacherController\:\:edit\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/TeacherController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\TeacherController\:\:index\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/TeacherController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\TeacherController\:\:show\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/TeacherController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\TeacherController\:\:store\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/TeacherController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\TeacherController\:\:update\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/TeacherController.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 3
-			path: app/Http/Controllers/Admin/TeacherController.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -997,34 +617,10 @@ parameters:
 			path: app/Http/Middleware/VerifyCsrfToken.php
 
 		-
-			message: '#^Offset 1 on array\{list\<string\>, list\<non\-empty\-string\>\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Http/Requests/Admin/AdminNotificationRequest.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>system_key" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 3
 			path: app/Http/Requests/Admin/AdminNotificationRequest.php
-
-		-
-			message: '#^Match expression does not handle remaining value\: string$#'
-			identifier: match.unhandled
-			count: 1
-			path: app/Http/Requests/Admin/CourseSectionInput.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type App\\Models\\CourseSection\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Requests/Admin/CourseSectionInput.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>module_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Requests/Admin/CourseSectionInput.php
 
 		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\AboutResource\:\:\$about\.$#'
@@ -3516,11 +3112,6 @@ parameters:
 			count: 1
 			path: app/Models/AdminNotification.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/AdminNotification.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$photos\.$#'
@@ -3528,11 +3119,6 @@ parameters:
 			count: 1
 			path: app/Models/AdminNotification.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$system_key\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/AdminNotification.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Bank\:\:\$content_ar\.$#'
@@ -3672,11 +3258,6 @@ parameters:
 			count: 1
 			path: app/Models/Category.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Category\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/Category.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Category\:\:\$photos\.$#'
@@ -3822,11 +3403,6 @@ parameters:
 			count: 1
 			path: app/Models/Coupon.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Coupon\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/Coupon.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Coupon\:\:\$photos\.$#'
@@ -3894,11 +3470,6 @@ parameters:
 			count: 1
 			path: app/Models/Course.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 5
-			path: app/Models/Course.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$photos\.$#'
@@ -3918,23 +3489,8 @@ parameters:
 			count: 1
 			path: app/Models/CourseAccessPlan.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/CourseCode.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_ar\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/CourseCode.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/CourseCode.php
 
 		-
 			message: '#^Right side of && is always false\.$#'
@@ -4038,11 +3594,6 @@ parameters:
 			count: 1
 			path: app/Models/Level.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Level\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/Level.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Level\:\:\$photos\.$#'
@@ -4122,17 +3673,7 @@ parameters:
 			count: 1
 			path: app/Models/PortfolioMedia.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Project.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$module\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Project.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>coins_amount" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -4224,11 +3765,6 @@ parameters:
 			count: 1
 			path: app/Models/User.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/User.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\User\:\:\$photos\.$#'
@@ -4308,11 +3844,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminCouponAuthoringService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Coupon\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/AdminCouponAuthoringService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Coupon\:\:\$starts_at\.$#'
@@ -4320,71 +3851,16 @@ parameters:
 			count: 2
 			path: app/Services/AdminCouponAuthoringService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$created_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$expiry_date\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$max_uses\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$start_date\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$target_content_name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$used_count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isInstitutionalGrant\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
 		-
 			message: '#^Method App\\Services\\AdminCourseCodeReadService\:\:lessonOptions\(\) should return Illuminate\\Support\\Collection\<int, array\{id\: int, title\: string\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int\<0, max\>, title\: mixed\}\>\.$#'
@@ -4398,11 +3874,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: \(object\{name\: string, target_content_name\: mixed, code\: string, type\: ''course''\|''lesson''\|''multiple_lessons'', max_uses\: int, is_grant\: bool, allowed_email_domains\: array\}&stdClass\), Closure\(App\\Models\\CourseCode\)\: \(object\{name\: string, target_content_name\: mixed, code\: string, type\: ''course''\|''lesson''\|''multiple_lessons'', max_uses\: int, is_grant\: bool, allowed_email_domains\: array\}&stdClass\) given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'
@@ -4458,11 +3929,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminCourseOutlinePresenter.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$active_enrollments_count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCoursePageService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$ratings_avg_rating\.$#'
@@ -4488,23 +3954,8 @@ parameters:
 			count: 1
 			path: app/Services/AdminCoursePageService.php
 
-		-
-			message: '#^Relation ''activeEnrollments'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminCoursePageService.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminCoursePageService.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminCoursePageService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'
@@ -4638,11 +4089,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminNotificationTemplateAuthoringService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$cooldown_hours\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminNotificationTemplateAuthoringService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$ends_at\.$#'
@@ -4650,11 +4096,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminNotificationTemplateAuthoringService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$is_active\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminNotificationTemplateAuthoringService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$is_dismissible\.$#'
@@ -4674,11 +4115,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminNotificationTemplateAuthoringService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$system_key\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminNotificationTemplateAuthoringService.php
 
 		-
 			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, stdClass\|null given\.$#'
@@ -4710,23 +4146,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminPaymentOperationsReadService.php
 
-		-
-			message: '#^Parameter \#1 \$orders of method App\\Services\\AdminPaymentOperationsReadService\:\:decorate\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\Order\>, Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Model\> given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Services/AdminPaymentOperationsReadService.php
-
-		-
-			message: '#^Parameter \#1 of callable callable\(App\\Models\\Order\)\: void expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/AdminPaymentOperationsReadService.php
-
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminPaymentOperationsReadService.php
 
 		-
 			message: '#^Strict comparison using \=\=\= between ''pending'' and ''pending'' will always evaluate to true\.$#'
@@ -4758,11 +4177,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminProductOperationsReadService.php
 
-		-
-			message: '#^Relation ''activeEnrollments'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminProductOperationsReadService.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>recommended_provider_bonus_coins" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -4783,32 +4197,8 @@ parameters:
 			path: app/Services/AdminStudentAuthoringService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\StudentSectionProgress\:\:\$completed_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminStudentProgressReadService.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:active\(\)\.$#'
 			identifier: method.notFound
-			count: 1
-			path: app/Services/AdminStudentProgressReadService.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\CourseEnrollment\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Services/AdminStudentProgressReadService.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Services/AdminStudentProgressReadService.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>completed_at" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Services/AdminStudentProgressReadService.php
 
@@ -4824,29 +4214,9 @@ parameters:
 			count: 1
 			path: app/Services/AdminStudentReadService.php
 
-		-
-			message: '#^Method App\\Services\\AdminStudentReadService\:\:listing\(\) should return array\{users\: Illuminate\\Contracts\\Pagination\\LengthAwarePaginator, accountStateVersions\: Illuminate\\Support\\Collection\<int, string\>\} but returns array\{users\: Illuminate\\Pagination\\LengthAwarePaginator\<int, App\\Models\\User\>, accountStateVersions\: Illuminate\\Support\\Collection\<int\<0, max\>, string\>\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/AdminStudentReadService.php
 
-		-
-			message: '#^Offset ''active'' on array\{search\?\: string\|null, active\: ''0''\|''1''\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Services/AdminStudentReadService.php
 
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminStudentReadService.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminStudentReadService.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -5142,11 +4512,6 @@ parameters:
 			count: 1
 			path: app/Services/CourseCheckoutQuoteService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CourseCodeRedemptionService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$access_plan_snapshot\.$#'
@@ -5160,11 +4525,6 @@ parameters:
 			count: 1
 			path: app/Services/CourseCommercialReportService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CourseCommercialReportService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$role\.$#'
@@ -5172,11 +4532,6 @@ parameters:
 			count: 1
 			path: app/Services/CourseCommercialReportService.php
 
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isInstitutionalGrant\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/CourseCommercialReportService.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:trashed\(\)\.$#'
@@ -5406,11 +4761,6 @@ parameters:
 			count: 1
 			path: app/Services/CoursePlanUpgradeEligibilityService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$active_enrollments_count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CoursePresentationService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$preview_reels_count\.$#'
@@ -5430,17 +4780,7 @@ parameters:
 			count: 1
 			path: app/Services/CoursePresentationService.php
 
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:map\(\) expects callable\(mixed, int\|string\)\: array\{course_id\: int\<0, max\>, title\: string, image\: non\-falsy\-string\|null, teacher_name\: string\|null, badge\: string\|null, badge_tone\: non\-falsy\-string, is_coming_soon\: bool, preview_count\: int, duration_minutes\: int\<0, max\>, ratings_count\: int, rating_average\: float, average_rating\: float\|null, students_count\: int\}, Closure\(App\\Models\\Course\)\: array\{course_id\: int\<0, max\>, title\: string, image\: non\-falsy\-string\|null, teacher_name\: string\|null, badge\: string\|null, badge_tone\: non\-falsy\-string, is_coming_soon\: bool, preview_count\: int, duration_minutes\: int\<0, max\>, ratings_count\: int, rating_average\: float, average_rating\: float\|null, students_count\: int\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/CoursePresentationService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Services/CoursePublishingService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$active\.$#'
@@ -5526,11 +4866,6 @@ parameters:
 			count: 1
 			path: app/Services/CoursePublishingService.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/CoursePublishingService.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>duration_seconds" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -5634,11 +4969,6 @@ parameters:
 			count: 1
 			path: app/Services/CourseRevisionResolver.php
 
-		-
-			message: '#^Parameter \#1 \$course of method App\\Services\\CourseRevisionResolver\:\:activeArchiveForCourse\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/CourseRevisionResolver.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -5652,17 +4982,7 @@ parameters:
 			count: 1
 			path: app/Services/CourseSearchService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CourseSectionAccessService.php
 
-		-
-			message: '#^Parameter \#2 \$course of method App\\Services\\CourseModuleAccessService\:\:hasCourseAccess\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/CourseSectionAccessService.php
 
 		-
 			message: '#^Method App\\Services\\CourseSectionSequenceService\:\:learningByCourse\(\) should return Illuminate\\Support\\Collection\<int, Illuminate\\Support\\Collection\<int, mixed\>\> but returns Illuminate\\Support\\Collection\<\(int\|string\), Illuminate\\Support\\Collection\>\.$#'
@@ -5718,11 +5038,6 @@ parameters:
 			count: 1
 			path: app/Services/EngagementMessageService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$system_key\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/EngagementMessageService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\FinancialAnomaly\:\:\$expected_total\.$#'
@@ -5820,23 +5135,8 @@ parameters:
 			count: 1
 			path: app/Services/KashierCallbackSignatureService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/KashierCheckoutFlowService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_ar\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/KashierCheckoutFlowService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_en\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/KashierCheckoutFlowService.php
 
 		-
 			message: '#^Variable \$user on left side of \?\?\= always exists and is not nullable\.$#'
@@ -5856,11 +5156,6 @@ parameters:
 			count: 1
 			path: app/Services/KashierCheckoutOrderService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$wallet_coins\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/KashierNotificationFlowService.php
 
 		-
 			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
@@ -6012,11 +5307,6 @@ parameters:
 			count: 1
 			path: app/Services/MediaHealthService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/MediaReconciliationService.php
 
 		-
 			message: '#^Offset ''state'' on array\{state\: string, details\: array\|null, http_status\: int\|null\} on left side of \?\? always exists and is not nullable\.$#'
@@ -6030,11 +5320,6 @@ parameters:
 			count: 1
 			path: app/Services/MediaReconciliationService.php
 
-		-
-			message: '#^Parameter \#1 \$course of method App\\Services\\MediaReconciliationService\:\:courseIssues\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/MediaReconciliationService.php
 
 		-
 			message: '#^Parameter \#1 \$lesson of method App\\Services\\MediaReconciliationService\:\:inspectLesson\(\) expects App\\Models\\Lesson, Illuminate\\Database\\Eloquent\\Model given\.$#'
@@ -6048,11 +5333,6 @@ parameters:
 			count: 1
 			path: app/Services/MediaReconciliationService.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/MediaReconciliationService.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>available_qualities" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -6078,11 +5358,6 @@ parameters:
 			count: 2
 			path: app/Services/MediaReconciliationService.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/ModeratorHomeReadService.php
 
 		-
 			message: '#^Parameter \#1 \$array \(list\<int\>\) of array_values is already a list, call has no effect\.$#'
@@ -6096,17 +5371,7 @@ parameters:
 			count: 1
 			path: app/Services/OperationalRuntimeService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/OrderLifecycleService.php
 
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/OrderLifecycleService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Package\:\:\$apple_product_id\.$#'
@@ -6354,29 +5619,9 @@ parameters:
 			count: 2
 			path: app/Services/PlaybackManifestService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Services/PlaybackManifestService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_coming_soon\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/PlaybackManifestService.php
 
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isPublishedForLearning\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/PlaybackManifestService.php
 
-		-
-			message: '#^Parameter \#1 \$course of method App\\Services\\CourseRevisionResolver\:\:activeArchiveForCourse\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/PlaybackManifestService.php
 
 		-
 			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
@@ -6606,11 +5851,6 @@ parameters:
 			count: 1
 			path: app/Services/ProductionCapabilityService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ProjectAttachmentDownloadService.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>course_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -6678,11 +5918,6 @@ parameters:
 			count: 1
 			path: app/Services/ProjectSubmissionFileRetentionService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ProjectSubmissionOrchestrator.php
 
 		-
 			message: '#^Negated boolean expression is always false\.$#'
@@ -6690,11 +5925,6 @@ parameters:
 			count: 1
 			path: app/Services/ProjectSubmissionOrchestrator.php
 
-		-
-			message: '#^Parameter \#2 \$section of method App\\Services\\CourseSectionAccessService\:\:canAccessSection\(\) expects App\\Models\\CourseSection, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/ProjectSubmissionOrchestrator.php
 
 		-
 			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
@@ -6708,11 +5938,6 @@ parameters:
 			count: 1
 			path: app/Services/ProjectSubmissionReviewService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ProjectSubmissionService.php
 
 		-
 			message: '#^Strict comparison using \=\=\= between lowercase\-string&non\-falsy\-string and '''' will always evaluate to false\.$#'
@@ -6762,11 +5987,6 @@ parameters:
 			count: 1
 			path: app/Services/RecoveryEvidenceService.php
 
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isPublishedForLearning\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/SavedLibraryService.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\:\:publishedLearningGraph\(\)\.$#'
@@ -6852,11 +6072,6 @@ parameters:
 			count: 1
 			path: app/Services/StudentHomeNotificationReadService.php
 
-		-
-			message: '#^Method App\\Services\\StudentNotificationPresentationService\:\:courseFor\(\) should return App\\Models\\Course\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: return.type
-			count: 2
-			path: app/Services/StudentNotificationPresentationService.php
 
 		-
 			message: '#^Method App\\Services\\StudentProgressSummaryService\:\:latestForUsers\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{user\: App\\Models\\User, has_enrollment\: bool, course\: Illuminate\\Database\\Eloquent\\Model\|null, enrolled_at\: Carbon\\Carbon\|null, progress\: array\<string, mixed\>\}\|array\{user\: App\\Models\\User, has_enrollment\: bool, course\: null, progress\: null\}\>\.$#'
@@ -7014,23 +6229,8 @@ parameters:
 			count: 1
 			path: app/Services/WatchHistoryRecorder.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_coming_soon\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/WatchHistoryRecorder.php
 
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isPublishedForLearning\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/WatchHistoryRecorder.php
 
-		-
-			message: '#^Parameter \#1 \$course of method App\\Services\\CourseRevisionResolver\:\:activeArchiveForCourse\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/WatchHistoryRecorder.php
 
 		-
 			message: '#^Comparison operation "\>" between int\<1, 65535\> and 65535 is always false\.$#'
@@ -7080,11 +6280,6 @@ parameters:
 			count: 1
 			path: app/Support/BusinessClock.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\Coupon model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Support/CouponEditorVersion.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>path" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -7092,17 +6287,7 @@ parameters:
 			count: 1
 			path: app/Support/CouponEditorVersion.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Level\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/LevelEditorVersion.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\Level model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Support/LevelEditorVersion.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$action_label_ar\.$#'
@@ -7116,11 +6301,6 @@ parameters:
 			count: 1
 			path: app/Support/NotificationTemplateEditorVersion.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$cooldown_hours\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/NotificationTemplateEditorVersion.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$ends_at\.$#'
@@ -7128,11 +6308,6 @@ parameters:
 			count: 1
 			path: app/Support/NotificationTemplateEditorVersion.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$is_active\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/NotificationTemplateEditorVersion.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$is_dismissible\.$#'
@@ -7164,23 +6339,8 @@ parameters:
 			count: 1
 			path: app/Support/NotificationTemplateEditorVersion.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$surface\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/NotificationTemplateEditorVersion.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$system_key\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/NotificationTemplateEditorVersion.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\AdminNotification model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Support/NotificationTemplateEditorVersion.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>path" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -7188,11 +6348,6 @@ parameters:
 			count: 1
 			path: app/Support/NotificationTemplateEditorVersion.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/ProjectSubmissionEvaluationSnapshot.php
 
 		-
 			message: '#^Comparison operation "\>\=" between 3\|4 and 2 is always true\.$#'
@@ -7290,11 +6445,6 @@ parameters:
 			count: 1
 			path: app/Support/SentryEventScrubber.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/TeacherEditorVersion.php
 
 		-
 			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'

@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\AiUsageEvent;
 use App\Models\Course;
 use App\Models\OperatingCostPool;
+use App\Support\Money;
 use App\Support\ReportPeriod;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -101,7 +102,7 @@ final class CourseCostReportService
             'ai_measurement_available' => true, 'ai_cost_usd' => $summary['cost_usd'],
             'service_cost_complete' => $complete, 'complete' => $complete,
             'service_cost_actual_egp' => $complete
-                ? round($summary['cost_egp'] + $invoices['known_total_egp'], 4) : null,
+                ? Money::ofEgp($summary['cost_egp'])->add($invoices['known_total_egp'])->toFloat(4) : null,
             'service_cost_with_estimates_egp' => null, 'estimate_complete' => false,
             'openrouter_usd_to_egp_rate' => null,
             'playback_minutes' => round((float) $playback->sum(), 2), 'playback_gb_estimated' => 0.0,

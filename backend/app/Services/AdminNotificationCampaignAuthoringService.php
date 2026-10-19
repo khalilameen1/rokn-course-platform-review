@@ -47,6 +47,9 @@ final readonly class AdminNotificationCampaignAuthoringService
         $messageEn = trim((string) $input->messageEn) ?: $messageAr;
         $courseId = $input->courseId;
         $audience = $targetStudent ? 'all' : $input->audience;
+        if (! $targetStudent && ! $courseId && $audience !== 'all') {
+            throw ValidationException::withMessages(['course_id' => 'اختر الكورس لهذا الجمهور']);
+        }
         $notificationType = self::notificationType($targetStudent !== null, $courseId, $audience, $input->kind);
         $actionLabelAr = trim((string) $input->actionLabel) ?: ($courseId
             ? ($audience === 'enrolled' ? 'أكمل من مكانك' : 'تفاصيل الكورس')
@@ -155,6 +158,25 @@ final readonly class AdminNotificationCampaignAuthoringService
         return $campaign ?? NotificationCampaign::query()
             ->where('delivery_key', $deliveryKey)
             ->firstOrFail();
+    }
+
+    /** Send one marked copy through the same writer, never the broadcast selector. */
+    public function authorTest(int $authorId, array $validated, string $email): NotificationCampaign
+    {
+        $student = User::query()->students()->where('email', strtolower(trim($email)))->first();
+        if (! $student) {
+            throw ValidationException::withMessages(['test_email' => 'لا يوجد حساب طالب بهذا البريد']);
+        }
+        $validated['user_id'] = (int) $student->id;
+        $validated['audience'] = 'all';
+        $validated['send_at'] = null;
+        $validated['authoring_request_id'] = (string) Str::uuid();
+        $validated['title_ar'] = Str::limit('تجربة: '.trim($validated['title_ar']), 80, '');
+        if (! empty($validated['title_en'])) {
+            $validated['title_en'] = Str::limit('[Test] '.trim($validated['title_en']), 80, '');
+        }
+
+        return $this->author(NotificationAuthoringInput::fromValidated($authorId, $validated), static function (): void {});
     }
 
     /** The stored campaign type; it decides opt-out, quiet hours and cooldown rules. */

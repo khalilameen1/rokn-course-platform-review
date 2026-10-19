@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\AdminNotification;
+use App\Rules\KnownNotificationPlaceholders;
+use App\Rules\RoknNotificationDestination;
 use App\Support\RoknAppLink;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -60,13 +62,13 @@ class AdminNotificationRequest extends FormRequest
                 Rule::unique('admin_notifications', 'system_key')->ignore($notification?->id),
             ],
             'surface' => ['required', Rule::in(array_keys(AdminNotification::SURFACES))],
-            'title_ar' => ['required', 'string', 'min:3', 'max:80', $this->knownPlaceholders()],
-            'title_en' => ['nullable', 'string', 'min:3', 'max:80', $this->knownPlaceholders()],
+            'title_ar' => ['required', 'string', 'min:3', 'max:80', new KnownNotificationPlaceholders],
+            'title_en' => ['nullable', 'string', 'min:3', 'max:80', new KnownNotificationPlaceholders],
             'description_ar' => [
                 ($notification?->system_key ?? $this->input('system_key')) === 'guest_registration_prompt' ? 'nullable' : 'required',
-                'string', 'min:3', 'max:240', $this->knownPlaceholders(),
+                'string', 'min:3', 'max:240', new KnownNotificationPlaceholders,
             ],
-            'description_en' => ['nullable', 'string', 'min:3', 'max:240', $this->knownPlaceholders()],
+            'description_en' => ['nullable', 'string', 'min:3', 'max:240', new KnownNotificationPlaceholders],
             'action_label_ar' => [Rule::requiredIf($this->isWelcomeOffer() && $this->boolean('is_active')), 'nullable', 'string', 'max:80'],
             'action_label_en' => 'nullable|string|max:80',
             'secondary_action_label_ar' => [Rule::requiredIf($this->isWelcomeOffer() && $this->boolean('is_active')), 'nullable', 'string', 'max:80'],
@@ -75,15 +77,7 @@ class AdminNotificationRequest extends FormRequest
                 'nullable',
                 'string',
                 'max:2000',
-                static function (string $attribute, mixed $value, \Closure $fail): void {
-                    $link = trim((string) $value);
-                    if ($link === '') {
-                        return;
-                    }
-                    if (RoknAppLink::normalize($link) === null) {
-                        $fail('اختر وجهة صحيحة داخل ركن');
-                    }
-                },
+                new RoknNotificationDestination,
             ],
             'is_active' => 'nullable|boolean',
             'is_dismissible' => 'nullable|boolean',
@@ -143,23 +137,5 @@ class AdminNotificationRequest extends FormRequest
                 $validator->errors()->add('link', 'اختر وجهة للزر أو احذف نصه');
             }
         });
-    }
-
-    private function knownPlaceholders(): \Closure
-    {
-        return static function (string $attribute, mixed $value, \Closure $fail): void {
-            preg_match_all('/\{([^{}\r\n]+)\}/', (string) $value, $matches);
-            $unknown = array_diff(array_unique($matches[1] ?? []), [
-                'coins',
-                'course',
-                'task',
-                'lesson',
-                'project',
-                'case',
-            ]);
-            if ($unknown !== []) {
-                $fail('يوجد متغير غير معروف في النص');
-            }
-        };
     }
 }

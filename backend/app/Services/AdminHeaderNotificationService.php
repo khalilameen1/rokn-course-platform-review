@@ -22,7 +22,7 @@ final class AdminHeaderNotificationService
      */
     public function for(?User $administrator): array
     {
-        if (! $administrator || ! $this->permissions->isAdministrator($administrator->role)) {
+        if (! $administrator || ! $this->permissions->isAdministrator($administrator)) {
             return ['unread_count' => 0, 'items' => collect()];
         }
 

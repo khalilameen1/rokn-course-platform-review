@@ -1,17 +1,13 @@
 import {publicRequest} from '../../constants/api';
 import {subscriptionMessages} from '../../constants/subscriptionMessages';
 import {
-  accountScopedStorageKey,
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
-  getItem,
-  saveItem,
   type AccountSessionBoundary,
 } from '../../constants/helpers';
 import {uploadPortfolioVideo} from '../portfolioVideoUpload';
 import type {PortfolioTransferObserver} from '../portfolioUploadProgress';
 import {assertPortfolioTransferActive} from '../portfolioTransferControl';
-import {settleWithin} from '../../utils/settleWithin';
 import {withUploadStallTimeout} from '../uploadStallTimeout';
 import {
   isApiRecord,
@@ -45,15 +41,6 @@ export type {
   PortfolioUpload,
 } from './portfolioContract';
 
-const PORTFOLIO_CACHE_KEY = '@rokn/portfolio-cache/v1';
-type PortfolioCache = {version: 1; items: PortfolioItemDto[]};
-type PortfolioCacheState = {
-  revision: number;
-  usable: boolean;
-  write: Promise<void>;
-};
-const portfolioCacheStates = new Map<string, PortfolioCacheState>();
-
 /** A fresh server decision, never an offline entitlement or a tier-name guess. */
 export const assertPortfolioUploadAccess = async (
   boundary: AccountSessionBoundary,
@@ -83,50 +70,6 @@ export const assertPortfolioUploadAccess = async (
       },
     };
   }
-};
-
-const cacheState = (boundary: AccountSessionBoundary) => {
-  let state = portfolioCacheStates.get(boundary.scope);
-  if (!state) {
-    state = {revision: 0, usable: true, write: Promise.resolve()};
-    portfolioCacheStates.set(boundary.scope, state);
-  }
-  return state;
-};
-
-const queuePortfolioCacheWrite = (
-  boundary: AccountSessionBoundary,
-  items: PortfolioItemDto[],
-  revision: number,
-  authoritative: boolean,
-) => {
-  const state = cacheState(boundary);
-  state.write = state.write
-    .then(async () => {
-      assertAccountSessionBoundary(boundary);
-      if (state.revision !== revision) return;
-      const key = await accountScopedStorageKey(PORTFOLIO_CACHE_KEY, boundary);
-      assertAccountSessionBoundary(boundary);
-      if (state.revision !== revision) return;
-      const saved = await saveItem(key, {
-        version: 1,
-        items,
-      } satisfies PortfolioCache);
-      assertAccountSessionBoundary(boundary);
-      if (saved && authoritative && state.revision === revision) {
-        state.usable = true;
-      }
-    })
-    .catch(() => undefined);
-};
-
-// Acknowledged mutations invalidate the cached aggregate, not invented local
-// publication/count metadata. Native storage never delays the successful action.
-const invalidatePortfolioCache = (boundary: AccountSessionBoundary) => {
-  const state = cacheState(boundary);
-  state.revision += 1;
-  state.usable = false;
-  queuePortfolioCacheWrite(boundary, [], state.revision, false);
 };
 
 export const getPortfolioProfile = async (
@@ -165,60 +108,24 @@ export const updatePortfolioProfile = async (
   return mapPortfolioProfile(data, {headline: patch.headline});
 };
 
+/** The owner's portfolio list (`summary=1`), validated as one contract. */
 export const getPortfolio = async (
   ownerBoundary?: AccountSessionBoundary,
 ): Promise<PortfolioItem[]> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
-  const state = cacheState(boundary);
-  for (;;) {
-    assertAccountSessionBoundary(boundary);
-    const revision = state.revision;
-    const data = payload(
-      await publicRequest.get('portfolio', {params: {summary: 1}}),
-    );
-    assertAccountSessionBoundary(boundary);
-    // Only repeat a read overtaken by an acknowledged mutation, never a write.
-    if (state.revision !== revision) continue;
-    if (!isResourceListPayload(data)) {
-      throw new Error('PORTFOLIO_LIST_CONTRACT_INVALID');
-    }
-    const items = resourceList<PortfolioItemDto>(data);
-    if (!isValidPortfolioList(items)) {
-      throw new Error('PORTFOLIO_LIST_CONTRACT_INVALID');
-    }
-    queuePortfolioCacheWrite(boundary, items, revision, true);
-    return items.map(item => mapPortfolioItem(item));
-  }
-};
-
-export const getCachedPortfolio = async (
-  ownerBoundary?: AccountSessionBoundary,
-): Promise<PortfolioItem[]> => {
-  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   assertAccountSessionBoundary(boundary);
-  const state = cacheState(boundary);
-  const revision = state.revision;
-  const cached = await settleWithin(
-    (async () => {
-      await state.write;
-      assertAccountSessionBoundary(boundary);
-      if (!state.usable || state.revision !== revision) return null;
-      const key = await accountScopedStorageKey(PORTFOLIO_CACHE_KEY, boundary);
-      return getItem<Partial<PortfolioCache>>(key);
-    })(),
-    null,
+  const data = payload(
+    await publicRequest.get('portfolio', {params: {summary: 1}}),
   );
   assertAccountSessionBoundary(boundary);
-  if (
-    !state.usable ||
-    state.revision !== revision ||
-    cached?.version !== 1 ||
-    !Array.isArray(cached.items) ||
-    !isValidPortfolioList(cached.items)
-  ) {
-    return [];
+  if (!isResourceListPayload(data)) {
+    throw new Error('PORTFOLIO_LIST_CONTRACT_INVALID');
   }
-  return cached.items.map(item => mapPortfolioItem(item));
+  const items = resourceList<PortfolioItemDto>(data);
+  if (!isValidPortfolioList(items)) {
+    throw new Error('PORTFOLIO_LIST_CONTRACT_INVALID');
+  }
+  return items.map(item => mapPortfolioItem(item));
 };
 
 export const getPortfolioItem = async (
@@ -265,7 +172,6 @@ export const createPortfolioItem = async (
     ),
   );
   assertAccountSessionBoundary(boundary);
-  invalidatePortfolioCache(boundary);
   return mapPortfolioMutation(data);
 };
 
@@ -277,7 +183,6 @@ export const finalizePortfolioItem = async (
   assertAccountSessionBoundary(boundary);
   const data = payload(await publicRequest.post(`portfolio/${id}/finalize`));
   assertAccountSessionBoundary(boundary);
-  invalidatePortfolioCache(boundary);
   return mapPortfolioMutation(data, id);
 };
 
@@ -329,7 +234,6 @@ export const updatePortfolioItem = async (
     await publicRequest.post(`portfolio/${id}`, portfolioItemPatchBody(input)),
   );
   assertAccountSessionBoundary(boundary);
-  invalidatePortfolioCache(boundary);
   return mapPortfolioMutation(data, id);
 };
 
@@ -360,8 +264,7 @@ export const appendPortfolioMedia = async (
       signal,
     );
     assertAccountSessionBoundary(boundary);
-    invalidatePortfolioCache(boundary);
-    const item = mapPortfolioMedia([direct])[0];
+      const item = mapPortfolioMedia([direct])[0];
     if (!item) throw new Error('PORTFOLIO_MEDIA_CONTRACT_INVALID');
     return item;
   }
@@ -425,7 +328,6 @@ export const appendPortfolioMedia = async (
   }
   const data = payload(response);
   assertAccountSessionBoundary(boundary);
-  invalidatePortfolioCache(boundary);
   const item = mapPortfolioMedia([data])[0];
   if (!item) throw new Error('PORTFOLIO_MEDIA_CONTRACT_INVALID');
   return item;
@@ -450,7 +352,6 @@ export const deletePortfolioMedia = async (
     assertAccountSessionBoundary(boundary);
     if (!alreadyDeleted(error)) throw error;
   }
-  invalidatePortfolioCache(boundary);
 };
 
 export const getEligibleProjects = async (
@@ -503,5 +404,4 @@ export const deletePortfolioItem = async (
     assertAccountSessionBoundary(boundary);
     if (!alreadyDeleted(error)) throw error;
   }
-  invalidatePortfolioCache(boundary);
 };

@@ -152,7 +152,7 @@ final class AppleStorePurchaseRoutingTest extends TestCase
         Http::assertNothingSent();
     }
 
-    /** @dataProvider invalidDeviceClaims */
+    #[DataProvider('invalidDeviceClaims')]
     public function test_signed_device_evidence_must_belong_to_this_purchase(array $claims, string $error): void
     {
         $this->assertRejected($this->signedTransaction($claims), $error);
@@ -175,7 +175,7 @@ final class AppleStorePurchaseRoutingTest extends TestCase
         ];
     }
 
-    /** @dataProvider invalidServerClaims */
+    #[DataProvider('invalidServerClaims')]
     public function test_server_signed_snapshot_is_still_required_and_authoritative(array $claims, string $error): void
     {
         Http::fake(['https://api.storekit-sandbox.itunes.apple.com/*' => Http::response(['signedTransactionInfo' => $this->signedTransaction($claims)])]);
@@ -194,7 +194,7 @@ final class AppleStorePurchaseRoutingTest extends TestCase
         ];
     }
 
-    /** @dataProvider retryableProviderFailures */
+    #[DataProvider('retryableProviderFailures')]
     public function test_provider_failure_is_retryable_not_a_declined_purchase(int $status): void
     {
         Http::fake(['https://api.storekit-sandbox.itunes.apple.com/*' => Http::response([], $status)]);

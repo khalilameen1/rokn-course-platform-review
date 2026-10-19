@@ -285,6 +285,7 @@ export default function Profile() {
               )}
               <Gallery
                 key={`portfolio:${identityKey}`}
+                identityKey={identityKey}
                 onSubscriptions={hasSubscription =>
                   openRootTab(navigation, hasSubscription ? 'MyCorner' : 'Home')
                 }

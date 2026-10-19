@@ -1,4 +1,7 @@
+import { filamentAssetFamily } from './filament-asset-policy.mjs';
+
 export const thirdPartyFamilies = [
+    filamentAssetFamily,
     {
         id: 'lucide-lesson-icons', name: 'Lucide lesson illustration icons',
         version: 'Source commit d672fc43dbf60962d9d829e35bc3b3e5ed89a178', license: 'ISC and MIT (Feather-derived shopping bag)',
@@ -155,14 +158,7 @@ export const thirdPartyFamilies = [
     },
 ];
 
-export const externalStaticAssets = [
-    {
-        name: 'Chart.js', version: '4.5.1', license: 'MIT',
-        url: 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js',
-        integrity: 'sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ',
-        legal: [['Chart.js 4.5.1', 'node_modules/chart.js/LICENSE.md']],
-    },
-];
+export const externalStaticAssets = [];
 
 export const dynamicExternalExceptions = [
     {

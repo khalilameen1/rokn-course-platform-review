@@ -70,6 +70,7 @@ class Lesson extends Model
         return $this->video_source_type === 'bunny' && ! empty($this->bunny_video_id);
     }
 
+    /** @return BelongsTo<Course, $this> */
     public function course(): BelongsTo
     {
         return $this->belongsTo('App\Models\Course', 'list_id', 'id');

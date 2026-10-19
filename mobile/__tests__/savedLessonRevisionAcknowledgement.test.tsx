@@ -15,9 +15,9 @@ jest.mock('../src/constants/helpers', () => ({
 }));
 jest.mock('../src/services/roknApi', () => ({
   hasSession: async () => true,
-  removeSavedFolderFromCache: jest.fn(),
-  removeSavedLessonEverywhereFromCache: jest.fn(),
-  removeSavedLessonFromCache: jest.fn(),
+}));
+jest.mock('../src/services/query/savedLibraryInvalidation', () => ({
+  applySavedMembershipChange: jest.fn(async () => undefined),
 }));
 jest.mock('../src/services/learningPlayerState', () => ({
   updatePlayerStateForScope: async (

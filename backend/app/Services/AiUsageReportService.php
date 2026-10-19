@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Support\Money;
 use App\Support\ReportPeriod;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
@@ -68,7 +69,7 @@ final class AiUsageReportService
             'tokens' => (int) $row->tokens,
             'cost_usd' => round((float) $row->cost_usd, 6),
             'cost_egp' => $pending === 0 && (int) $row->missing_fx_requests === 0
-                ? round((float) $row->known_cost_egp, 4) : null,
+                ? Money::ofEgp($row->known_cost_egp)->toFloat(4) : null,
             'provider_cost_requests' => (int) $row->provider_cost_requests,
             // Kept as a count for existing consumers; no estimated amount is reported.
             'estimated_cost_requests' => $pending,

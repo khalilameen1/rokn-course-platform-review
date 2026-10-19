@@ -7,7 +7,7 @@ namespace App\Services;
 use App\Exceptions\CourseCheckoutRejected;
 use App\Models\Package;
 use App\Models\Setting;
-use Brick\Math\BigDecimal;
+use App\Support\Money;
 use Brick\Math\RoundingMode;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -32,17 +32,16 @@ final class PackageChannelPricingService
 
     public function directPrice(Package $package, ?float $discountPercent = null): float
     {
-        $price = max(0, (float) $package->price);
-        $discount = $discountPercent ?? $this->directDiscountPercent();
-        $discounted = $price * (1 - (min(50, max(0, $discount)) / 100));
+        $price = Money::ofEgp($package->price)->max(0);
+        $discount = min(50, max(0, $discountPercent ?? $this->directDiscountPercent()));
 
-        return round(max(0.01, $discounted), 2);
+        return $price->mul(Money::ofEgp(100)->sub($discount))->div(100)->max('0.01')->toFloat();
     }
 
     /**
      * A course buys only its missing credit at the dashboard's published rate.
      * The package remains the pricing basis, not a new catalogue denomination.
-     * Brick Math is already shipped by Laravel; all proportional money is rounded
+     * All proportional money goes through Money (Brick Math) and is rounded
      * once to currency precision instead of multiplying binary floating points.
      * Store products and standalone package purchases keep their full contract.
      *
@@ -64,43 +63,42 @@ final class PackageChannelPricingService
             throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_PACKAGE_UNAVAILABLE);
         }
         $shortfall = $coins;
-        $coins = max($shortfall, $this->coinsForMinimumCharge($package, (float) $payload['direct_price']));
-        $proportional = static fn (string $amount): float => max(0.01,
-            BigDecimal::of($amount)->multipliedBy($coins)
-                ->dividedBy((int) $package->coins, 2, RoundingMode::HalfUp)->toFloat()
-        );
+        $directPrice = Money::ofEgp($payload['direct_price']);
+        $coins = max($shortfall, $this->coinsForMinimumCharge($package, $directPrice));
+        $proportional = static fn (Money $amount): float => $amount->mul($coins)
+            ->div((int) $package->coins)->max('0.01')->toFloat();
 
         return array_replace($payload, [
             'funding_mode' => 'exact_shortfall',
             'pricing_basis' => [
                 'coins' => (int) $package->coins,
-                'price' => (float) $package->price,
+                'price' => Money::ofEgp($package->price)->toFloat(),
                 'direct_price' => $payload['direct_price'],
             ],
             'coins' => $coins,
             'shortfall_coins' => $shortfall,
-            'price' => $proportional((string) $package->price),
-            'direct_price' => $proportional(number_format($payload['direct_price'], 2, '.', '')),
+            'price' => $proportional(Money::ofEgp($package->price)),
+            'direct_price' => $proportional($directPrice),
         ]);
     }
 
     /** Minimum Kashier cash charge for course funding, in EGP; 0 disables it. */
-    public function minimumCourseFundingAmount(): float
+    public function minimumCourseFundingAmount(): Money
     {
-        return round(max(0, (float) config('kashier.minimum_course_funding_amount', 0)), 2);
+        return Money::ofEgp(config('kashier.minimum_course_funding_amount', 0))->max(0)->toScale();
     }
 
     /** Fewest whole coins whose cash value at this package's direct rate reaches the minimum. */
-    private function coinsForMinimumCharge(Package $package, float $directPrice): int
+    private function coinsForMinimumCharge(Package $package, Money $directPrice): int
     {
         $minimum = $this->minimumCourseFundingAmount();
-        if ($minimum <= 0 || $directPrice <= 0) {
+        if ($minimum->isNegativeOrZero() || $directPrice->isNegativeOrZero()) {
             return 0;
         }
 
-        return BigDecimal::of(number_format($minimum, 2, '.', ''))
-            ->multipliedBy((int) $package->coins)
-            ->dividedBy(number_format($directPrice, 2, '.', ''), 0, RoundingMode::Up)
+        return $minimum->mul((int) $package->coins)
+            ->div($directPrice->toScale(), 0, RoundingMode::Up)
+            ->toBigDecimal()
             ->toInt();
     }
 
@@ -135,7 +133,7 @@ final class PackageChannelPricingService
             'name' => $package->name_ar,
             'name_ar' => $package->name_ar,
             'name_en' => $package->name_en,
-            'price' => (float) $package->price,
+            'price' => Money::ofEgp($package->price)->toFloat(),
             'direct_price' => $channels['direct']
                 ? $this->directPrice($package, $discountPercent)
                 : null,

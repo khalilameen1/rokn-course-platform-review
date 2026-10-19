@@ -10,6 +10,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Support\AiUsageCost;
 use App\Support\DatabaseCapabilities;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 
 final readonly class AiUsageSettlementService
@@ -408,14 +409,14 @@ final readonly class AiUsageSettlementService
         if (! DatabaseCapabilities::hasColumn('ai_usage_events', 'cost_egp')) {
             return [];
         }
-        $fxRate = max(0, (float) (Setting::query()->value('openrouter_usd_to_egp_rate') ?? 0));
-        if ($fxRate <= 0) {
+        $fxRate = Money::tryOfEgp(Setting::query()->value('openrouter_usd_to_egp_rate')) ?? Money::zero();
+        if ($fxRate->isNegativeOrZero()) {
             return [];
         }
 
         return [
-            'fx_rate_to_egp' => number_format($fxRate, 4, '.', ''),
-            'cost_egp' => number_format(($costMicros / 1_000_000) * $fxRate, 6, '.', ''),
+            'fx_rate_to_egp' => $fxRate->toDecimalString(4),
+            'cost_egp' => Money::ofEgp($costMicros)->div(1_000_000, 6)->mul($fxRate)->toDecimalString(6),
         ];
     }
 

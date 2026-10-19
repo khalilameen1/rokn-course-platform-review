@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\PortfolioReviewResource;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\PortfolioDecisionRequest;
+use App\Http\Requests\Admin\PortfolioReviewIndexRequest;
 use App\Http\Resources\PortfolioMediaResource;
 use App\Models\User;
 use App\Services\PortfolioModerationService;
@@ -16,22 +19,9 @@ use Illuminate\Http\Response;
 /** Routes require both admin-only authorization and the dashboard MFA guard. */
 final class PortfolioPreviewController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(PortfolioReviewIndexRequest $request): RedirectResponse
     {
-        $filters = $request->validate([
-            'status' => ['nullable', 'in:pending,approved,rejected,suspended'],
-        ]);
-        $status = $filters['status'] ?? 'pending';
-        $owners = User::query()->whereNotNull('portfolio_slug')
-            ->when($status === 'pending', fn ($query) => $query
-                ->whereHas('portfolioItems', fn ($items) => $items->shareable()))
-            ->when($status === 'suspended', fn ($query) => $query->whereNotNull('portfolio_sharing_suspended_at'),
-                fn ($query) => $query->whereNull('portfolio_sharing_suspended_at')
-                    ->where('portfolio_sharing_status', $status))
-            ->withCount(['portfolioItems as selected_projects_count' => fn ($items) => $items->shareable()])
-            ->orderBy('updated_at')->orderBy('id')->paginate(30)->withQueryString();
-
-        return response()->view('portfolio.moderation', compact('owners', 'status'))->withHeaders($this->headers());
+        return redirect()->to(PortfolioReviewResource::listUrl($request->validated()))->withHeaders($this->headers());
     }
 
     public function show(User $user, PublicPortfolioService $portfolios): Response
@@ -59,14 +49,9 @@ final class PortfolioPreviewController extends Controller
         return redirect()->away($url)->withHeaders($this->headers());
     }
 
-    public function decide(User $user, Request $request, PortfolioModerationService $moderation): RedirectResponse
+    public function decide(User $user, PortfolioDecisionRequest $request, PortfolioModerationService $moderation): RedirectResponse
     {
-        $input = $request->validate([
-            'revision' => ['required', 'integer', 'min:1'],
-            'snapshot_hash' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/'],
-            'decision' => ['required', 'in:approved,rejected'],
-            'reason' => ['nullable', 'required_if:decision,rejected', 'string', 'max:2000'],
-        ]);
+        $input = $request->validated();
         $moderation->decide($user, $request->user(), (int) $input['revision'],
             $input['snapshot_hash'], $input['decision'], $input['reason'] ?? null);
 

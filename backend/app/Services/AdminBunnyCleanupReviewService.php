@@ -31,7 +31,7 @@ final class AdminBunnyCleanupReviewService
             abort_if($candidate->remote_deleted_at, 409, 'تم حذف هذا الفيديو بالفعل');
 
             return $this->approveLockedCandidate($candidate, $reviewerId);
-        });
+        }, 3);
     }
 
     /**
@@ -54,7 +54,7 @@ final class AdminBunnyCleanupReviewService
             }
 
             return $result;
-        });
+        }, 3);
     }
 
     /** Called with the candidate locked; approval is not permission to bypass worker reference checks. */

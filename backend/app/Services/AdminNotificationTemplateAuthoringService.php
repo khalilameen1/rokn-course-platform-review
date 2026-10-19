@@ -29,6 +29,7 @@ final class AdminNotificationTemplateAuthoringService
     {
         $payload = $this->payload($validated);
         $payload = array_replace($payload, AdminNotification::presentationOverrides($payload['system_key'] ?? null));
+        $this->assertPresentation($payload);
         $path = $this->stageImage($image, 'admin-message-template|'.strtolower($requestId));
         try {
             return DB::transaction(function () use ($payload, $requestId, $image, $path, $complete): AdminNotification {
@@ -67,12 +68,11 @@ final class AdminNotificationTemplateAuthoringService
             DB::transaction(function () use ($id, $payload, $editorVersion, $path, $removeImage): void {
                 $notification = AdminNotification::query()->whereKey($id)->lockForUpdate()->firstOrFail();
                 $this->assertCurrentVersion($notification, $editorVersion, 'الحفظ');
-                if ($notification->isSystemTemplate()) {
-                    $payload['system_key'] = $notification->system_key;
-                }
+                $payload['system_key'] = $notification->system_key;
                 // The locked template identity, not a submitted key, owns its
                 // fixed journey policy. Other template options stay authored.
                 $payload = array_replace($payload, AdminNotification::presentationOverrides($payload['system_key'] ?? null));
+                $this->assertPresentation($payload);
                 $notification->update($payload);
                 if ($path !== null) {
                     $oldPhotos = $notification->allPhotos()->where('type', 'featured')->lockForUpdate()->get();
@@ -105,6 +105,34 @@ final class AdminNotificationTemplateAuthoringService
 
             return false;
         }, 3);
+    }
+
+    /** Journey invariants apply to native and compatibility entry points alike. */
+    private function assertPresentation(array $payload): void
+    {
+        if (blank($payload['system_key'] ?? null) && ($payload['surface'] ?? null) !== 'announcement') {
+            throw ValidationException::withMessages(['surface' => 'الإعلان اليدوي يظهر في مساحة الإعلانات فقط']);
+        }
+        if (! $payload['is_active']) {
+            return;
+        }
+        if (($payload['system_key'] ?? null) === 'guest_registration_prompt') {
+            foreach (['action_label_ar', 'secondary_action_label_ar'] as $field) {
+                if (blank($payload[$field] ?? null)) {
+                    throw ValidationException::withMessages([$field => 'اكتب نص الزر الظاهر للزائر']);
+                }
+            }
+
+            return;
+        }
+        $hasLink = filled($payload['link']);
+        $hasAction = filled($payload['action_label_ar'] ?? null);
+        if ($hasLink && ! $hasAction) {
+            throw ValidationException::withMessages(['action_label_ar' => 'اكتب نص الزر الذي سيفتح الوجهة']);
+        }
+        if (! $hasLink && $hasAction) {
+            throw ValidationException::withMessages(['link' => 'اختر وجهة للزر أو احذف نصه']);
+        }
     }
 
     private function stageImage(?UploadedFile $image, string $identityPrefix): ?string

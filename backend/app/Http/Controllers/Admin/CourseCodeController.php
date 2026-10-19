@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\CourseCodeResource;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\CourseCodeBulkRequest;
+use App\Http\Requests\Admin\CourseCodeIndexRequest;
 use App\Http\Requests\Admin\CourseCodeRequest;
+use App\Http\Requests\Admin\EditorVersionRequest;
 use App\Models\CourseCode;
-use App\Models\DesignSetting;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminCourseCodeAuthoringService;
 use App\Services\AdminCourseCodeReadService;
 use App\Support\BusinessClock;
-use App\Support\CourseCodeEditorVersion;
+use App\Support\CourseCodeFormData;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
@@ -25,45 +29,19 @@ class CourseCodeController extends Controller
     ) {}
 
     /**
-     * Get design settings for the views
-     */
-    private function getDesignSettings()
-    {
-        return DesignSetting::getDefaultSettings();
-    }
-
-    /**
      * Display a listing of the resource.
-     *
-     * @return Response
      */
-    public function index(Request $request)
+    public function index(CourseCodeIndexRequest $request): RedirectResponse
     {
-        $query = $this->reader->query($this->filters($request));
-
-        $courseCodes = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(10)->withQueryString();
-        $courses = $this->reader->courseOptions();
-        $designSettings = $this->getDesignSettings();
-        $editorVersions = $courseCodes->getCollection()->mapWithKeys(
-            fn (CourseCode $code): array => [$code->id => CourseCodeEditorVersion::for($code)]
-        );
-
-        return view('admin.course-codes.index', compact(
-            'courseCodes', 'courses', 'designSettings', 'editorVersions'
-        ));
+        return redirect()->to(CourseCodeResource::listUrl($request->validated()));
     }
 
     /**
-     * Show the form for creating a new resource.
-     *
-     * @return Response
+     * Redirect saved create bookmarks to the native editor.
      */
-    public function create()
+    public function create(): RedirectResponse
     {
-        $courses = $this->reader->courseOptions();
-        $designSettings = $this->getDesignSettings();
-
-        return view('admin.course-codes.create', compact('courses', 'designSettings'));
+        return redirect()->to(CourseCodeResource::getUrl('create'));
     }
 
     /**
@@ -76,18 +54,7 @@ class CourseCodeController extends Controller
         try {
             $numberOfCodes = max(1, (int) $request->input('number_of_codes', 1));
 
-            $payload = [
-                'name' => $request->input('name'),
-                'type' => $request->input('type'),
-                'start_date' => BusinessClock::localInputToUtc($request->input('start_date')),
-                'expiry_date' => BusinessClock::localInputToUtc($request->input('expiry_date')),
-                'max_uses' => $request->input('max_uses'),
-                'description' => $request->input('description'),
-                'allowed_email_domains' => $this->emailDomains($request->input('allowed_email_domains')),
-                'is_grant' => $request->boolean('is_grant'),
-                // Partial lesson grants require scoped access from dashboard to player.
-                'course_id' => $request->integer('course_id'),
-            ];
+            $payload = CourseCodeFormData::payload($request->validated());
             $this->authoring->createBatch($payload, $numberOfCodes, function (CourseCode $first) use ($request, $createIntents): void {
                 $createIntents->completeRedirect(
                     $request,
@@ -119,40 +86,17 @@ class CourseCodeController extends Controller
         }
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @return Response
-     */
-    public function show(CourseCode $courseCode)
+    public function show(CourseCode $courseCode): RedirectResponse
     {
-        $courseCode->load(['course', 'lesson']);
-        $usageHistory = $courseCode->usages()
-            ->with('user:id,name,email')
-            ->orderByDesc('used_at')
-            ->orderByDesc('id')
-            ->paginate(50)
-            ->withQueryString();
-        $designSettings = $this->getDesignSettings();
-        $editorVersion = CourseCodeEditorVersion::for($courseCode);
-
-        return view('admin.course-codes.show', compact(
-            'courseCode', 'usageHistory', 'designSettings', 'editorVersion'
-        ));
+        return redirect()->to(CourseCodeResource::getUrl('view', ['record' => $courseCode->id]));
     }
 
     /**
-     * Show the form for editing the specified resource.
-     *
-     * @return Response
+     * Redirect saved edit bookmarks to the native editor.
      */
-    public function edit(CourseCode $courseCode)
+    public function edit(CourseCode $courseCode): RedirectResponse
     {
-        $courses = $this->reader->courseOptions();
-        $designSettings = $this->getDesignSettings();
-        $editorVersion = CourseCodeEditorVersion::for($courseCode);
-
-        return view('admin.course-codes.edit', compact('courseCode', 'courses', 'designSettings', 'editorVersion'));
+        return redirect()->to(CourseCodeResource::getUrl('edit', ['record' => $courseCode->id]));
     }
 
     /**
@@ -163,20 +107,8 @@ class CourseCodeController extends Controller
     public function update(CourseCodeRequest $request, CourseCode $courseCode)
     {
         try {
-            $data = $request->validated();
-
-            // Remove fields that shouldn't be updated
-            $editorVersion = (string) $data['editor_version'];
-            unset($data['number_of_codes'], $data['authoring_request_id'], $data['editor_version']);
-            $data['allowed_email_domains'] = $this->emailDomains(
-                $request->input('allowed_email_domains')
-            );
-            $data['is_grant'] = $request->boolean('is_grant');
-            foreach (['start_date', 'expiry_date'] as $field) {
-                if (array_key_exists($field, $data)) {
-                    $data[$field] = BusinessClock::localInputToUtc($data[$field]);
-                }
-            }
+            $data = CourseCodeFormData::payload($request->validated());
+            $editorVersion = (string) $request->validated('editor_version');
 
             $this->authoring->update((int) $courseCode->id, $data, $editorVersion);
 
@@ -197,9 +129,9 @@ class CourseCodeController extends Controller
      *
      * @return Response
      */
-    public function destroy(Request $request, CourseCode $courseCode)
+    public function destroy(EditorVersionRequest $request, CourseCode $courseCode)
     {
-        $validated = $request->validate(['editor_version' => 'required|string|size:64']);
+        $validated = $request->validated();
         $deactivated = $this->authoring->delete(
             (int) $courseCode->id,
             (string) $validated['editor_version']
@@ -214,33 +146,13 @@ class CourseCodeController extends Controller
             ->with('success', 'تم حذف الكود بنجاح');
     }
 
-    private function emailDomains(?string $value): ?array
-    {
-        $domains = collect(preg_split('/[,\r\n]+/', (string) $value))
-            ->map(fn ($domain) => ltrim(mb_strtolower(trim((string) $domain)), '@'))
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-
-        return $domains ?: null;
-    }
-
     /**
      * Bulk actions for course codes
      *
      * @return Response
      */
-    public function bulkAction(Request $request)
+    public function bulkAction(CourseCodeBulkRequest $request)
     {
-        $request->validate([
-            'action' => 'required|in:delete,activate,deactivate',
-            'selected_codes' => 'required|array|min:1',
-            'selected_codes.*' => 'integer|distinct|exists:course_codes,id',
-            'editor_versions' => 'required|array',
-            'editor_versions.*' => 'required|string|size:64',
-        ]);
-
         try {
             $action = $request->input('action');
             $selectedCodes = $request->input('selected_codes');
@@ -294,9 +206,9 @@ class CourseCodeController extends Controller
      *
      * @return StreamedResponse
      */
-    public function export(Request $request)
+    public function export(CourseCodeIndexRequest $request)
     {
-        $filters = $this->filters($request);
+        $filters = $request->validated();
         $filename = 'course_codes_'.BusinessClock::now()->format('Y-m-d_H-i-s').'.csv';
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -322,12 +234,12 @@ class CourseCodeController extends Controller
      *
      * @return \Symfony\Component\HttpFoundation\Response
      */
-    public function exportToPdf(Request $request)
+    public function exportToPdf(CourseCodeIndexRequest $request)
     {
         try {
             set_time_limit(300);
 
-            $courseCodes = $this->reader->pdfRows($this->filters($request));
+            $courseCodes = $this->reader->pdfRows($request->validated());
 
             if ($courseCodes->isEmpty()) {
                 return back()->with('error', 'لا توجد أكواد للتصدير');
@@ -339,7 +251,7 @@ class CourseCodeController extends Controller
                 );
             }
 
-            $designSettings = $this->getDesignSettings();
+            $designSettings = $this->reader->designSettings();
 
             $data = [
                 'course_codes' => $courseCodes,
@@ -368,20 +280,5 @@ class CourseCodeController extends Controller
 
             return back()->with('error', 'تعذر تصدير الأكواد الآن');
         }
-    }
-
-    /** @return array<string, mixed> */
-    private function filters(Request $request): array
-    {
-        return $request->validate([
-            'code' => ['nullable', 'string'],
-            'name' => ['nullable', 'string'],
-            'type' => ['nullable', 'string'],
-            'course_id' => ['nullable', 'integer'],
-            'lesson_id' => ['nullable', 'integer'],
-            'start_date' => ['nullable', 'date_format:Y-m-d'],
-            'expiry_date' => ['nullable', 'date_format:Y-m-d'],
-            'status' => ['nullable', 'string'],
-        ]);
     }
 }

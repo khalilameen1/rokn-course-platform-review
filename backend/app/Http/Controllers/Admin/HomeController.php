@@ -5,33 +5,27 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Auth\AdminPermissionMatrix;
+use App\Filament\Pages\ContentWorkspace;
+use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\FinancialOverview;
 use App\Http\Controllers\Controller;
-use App\Services\AdminHomeReadService;
-use App\Services\ModeratorHomeReadService;
-use App\Support\ReportPeriod;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use App\Http\Requests\Admin\ReportPeriodRequest;
+use Illuminate\Http\RedirectResponse;
 
 class HomeController extends Controller
 {
-    public function index(Request $request, AdminPermissionMatrix $permissions): View
+    public function index(ReportPeriodRequest $request, AdminPermissionMatrix $permissions): RedirectResponse
     {
-        // Resolve only the authorized projection. In particular a moderator
-        // request must not instantiate the financial report dependency graph.
-        if (! $permissions->isAdministrator($request->user()?->role)) {
-            return view('admin.home.moderator', app(ModeratorHomeReadService::class)->read(
-                $request->query(),
-                max(1, (int) $request->query('page', 1))
-            ));
+        if (! $permissions->isAdministrator($request->user())) {
+            return redirect(ContentWorkspace::canAccess()
+                ? ContentWorkspace::getUrl(['page' => max(1, (int) $request->query('page', 1))])
+                : Dashboard::getUrl());
         }
 
-        $filters = $request->validate([
-            'period' => ['nullable', Rule::in(array_keys(ReportPeriod::labels()))],
-        ]);
+        $filters = $request->validated();
 
-        return view('admin.home.index', app(AdminHomeReadService::class)->read(
-            ReportPeriod::fromKey($filters['period'] ?? '30d')
-        ));
+        return redirect(isset($filters['period'])
+            ? FinancialOverview::getUrl(['filters' => ['period' => $filters['period']]])
+            : Dashboard::getUrl());
     }
 }

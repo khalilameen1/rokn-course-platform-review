@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Models\AdminNotification;
+use App\Filament\Auth\EditStaffProfile;
+use App\Filament\Pages\ContentWorkspace;
+use App\Filament\Resources\PackageResource;
 use App\Models\Classification;
 use App\Models\CoinEarningMethod;
 use App\Models\Contact;
@@ -16,9 +18,11 @@ use App\Models\Level;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\Path;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\Support\RendersAdminPages;
 use Tests\TestCase;
 
@@ -34,32 +38,44 @@ final class AdminInlineStyleContractTest extends TestCase
 
     /** Pages that print the course-code, course-card and order dynamic style partials. */
     private const STYLE_BLOCK_PAGES = [
-        'admin.course-codes.create',
-        'admin.course-codes.edit',
-        'admin.course-codes.index',
-        'admin.course-codes.show',
         'admin.courses.index',
         'admin.courses.show',
-        'admin.orders.index',
-        'admin.orders.show',
     ];
 
     private const RETIRED_PALETTE = '/#(?:667eea|764ba2|092783)\b/i';
 
+    public function test_native_assets_do_not_carry_into_a_separate_legacy_http_request(): void
+    {
+        $admin = $this->dashboardUser('admin');
+        $this->adminGet($admin, PackageResource::getUrl())->assertOk()->assertSee('wire:snapshot', false);
+        $html = (string) $this->adminGet($admin, route('admin.mfa.setup'))->assertOk()->getContent();
+        self::assertSame(0, $this->styleBlockCount($html));
+        self::assertStringNotContainsString('[wire\\:loading]', $html);
+    }
+
+    public function test_moderator_home_uses_the_native_panel_without_a_parallel_legacy_workspace(): void
+    {
+        $moderator = $this->dashboardUser('moderator');
+        $this->adminGet($moderator, route('admin.dashboard'))->assertRedirect(ContentWorkspace::getUrl(['page' => 1]));
+        $html = (string) $this->adminGet($moderator, ContentWorkspace::getUrl())->assertOk()->getContent();
+        self::assertStringContainsString('wire:snapshot', $html);
+        self::assertDoesNotMatchRegularExpression(self::RETIRED_PALETTE, $html);
+        self::assertNotContains('admin/assets/css/moderator-workspace.css', $this->linkedLocalAssets($html));
+    }
+
     public function test_rendered_admin_pages_have_no_inline_styles(): void
     {
-        $styleBlockPages = [];
+        $unexpectedStyles = [];
         foreach ($this->renderedPages() as $page => $html) {
             $this->assertNoInlineStyleAttributes($html, $page);
-            if ($this->styleBlockCount($html) > 0) {
-                $styleBlockPages[] = $page;
+            if ($this->styleBlockCount($html) > 0 && ! in_array($page, self::STYLE_BLOCK_PAGES, true)) {
+                $unexpectedStyles[$page] = mb_substr(trim((string) $this->dom($html)->evaluate('string(//style[1])')), 0, 200);
             }
         }
 
-        sort($styleBlockPages);
         self::assertSame(
             [],
-            array_values(array_diff($styleBlockPages, self::STYLE_BLOCK_PAGES)),
+            $unexpectedStyles,
             'Only the dynamic style partials may print a <style> block.'
         );
     }
@@ -88,18 +104,13 @@ final class AdminInlineStyleContractTest extends TestCase
         }
     }
 
-    public function test_account_settings_screen_loads_its_stylesheet_and_form(): void
+    public function test_account_settings_uses_the_native_profile_form(): void
     {
         $admin = $this->dashboardUser('admin');
-        $html = (string) $this->adminGet($admin, route('admin.admin_data'))->assertOk()->getContent();
-        $xpath = $this->dom($html);
-
-        $this->assertLinksStylesheet($html, 'settings-admin-data.css', 'account settings');
-        self::assertGreaterThan(0, $xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " admin-page ")]')->length);
-        $form = '//form[@action="'.route('admin.update_admin_data').'"]';
-        self::assertSame(1, $xpath->query($form)->length);
-        self::assertSame(1, $xpath->query($form.'//input[@name="email"]')->length);
-        self::assertSame(1, $xpath->query($form.'//input[@name="password"]')->length);
+        $this->adminGet($admin, route('admin.admin_data'))->assertRedirect(EditStaffProfile::getUrl());
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(EditStaffProfile::class)->assertFormFieldExists('email')
+            ->assertFormFieldExists('password')->assertFormFieldExists('current_password');
     }
 
     public function test_course_attachments_are_edited_inside_the_course_studio(): void
@@ -126,10 +137,10 @@ final class AdminInlineStyleContractTest extends TestCase
     public function test_shared_shell_styles_load_after_page_styles(): void
     {
         $admin = $this->dashboardUser('admin');
-        $html = (string) $this->adminGet($admin, route('admin.contacts.index'))->assertOk()->getContent();
+        $html = (string) $this->adminGet($admin, route('admin.courses.index'))->assertOk()->getContent();
         $assets = $this->linkedLocalAssets($html);
 
-        $pageStyles = array_search('admin/assets/css/admin-learning-views.css', $assets, true);
+        $pageStyles = array_search('admin/assets/css/courses-index.css', $assets, true);
         $shellStyles = array_search('admin/assets/css/admin-shell.css', $assets, true);
         self::assertNotFalse($pageStyles);
         self::assertNotFalse($shellStyles);
@@ -142,7 +153,7 @@ final class AdminInlineStyleContractTest extends TestCase
         self::assertSame(0, $xpath->query('//header//script')->length, 'The dashboard header carries no inline behaviour.');
 
         $alert = (string) $this->withSession(['success' => 'تم الحفظ'])
-            ->get(route('admin.contacts.index'))->assertOk()->getContent();
+            ->get(route('admin.courses.index'))->assertOk()->getContent();
         $alertXPath = $this->dom($alert);
         self::assertSame(1, $alertXPath->query('//*[@role="alert"]//*[@data-close-alert]')->length);
         self::assertSame(0, $alertXPath->query('//*[@role="alert"]//script')->length);
@@ -172,13 +183,10 @@ final class AdminInlineStyleContractTest extends TestCase
         foreach ($this->detailPages() as $name => $url) {
             $pages[$name] = (string) $this->adminGet($admin, $url)->assertOk()->getContent();
         }
-        // The moderator workspace replaces the administrator home.
-        $pages['admin.dashboard (moderator)'] = (string) $this->adminGet(
-            $this->dashboardUser('moderator'),
-            route('admin.dashboard')
-        )->assertOk()->getContent();
-
-        self::assertGreaterThan(60, count($pages));
+        // This crawl covers remaining Blade workspaces only. Native pages have
+        // their own browser/axe gates; their growing number must not force us
+        // to retain obsolete views just to satisfy a historical page count.
+        self::assertArrayHasKey('admin.courses.show', $pages);
 
         return $pages;
     }
@@ -222,29 +230,7 @@ final class AdminInlineStyleContractTest extends TestCase
         ]);
         $pages = [
             'admin.courses.show' => route('admin.courses.show', $course),
-            'admin.teachers.show' => route('admin.teachers.show', $teacher),
-            'admin.teachers.edit' => route('admin.teachers.edit', $teacher),
-            'admin.moderators.edit' => route('admin.moderators.edit', $moderator),
-            'admin.users.show' => route('admin.users.show', $student),
-            'admin.users.edit' => route('admin.users.edit', $student),
-            'admin.student-progress.show' => route('admin.student-progress.show', $student),
-            'admin.orders.show' => route('admin.orders.show', $order),
-            'admin.packages.show' => route('admin.packages.show', $package),
-            'admin.packages.edit' => route('admin.packages.edit', $package),
-            'admin.classifications.edit' => route('admin.classifications.edit', $classification),
-            'admin.levels.edit' => route('admin.levels.edit', $level),
-            'admin.paths.edit' => route('admin.paths.edit', $path),
-            'admin.coin-earning-methods.edit' => route('admin.coin-earning-methods.edit', $method),
-            'admin.coupons.edit' => route('admin.coupons.edit', $coupon),
-            'admin.course-codes.show' => route('admin.course-codes.show', $code),
-            'admin.course-codes.edit' => route('admin.course-codes.edit', $code),
-            'admin.contacts.show' => route('admin.contacts.show', $contact),
-            'admin.feedback.show' => route('admin.feedback.show', $feedback),
         ];
-        $template = AdminNotification::query()->first();
-        if ($template !== null) {
-            $pages['admin.admin_notifications.edit'] = route('admin.admin_notifications.edit', $template);
-        }
 
         return $pages;
     }

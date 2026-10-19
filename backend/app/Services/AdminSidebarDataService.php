@@ -19,7 +19,7 @@ final class AdminSidebarDataService
     /** @return array{is_administrator: bool, pending_support_count: int} */
     public function forUser(?User $user): array
     {
-        $isAdministrator = $this->permissions->isAdministrator($user?->role);
+        $isAdministrator = $this->permissions->isAdministrator($user);
         $pendingSupportCount = 0;
 
         if ($isAdministrator) {

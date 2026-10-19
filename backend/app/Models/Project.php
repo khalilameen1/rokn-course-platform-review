@@ -56,9 +56,7 @@ class Project extends Model
         'submission_allowed_mime_types' => 'array',
     ];
 
-    /**
-     * Get the section that owns this project.
-     */
+    /** @return MorphOne<CourseSection, $this> */
     public function section(): MorphOne
     {
         return $this->morphOne(CourseSection::class, 'sectionable');

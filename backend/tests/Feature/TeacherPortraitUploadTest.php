@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\TeacherResource;
+use App\Filament\Resources\TeacherResource\Pages\EditTeacher;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Http\Resources\BaseCourseResource;
 use App\Models\Course;
 use App\Models\User;
+use Filament\Facades\Filament;
+use Filament\Forms\Components\FileUpload;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class TeacherPortraitUploadTest extends TestCase
@@ -56,17 +61,19 @@ final class TeacherPortraitUploadTest extends TestCase
         self::assertSame($firstUrl, $teacher->profile_image_url);
 
         $this->actingAs($moderator)
-            ->get(route('admin.teachers.index'))
+            ->get(TeacherResource::getUrl())
             ->assertOk()
             ->assertSee($firstUrl, false);
         $this->actingAs($moderator)
-            ->get(route('admin.teachers.show', $teacher))
+            ->get(TeacherResource::getUrl('view', ['record' => $teacher->id]))
             ->assertOk()
             ->assertSee($firstUrl, false);
         $this->actingAs($moderator)
-            ->get(route('admin.teachers.edit', $teacher))
-            ->assertOk()
-            ->assertSee($firstUrl, false);
+            ->get(TeacherResource::getUrl('edit', ['record' => $teacher->id]))
+            ->assertOk();
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(EditTeacher::class, ['record' => $teacher->id])
+            ->assertFormFieldExists('image', fn (FileUpload $field): bool => collect($field->getUploadedFiles())->pluck('url')->contains($firstUrl));
 
         $teacher->forceFill(['profile_image' => 'users/imported-profile.jpg'])->save();
         $teacher->refresh()->load('photo');
@@ -102,7 +109,7 @@ final class TeacherPortraitUploadTest extends TestCase
         self::assertSame($secondUrl, $teacher->profile_image_url);
 
         $this->actingAs($moderator)
-            ->get(route('admin.teachers.index'))
+            ->get(TeacherResource::getUrl())
             ->assertOk()
             ->assertSee($secondUrl, false)
             ->assertDontSee($firstUrl, false);

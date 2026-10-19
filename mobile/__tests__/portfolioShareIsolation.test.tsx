@@ -1,6 +1,7 @@
 import React from 'react';
 import {Alert} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
+import {createTestQueryClient, withQueryClient} from './helpers/queryClient';
 
 const mockShareOnce = jest.fn();
 const mockGetPortfolioProfile = jest.fn();
@@ -18,6 +19,7 @@ jest.mock('react-redux', () => ({
 }));
 
 jest.mock('../src/constants/helpers', () => ({
+  ...jest.requireActual('../src/constants/helpers'),
   assertAccountSessionBoundary: jest.fn(),
   captureAccountSessionBoundary: jest.fn(async () => ({
     epoch: 1,
@@ -41,9 +43,16 @@ jest.mock('../src/services/systemActions', () => ({
 
 import {useProfileOverview} from '../src/screens/Profile/useProfileOverview';
 
+const settle = () =>
+  act(async () => {
+    await new Promise(resolve => setTimeout(resolve, 10));
+  });
+let queryTestClient = createTestQueryClient();
+
 describe('portfolio share isolation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    queryTestClient = createTestQueryClient();
     mockIdentity = 'account-a';
     mockShareOnce.mockResolvedValue(undefined);
     mockGetPortfolioProfile.mockReset().mockResolvedValue({
@@ -72,8 +81,11 @@ describe('portfolio share isolation', () => {
     };
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness />, queryTestClient),
+      );
     });
+    await settle();
     await act(async () => {
       overview.setHasShareablePortfolio(true);
     });
@@ -94,6 +106,7 @@ describe('portfolio share isolation', () => {
     await act(async () => {
       overview.retry();
     });
+    await settle();
     expect(overview.canSharePortfolio).toBe(true);
     await act(async () => renderer.unmount());
   });
@@ -106,8 +119,11 @@ describe('portfolio share isolation', () => {
     };
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness />, queryTestClient),
+      );
     });
+    await settle();
     await act(async () => {
       overview.setHasShareablePortfolio(true);
     });
@@ -135,11 +151,11 @@ describe('portfolio share isolation', () => {
 
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness />, queryTestClient),
+      );
     });
+    await settle();
     await act(async () => {
       overview.setHasShareablePortfolio(true);
     });
@@ -179,8 +195,11 @@ describe('portfolio share isolation', () => {
       };
       let renderer!: TestRenderer.ReactTestRenderer;
       await act(async () => {
-        renderer = TestRenderer.create(<Harness />);
+        renderer = TestRenderer.create(
+          withQueryClient(<Harness />, queryTestClient),
+        );
       });
+      await settle();
       await act(async () => {
         overview.setHasShareablePortfolio(true);
       });
@@ -214,8 +233,11 @@ describe('portfolio share isolation', () => {
     };
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness />, queryTestClient),
+      );
     });
+    await settle();
     // Published is enough: the share action no longer waits for the review.
     expect(overview.canSharePortfolio).toBe(true);
     expect(overview.publicPortfolioUrl).toBe(
@@ -244,8 +266,11 @@ describe('portfolio share isolation', () => {
     };
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness />, queryTestClient),
+      );
     });
+    await settle();
     await act(async () => {
       overview.setHasShareablePortfolio(true);
     });
@@ -257,6 +282,7 @@ describe('portfolio share isolation', () => {
     await act(async () => {
       overview.setHasShareablePortfolio(true);
     });
+    await settle();
     expect(overview.canSharePortfolio).toBe(false);
     expect(overview.portfolioSharingNotice).toContain('قيد المراجعة');
     expect(await overview.refreshPortfolioShareUrl()).toBeUndefined();
@@ -271,8 +297,11 @@ describe('portfolio share isolation', () => {
     };
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness />, queryTestClient),
+      );
     });
+    await settle();
     await act(async () => {
       overview.setHasShareablePortfolio(true);
     });
@@ -294,8 +323,11 @@ describe('portfolio share isolation', () => {
     };
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness />, queryTestClient),
+      );
     });
+    await settle();
     await act(async () => {
       overview.setHasShareablePortfolio(true);
     });
@@ -318,16 +350,19 @@ describe('portfolio share isolation', () => {
       publicUrl: currentUrl,
     });
     await act(async () => {
-      renderer.update(<Harness />);
+      renderer.update(withQueryClient(<Harness />, queryTestClient));
     });
+    await settle();
     await act(async () => {
       overview.setHasShareablePortfolio(true);
     });
+    await settle();
     expect(overview.canSharePortfolio).toBe(true);
     await act(async () => {
       rejectPrevious(new Error('ACCOUNT_CHANGED_DURING_REQUEST'));
       await previous;
     });
+    await settle();
     expect(overview.publicPortfolioUrl).toBe(currentUrl);
     expect(overview.canSharePortfolio).toBe(true);
     expect(overview.profileError).toBe('');
@@ -349,8 +384,11 @@ describe('portfolio share isolation', () => {
     };
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(
+        withQueryClient(<Harness />, queryTestClient),
+      );
     });
+    await settle();
     await act(async () => {
       overview.setHasShareablePortfolio(true);
     });
@@ -364,6 +402,7 @@ describe('portfolio share isolation', () => {
     await act(async () => {
       overview.retry();
     });
+    await settle();
     mockGetPortfolioProfile.mockResolvedValue({
       sharingStatus: 'pending',
       sharingRevision: 2,
@@ -372,6 +411,7 @@ describe('portfolio share isolation', () => {
     await act(async () => {
       await overview.refreshPortfolioShareUrl();
     });
+    await settle();
     expect(overview.portfolioSharingNotice).toContain('قيد المراجعة');
     await act(async () => {
       resolveFocus({
@@ -381,6 +421,7 @@ describe('portfolio share isolation', () => {
         publicUrl: 'https://rokn.app/@rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
       });
     });
+    await settle();
     expect(overview.canSharePortfolio).toBe(false);
     expect(overview.publicPortfolioUrl).toBe('');
     expect(overview.portfolioSharingNotice).toContain('قيد المراجعة');
@@ -400,8 +441,11 @@ describe('portfolio share isolation', () => {
       };
       let renderer!: TestRenderer.ReactTestRenderer;
       await act(async () => {
-        renderer = TestRenderer.create(<Harness />);
+        renderer = TestRenderer.create(
+          withQueryClient(<Harness />, queryTestClient),
+        );
       });
+      await settle();
       await act(async () => {
         overview.setHasShareablePortfolio(true);
       });

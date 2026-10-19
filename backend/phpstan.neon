@@ -17,6 +17,43 @@ parameters:
     reportUnmatchedIgnoredErrors: true
 
     disallowedStaticCalls:
+        -
+            method:
+                - 'Illuminate\Validation\Factory::make()'
+                - 'Illuminate\Support\Facades\Validator::make()'
+            message: 'dashboard input validation belongs to FormRequests or Filament schemas (ARCHITECTURE.md D2)'
+            disallowIn:
+                - app/Http/Controllers/Admin/*
+        -
+            method:
+                - 'Illuminate\Database\Eloquent\Model::*()'
+                - 'Illuminate\Database\Connection::select()'
+                - 'Illuminate\Database\Connection::table()'
+            message: 'dashboard controllers delegate database reads to the owning read service (ARCHITECTURE.md B1)'
+            disallowIn:
+                - app/Http/Controllers/Admin/TeacherController.php
+                - app/Http/Controllers/Admin/PathController.php
+                - app/Http/Controllers/Admin/ClassificationController.php
+                - app/Http/Controllers/Admin/LevelController.php
+                - app/Http/Controllers/Admin/PackageController.php
+                - app/Http/Controllers/Admin/CouponController.php
+                - app/Http/Controllers/Admin/ContactsController.php
+                - app/Http/Controllers/Admin/UserSessionController.php
+                - app/Http/Controllers/Admin/CoinEarningMethodController.php
+                - app/Http/Controllers/Admin/FeedbackController.php
+                - app/Http/Controllers/Admin/UsersController.php
+                - app/Http/Controllers/Admin/PaymentReconciliationFindingController.php
+                - app/Http/Controllers/Admin/PortfolioPreviewController.php
+                - app/Http/Controllers/Admin/ProjectSubmissionController.php
+                - app/Http/Controllers/Admin/StudentProgressController.php
+                - app/Http/Controllers/Admin/CourseCodeController.php
+                - app/Http/Controllers/Admin/AdminNotificationsController.php
+                - app/Http/Controllers/Admin/NotificationsController.php
+                - app/Http/Controllers/Admin/DesignSettingController.php
+                - app/Http/Controllers/Admin/SettingsController.php
+                - app/Http/Controllers/Admin/AboutsController.php
+                - app/Http/Controllers/Admin/ModeratorController.php
+                - app/Http/Controllers/Admin/ProductAnalyticsController.php
         # Larastan resolves the DB facade to Illuminate\Database\Connection.
         -
             method:
@@ -27,6 +64,44 @@ parameters:
                 - app/Http/Controllers/*
 
     disallowedMethodCalls:
+        -
+            method:
+                - 'Illuminate\Http\Request::validate()'
+                - 'Illuminate\Http\Request::validateWithBag()'
+                - 'Illuminate\Validation\Factory::make()'
+            message: 'dashboard input validation belongs to FormRequests or Filament schemas (ARCHITECTURE.md D2)'
+            disallowIn:
+                - app/Http/Controllers/Admin/*
+        -
+            method:
+                - 'Illuminate\Database\Eloquent\Builder::*()'
+                - 'Illuminate\Database\Query\Builder::*()'
+                - 'Illuminate\Database\Eloquent\Relations\Relation::*()'
+            message: 'dashboard controllers delegate database reads to the owning read service (ARCHITECTURE.md B1)'
+            disallowIn:
+                - app/Http/Controllers/Admin/TeacherController.php
+                - app/Http/Controllers/Admin/PathController.php
+                - app/Http/Controllers/Admin/ClassificationController.php
+                - app/Http/Controllers/Admin/LevelController.php
+                - app/Http/Controllers/Admin/PackageController.php
+                - app/Http/Controllers/Admin/CouponController.php
+                - app/Http/Controllers/Admin/ContactsController.php
+                - app/Http/Controllers/Admin/UserSessionController.php
+                - app/Http/Controllers/Admin/CoinEarningMethodController.php
+                - app/Http/Controllers/Admin/FeedbackController.php
+                - app/Http/Controllers/Admin/UsersController.php
+                - app/Http/Controllers/Admin/PaymentReconciliationFindingController.php
+                - app/Http/Controllers/Admin/PortfolioPreviewController.php
+                - app/Http/Controllers/Admin/ProjectSubmissionController.php
+                - app/Http/Controllers/Admin/StudentProgressController.php
+                - app/Http/Controllers/Admin/CourseCodeController.php
+                - app/Http/Controllers/Admin/AdminNotificationsController.php
+                - app/Http/Controllers/Admin/NotificationsController.php
+                - app/Http/Controllers/Admin/DesignSettingController.php
+                - app/Http/Controllers/Admin/SettingsController.php
+                - app/Http/Controllers/Admin/AboutsController.php
+                - app/Http/Controllers/Admin/ModeratorController.php
+                - app/Http/Controllers/Admin/ProductAnalyticsController.php
         -
             method:
                 - 'Illuminate\Database\Eloquent\Builder::lockForUpdate()'

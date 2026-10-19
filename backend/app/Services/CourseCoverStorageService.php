@@ -7,7 +7,8 @@ namespace App\Services;
 use App\Support\PublicDiskUrl;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Intervention\Image\Facades\Image;
+use Intervention\Image\Encoders\WebpEncoder;
+use Intervention\Image\Laravel\Facades\Image;
 use RuntimeException;
 
 /** Keep the authored original; encode a separate bounded catalogue rendition. */
@@ -88,34 +89,16 @@ final readonly class CourseCoverStorageService
             || $dimensions[0] * $dimensions[1] > self::MAX_PIXELS) {
             throw new RuntimeException('Course cover exceeds the supported image budget.');
         }
-        // Intervention's EXIF reader needs the original file, not a newly
-        // encoded GD stream. tmpfile owns its temporary file until fclose.
-        $stream = tmpfile();
-        if (! is_resource($stream)) {
-            throw new RuntimeException('Course cover temporary storage failed.');
+        // The binary decoder reads EXIF from the original bytes and applies
+        // the orientation when the EXIF extension exists.
+        $encoded = Image::decodeBinary($bytes)
+            ->scaleDown(self::MAX_EDGE, self::MAX_EDGE)
+            ->encode(new WebpEncoder(quality: 82))
+            ->toString();
+        if ($encoded === '') {
+            throw new RuntimeException('Course cover encoding failed.');
         }
-        $image = null;
-        try {
-            if (fwrite($stream, $bytes) !== strlen($bytes)) {
-                throw new RuntimeException('Course cover temporary storage failed.');
-            }
-            $image = Image::make(stream_get_meta_data($stream)['uri']);
-            if (function_exists('exif_read_data')) {
-                $image->orientate();
-            }
-            $image->resize(self::MAX_EDGE, self::MAX_EDGE, static function ($constraint): void {
-                $constraint->aspectRatio();
-                $constraint->upsize();
-            });
-            $encoded = (string) $image->encode('webp', 82);
-            if ($encoded === '') {
-                throw new RuntimeException('Course cover encoding failed.');
-            }
 
-            return $encoded;
-        } finally {
-            $image?->destroy();
-            fclose($stream);
-        }
+        return $encoded;
     }
 }

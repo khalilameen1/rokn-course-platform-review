@@ -5,26 +5,24 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\CertificatePreviewRequest;
 use App\Models\Certificate;
 use App\Models\Course;
 use App\Services\CertificateArtworkRenderer;
 use App\Services\CertificateIssuanceSnapshotService;
 use App\Services\CourseRevisionResolver;
 use App\Support\UnicodeText;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 final class CourseCertificatePreviewController extends Controller
 {
     public function __invoke(
-        Request $request,
+        CertificatePreviewRequest $request,
         Course $course,
         CourseRevisionResolver $revisions,
         CertificateIssuanceSnapshotService $snapshots,
         CertificateArtworkRenderer $renderer
     ): Response {
-        $request->validate(['image' => ['sometimes', 'boolean']]);
-
         // A GET can read an existing draft, never create one or issue a credential.
         $previewCourse = $revisions->activeDraftFor($course) ?: $course;
         $snapshot = $snapshots->forPreview($previewCourse);

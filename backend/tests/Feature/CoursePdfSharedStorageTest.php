@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Controllers\Admin\CoursePdfController as AdminCoursePdfController;
+use App\Http\Requests\Admin\CourseAuthoringVersionRequest;
 use App\Http\Requests\Admin\CoursePdfOrderRequest;
 use App\Http\Requests\Admin\CoursePdfRequest;
-use App\Http\Requests\Admin\CoursePdfVersionRequest;
 use App\Jobs\DeleteAccountFile;
 use App\Models\AccountFileDeletion;
 use App\Models\Course;
@@ -339,7 +339,7 @@ final class CoursePdfSharedStorageTest extends TestCase
         self::assertSame($pdf->order, $updated['pdf']['order']);
         $this->assertPdfPayload($updated['pdf']);
 
-        $toggle = CoursePdfVersionRequest::create('/admin/course-pdf/'.$pdf->id.'/toggle', 'POST', [
+        $toggle = CourseAuthoringVersionRequest::create('/admin/course-pdf/'.$pdf->id.'/toggle', 'POST', [
             'authoring_version' => 3,
         ]);
         $toggle->headers->set('Accept', 'application/json');
@@ -360,7 +360,7 @@ final class CoursePdfSharedStorageTest extends TestCase
         self::assertCount(1, $reordered['pdfs']);
         $this->assertPdfPayload($reordered['pdfs'][0]);
 
-        $destroy = CoursePdfVersionRequest::create('/admin/course-pdf/'.$pdf->id, 'DELETE', [
+        $destroy = CourseAuthoringVersionRequest::create('/admin/course-pdf/'.$pdf->id, 'DELETE', [
             'authoring_version' => 5,
         ]);
         $destroy->headers->set('Accept', 'application/json');

@@ -11,6 +11,7 @@ use App\Models\CourseEnrollment;
 use App\Models\Order;
 use App\Models\StorePurchase;
 use App\Models\User;
+use App\Support\Money;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
@@ -211,8 +212,8 @@ final readonly class CourseCheckoutService
             }
             || (int) $order->package_id !== (int) $checkout->package_id
             || (int) $order->package_coins !== (int) ($package['coins'] ?? 0)
-            || ($checkout->channel === 'direct' && (int) round((float) $order->final_amount * 100)
-                !== (int) round((float) ($package['direct_price'] ?? 0) * 100))
+            || ($checkout->channel === 'direct' && Money::ofEgp($order->final_amount)->toCents()
+                !== Money::ofEgp($package['direct_price'] ?? 0)->toCents())
             || ($checkout->funding_order_id && (int) $checkout->funding_order_id !== (int) $order->id)
             || CourseCheckout::query()->where('funding_order_id', $order->id)->where('id', '!=', $checkout->id)->exists()) {
             throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);

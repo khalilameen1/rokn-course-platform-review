@@ -77,8 +77,7 @@ final class AdminStudentIdentitySearchTest extends TestCase
     private function search(string $search, array $filters = []): array
     {
         return app(AdminStudentReadService::class)
-            ->listing(['search' => $search] + $filters, [])['users']
-            ->getCollection()->pluck('id')->all();
+            ->listQuery(['search' => $search] + $filters)->orderByDesc('id')->pluck('id')->all();
     }
 
     private function student(int $id, array $attributes = []): void

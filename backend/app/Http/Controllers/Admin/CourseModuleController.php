@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\CourseAuthoringVersionRequest;
 use App\Http\Requests\Admin\CourseModuleOrderRequest;
 use App\Http\Requests\Admin\CourseModuleRequest;
-use App\Http\Requests\Admin\CourseModuleVersionRequest;
 use App\Models\Course;
 use App\Models\CourseModule;
 use App\Services\AdminAuthoringCreateIntentService;
@@ -66,7 +66,7 @@ final class CourseModuleController extends Controller
     }
 
     public function destroy(
-        CourseModuleVersionRequest $request,
+        CourseAuthoringVersionRequest $request,
         Course $course,
         CourseModule $module
     ): Response {

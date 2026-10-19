@@ -1,7 +1,7 @@
 @php
     $headerUser = auth()->user();
     $headerIsAdministrator = app(\App\Auth\AdminPermissionMatrix::class)
-        ->isAdministrator($headerUser?->role);
+        ->isAdministrator($headerUser);
     $headerNotificationState = app(\App\Services\AdminHeaderNotificationService::class)->for($headerUser);
     $headerNotifications = $headerNotificationState['items'];
     $headerUnreadCount = $headerNotificationState['unread_count'];

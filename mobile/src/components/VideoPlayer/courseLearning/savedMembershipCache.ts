@@ -2,43 +2,31 @@ import {
   assertAccountSessionBoundary,
   type AccountSessionBoundary,
 } from '../../../constants/helpers';
-import {
-  removeSavedFolderFromCache,
-  removeSavedLessonEverywhereFromCache,
-  removeSavedLessonFromCache,
-} from '../../../services/roknApi';
 import {updatePlayerStateForScope} from '../../../services/learningPlayerState';
+import {queryClient} from '../../../services/query/queryClient';
+import {
+  applySavedMembershipChange,
+  type SavedMembershipChange,
+} from '../../../services/query/savedLibraryInvalidation';
 
-export type SavedMembershipChange =
-  | {kind: 'save'; folderId: string; lessonId: string}
-  | {
-      kind: 'remove';
-      folderId: string;
-      lessonId: string;
-      /** Server answer: another list still holds the lesson. */
-      stillSaved?: boolean | null;
-    }
-  | {kind: 'remove-everywhere'; lessonId: string}
-  | {kind: 'delete-folder'; folderId: string};
+export type {SavedMembershipChange};
 
 /**
- * Applies an already-confirmed server mutation to page and player caches.
- * Starts both raw queues without waiting for either. The caller owns the bounded
- * best-effort wait; timing it out must not release either native write queue.
+ * Applies an already-confirmed server mutation to the saved-lessons queries
+ * and the player cache. Starts both without waiting for either. The caller
+ * owns the bounded best-effort wait; timing it out must not release the
+ * native write queue.
  */
 export const repairSavedMembershipCache = async (
   boundary: AccountSessionBoundary,
   change: SavedMembershipChange,
 ): Promise<void> => {
   assertAccountSessionBoundary(boundary);
-  const pageRepair =
-    change.kind === 'delete-folder'
-      ? removeSavedFolderFromCache(change.folderId, boundary)
-      : change.kind === 'remove-everywhere'
-      ? removeSavedLessonEverywhereFromCache(change.lessonId, boundary)
-      : change.kind === 'remove'
-      ? removeSavedLessonFromCache(change.folderId, change.lessonId, boundary)
-      : Promise.resolve();
+  const pageRepair = applySavedMembershipChange(
+    queryClient,
+    boundary.scope,
+    change,
+  );
   const playerRepair = updatePlayerStateForScope(
     boundary.scope,
     state => {

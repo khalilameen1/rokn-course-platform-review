@@ -5,22 +5,25 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Controllers\Admin\OperatingCostPoolController;
+use App\Http\Requests\Admin\OperatingCostProfileRequest;
 use App\Models\OperatingCostPool;
 use App\Models\User;
 use App\Services\AdminAuthoringCreateIntentService;
+use App\Services\AdminOperatingCostReadService;
 use App\Support\AdminEditorVersion;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\ValidatesFormRequests;
 use Tests\TestCase;
 
 final class OperatingInvoiceEntryContractTest extends TestCase
 {
+    use ValidatesFormRequests;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -88,31 +91,10 @@ final class OperatingInvoiceEntryContractTest extends TestCase
     public function test_choices_and_report_links_exclude_revisions_but_keep_existing_invoice_history(): void
     {
         $invoice = OperatingCostPool::create($this->payload() + ['course_id' => 4]);
-        $data = app(OperatingCostPoolController::class)->index(Request::create('/invoices'))->getData();
-        self::assertSame([3], $data['courses']->pluck('id')->all());
-        self::assertSame(4, (int) $data['pools']->first()->course_id);
-        self::assertSame($invoice->id, $data['pools']->first()->id);
-    }
-
-    public function test_actual_form_has_no_allocation_control_and_fx_version_belongs_to_fx_form(): void
-    {
-        $data = app(OperatingCostPoolController::class)->index(Request::create('/invoices'))->getData();
-        $html = $this->renderWithoutDashboardShell('admin.operating-costs.index', $data);
-        $document = new \DOMDocument;
-        @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
-        $xpath = new \DOMXPath($document);
-        self::assertSame(0, $xpath->query('//select[@name="allocation_driver"]')->length);
-        self::assertSame(1, $xpath->query('//input[@name="allocation_driver" and @type="hidden"]')->length);
-        $fx = $xpath->query('//form[contains(@action,"operating-costs-exchange-rate")]')->item(0);
-        self::assertNotNull($fx);
-        self::assertSame(1, $xpath->query('.//input[@name="editor_version"]', $fx)->length);
-        $version = $xpath->query('.//input[@name="editor_version"]', $fx)->item(0)->getAttribute('value');
-        app(OperatingCostPoolController::class)->updateExchangeRate(Request::create('/fx', 'POST', [
-            'editor_version' => $version, 'openrouter_usd_to_egp_rate' => 52,
-        ]));
-        self::assertSame(52.0, (float) DB::table('settings')->value('openrouter_usd_to_egp_rate'));
-        self::assertStringNotContainsString('النظام يوزعها', strip_tags($html));
-        self::assertStringNotContainsString('طريقة التوزيع', strip_tags($html));
+        $reader = app(AdminOperatingCostReadService::class);
+        self::assertSame([3], $reader->courses()->pluck('id')->all());
+        self::assertSame(4, (int) $reader->invoices()->first()->course_id);
+        self::assertSame($invoice->id, $reader->invoices()->first()->id);
     }
 
     public function test_legacy_revision_invoice_can_be_edited_without_reassigning_or_changing_driver(): void
@@ -120,7 +102,7 @@ final class OperatingInvoiceEntryContractTest extends TestCase
         $invoice = OperatingCostPool::create($this->payload() + ['course_id' => 4]);
         $version = AdminEditorVersion::for($invoice, ['name', 'service_key', 'course_id', 'period_start', 'period_end', 'amount', 'currency', 'fx_rate_to_egp', 'allocation_driver', 'is_final', 'notes']);
         $request = Request::create('/invoices/'.$invoice->id, 'PUT', ['editor_version' => $version, 'name' => 'Updated', 'course_id' => 4] + $this->payload());
-        app(OperatingCostPoolController::class)->update($request, $invoice);
+        app(OperatingCostPoolController::class)->update($this->validatedFormRequest(OperatingCostProfileRequest::class, $request), $invoice);
         self::assertSame(4, (int) $invoice->fresh()->course_id);
         self::assertSame('playback_gb', $invoice->fresh()->allocation_driver);
         self::assertSame('Updated', $invoice->fresh()->name);
@@ -133,11 +115,11 @@ final class OperatingInvoiceEntryContractTest extends TestCase
         $request = Request::create('/invoices', 'POST', ['course_id' => 3,
             'authoring_request_id' => (string) Str::uuid()] + $this->payload());
         $request->setUserResolver(fn () => new User(['id' => 1]));
-        $controller->store($request, $service);
+        $controller->store($this->validatedFormRequest(OperatingCostProfileRequest::class, $request), $service);
         self::assertSame(3, (int) OperatingCostPool::query()->first()->course_id);
         $request->merge(['course_id' => 7, 'authoring_request_id' => (string) Str::uuid()]);
         try {
-            $controller->store($request, $service);
+            $controller->store($this->validatedFormRequest(OperatingCostProfileRequest::class, $request), $service);
             self::fail('An authoring copy is not a financial course identity.');
         } catch (ValidationException $error) {
             self::assertArrayHasKey('course_id', $error->errors());
@@ -150,24 +132,8 @@ final class OperatingInvoiceEntryContractTest extends TestCase
         $invoice = OperatingCostPool::create($this->payload() + ['course_id' => 3]);
         $version = AdminEditorVersion::for($invoice, ['name', 'service_key', 'course_id', 'period_start', 'period_end', 'amount', 'currency', 'fx_rate_to_egp', 'allocation_driver', 'is_final', 'notes']);
         $this->expectException(ValidationException::class);
-        app(OperatingCostPoolController::class)->update(Request::create('/invoices/'.$invoice->id, 'PUT',
-            ['editor_version' => $version, 'course_id' => 7] + $this->payload()), $invoice);
-    }
-
-    /**
-     * Renders the real page view while a test-only layout stands in for the
-     * dashboard shell, whose navigation needs the full application schema.
-     *
-     * @param  array<string, mixed>  $data
-     */
-    private function renderWithoutDashboardShell(string $view, array $data): string
-    {
-        $shell = storage_path('framework/testing-shell');
-        File::ensureDirectoryExists($shell.'/admin/layouts');
-        File::put($shell.'/admin/layouts/app.blade.php', "@yield('content')\n@stack('scripts')");
-        View::getFinder()->prependLocation($shell);
-
-        return view($view, $data)->render();
+        app(OperatingCostPoolController::class)->update($this->validatedFormRequest(OperatingCostProfileRequest::class, Request::create('/invoices/'.$invoice->id, 'PUT',
+            ['editor_version' => $version, 'course_id' => 7] + $this->payload())), $invoice);
     }
 
     private function payload(): array

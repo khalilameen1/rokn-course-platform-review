@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\OrderResource;
+use App\Filament\Resources\OrderResource\Pages\ListOrders;
+use App\Filament\Resources\PackageResource;
+use App\Filament\Resources\PackageResource\Pages\ViewPackage;
+use App\Filament\Resources\PackageResource\RelationManagers\OrdersRelationManager;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\User;
 use App\Services\OrderLifecycleService;
-use DOMDocument;
-use DOMXPath;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class AdminPaymentOperationsContractTest extends TestCase
@@ -27,6 +31,7 @@ final class AdminPaymentOperationsContractTest extends TestCase
     {
         parent::setUp();
         $this->withoutMiddleware(RequireAdminMfa::class);
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
     }
 
     public function test_dashboard_offers_and_accepts_only_the_canonical_operation_states(): void
@@ -39,19 +44,17 @@ final class AdminPaymentOperationsContractTest extends TestCase
             'approved_at' => now(),
         ]);
 
-        $html = $this->actingAs($admin, 'web')->get(route('admin.orders.index'))->assertOk()->getContent();
-        $offered = [];
-        foreach ($this->xpath($html)->query('//select[@name="state"]/option[@value!=""]') as $option) {
-            $offered[] = $option->getAttribute('value');
-        }
-        self::assertSame(self::STATES, $offered);
+        $this->actingAs($admin, 'web');
+        $page = Livewire::test(ListOrders::class);
+        $stateField = collect($page->instance()->getTableFiltersForm()->getFlatFields())->first(fn ($field) => $field->getName() === 'state');
+        self::assertSame(self::STATES, array_keys($stateField->getOptions()));
 
         foreach (self::STATES as $state) {
-            $response = $this->actingAs($admin, 'web')
+            $this->actingAs($admin, 'web')
                 ->get(route('admin.orders.index', ['state' => $state]))
-                ->assertOk();
-            $orders = $response->viewData('orders');
-            self::assertInstanceOf(LengthAwarePaginator::class, $orders);
+                ->assertRedirect(OrderResource::listUrl(['state' => $state]));
+            $page->filterTable('criteria', ['state' => $state]);
+            $orders = $page->instance()->getTableRecords();
             foreach ($orders as $order) {
                 // Only the read owner decorates orders with an operation state.
                 self::assertSame($state, $order->payment_operation_state);
@@ -74,10 +77,8 @@ final class AdminPaymentOperationsContractTest extends TestCase
             $this->order($user, $package, []);
         }
 
-        $orders = $this->actingAs($admin, 'web')
-            ->get(route('admin.orders.index'))
-            ->assertOk()
-            ->viewData('orders');
+        $this->actingAs($admin, 'web')->get(route('admin.orders.index'))->assertRedirect(OrderResource::listUrl());
+        $orders = Livewire::test(ListOrders::class)->instance()->getTableRecords();
 
         self::assertSame(25, $orders->perPage());
         self::assertCount(25, $orders->items());
@@ -120,9 +121,11 @@ final class AdminPaymentOperationsContractTest extends TestCase
                 ->{$method}('/dashboard/orders/'.$pending->id, ['status' => Order::STATUS_APPROVED])
                 ->assertStatus(405);
         }
-        $this->actingAs($admin, 'web')->get(route('admin.orders.index'))
-            ->assertOk()
-            ->assertDontSee('updateOrderStatus', false);
+        $this->actingAs($admin, 'web')->get(route('admin.orders.index'))->assertRedirect(OrderResource::listUrl());
+        self::assertFalse(OrderResource::canCreate());
+        self::assertFalse(OrderResource::canEdit($pending));
+        self::assertFalse(OrderResource::canDelete($pending));
+        self::assertFalse(OrderResource::canDeleteAny());
         self::assertSame(Order::STATUS_PENDING, $pending->fresh()->status);
 
         $closed = $this->order($user, $package, [
@@ -155,35 +158,13 @@ final class AdminPaymentOperationsContractTest extends TestCase
         [, $otherPackage] = $this->fixtures();
         $foreign = $this->order($user, $otherPackage, []);
 
-        $response = $this->actingAs($admin, 'web')
+        $this->actingAs($admin, 'web')
             ->get(route('admin.packages.show', $package))
-            ->assertOk();
-        $orders = $response->viewData('orders');
-        self::assertSame('orders_page', $orders->getPageName());
-        self::assertEqualsCanonicalizing([$settled->id, $awaiting->id], $orders->getCollection()->modelKeys());
-
-        $xpath = $this->xpath($response->getContent());
-        $settledRow = $this->rowFor($xpath, $settled);
-        self::assertStringContainsString('Kashier — أندرويد مباشر/الويب', $settledRow);
-        self::assertStringContainsString('95.50 EGP', $settledRow);
-        self::assertStringContainsString('بانتظار التسوية', $this->rowFor($xpath, $awaiting));
-        self::assertSame(0, $xpath->query('//a[@href="'.route('admin.orders.show', $foreign).'"]')->length);
-    }
-
-    private function rowFor(DOMXPath $xpath, Order $order): string
-    {
-        $rows = $xpath->query('//tr[.//a[@href="'.route('admin.orders.show', $order).'"]]');
-        self::assertSame(1, $rows->length, 'Order #'.$order->id.' must have one history row.');
-
-        return preg_replace('/\s+/u', ' ', (string) $rows->item(0)->textContent);
-    }
-
-    private function xpath(string $html): DOMXPath
-    {
-        $document = new DOMDocument;
-        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$html);
-
-        return new DOMXPath($document);
+            ->assertRedirect(PackageResource::getUrl('view', ['record' => $package->id]));
+        $page = Livewire::test(OrdersRelationManager::class, ['ownerRecord' => $package, 'pageClass' => ViewPackage::class])
+            ->assertCanSeeTableRecords([$settled, $awaiting])->assertCanNotSeeTableRecords([$foreign])
+            ->assertSee('95.50 EGP')->assertSee('بانتظار التسوية');
+        self::assertEqualsCanonicalizing([$settled->id, $awaiting->id], $page->instance()->getTableRecords()->getCollection()->modelKeys());
     }
 
     private function admin(): User

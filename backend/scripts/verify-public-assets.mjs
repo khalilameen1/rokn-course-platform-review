@@ -52,11 +52,11 @@ export function validateFileInventory(actualEntries, inventoryEntries) {
     return errors;
 }
 
-export function validateExternalTag(tag, path = '<memory>') {
+export function validateExternalTag(tag, path = '<memory>', allowedStaticAssets = externalStaticAssets) {
     const url = tag.match(/\b(?:src|href)=["'](https:[^"']+)["']/i)?.[1];
     if (!url) return [];
     if (dynamicExternalExceptions.some(exception => url.startsWith(exception.prefix))) return [];
-    const allowed = externalStaticAssets.find(asset => asset.url === url);
+    const allowed = allowedStaticAssets.find(asset => asset.url === url);
     if (!allowed) return [`Unpinned or unclassified static external asset in ${path}: ${url}`];
     const integrity = tag.match(/\bintegrity=["']([^"']+)["']/i)?.[1];
     if (integrity !== allowed.integrity) return [`Missing or incorrect SRI for ${url} in ${path}`];

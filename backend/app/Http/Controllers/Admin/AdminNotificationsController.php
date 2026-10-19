@@ -2,35 +2,27 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\NotificationTemplateResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AdminNotificationRequest;
+use App\Http\Requests\Admin\EditorVersionRequest;
 use App\Models\AdminNotification;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminNotificationTemplateAuthoringService;
-use App\Support\NotificationTemplateEditorVersion;
-use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 
 class AdminNotificationsController extends Controller
 {
     public function __construct(private readonly AdminNotificationTemplateAuthoringService $authoring) {}
 
-    public function index()
+    public function index(): RedirectResponse
     {
-        $admin_notifications = AdminNotification::query()
-            ->with('photo')->orderBy('priority')->orderByDesc('updated_at')->orderByDesc('id')
-            ->paginate(30);
-        $editorVersions = $admin_notifications->getCollection()->mapWithKeys(
-            fn (AdminNotification $notification): array => [
-                $notification->id => NotificationTemplateEditorVersion::for($notification),
-            ]
-        );
-
-        return view('admin.admin_notifications.index', compact('admin_notifications', 'editorVersions'));
+        return redirect()->to(NotificationTemplateResource::getUrl());
     }
 
-    public function create()
+    public function create(): RedirectResponse
     {
-        return view('admin.admin_notifications.create');
+        return redirect()->to(NotificationTemplateResource::getUrl('create'));
     }
 
     public function store(AdminNotificationRequest $request, AdminAuthoringCreateIntentService $createIntents)
@@ -47,11 +39,9 @@ class AdminNotificationsController extends Controller
         return redirect()->route('admin.admin_notifications.index')->with('success', 'تمت الإضافة بنجاح ');
     }
 
-    public function edit(AdminNotification $admin_notification)
+    public function edit(AdminNotification $admin_notification): RedirectResponse
     {
-        $editorVersion = NotificationTemplateEditorVersion::for($admin_notification);
-
-        return view('admin.admin_notifications.edit', compact('admin_notification', 'editorVersion'));
+        return redirect()->to(NotificationTemplateResource::getUrl('edit', ['record' => $admin_notification->id]));
     }
 
     public function update(AdminNotificationRequest $request, AdminNotification $admin_notification)
@@ -64,9 +54,9 @@ class AdminNotificationsController extends Controller
         return redirect()->route('admin.admin_notifications.index')->with('success', 'تم التعديل بنجاح');
     }
 
-    public function destroy(Request $request, AdminNotification $admin_notification)
+    public function destroy(EditorVersionRequest $request, AdminNotification $admin_notification)
     {
-        $validated = $request->validate(['editor_version' => 'required|string|size:64']);
+        $validated = $request->validated();
         $disabled = $this->authoring->deleteOrDisable((int) $admin_notification->id, (string) $validated['editor_version']);
 
         return redirect()->route('admin.admin_notifications.index')

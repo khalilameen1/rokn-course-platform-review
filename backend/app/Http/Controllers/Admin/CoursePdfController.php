@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\CourseAuthoringVersionRequest;
 use App\Http\Requests\Admin\CoursePdfOrderRequest;
 use App\Http\Requests\Admin\CoursePdfRequest;
-use App\Http\Requests\Admin\CoursePdfVersionRequest;
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
 use App\Models\CoursePdf;
@@ -145,7 +145,7 @@ final class CoursePdfController extends Controller
     }
 
     public function destroy(
-        CoursePdfVersionRequest $request,
+        CourseAuthoringVersionRequest $request,
         Course $course,
         CoursePdf $pdf
     ): Response {
@@ -179,7 +179,7 @@ final class CoursePdfController extends Controller
     }
 
     public function toggleStatus(
-        CoursePdfVersionRequest $request,
+        CourseAuthoringVersionRequest $request,
         Course $course,
         CoursePdf $pdf
     ): Response {

@@ -2,6 +2,8 @@
 
 use App\Providers\AppServiceProvider;
 use App\Providers\EventServiceProvider;
+use App\Providers\Filament\OperationsPanelProvider;
+use App\Providers\OperationsToolsServiceProvider;
 use App\Providers\RouteServiceProvider;
 use App\Providers\SettingServiceProvider;
 use Illuminate\Auth\AuthServiceProvider;
@@ -244,6 +246,8 @@ return [
         EventServiceProvider::class,
         RouteServiceProvider::class,
         SettingServiceProvider::class,
+        OperationsPanelProvider::class,
+        OperationsToolsServiceProvider::class,
     ],
 
     /*

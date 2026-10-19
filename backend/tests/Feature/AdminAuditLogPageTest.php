@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\AuditLogResource;
+use App\Filament\Resources\AuditLogResource\Pages\ListAuditLogs;
+use App\Filament\Resources\AuditLogResource\Pages\ViewAuditLog;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\AdminAuditLog;
 use App\Models\Package;
 use App\Models\User;
 use App\Services\StudentAccountStateService;
 use App\Support\AdminAuditChangeRecorder;
+use App\Support\BusinessClock;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class AdminAuditLogPageTest extends TestCase
@@ -29,21 +35,22 @@ final class AdminAuditLogPageTest extends TestCase
     {
         $admin = $this->staff('admin', 'Owner Person');
         $moderator = $this->staff('moderator', 'Content Person');
-        $this->entry($admin, 'admin.coupons.update', now()->subDays(3));
-        $this->entry($moderator, 'admin.courses.update', now());
+        $old = $this->entry($admin, 'admin.coupons.update', now()->subDays(3));
+        $today = $this->entry($moderator, 'admin.courses.update', now());
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
 
-        $this->actingAs($admin)->get(route('admin.audit-log.index'))
-            ->assertOk()
-            ->assertSee('admin.coupons.update')
-            ->assertSee('admin.courses.update');
-        $this->actingAs($admin)->get(route('admin.audit-log.index', ['actor_id' => $moderator->id]))
-            ->assertOk()->assertSee('admin.courses.update')->assertDontSee('admin.coupons.update');
-        $this->actingAs($admin)->get(route('admin.audit-log.index', ['action' => 'admin.coupons']))
-            ->assertOk()->assertSee('admin.coupons.update')->assertDontSee('admin.courses.update');
-        $this->actingAs($admin)->get(route('admin.audit-log.index', ['from' => now()->subDay()->format('Y-m-d')]))
-            ->assertOk()->assertSee('admin.courses.update')->assertDontSee('admin.coupons.update');
-        $this->actingAs($admin)->get(route('admin.audit-log.index', ['from' => '2026-10-10', 'to' => '2026-10-01']))
-            ->assertSessionHasErrors('to');
+        $this->get(route('admin.audit-log.index'))->assertRedirect(AuditLogResource::getUrl('index', ['filters' => ['criteria' => []]]));
+        Livewire::test(ListAuditLogs::class)->assertCanSeeTableRecords([$old, $today]);
+        Livewire::test(ListAuditLogs::class)->filterTable('criteria', ['actor_id' => $moderator->id])->assertCanSeeTableRecords([$today])->assertCanNotSeeTableRecords([$old]);
+        Livewire::test(ListAuditLogs::class)->filterTable('criteria', ['action' => 'admin.coupons'])->assertCanSeeTableRecords([$old])->assertCanNotSeeTableRecords([$today]);
+        Livewire::test(ListAuditLogs::class)->filterTable('criteria', ['from' => BusinessClock::now()->subDay()->format('Y-m-d')])->assertCanSeeTableRecords([$today])->assertCanNotSeeTableRecords([$old]);
+        Livewire::test(ListAuditLogs::class)->filterTable('criteria', ['to' => BusinessClock::now()->subDay()->format('Y-m-d')])->assertCanSeeTableRecords([$old])->assertCanNotSeeTableRecords([$today]);
+        Livewire::test(ListAuditLogs::class)->set('tableDeferredFilters.criteria', ['from' => '2026-10-10', 'to' => '2026-10-01'])->call('applyTableFilters')->assertHasErrors(['tableDeferredFilters.criteria.to']);
+        $this->get(route('admin.audit-log.index', ['from' => '2026-10-10', 'to' => '2026-10-01']))->assertSessionHasErrors('to');
+        self::assertSame(2, AdminAuditLog::query()->count());
+        self::assertFalse(AuditLogResource::canCreate());
+        self::assertFalse(AuditLogResource::canDelete($old));
     }
 
     public function test_moderators_cannot_read_the_audit_trail_and_page_has_no_mutations(): void
@@ -54,6 +61,39 @@ final class AdminAuditLogPageTest extends TestCase
             ->filter(fn ($route) => str_starts_with((string) $route->getName(), 'admin.audit-log.'));
         self::assertSame(['admin.audit-log.index'], $routes->map->getName()->values()->all());
         self::assertSame(['GET', 'HEAD'], $routes->first()->methods());
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(ListAuditLogs::class)->assertForbidden();
+    }
+
+    public function test_native_dates_use_cairo_days_and_search_wildcards_are_literal(): void
+    {
+        $admin = $this->staff('admin', 'Owner');
+        $old = $this->entry($admin, 'admin.test_100%', BusinessClock::localInputToUtc('2026-10-18T23:59'));
+        $current = $this->entry($admin, 'admin.test_100x', BusinessClock::localInputToUtc('2026-10-19T00:01'));
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(ListAuditLogs::class)->filterTable('criteria', ['from' => '2026-10-19', 'to' => '2026-10-19'])
+            ->assertCanSeeTableRecords([$current])->assertCanNotSeeTableRecords([$old]);
+        Livewire::test(ListAuditLogs::class)->filterTable('criteria', ['action' => '100%'])
+            ->assertCanNotSeeTableRecords([$current, $old]);
+        Livewire::test(ListAuditLogs::class)->filterTable('criteria', ['action' => 'admin.test_100%'])
+            ->assertCanSeeTableRecords([$old])->assertCanNotSeeTableRecords([$current]);
+    }
+
+    public function test_native_change_detail_escapes_text_and_preserves_array_values(): void
+    {
+        $admin = $this->staff('admin', 'Owner');
+        $entry = $this->entry($admin, 'admin.test.update', now());
+        $entry->update(['changes' => [['subject' => 'User', 'id' => '1', 'event' => 'updated',
+            'old' => ['label' => '<script>alert(1)</script>', 'options' => ['enabled' => true]],
+            'attributes' => ['label' => 'الأحدث', 'options' => ['enabled' => false]],
+        ]]]);
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(ViewAuditLog::class, ['record' => $entry->id])->assertSee('الأحدث')
+            ->assertSee('<script>alert(1)</script>')->assertDontSee('<script>alert(1)</script>', false);
+        self::assertSame('{"enabled":true}', AuditLogResource::diff($entry)[0]['fields'][1]['before']);
+        self::assertFalse(AuditLogResource::canEdit($entry));
     }
 
     public function test_mutation_records_before_and_after_for_allow_listed_fields_only(): void
@@ -76,8 +116,9 @@ final class AdminAuditLogPageTest extends TestCase
         ]], $entry->changes);
         self::assertStringNotContainsString('password', json_encode($entry->changes));
 
-        $this->actingAs($admin)->get(route('admin.audit-log.index'))
-            ->assertOk()->assertSee('active: نعم → لا', false);
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(ViewAuditLog::class, ['record' => $entry->id])->assertSee('active')->assertSee('نعم')->assertSee('لا');
     }
 
     public function test_recorder_ignores_unlisted_fields_and_rolled_back_writes(): void
@@ -108,9 +149,9 @@ final class AdminAuditLogPageTest extends TestCase
         self::assertCount(1, $recorder->finish());
     }
 
-    private function entry(User $actor, string $route, \DateTimeInterface $at): void
+    private function entry(User $actor, string $route, \DateTimeInterface $at): AdminAuditLog
     {
-        AdminAuditLog::query()->create([
+        return AdminAuditLog::query()->create([
             'request_id' => (string) Str::uuid(), 'actor_id' => $actor->id, 'actor_role' => $actor->role,
             'route_name' => $route, 'http_method' => 'PUT', 'path' => 'dashboard/x',
             'route_parameters' => [], 'request_fields' => ['price'], 'response_status' => 302, 'occurred_at' => $at,

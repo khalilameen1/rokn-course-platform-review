@@ -9,6 +9,9 @@ use App\Traits\HasApiTokens;
 use App\Traits\HasPhoto;
 use App\Traits\InvalidatesCourseCatalogue;
 use App\Traits\ResolvesLocalizedAttributes;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasName;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -17,9 +20,20 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser, HasName
 {
     use HasApiTokens, HasPhoto, InvalidatesCourseCatalogue, Notifiable, ResolvesLocalizedAttributes, SoftDeletes;
+
+    public function getFilamentName(): string
+    {
+        return trim((string) ($this->name ?: $this->email)) ?: 'فريق رُكن';
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $panel->getId() === 'operations' && $this->active
+            && in_array(strtolower((string) $this->role), ['admin', 'moderator'], true);
+    }
 
     protected static function booted(): void
     {
@@ -243,6 +257,12 @@ class User extends Authenticatable
         return $this->hasMany(UserNote::class);
     }
 
+    /** @return HasMany<ProjectSubmission, $this> */
+    public function projectSubmissions(): HasMany
+    {
+        return $this->hasMany(ProjectSubmission::class);
+    }
+
     /** @return HasOne<UserNote, $this> */
     public function latestNote(): HasOne
     {
@@ -459,6 +479,8 @@ class User extends Authenticatable
 
     /**
      * Get the courses that the user teaches.
+     *
+     * @return BelongsToMany<Course, $this>
      */
     public function teachingCourses(): BelongsToMany
     {

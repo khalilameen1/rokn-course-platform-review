@@ -4,21 +4,16 @@ jest.mock('../src/constants/api', () => {
 jest.mock('../src/constants/helpers', () => ({
   assertAccountSessionBoundary: jest.fn(),
 }));
-jest.mock('../src/services/roknApi', () => ({
-  removeSavedFolderFromCache: jest.fn(async () => undefined),
-  removeSavedLessonEverywhereFromCache: jest.fn(async () => undefined),
-  removeSavedLessonFromCache: jest.fn(async () => undefined),
+jest.mock('../src/services/query/savedLibraryInvalidation', () => ({
+  applySavedMembershipChange: jest.fn(async () => undefined),
 }));
 jest.mock('../src/services/learningPlayerState', () => ({
   updatePlayerStateForScope: jest.fn(),
 }));
 
 import {assertAccountSessionBoundary} from '../src/constants/helpers';
-import {
-  removeSavedFolderFromCache,
-  removeSavedLessonEverywhereFromCache,
-  removeSavedLessonFromCache,
-} from '../src/services/roknApi';
+import {applySavedMembershipChange} from '../src/services/query/savedLibraryInvalidation';
+import {queryClient} from '../src/services/query/queryClient';
 import {updatePlayerStateForScope} from '../src/services/learningPlayerState';
 import {
   repairSavedMembershipCache,
@@ -63,9 +58,12 @@ it('adds once and preserves sibling memberships and unrelated learning state', a
     ...before,
     savedFolderLessons: {'7': ['11', '22', '33'], '8': ['11', '33']},
   });
-  expect(removeSavedFolderFromCache).not.toHaveBeenCalled();
-  expect(removeSavedLessonFromCache).not.toHaveBeenCalled();
-  expect(removeSavedLessonEverywhereFromCache).not.toHaveBeenCalled();
+  expect(applySavedMembershipChange).toHaveBeenCalledTimes(2);
+  expect(applySavedMembershipChange).toHaveBeenLastCalledWith(
+    queryClient,
+    'user-1',
+    {kind: 'save', folderId: '7', lessonId: '33'},
+  );
 });
 
 it('retains the bookmark until its final folder membership is removed', async () => {
@@ -82,17 +80,17 @@ it('retains the bookmark until its final folder membership is removed', async ()
   });
   expect(state.savedLessons).toEqual(['22', '33']);
   expect(state.savedFolderLessons).toEqual({'7': ['22'], '8': ['33']});
-  expect(removeSavedLessonFromCache).toHaveBeenNthCalledWith(
+  expect(applySavedMembershipChange).toHaveBeenNthCalledWith(
     1,
-    '7',
-    '11',
-    boundary,
+    queryClient,
+    'user-1',
+    {kind: 'remove', folderId: '7', lessonId: '11'},
   );
-  expect(removeSavedLessonFromCache).toHaveBeenNthCalledWith(
+  expect(applySavedMembershipChange).toHaveBeenNthCalledWith(
     2,
-    '8',
-    '11',
-    boundary,
+    queryClient,
+    'user-1',
+    {kind: 'remove', folderId: '8', lessonId: '11'},
   );
 });
 
@@ -106,15 +104,16 @@ it('removes a lesson everywhere without removing sibling lessons or playback pro
     savedLessons: ['22', '33'],
     savedFolderLessons: {'7': ['22'], '8': ['33']},
   });
-  expect(removeSavedLessonEverywhereFromCache).toHaveBeenCalledWith(
-    '11',
-    boundary,
+  expect(applySavedMembershipChange).toHaveBeenCalledWith(
+    queryClient,
+    'user-1',
+    {kind: 'remove-everywhere', lessonId: '11'},
   );
 });
 
-it('starts the player repair while a folder page-cache removal is still pending', async () => {
+it('starts the player repair while a folder list repair is still pending', async () => {
   let release!: () => void;
-  jest.mocked(removeSavedFolderFromCache).mockReturnValueOnce(
+  jest.mocked(applySavedMembershipChange).mockReturnValueOnce(
     new Promise<void>(resolve => {
       release = resolve;
     }),
@@ -144,7 +143,7 @@ it('rejects an obsolete account before either cache queue starts', async () => {
     }),
   ).rejects.toThrow('ACCOUNT_CHANGED_DURING_REQUEST');
   expect(update).not.toHaveBeenCalled();
-  expect(removeSavedFolderFromCache).not.toHaveBeenCalled();
+  expect(applySavedMembershipChange).not.toHaveBeenCalled();
 });
 
 it('checks a reconciliation revision inside the deferred player update', async () => {

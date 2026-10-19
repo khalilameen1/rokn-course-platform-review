@@ -52,7 +52,7 @@ final readonly class CoursePresentationService
         ];
     }
 
-    /** @return array{items:array<int,array<string,mixed>>,pagination:array<string,int>} */
+    /** @param LengthAwarePaginator<int, Course> $courses @return array{items:array<int,array<string,mixed>>,pagination:array<string,int>} */
     public function searchPayload(LengthAwarePaginator $courses, string $locale): array
     {
         $locale = RoknLocale::normalize($locale) ?? RoknLocale::ARABIC;

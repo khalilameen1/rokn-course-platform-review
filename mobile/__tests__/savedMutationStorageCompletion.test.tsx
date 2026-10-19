@@ -45,7 +45,8 @@ jest.mock('../src/services/networkExperience', () => ({
 
 import {publicRequest} from '../src/constants/api';
 import {useSavedLibrary} from '../src/screens/savedLibrary/useSavedLibrary';
-import {getSavedLessonsPage} from '../src/services/api/savedLessons';
+import {queryClient} from '../src/services/query/queryClient';
+import {withQueryClient} from './helpers/queryClient';
 import {
   deleteSavedFolderOption,
   saveLessonToFolder,
@@ -143,9 +144,11 @@ describe('accepted saved mutations versus native cache completion', () => {
       JSON.stringify({savedLessons: ['11'], savedFolderLessons: {'7': ['11']}}),
     );
     jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    queryClient.clear();
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(withQueryClient(<Harness />, queryClient));
       await flush();
+      await jest.advanceTimersByTimeAsync(50);
     });
     expect(library.saved).toHaveLength(1);
   });
@@ -153,6 +156,7 @@ describe('accepted saved mutations versus native cache completion', () => {
   afterEach(async () => {
     await act(async () => renderer?.unmount());
     renderer = undefined;
+    queryClient.clear();
     jest.mocked(AsyncStorage.setItem).mockImplementation(originalSet);
     jest.mocked(AsyncStorage.getItem).mockImplementation(originalGet);
     jest.mocked(AsyncStorage.removeItem).mockImplementation(originalRemove);
@@ -160,42 +164,28 @@ describe('accepted saved mutations versus native cache completion', () => {
     jest.restoreAllMocks();
   });
 
-  it.each([
-    ['membership', 'read'],
-    ['membership', 'write'],
-    ['folder', 'read'],
-    ['folder', 'write'],
-  ])(
-    'finishes a confirmed %s deletion while the lesson-cache %s remains stalled',
-    async (operation, nativeOperation) => {
+  it.each(['membership', 'folder'])(
+    'finishes a confirmed %s deletion while the folder-index write remains stalled',
+    async operation => {
       if (operation === 'folder') {
         await act(async () => {
           library.selectFolder('7');
           await flush();
+          await jest.advanceTimersByTimeAsync(50);
         });
       }
-      const cacheKey = `@rokn/saved-lessons/v2:${mockBoundary.scope}`;
+      const indexKey = `@rokn/saved-folder-options/v1:${mockBoundary.scope}`;
       const gate = deferred<void>();
       let nativeStarted = false;
-      if (nativeOperation === 'write') {
-        jest
-          .mocked(AsyncStorage.setItem)
-          .mockImplementation(async (key, value) => {
-            if (key === cacheKey) {
-              nativeStarted = true;
-              await gate.promise;
-            }
-            return originalSet(key, value);
-          });
-      } else {
-        jest.mocked(AsyncStorage.getItem).mockImplementation(async key => {
-          if (key === cacheKey) {
+      jest
+        .mocked(AsyncStorage.setItem)
+        .mockImplementation(async (key, value) => {
+          if (key === indexKey) {
             nativeStarted = true;
             await gate.promise;
           }
-          return originalGet(key);
+          return originalSet(key, value);
         });
-      }
       let completion: Promise<void> | undefined;
       try {
         await act(async () => {
@@ -219,23 +209,16 @@ describe('accepted saved mutations versus native cache completion', () => {
         }).toEqual({removing: 0, deletingFolder: false});
         expect(library.actionError).toBe('');
         expect(library.folderError).toBe('');
+        expect(library.saved).toEqual([]);
         const player = JSON.parse(
           (await AsyncStorage.getItem(
             `@rokn/course-player/v3:${mockBoundary.scope}`,
           )) || '{}',
         );
         expect(player.savedLessons).toEqual([]);
-        const index = JSON.parse(
-          (await AsyncStorage.getItem(
-            `@rokn/saved-folder-options/v1:${mockBoundary.scope}`,
-          )) || '[]',
-        );
         if (operation === 'folder') {
-          expect(index).toEqual([]);
           expect(library.activeFolderId).toBe('all');
           expect(library.folderOptions).toEqual([]);
-        } else {
-          expect(index[0].lessonsCount).toBeUndefined();
         }
       } finally {
         await act(async () => {
@@ -306,21 +289,16 @@ describe('accepted saved mutations versus native cache completion', () => {
     },
   );
 
-  it('does not let an old GET or offline cache revive a confirmed deletion while its raw repair is pending', async () => {
-    const cacheKey = `@rokn/saved-lessons/v2:${mockBoundary.scope}`;
+  it('cancels an older list read when a deletion is confirmed and reads the list again', async () => {
     const oldRead = deferred<ReturnType<typeof response>>();
-    api.get.mockReturnValueOnce(oldRead.promise);
-    const reading = getSavedLessonsPage();
-    await flush();
-    const gate = deferred<void>();
-    let writeCount = 0;
-    jest.mocked(AsyncStorage.setItem).mockImplementation(async (key, value) => {
-      if (key === cacheKey) {
-        writeCount += 1;
-        await gate.promise;
-      }
-      return originalSet(key, value);
+    api.get.mockImplementationOnce(() => oldRead.promise);
+    await act(async () => {
+      library.retry();
+      await flush();
+      await jest.advanceTimersByTimeAsync(50);
     });
+    expect(library.loading).toBe(true);
+    const readsBefore = api.get.mock.calls.length;
     let completion!: Promise<void>;
     try {
       await act(async () => {
@@ -329,30 +307,21 @@ describe('accepted saved mutations versus native cache completion', () => {
         await jest.advanceTimersByTimeAsync(2000);
       });
       expect(library.removingSaved.size).toBe(0);
-      oldRead.resolve(
-        response({
-          lessons: [lesson],
-          pagination: {current_page: 1, last_page: 1, total: 1},
-        }),
-      );
-      expect((await reading).lessons).toEqual([]);
-      expect(writeCount).toBe(1); // The newer empty page cannot overtake the raw repair.
-      api.get.mockRejectedValueOnce(new Error('OFFLINE'));
-      const offline = observe(getSavedLessonsPage());
-      await flush();
-      await jest.advanceTimersByTimeAsync(1000);
-      expect(offline.result.settled).toBe(true);
-      expect(offline.result.error).toBeInstanceOf(Error);
-      expect(offline.result.value).toBeUndefined();
       expect(api.delete).toHaveBeenCalledTimes(1);
+      // The confirmed write marked the lists stale: the mounted library read
+      // the server's answer again instead of waiting on the older GET.
+      expect(api.get.mock.calls.length).toBeGreaterThan(readsBefore);
+      expect(library.saved).toEqual([]);
       await act(async () => {
-        gate.resolve();
-        await completion;
+        oldRead.resolve(
+          response({
+            lessons: [lesson],
+            pagination: {current_page: 1, last_page: 1, total: 1},
+          }),
+        );
         await flush();
       });
-      api.get.mockRejectedValueOnce(new Error('OFFLINE'));
-      expect((await getSavedLessonsPage()).lessons).toEqual([]);
-      expect(writeCount).toBe(2);
+      expect(library.saved).toEqual([]);
     } finally {
       oldRead.resolve(
         response({
@@ -360,8 +329,6 @@ describe('accepted saved mutations versus native cache completion', () => {
           pagination: {current_page: 1, last_page: 1, total: 0},
         }),
       );
-      gate.resolve();
-      await reading;
       await completion;
       await flush();
     }

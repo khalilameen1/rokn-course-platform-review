@@ -33,7 +33,7 @@ final class PathController extends Controller
                 'courses' => function ($courses): void {
                     $this->catalogue->orderForDiscovery(
                         $this->catalogue->applyPublicContract($courses->getQuery())
-                    )->with('level');
+                    )->with('level.photo');
                 },
             ])
             ->orderBy('id')
@@ -58,7 +58,7 @@ final class PathController extends Controller
                 'courses' => function ($courses): void {
                     $this->catalogue->orderForDiscovery(
                         $this->catalogue->applyPublicContract($courses->getQuery())
-                    )->with('level');
+                    )->with('level.photo');
                 },
             ])
             ->findOrFail($id);

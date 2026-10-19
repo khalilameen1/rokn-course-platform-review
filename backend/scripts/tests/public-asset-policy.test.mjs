@@ -14,8 +14,14 @@ test('mutable external package URLs are rejected', () => {
 });
 
 test('static CDN assets without exact SRI are rejected', () => {
-    const errors = validateExternalTag('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>');
-    assert.match(errors.join('\n'), /SRI/);
+    const url = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
+    const integrity = 'sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ';
+    const allowed = [{ url, integrity }];
+    assert.match(validateExternalTag(`<script src="${url}"></script>`, '<test>', allowed).join('\n'), /SRI/);
+    assert.match(validateExternalTag(`<script src="${url}" integrity="wrong"></script>`, '<test>', allowed).join('\n'), /SRI/);
+    assert.match(validateExternalTag(`<script src="${url}" integrity="${integrity}"></script>`, '<test>', allowed).join('\n'), /crossorigin/);
+    assert.deepEqual(validateExternalTag(`<script src="${url}" integrity="${integrity}" crossorigin="anonymous"></script>`, '<test>', allowed), []);
+    assert.match(validateExternalTag(`<script src="${url}" integrity="${integrity}" crossorigin="anonymous"></script>`).join('\n'), /Unpinned or unclassified/);
 });
 
 test('unclassified public additions are rejected', () => {

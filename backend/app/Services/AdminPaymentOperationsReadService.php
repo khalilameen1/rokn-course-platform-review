@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Order;
-use App\Models\Package;
 use App\Models\PaymentReconciliationFinding;
 use App\Support\BusinessClock;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -71,6 +69,20 @@ final readonly class AdminPaymentOperationsReadService
             ->withQueryString();
         $this->decorate($orders->getCollection());
 
+        return ['orders' => $orders, 'filters' => $filters] + $this->summary($filteredScope);
+    }
+
+    /** Financial summaries use the same filtered scope without loading a page of orders. */
+    public function report(array $filters): array
+    {
+        $query = $this->ordersQuery();
+        $this->applyFilters($query, $filters);
+
+        return $this->summary($query);
+    }
+
+    private function summary(Builder $filteredScope): array
+    {
         $paymentChannelReport = $this->channels->summary(null, null, clone $filteredScope);
         $rawStatusCounts = (clone $filteredScope)
             ->withoutEagerLoads()
@@ -81,8 +93,6 @@ final readonly class AdminPaymentOperationsReadService
         $paymentMethodOptions = collect($this->channelLabels());
 
         return [
-            'orders' => $orders,
-            'filters' => $filters,
             'stats' => [
                 'total' => (int) $rawStatusCounts->sum(),
                 'pending' => (int) ($rawStatusCounts[Order::STATUS_PENDING] ?? 0),
@@ -142,19 +152,6 @@ final readonly class AdminPaymentOperationsReadService
         ];
     }
 
-    public function packageOrders(Package $package): LengthAwarePaginator
-    {
-        $orders = $this->ordersQuery()
-            ->where('package_id', $package->getKey())
-            ->latest('created_at')
-            ->latest('id')
-            ->paginate(30, ['*'], 'orders_page')
-            ->withQueryString();
-        $this->decorate($orders->getCollection());
-
-        return $orders;
-    }
-
     /** Provider checkout attempts that still need operational follow-up. */
     public function openProviderCheckouts(): Builder
     {
@@ -175,7 +172,7 @@ final readonly class AdminPaymentOperationsReadService
     }
 
     /** @param Collection<int, Order> $orders */
-    private function decorate(Collection $orders): void
+    public function decorate(Collection $orders): void
     {
         $this->financialLedger->attachAllocations($orders);
         foreach ($orders as $order) {
@@ -194,7 +191,8 @@ final readonly class AdminPaymentOperationsReadService
         }
     }
 
-    private function ordersQuery(): Builder
+    /** @return Builder<Order> */
+    public function ordersQuery(): Builder
     {
         return Order::query()->with([
             'user', 'course', 'package', 'coupon', 'courseCode', 'approvedBy',
@@ -203,8 +201,11 @@ final readonly class AdminPaymentOperationsReadService
     }
 
     /** @param array<string, mixed> $filters */
-    private function applyFilters(Builder $query, array $filters): void
+    public function applyFilters(Builder $query, array $filters): void
     {
+        if (! empty($filters['search'])) {
+            $this->applySearch($query, (string) $filters['search']);
+        }
         if (! empty($filters['state'])) {
             $this->applyOperationState($query, (string) $filters['state']);
         }
@@ -220,6 +221,8 @@ final readonly class AdminPaymentOperationsReadService
                 $escaped = '%'.addcslashes($search, '%_\\').'%';
                 $user->where(function (Builder $match) use ($escaped): void {
                     $match->where('name', 'like', $escaped)
+                        ->orWhere('name_ar', 'like', $escaped)
+                        ->orWhere('name_en', 'like', $escaped)
                         ->orWhere('email', 'like', $escaped)
                         ->orWhere('phone', 'like', $escaped);
                 });
@@ -248,6 +251,26 @@ final readonly class AdminPaymentOperationsReadService
         if (isset($filters['amount_max'])) {
             $query->where('final_amount', '<=', (float) $filters['amount_max']);
         }
+    }
+
+    /** One search contract for the native table and its streamed export. */
+    public function applySearch(Builder $query, string $search): void
+    {
+        $search = trim($search);
+        if ($search === '') {
+            return;
+        }
+        $pattern = '%'.addcslashes($search, '%_\\').'%';
+        $query->where(function (Builder $match) use ($search, $pattern): void {
+            $match->where('order_ref', 'like', $pattern);
+            if (ctype_digit($search)) {
+                $match->orWhere('orders.id', $search);
+            }
+            $match->orWhereHas('user', fn (Builder $user) => $user->where(function (Builder $person) use ($pattern): void {
+                $person->where('name', 'like', $pattern)->orWhere('name_ar', 'like', $pattern)
+                    ->orWhere('name_en', 'like', $pattern)->orWhere('email', 'like', $pattern)->orWhere('phone', 'like', $pattern);
+            }));
+        });
     }
 
     private function applyOperationState(Builder $query, string $state): void

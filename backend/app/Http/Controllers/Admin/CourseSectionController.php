@@ -3,15 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\CourseSectionInput;
+use App\Http\Requests\Admin\CourseAuthoringVersionRequest;
+use App\Http\Requests\Admin\CourseSectionOrderRequest;
+use App\Http\Requests\Admin\CourseSectionRequest;
 use App\Models\Course;
 use App\Models\CourseSection;
-use App\Models\Lesson;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminCourseOutlinePresenter;
 use App\Services\AdminCourseSectionApplicationService;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -20,7 +20,6 @@ class CourseSectionController extends Controller
     public function __construct(
         private readonly AdminCourseSectionApplicationService $sections,
         private readonly AdminAuthoringCreateIntentService $createIntents,
-        private readonly CourseSectionInput $input,
         private readonly AdminCourseOutlinePresenter $outline
     ) {}
 
@@ -86,10 +85,10 @@ class CourseSectionController extends Controller
     /**
      * Store a newly created section
      */
-    public function store(Request $request, Course $course)
+    public function store(CourseSectionRequest $request, Course $course)
     {
         $this->sections->assertDraft($course);
-        $edit = $this->input->validate($request, $course, null, true);
+        $edit = $request->authoringEdit();
         try {
             $payload = $this->sections->store(
                 $course, $edit, $request->user(),
@@ -134,14 +133,11 @@ class CourseSectionController extends Controller
     /**
      * Update the specified section
      */
-    public function update(Request $request, Course $course, CourseSection $section)
+    public function update(CourseSectionRequest $request, Course $course, CourseSection $section)
     {
         $this->sections->assertDraft($course);
         $this->sections->assertBelongsToCourse($course, $section);
-        $content = $section->sectionable;
-        $hasVideo = $section->getSectionType() === 'lesson' && $content instanceof Lesson
-            && trim((string) $content->bunny_video_id) !== '';
-        $edit = $this->input->validate($request, $course, $section, ! $hasVideo);
+        $edit = $request->authoringEdit();
         try {
             $payload = $this->sections->update($course, $section, $edit, $request->user());
             if ($request->expectsJson()) {
@@ -165,11 +161,11 @@ class CourseSectionController extends Controller
     /**
      * Remove the specified section
      */
-    public function destroy(Request $request, Course $course, CourseSection $section)
+    public function destroy(CourseAuthoringVersionRequest $request, Course $course, CourseSection $section)
     {
         $this->sections->assertBelongsToCourse($course, $section);
         $this->sections->assertDraft($course);
-        $validated = $request->validate(['authoring_version' => 'required|integer|min:1']);
+        $validated = $request->validated();
         $result = $this->sections->delete($course, $section, (int) $validated['authoring_version']);
 
         if ($request->expectsJson()) {
@@ -183,32 +179,10 @@ class CourseSectionController extends Controller
     /**
      * Reorder sections
      */
-    public function reorder(Request $request, Course $course)
+    public function reorder(CourseSectionOrderRequest $request, Course $course)
     {
         $this->sections->assertDraft($course);
-        $validated = $request->validate([
-            'sections' => 'required|array',
-            'sections.*.id' => [
-                'required',
-                'integer',
-                'distinct',
-                Rule::exists('course_sections', 'id')->where(
-                    fn ($query) => $query->where('course_id', $course->id)->whereNull('deleted_at')
-                ),
-            ],
-            'sections.*.order' => 'required|integer|min:0',
-            'sections.*.module_id' => [
-                'nullable',
-                'integer',
-                Rule::exists('course_modules', 'id')->where(
-                    fn ($query) => $query->where('course_id', $course->id)
-                ),
-            ],
-            'authoring_version' => 'required|integer|min:1',
-        ], [
-            'module_id.required' => 'اختر الوحدة التي سيظهر فيها المحتوى',
-            'module_id.exists' => 'الوحدة المختارة لم تعد متاحة',
-        ]);
+        $validated = $request->validated();
 
         $result = $this->sections->reorder($course, $validated['sections'], (int) $validated['authoring_version']);
 

@@ -15,19 +15,9 @@ describe('production daily surfaces', () => {
         /LOCAL_DEMO_ENABLED|demoExperience|createDemoCourse|DEMO_/,
       );
     }
-    const saved = source('src/screens/savedLibrary/useSavedLibrary.ts');
-    expect(saved).toContain('captureAccountSessionBoundary()');
-    expect(saved).toContain('assertAccountSessionBoundary(boundary)');
-    const savedRead = source(
-      'src/screens/savedLibrary/useSavedLibraryRead.ts',
-    );
-    expect(savedRead).toContain('captureAccountSessionBoundary()');
-    expect(savedRead).toContain('assertAccountSessionBoundary(boundary)');
-    expect(savedRead).toContain('dataOwnerRef.current !== identityKey');
-    expect(saved).toMatch(
-      /useSavedLibraryRead\(\s*identityKey,\s*snapshot,\s*restoreMutationActivity,/,
-    );
-    expect(saved).toContain('!operation.isCurrent()');
+    // Account ownership of the saved library is proven through its hook in
+    // savedLibraryFocusLifecycle.test.tsx ("never shows the previous
+    // account's saved lessons after a switch"), not by reading source text.
   });
 
   it('keeps chat and checkout on server-owned production paths', () => {

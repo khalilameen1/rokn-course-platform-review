@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\AppSettings;
+use App\Filament\Pages\ContentWorkspace;
+use App\Filament\Resources\CourseCodeResource;
+use App\Filament\Resources\OrderResource;
+use App\Filament\Resources\OrderResource\Pages\ListOrders;
+use App\Filament\Resources\OrderResource\Pages\ViewOrder;
+use App\Filament\Resources\ProjectSubmissionResource;
 use App\Models\Course;
 use App\Models\CourseCode;
 use App\Models\CourseModule;
@@ -15,10 +22,12 @@ use App\Models\PaymentReconciliationFinding;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\Support\RendersAdminPages;
 use Tests\TestCase;
 
@@ -57,22 +66,6 @@ final class AdminDashboardViewTest extends TestCase
         ]);
 
         $pages = [
-            'product operations' => route('admin.product-operations.index'),
-            'playback operations' => route('admin.playback-operations.index'),
-            'feedback list' => route('admin.feedback.index'),
-            'feedback details' => route('admin.feedback.show', $feedback),
-            'project list' => route('admin.project-submissions.index'),
-            'project review' => route('admin.project-submissions.show', $submission),
-            'device sessions' => route('admin.user-sessions.index'),
-            'payment reconciliation queue' => route('admin.payment-reconciliation-findings.index'),
-            'settings dashboard' => route('admin.settings'),
-            'home dashboard' => route('admin.dashboard'),
-            'course codes list' => route('admin.course-codes.index'),
-            'course code details' => route('admin.course-codes.show', $code),
-            'course code create' => route('admin.course-codes.create'),
-            'course code edit' => route('admin.course-codes.edit', $code),
-            'orders list' => route('admin.orders.index'),
-            'order details' => route('admin.orders.show', $order),
             'courses list' => route('admin.courses.index'),
             'course details' => route('admin.courses.show', $course),
             'course create' => route('admin.courses.create'),
@@ -80,13 +73,23 @@ final class AdminDashboardViewTest extends TestCase
         foreach ($pages as $page => $url) {
             $this->assertAdminMarkupWithoutInlineStyles($this->adminGet($admin, $url)->assertOk()->getContent(), $page);
         }
-        $queue = $this->dom((string) $this->adminGet($admin, route('admin.payment-reconciliation-findings.index'))->getContent());
-        self::assertGreaterThan(0, $queue->query('//form[contains(@action, "payment-reconciliation")]//textarea | //form[contains(@action, "payment-reconciliation")]//input[@name="note"]')->length);
+        $this->adminGet($admin, route('admin.settings'))->assertRedirect(AppSettings::getUrl());
+        $this->adminGet($admin, AppSettings::getUrl())->assertOk();
+        $this->adminGet($admin, route('admin.project-submissions.index'))->assertRedirect(ProjectSubmissionResource::listUrl());
+        $this->adminGet($admin, route('admin.course-codes.index'))->assertRedirect(CourseCodeResource::listUrl());
+        $this->adminGet($admin, CourseCodeResource::getUrl())->assertOk()->assertSee($code->code);
+        $this->adminGet($admin, route('admin.course-codes.show', $code))->assertRedirect(CourseCodeResource::getUrl('view', ['record' => $code->id]));
+        $this->adminGet($admin, CourseCodeResource::getUrl('view', ['record' => $code->id]))->assertOk()->assertSee($code->code);
+        $this->adminGet($admin, route('admin.course-codes.create'))->assertRedirect(CourseCodeResource::getUrl('create'));
+        $this->adminGet($admin, route('admin.course-codes.edit', $code))->assertRedirect(CourseCodeResource::getUrl('edit', ['record' => $code->id]));
+        $this->adminGet($admin, ProjectSubmissionResource::getUrl())->assertOk()->assertSee($submission->public_id);
+        $this->adminGet($admin, route('admin.project-submissions.show', $submission))
+            ->assertRedirect(ProjectSubmissionResource::getUrl('view', ['record' => $submission]));
+        $this->adminGet($admin, ProjectSubmissionResource::getUrl('view', ['record' => $submission]))->assertOk()->assertSee($submission->public_id);
 
-        $this->assertAdminMarkupWithoutInlineStyles(
-            $this->adminGet($this->dashboardUser('moderator'), route('admin.dashboard'))->assertOk()->getContent(),
-            'moderator workspace'
-        );
+        $moderator = $this->dashboardUser('moderator');
+        $this->adminGet($moderator, route('admin.dashboard'))->assertRedirect(ContentWorkspace::getUrl(['page' => 1]));
+        $this->adminGet($moderator, ContentWorkspace::getUrl())->assertOk()->assertSee('ملخص المحتوى');
     }
 
     public function test_mfa_pages_use_the_admin_auth_layout(): void
@@ -160,7 +163,7 @@ final class AdminDashboardViewTest extends TestCase
 
     public function test_admin_runtime_assets_are_cache_busted_by_the_deployed_file(): void
     {
-        $html = (string) $this->adminGet($this->dashboardUser('admin'), route('admin.dashboard'))->assertOk()->getContent();
+        $html = (string) $this->adminGet($this->dashboardUser('admin'), route('admin.courses.index'))->assertOk()->getContent();
         $sources = [];
         foreach ($this->dom($html)->query('//script/@src') as $src) {
             $sources[] = (string) $src->nodeValue;
@@ -180,19 +183,14 @@ final class AdminDashboardViewTest extends TestCase
             'payment_screenshot' => 'payment-evidence/receipt.jpg',
         ]);
 
-        $index = $this->dom((string) $this->adminGet($admin, route('admin.orders.index'))->assertOk()->getContent());
-        foreach (['select[@name="state"]', 'select[@name="payment_method"]', 'input[@name="date_from"]'] as $filter) {
-            self::assertSame(1, $index->query('//form//'.$filter)->length, $filter);
-        }
-        self::assertGreaterThan(0, $index->query('//img[starts-with(@onclick, "showPaymentScreenshot(")]')->length);
-        self::assertStringContainsString('function showPaymentScreenshot(', (string) $index->evaluate('string(//body)'));
+        $this->adminGet($admin, route('admin.orders.index'))->assertRedirect(OrderResource::listUrl());
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(ListOrders::class)
+            ->callTableAction('receipt', $order)->assertSee('إيصال الدفع');
 
-        $show = $this->dom((string) $this->adminGet($admin, route('admin.orders.show', $order))->assertOk()->getContent());
-        $resolve = '//form[@action="'.route('admin.orders.resolve-financial-review', $order).'"]';
-        self::assertSame(1, $show->query($resolve.'//select[@name="resolution"]')->length);
-        self::assertSame(1, $show->query($resolve.'//textarea[@name="note"]')->length);
-        self::assertGreaterThan(0, $show->query('//img[starts-with(@onclick, "showFullScreenshot(")]')->length);
-        self::assertStringContainsString('function showFullScreenshot(', (string) $show->evaluate('string(//body)'));
+        $this->adminGet($admin, route('admin.orders.show', $order))->assertRedirect(OrderResource::getUrl('view', ['record' => $order->id]));
+        Livewire::test(ViewOrder::class, ['record' => $order->id])->mountAction('resolve')
+            ->assertFormFieldExists('resolution')->assertFormFieldExists('note')->assertSee('إيصال الدفع');
     }
 
     public function test_course_create_is_a_thin_shell_that_enters_the_studio(): void
@@ -207,17 +205,19 @@ final class AdminDashboardViewTest extends TestCase
         }
         self::assertSame(0, $xpath->query('//*[@name="image" or starts-with(@name, "access_plans")]')->length);
         self::assertSame(0, $xpath->query('//*[@id="studioCoursePanel"]')->length);
-        // The shell keeps an unsent draft locally until the course is created.
-        self::assertStringContainsString('rokn:course-authoring-draft:', (string) $xpath->evaluate('string(//body)'));
+        // Refresh recovery is exercised in the real browser, not inferred from script bytes.
+        self::assertSame(1, $xpath->query($form.'//*[@name="authoring_request_id"]')->length);
         self::assertNotContains('admin/assets/css/course-create.css', $this->linkedLocalAssets($html));
     }
 
     public function test_ai_policy_is_owned_by_admin_settings_not_course_authoring(): void
     {
         $admin = $this->dashboardUser('admin');
-        $settings = $this->dom((string) $this->adminGet($admin, route('admin.settings'))->assertOk()->getContent());
+        $this->adminGet($admin, route('admin.settings'))->assertRedirect(AppSettings::getUrl());
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $settings = Livewire::test(AppSettings::class);
         foreach (['chat_enabled', 'project_feedback_level'] as $policy) {
-            self::assertGreaterThan(0, $settings->query('//form//*[@name="ai_plan_policy[basic]['.$policy.']"]')->length, $policy);
+            $settings->assertFormFieldExists('ai_plan_policy.basic.'.$policy);
         }
 
         $course = $this->draftCourse();

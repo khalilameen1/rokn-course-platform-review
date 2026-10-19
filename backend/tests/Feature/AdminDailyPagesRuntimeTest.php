@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\AppSettings;
+use App\Filament\Pages\ContentWorkspace;
+use App\Filament\Pages\Dashboard;
+use App\Filament\Resources\OrderResource;
+use App\Filament\Resources\StudentResource;
+use App\Filament\Resources\TeacherResource\Pages\EditTeacher;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Classification;
 use App\Models\CoinEarningMethod;
@@ -21,15 +27,28 @@ use App\Models\User;
 use App\Services\AdminPaymentOperationsReadService;
 use DOMDocument;
 use DOMXPath;
+use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\LazyLoadingViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class AdminDailyPagesRuntimeTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_unloaded_relations_on_a_list_fail_the_test_instead_of_issuing_queries_per_row(): void
+    {
+        $first = $this->dashboardUser('client');
+        $second = $this->dashboardUser('admin');
+        $users = User::query()->whereIn('id', [$first->id, $second->id])->get();
+
+        $this->expectException(LazyLoadingViolationException::class);
+        $users->first()->photo;
+    }
 
     public function test_administrator_daily_index_pages_render_against_an_empty_catalogue(): void
     {
@@ -37,16 +56,18 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $this->withoutMiddleware(RequireAdminMfa::class);
 
         foreach ([
-            'admin.dashboard',
+            'filament.operations.pages.dashboard',
             'admin.courses.index',
             'admin.courses.create',
-            'admin.users.index',
-            'admin.orders.index',
+            'filament.operations.resources.students.index',
+            'filament.operations.resources.orders.index',
+            'filament.operations.resources.orders.report',
         ] as $routeName) {
             $this->actingAs($admin, 'web')
                 ->get(route($routeName))
                 ->assertOk();
         }
+        $this->get(route('admin.dashboard'))->assertRedirect(Dashboard::getUrl());
     }
 
     public function test_moderator_daily_course_pages_render_without_financial_data(): void
@@ -65,7 +86,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $this->withoutMiddleware(RequireAdminMfa::class);
 
         foreach ([
-            'admin.dashboard',
+            'filament.operations.pages.content-workspace',
             'admin.courses.index',
             'admin.courses.create',
         ] as $routeName) {
@@ -73,6 +94,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
                 ->get(route($routeName))
                 ->assertOk();
         }
+        $this->get(route('admin.dashboard'))->assertRedirect(ContentWorkspace::getUrl(['page' => 1]));
     }
 
     public function test_administrator_daily_detail_pages_render_existing_records(): void
@@ -139,11 +161,12 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $this->assertStudioLessonRow($studio->getContent(), 'المقطع الأول', 'مقطع · 2 دقيقة · مجاني');
 
         foreach ([
-            route('admin.users.show', $student),
-            route('admin.users.edit', $student),
-            route('admin.orders.show', $order),
-            route('admin.orders.index'),
-            route('admin.dashboard'),
+            StudentResource::getUrl('view', ['record' => $student->id]),
+            StudentResource::getUrl('edit', ['record' => $student->id]),
+            OrderResource::getUrl('view', ['record' => $order->id]),
+            route('filament.operations.resources.orders.index'),
+            route('filament.operations.resources.orders.report'),
+            Dashboard::getUrl(),
         ] as $url) {
             $this->get($url)->assertOk();
         }
@@ -153,7 +176,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
             ->assertRedirect(route('admin.courses.show', $course).'#studioCourseAttachments');
 
         foreach (array_keys(AdminPaymentOperationsReadService::stateLabels()) as $state) {
-            $this->get(route('admin.orders.index', ['state' => $state]))->assertOk();
+            $this->get(route('admin.orders.index', ['state' => $state]))->assertRedirect(OrderResource::listUrl(['state' => $state]));
         }
     }
 
@@ -172,13 +195,23 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $this->assertPairedBooleanControl($studioXPath, 'is_main_course');
         $this->assertPairedBooleanControl($studioXPath, 'is_catalog_visible');
 
-        $settings = $this->get(route('admin.settings'))->assertOk();
+        $this->get(route('admin.settings'))->assertRedirect(AppSettings::getUrl());
+        $settings = $this->get(AppSettings::getUrl())->assertOk();
         $settingsDocument = new DOMDocument;
         @$settingsDocument->loadHTML('<?xml encoding="utf-8" ?>'.$settings->getContent());
         $settingsXPath = new DOMXPath($settingsDocument);
         $this->assertUniqueDomIds($settingsXPath);
-        $this->assertPairedBooleanControl($settingsXPath, 'english_translation');
-        $this->assertPairedBooleanControl($settingsXPath, 'bunny_enabled');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $native = Livewire::test(AppSettings::class);
+        foreach (['english_translation', 'bunny_enabled'] as $name) {
+            $field = $native->instance()->getSchema('form')->getFlatFields(withHidden: true)[$name] ?? null;
+            self::assertNotNull($field);
+            $id = $field->getId();
+            self::assertSame(1, $settingsXPath->query('//*[@id="'.$id.'" and @role="switch"]')->length);
+            self::assertSame(1, $settingsXPath->query('//label[@for="'.$id.'"]')->length);
+        }
+        $native->fillForm(['english_translation' => false, 'bunny_enabled' => false])
+            ->assertSet('data.english_translation', false)->assertSet('data.bunny_enabled', false);
     }
 
     public function test_course_studio_restores_submitted_relationship_fields_after_validation_failure(): void
@@ -248,173 +281,11 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $moderator = $this->dashboardUser('moderator');
         $teacher = $this->dashboardUser('teacher');
         $this->withoutMiddleware(RequireAdminMfa::class);
-        $edit = $this->actingAs($moderator, 'web')
-            ->get(route('admin.teachers.edit', $teacher))
-            ->assertOk();
-        $document = new DOMDocument;
-        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$edit->getContent());
-        $xpath = new DOMXPath($document);
-        $editorVersion = trim((string) $xpath->evaluate(
-            'string(//input[@name="editor_version"]/@value)'
-        ));
-
-        $response = $this->from(route('admin.teachers.edit', $teacher))
-            ->put(route('admin.teachers.update', $teacher), [
-                'editor_version' => $editorVersion,
-                'name_ar' => '',
-                'active' => '0',
-            ]);
-
-        $response->assertRedirect(route('admin.teachers.edit', $teacher));
-        $page = $this->followRedirects($response)->assertOk();
-        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$page->getContent());
-        $xpath = new DOMXPath($document);
-        self::assertSame(0, $xpath->query('//input[@name="active" and @type="checkbox" and @checked]')->length);
-        self::assertSame('0', trim((string) $xpath->evaluate(
-            'string(//input[@name="active" and @type="hidden"]/@value)'
-        )));
-    }
-
-    public function test_failed_reward_rule_update_restores_only_its_own_card(): void
-    {
-        $admin = $this->dashboardUser('admin');
-        $failedRule = RewardRule::query()->where('event_key', 'course_completed')->firstOrFail();
-        $failedRule->update([
-            'event_key' => 'course_completed',
-            'title_ar' => 'إكمال الكورس',
-            'coins_amount' => 100,
-            'interval_count' => 1,
-            'rolling_30_day_cap' => 300,
-            'is_active' => true,
-            'sort_order' => 10,
-        ]);
-        $otherRule = RewardRule::query()->where('event_key', 'welcome_bonus')->firstOrFail();
-        $otherRule->update([
-            'event_key' => 'welcome_bonus',
-            'title_ar' => 'هدية التسجيل',
-            'coins_amount' => 20,
-            'interval_count' => 1,
-            'is_active' => true,
-            'sort_order' => 20,
-        ]);
-        $this->withoutMiddleware(RequireAdminMfa::class);
-        $index = $this->actingAs($admin, 'web')
-            ->get(route('admin.coin-earning-methods.index'))
-            ->assertOk();
-        $document = new DOMDocument;
-        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$index->getContent());
-        $xpath = new DOMXPath($document);
-        $version = $this->inputValue($xpath, 'reward-rule-'.$failedRule->id, 'editor_version');
-
-        $response = $this->from(route('admin.coin-earning-methods.index'))
-            ->put(route('admin.reward-rules.update', $failedRule), [
-                'editor_version' => $version,
-                'event_key' => $failedRule->event_key,
-                'title_ar' => 'اسم التعديل غير المحفوظ',
-                'title_en' => '',
-                'coins_amount' => -1,
-                'interval_count' => 2,
-                'daily_cap' => 10,
-                'rolling_30_day_cap' => '',
-                'sort_order' => 10,
-                'is_active' => '0',
-            ]);
-
-        $response->assertRedirect(route('admin.coin-earning-methods.index'));
-        $page = $this->followRedirects($response)->assertOk();
-        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$page->getContent());
-        $xpath = new DOMXPath($document);
-        self::assertSame('اسم التعديل غير المحفوظ', $this->inputValue($xpath, 'reward-rule-'.$failedRule->id, 'title_ar'));
-        self::assertSame('-1', $this->inputValue($xpath, 'reward-rule-'.$failedRule->id, 'coins_amount'));
-        self::assertSame(0, $xpath->query('//form[@id="reward-rule-'.$failedRule->id.'"]//input[@name="is_active" and @type="checkbox" and @checked]')->length);
-        self::assertSame('هدية التسجيل', $this->inputValue($xpath, 'reward-rule-'.$otherRule->id, 'title_ar'));
-        self::assertSame(0, $xpath->query('//form[@id="reward-rule-create"]')->length);
-    }
-
-    public function test_reward_rule_form_only_offers_available_events_and_effective_fields(): void
-    {
-        $this->withoutMiddleware(RequireAdminMfa::class);
-        $this->actingAs($this->dashboardUser('admin'), 'web');
-        $response = $this->withSession(['success' => 'تم حفظ قاعدة الاختبار'])
-            ->get(route('admin.coin-earning-methods.index'))->assertOk();
-        $response->assertSee('كيف يعمل الرصيد')->assertSee('المكافآت التلقائية')->assertSee('اكسب عملات')
-            ->assertSee('name="rewards_help_ar"', false)->assertSee('name="rewards_help_en"', false)
-            ->assertSee('name="how_to_use_coins_ar"', false);
-        $document = new DOMDocument;
-        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$response->getContent());
-        $xpath = new DOMXPath($document);
-        $this->assertUniqueDomIds($xpath);
-        self::assertSame(1, substr_count($response->getContent(), 'تم حفظ قاعدة الاختبار'));
-        self::assertSame(0, $xpath->query('//form[@id="reward-rule-create"]')->length);
-
-        foreach (RewardRule::query()->get() as $rule) {
-            $form = '//form[@id="reward-rule-'.$rule->id.'"]';
-            self::assertSame(
-                in_array($rule->event_key, ['streak_milestone', 'study_session'], true) ? 1 : 0,
-                $xpath->query($form.'//input[@name="interval_count"]')->length
-            );
-            self::assertSame(
-                $rule->event_key === 'study_session' ? 1 : 0,
-                $xpath->query($form.'//input[@name="daily_cap"]')->length
-            );
-            self::assertSame(
-                $rule->event_key === 'welcome_bonus' ? 0 : 1,
-                $xpath->query($form.'//input[@name="rolling_30_day_cap"]')->length
-            );
-            foreach ($xpath->query($form.'//label[@for]') as $label) {
-                self::assertSame(1, $xpath->query($form.'//input[@id="'.$label->getAttribute('for').'"]')->length);
-            }
-        }
-
-        RewardRule::query()->where('event_key', 'study_session')->delete();
-        $response = $this->get(route('admin.coin-earning-methods.index'))->assertOk();
-        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$response->getContent());
-        $xpath = new DOMXPath($document);
-        self::assertSame(1, $xpath->query('//form[@id="reward-rule-create"]')->length);
-        self::assertSame(1, $xpath->query('//select[@name="event_key"]/option[@value!=""]')->length);
-        self::assertSame('study_session', $xpath->evaluate('string(//select[@name="event_key"]/option[@value!=""]/@value)'));
-    }
-
-    public function test_failed_reward_rule_create_restores_only_the_create_form(): void
-    {
-        $admin = $this->dashboardUser('admin');
-        $storedRule = RewardRule::query()->where('event_key', 'welcome_bonus')->firstOrFail();
-        $storedRule->update([
-            'event_key' => 'welcome_bonus',
-            'title_ar' => 'هدية التسجيل',
-            'coins_amount' => 20,
-            'interval_count' => 1,
-            'is_active' => true,
-            'sort_order' => 20,
-        ]);
-        RewardRule::query()->where('event_key', 'daily_checkin')->delete();
-        $this->withoutMiddleware(RequireAdminMfa::class);
-
-        $response = $this->actingAs($admin, 'web')
-            ->from(route('admin.coin-earning-methods.index'))
-            ->post(route('admin.reward-rules.store'), [
-                'authoring_request_id' => (string) Str::uuid(),
-                'event_key' => 'daily_checkin',
-                'title_ar' => 'مكافأة الحضور الجديدة',
-                'title_en' => 'Daily reward',
-                'coins_amount' => 12,
-                'interval_count' => 2,
-                'daily_cap' => 24,
-                'rolling_30_day_cap' => '',
-                'is_active' => '1',
-            ]);
-
-        $response->assertRedirect(route('admin.coin-earning-methods.index'));
-        $page = $this->followRedirects($response)->assertOk();
-        $document = new DOMDocument;
-        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$page->getContent());
-        $xpath = new DOMXPath($document);
-        self::assertSame('daily_checkin', trim((string) $xpath->evaluate(
-            'string(//form[@id="reward-rule-create"]//select[@name="event_key"]/option[@selected]/@value)'
-        )));
-        self::assertSame('مكافأة الحضور الجديدة', $this->inputValue($xpath, 'reward-rule-create', 'title_ar'));
-        self::assertSame('12', $this->inputValue($xpath, 'reward-rule-create', 'coins_amount'));
-        self::assertSame('هدية التسجيل', $this->inputValue($xpath, 'reward-rule-'.$storedRule->id, 'title_ar'));
+        $this->actingAs($moderator, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(EditTeacher::class, ['record' => $teacher->id])
+            ->fillForm(['name_ar' => '', 'active' => false])->call('save')
+            ->assertHasFormErrors(['name_ar' => 'required'])->assertSet('data.active', false);
     }
 
     public function test_reward_task_create_receipt_replays_without_creating_another_task(): void

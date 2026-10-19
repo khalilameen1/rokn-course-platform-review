@@ -2,74 +2,49 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\PathResource;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\PathIndexRequest;
+use App\Http\Requests\Admin\PathProfileRequest;
 use App\Models\Path;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminPathAuthoringService;
-use App\Services\AdminPathReadService;
-use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use Illuminate\Validation\Rule;
+use Illuminate\Http\RedirectResponse;
 
 class PathController extends Controller
 {
     public function __construct(
-        private readonly AdminPathReadService $read,
         private readonly AdminPathAuthoringService $authoring
     ) {}
 
     /**
      * Display a listing of the resource.
      *
-     * @return Response
+     * @return RedirectResponse
      */
-    public function index(Request $request)
+    public function index(PathIndexRequest $request)
     {
-        $paths = Path::query();
-
-        if ($request->has('search') && ! empty($request->search)) {
-            $search = $request->search;
-            $paths->where(function ($query) use ($search) {
-                $query->where('title_ar', 'LIKE', "%{$search}%")
-                    ->orWhere('title_en', 'LIKE', "%{$search}%");
-            });
-        }
-
-        $paths = $paths->with('interests')->latest()->latest('id')->paginate(10)->withQueryString();
-
-        return view('admin.paths.index', compact('paths'));
+        return redirect(PathResource::getUrl('index', ['search' => $request->validated('search', '')]));
     }
 
     /**
      * Show the form for creating a new resource.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function create()
     {
-        return view('admin.paths.create', $this->read->form());
+        return redirect(PathResource::getUrl('create'));
     }
 
     /**
      * Store a newly created resource in storage.
      *
-     * @return Response
+     * @return RedirectResponse
      */
-    public function store(Request $request, AdminAuthoringCreateIntentService $createIntents)
+    public function store(PathProfileRequest $request, AdminAuthoringCreateIntentService $createIntents)
     {
-        $validated = $request->validate([
-            'title_ar' => 'required|string|max:255',
-            'title_en' => 'required|string|max:255',
-            'interest_ids' => 'nullable|array',
-            'interest_ids.*' => 'integer|distinct|exists:classifications,id',
-            'course_ids' => 'nullable|array|max:200',
-            'course_ids.*' => [
-                'integer',
-                'distinct',
-                Rule::exists('courses', 'id'),
-            ],
-            'authoring_request_id' => 'required|uuid',
-        ]);
+        $validated = $request->validated();
 
         $this->authoring->create($validated, function (Path $path) use ($request, $createIntents): void {
             $createIntents->completeRedirect($request, route('admin.paths.index'), 302, Path::class, $path->id);
@@ -82,34 +57,22 @@ class PathController extends Controller
      * Show the form for editing the specified resource.
      *
      * @param  int  $id
-     * @return Response
+     * @return RedirectResponse
      */
     public function edit($id)
     {
-        return view('admin.paths.edit', $this->read->form((int) $id));
+        return redirect(PathResource::getUrl('edit', ['record' => $id]));
     }
 
     /**
      * Update the specified resource in storage.
      *
      * @param  int  $id
-     * @return Response
+     * @return RedirectResponse
      */
-    public function update(Request $request, $id)
+    public function update(PathProfileRequest $request, $id)
     {
-        $validated = $request->validate([
-            'title_ar' => 'required|string|max:255',
-            'title_en' => 'required|string|max:255',
-            'interest_ids' => 'nullable|array',
-            'interest_ids.*' => 'integer|distinct|exists:classifications,id',
-            'course_ids' => 'nullable|array|max:200',
-            'course_ids.*' => [
-                'integer',
-                'distinct',
-                Rule::exists('courses', 'id'),
-            ],
-            'editor_version' => 'required|string|size:64',
-        ]);
+        $validated = $request->validated();
 
         $this->authoring->update((int) $id, $validated, (string) $validated['editor_version']);
 
@@ -120,7 +83,7 @@ class PathController extends Controller
      * Remove the specified resource from storage.
      *
      * @param  int  $id
-     * @return Response
+     * @return RedirectResponse
      */
     public function destroy($id)
     {

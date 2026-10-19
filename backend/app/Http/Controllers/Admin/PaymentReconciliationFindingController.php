@@ -4,85 +4,26 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\PaymentFindingResource;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\PaymentFindingIndexRequest;
+use App\Http\Requests\Admin\PaymentFindingTransitionRequest;
 use App\Models\PaymentReconciliationFinding;
 use App\Models\User;
 use App\Services\PaymentReconciliationReviewService;
-use App\Support\PaymentFindingEditorVersion;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 
 class PaymentReconciliationFindingController extends Controller
 {
     public function __construct(private readonly PaymentReconciliationReviewService $reviews) {}
 
-    public function index(Request $request): View
+    public function index(PaymentFindingIndexRequest $request): RedirectResponse
     {
-        $filters = $request->validate([
-            'state' => ['nullable', Rule::in([
-                PaymentReconciliationFinding::STATE_OPEN,
-                PaymentReconciliationFinding::STATE_RESOLVED,
-                PaymentReconciliationFinding::STATE_IGNORED,
-            ])],
-            'kind' => 'nullable|string|max:64',
-            'order_ref' => 'nullable|string|max:191',
-        ]);
-        if (! $request->query->has('state')) {
-            $filters['state'] = PaymentReconciliationFinding::STATE_OPEN;
-        }
-
-        $findings = PaymentReconciliationFinding::query()
-            ->with(['order', 'resolver:id,name'])
-            ->when(
-                $filters['state'] ?? null,
-                fn ($query, $state) => $query->where('state', $state)
-            )
-            ->when(
-                $filters['kind'] ?? null,
-                fn ($query, $kind) => $query->where('kind', trim($kind))
-            )
-            ->when(
-                $filters['order_ref'] ?? null,
-                fn ($query, $orderRef) => $query->where(
-                    'order_ref',
-                    'like',
-                    '%'.addcslashes(trim($orderRef), '%_\\').'%'
-                )
-            )
-            ->orderByRaw("CASE state WHEN 'open' THEN 0 WHEN 'ignored' THEN 1 ELSE 2 END")
-            ->latest('last_seen_at')
-            ->latest('id')
-            ->paginate(30)
-            ->withQueryString();
-        $editorVersions = $findings->getCollection()->mapWithKeys(
-            static fn (PaymentReconciliationFinding $finding): array => [
-                $finding->getKey() => PaymentFindingEditorVersion::for($finding),
-            ]
-        );
-
-        $stateCounts = PaymentReconciliationFinding::query()
-            ->selectRaw('state, COUNT(*) as aggregate')
-            ->groupBy('state')
-            ->pluck('aggregate', 'state');
-        $kinds = PaymentReconciliationFinding::query()
-            ->whereNotNull('kind')
-            ->distinct()
-            ->orderBy('kind')
-            ->pluck('kind');
-
-        return view('admin.payment-reconciliation-findings.index', compact(
-            'findings',
-            'filters',
-            'stateCounts',
-            'kinds',
-            'editorVersions'
-        ));
+        return redirect()->to(PaymentFindingResource::listUrl($request->validated()));
     }
 
     public function resolve(
-        Request $request,
+        PaymentFindingTransitionRequest $request,
         PaymentReconciliationFinding $paymentReconciliationFinding
     ): RedirectResponse {
         return $this->transition(
@@ -94,7 +35,7 @@ class PaymentReconciliationFindingController extends Controller
     }
 
     public function ignore(
-        Request $request,
+        PaymentFindingTransitionRequest $request,
         PaymentReconciliationFinding $paymentReconciliationFinding
     ): RedirectResponse {
         return $this->transition(
@@ -106,7 +47,7 @@ class PaymentReconciliationFindingController extends Controller
     }
 
     public function reopen(
-        Request $request,
+        PaymentFindingTransitionRequest $request,
         PaymentReconciliationFinding $paymentReconciliationFinding
     ): RedirectResponse {
         return $this->transition(
@@ -118,15 +59,12 @@ class PaymentReconciliationFindingController extends Controller
     }
 
     private function transition(
-        Request $request,
+        PaymentFindingTransitionRequest $request,
         PaymentReconciliationFinding $finding,
         string $targetState,
         string $successMessage
     ): RedirectResponse {
-        $validated = $request->validate([
-            'note' => 'required|string|min:3|max:2000',
-            'editor_version' => ['required', 'string', 'size:64'],
-        ]);
+        $validated = $request->validated();
         $actor = $request->user();
         abort_unless($actor instanceof User, 403);
 

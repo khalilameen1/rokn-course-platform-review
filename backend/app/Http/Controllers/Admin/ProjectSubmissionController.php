@@ -4,52 +4,31 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\ProjectSubmissionResource;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ProjectReviewIndexRequest;
+use App\Http\Requests\Admin\ProjectReviewRequest;
 use App\Models\AiInputAttachment;
 use App\Models\ProjectSubmission;
 use App\Models\User;
-use App\Services\AdminProjectSubmissionReviewReadService;
 use App\Services\ProjectAttachmentDownloadService;
 use App\Services\ProjectSubmissionReviewService;
 use App\Support\DownloadFilename;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class ProjectSubmissionController extends Controller
 {
-    public function __construct(
-        private readonly AdminProjectSubmissionReviewReadService $reviewReads
-    ) {}
-
-    public function index(Request $request): View
+    public function index(ProjectReviewIndexRequest $request): RedirectResponse
     {
-        $isAdministrator = $this->isAdministrator($request);
-        $filters = $request->validate([
-            'status' => 'nullable|in:pending,passed,needs_resubmission',
-            'search' => 'nullable|string|max:100',
-        ]);
-
-        $page = $this->reviewReads->index($filters, $isAdministrator);
-        $submissions = $page['submissions'];
-        $statusCounts = $page['statusCounts'];
-
-        return view('admin.project-submissions.index', compact(
-            'submissions',
-            'statusCounts',
-            'filters',
-            'isAdministrator'
-        ));
+        return redirect()->to(ProjectSubmissionResource::listUrl($request->validated()));
     }
 
-    public function show(Request $request, ProjectSubmission $projectSubmission): View
+    public function show(ProjectSubmission $projectSubmission): RedirectResponse
     {
-        return view('admin.project-submissions.show', [
-            ...$this->reviewReads->show($projectSubmission, $this->isAdministrator($request)),
-            'isAdministrator' => $this->isAdministrator($request),
-        ]);
+        return redirect()->to(ProjectSubmissionResource::getUrl('view', ['record' => $projectSubmission]));
     }
 
     public function download(
@@ -93,13 +72,11 @@ final class ProjectSubmissionController extends Controller
     }
 
     public function pass(
-        Request $request,
+        ProjectReviewRequest $request,
         ProjectSubmission $projectSubmission,
         ProjectSubmissionReviewService $reviews
     ): RedirectResponse {
-        $data = $request->validate([
-            'feedback' => 'nullable|string|max:2000',
-        ]);
+        $data = $request->validated();
 
         $reviews->reviewByStaff(
             $projectSubmission,
@@ -114,13 +91,11 @@ final class ProjectSubmissionController extends Controller
     }
 
     public function reject(
-        Request $request,
+        ProjectReviewRequest $request,
         ProjectSubmission $projectSubmission,
         ProjectSubmissionReviewService $reviews
     ): RedirectResponse {
-        $data = $request->validate([
-            'feedback' => 'required|string|min:3|max:2000',
-        ]);
+        $data = $request->validated();
 
         $reviews->reviewByStaff(
             $projectSubmission,
@@ -140,10 +115,5 @@ final class ProjectSubmissionController extends Controller
         abort_unless($reviewer instanceof User, 403);
 
         return $reviewer;
-    }
-
-    private function isAdministrator(Request $request): bool
-    {
-        return strtolower((string) $request->user()?->role) === 'admin';
     }
 }

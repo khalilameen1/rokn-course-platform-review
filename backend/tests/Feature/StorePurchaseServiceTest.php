@@ -8,6 +8,7 @@ use App\Contracts\StoreNotificationAuthenticityVerifier;
 use App\Contracts\StorePurchaseProviderGateway;
 use App\Data\VerifiedStorePurchase;
 use App\Exceptions\StorePurchaseVerificationException;
+use App\Filament\Resources\OrderResource;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Order;
 use App\Models\Package;
@@ -104,14 +105,14 @@ final class StorePurchaseServiceTest extends TestCase
         $admin = $this->user('finance-admin@rokn.test', 'admin');
         $this->withoutMiddleware(RequireAdminMfa::class);
         $this->actingAs($admin, 'web')
-            ->get(route('admin.orders.index'))
+            ->get(route('filament.operations.resources.orders.report'))
             ->assertOk()
             ->assertSee('Google Play')
-            ->assertSee('تحصيل باقات العملات حسب القناة')
-            ->assertSee('الصافي بانتظار التسوية');
+            ->assertSee('التحصيل حسب القناة')
+            ->assertSee('بانتظار التسوية');
         $order = Order::query()->where('payment_method', Order::PAYMENT_METHOD_GOOGLE_PLAY)->firstOrFail();
         $this->actingAs($admin, 'web')
-            ->get(route('admin.orders.show', $order))
+            ->get(OrderResource::getUrl('view', ['record' => $order->id]))
             ->assertOk()
             ->assertSee('باقة المتجر')
             ->assertSee('GPA.1111-2222')

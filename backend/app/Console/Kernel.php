@@ -33,6 +33,9 @@ class Kernel extends ConsoleKernel
         if ((bool) config('operations.disaster_recovery_mode', false)) {
             return;
         }
+        if ((bool) config('operations.horizon_enabled', false)) {
+            $schedule->command('horizon:snapshot')->everyFiveMinutes()->onOneServer()->withoutOverlapping(5);
+        }
         // Keep due maintenance commands sequential. A Flex app instance has a
         // deliberately small memory budget; forking every due command at once
         // can exhaust the whole web container and take the public API down.

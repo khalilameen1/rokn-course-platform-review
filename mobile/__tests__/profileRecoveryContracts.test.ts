@@ -5,17 +5,9 @@ const source = (relativePath: string) =>
   fs.readFileSync(path.resolve(__dirname, '..', relativePath), 'utf8');
 
 describe('profile recovery contracts', () => {
-  it('does not turn a saved-folder request failure into an authoritative empty list', () => {
-    const savedLibrary = source(
-      'src/screens/savedLibrary/useSavedLibraryRead.ts',
-    );
-
-    expect(savedLibrary).not.toContain(
-      'getSavedFolderOptions().catch(() => [])',
-    );
-    expect(savedLibrary).toContain('if (folderResult.ok)');
-    expect(savedLibrary).toContain('setFolderLoadError(');
-  });
+  // A failed saved-folder read keeps the lessons and shows its own notice:
+  // savedLibraryFocusLifecycle.test.tsx ("retries folder reads remotely,
+  // keeps lessons on repeated failure, and restores offline fallback").
 
   it('keeps a pending certificate recoverable instead of presenting an empty account', () => {
     const certificates = source(

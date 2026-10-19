@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Auth\Totp;
+use App\Auth\TwoFactorAuthenticationProvider;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -15,11 +15,13 @@ use Illuminate\Support\Facades\DB;
  * TwoFactorAuthenticatedSessionController: the secret is stored only after a
  * valid code, recovery codes are single use, and a TOTP step is accepted once.
  * Each write locks the user row so concurrent submissions cannot replay a code.
+ * Code arithmetic is TwoFactorAuthenticationProvider's; the keyed hashes that
+ * bind stored recovery codes and verified sessions to this app live here.
  * Resetting an enrolment stays with AdminMfaResetService.
  */
 final readonly class AdminMfaService
 {
-    public function __construct(private Totp $totp) {}
+    public function __construct(private TwoFactorAuthenticationProvider $provider) {}
 
     /**
      * Confirm a pending enrolment with a code from the authenticator.
@@ -28,12 +30,12 @@ final readonly class AdminMfaService
      */
     public function confirmEnrolment(User $user, string $secret, string $code): ?array
     {
-        $step = $this->totp->matchingStep($secret, $code);
+        $step = $this->provider->verify($secret, $code);
         if ($step === null) {
             return null;
         }
 
-        $recoveryCodes = $this->totp->generateRecoveryCodes();
+        $recoveryCodes = $this->provider->generateRecoveryCodes();
         DB::transaction(function () use ($user, $secret, $step, $recoveryCodes): void {
             /** @var User $lockedUser */
             $lockedUser = User::query()->lockForUpdate()->findOrFail($user->getAuthIdentifier());
@@ -44,7 +46,7 @@ final readonly class AdminMfaService
                 'admin_totp_confirmed_at' => now(),
                 'admin_totp_last_used_step' => $step,
                 'admin_mfa_backup_codes' => array_map(
-                    fn (string $code): string => $this->totp->hashRecoveryCode($code),
+                    fn (string $code): string => $this->hashRecoveryCode($code),
                     $recoveryCodes
                 ),
             ])->save();
@@ -61,11 +63,25 @@ final readonly class AdminMfaService
             : $this->consumeRecoveryCode($user, $code);
     }
 
+    /** Keyed hash of a recovery code as stored in admin_mfa_backup_codes. */
+    public function hashRecoveryCode(string $code): string
+    {
+        $normalized = strtoupper(preg_replace('/[^A-Z0-9]/i', '', trim($code)) ?? '');
+
+        return hash_hmac('sha256', $normalized, (string) config('app.key'));
+    }
+
+    /** Binds a verified dashboard session to the secret it was verified with. */
+    public function secretFingerprint(string $secret): string
+    {
+        return hash_hmac('sha256', 'admin-mfa:'.$secret, (string) config('app.key'));
+    }
+
     private function consumeTotp(User $user, string $code): bool
     {
         try {
             $secret = trim((string) $user->admin_totp_secret);
-            $step = $secret === '' ? null : $this->totp->matchingStep($secret, $code);
+            $step = $secret === '' ? null : $this->provider->verify($secret, $code);
         } catch (\Throwable $exception) {
             report($exception);
 
@@ -106,7 +122,7 @@ final readonly class AdminMfaService
             return false;
         }
 
-        $candidate = $this->totp->hashRecoveryCode($code);
+        $candidate = $this->hashRecoveryCode($code);
 
         return DB::transaction(function () use ($user, $candidate): bool {
             /** @var User|null $lockedUser */

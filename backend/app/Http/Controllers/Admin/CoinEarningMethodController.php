@@ -2,68 +2,30 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Pages\RewardSettings;
+use App\Filament\Resources\CoinEarningMethodResource;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\CoinEarningMethodProfileRequest;
+use App\Http\Requests\Admin\EditorVersionRequest;
+use App\Http\Requests\Admin\RewardRuleProfileRequest;
+use App\Http\Requests\Admin\RewardSettingsRequest;
 use App\Models\CoinEarningMethod;
 use App\Models\RewardRule;
 use App\Services\AdminAuthoringCreateIntentService;
-use App\Services\AdminEconomyReadService;
 use App\Services\AdminRewardAuthoringService;
-use App\Services\SocialAuthProviderRegistry;
-use App\Support\BusinessClock;
-use App\Support\RewardConfigurationVersion;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 class CoinEarningMethodController extends Controller
 {
     public function __construct(private readonly AdminRewardAuthoringService $authoring) {}
 
-    public function index(AdminEconomyReadService $economy)
+    public function index()
     {
-        $data = $economy->rewards();
-        $methods = $data['methods'];
-        $setting = $data['setting'];
-        $rewardRules = $data['rewardRules'];
-        $rewardEvents = $data['rewardEvents'];
-        $socialProviderLabels = $data['socialProviderLabels'];
-        $settingsEditorVersion = RewardConfigurationVersion::settings($setting);
-        $rewardRuleEditorVersions = $rewardRules->mapWithKeys(
-            fn (RewardRule $rule): array => [$rule->id => RewardConfigurationVersion::rule($rule)]
-        );
-        $methodEditorVersions = $methods->getCollection()->mapWithKeys(
-            fn (CoinEarningMethod $method): array => [$method->id => RewardConfigurationVersion::method($method)]
-        );
-
-        return view('admin.coin_earning_methods.index', compact(
-            'methods', 'setting', 'rewardRules', 'rewardEvents', 'socialProviderLabels',
-            'settingsEditorVersion', 'rewardRuleEditorVersions', 'methodEditorVersions'
-        ));
+        return redirect(RewardSettings::getUrl());
     }
 
-    public function updateSettings(Request $request)
+    public function updateSettings(RewardSettingsRequest $request)
     {
-        $validated = $request->validate([
-            // Both columns are MySQL TEXT. A 12k-character ceiling remains
-            // below 65,535 bytes even when every character uses four UTF-8
-            // bytes, so oversized Arabic copy is rejected before the write.
-            'how_to_use_coins_ar' => 'nullable|string|max:12000',
-            'how_to_use_coins_en' => 'nullable|string|max:12000',
-            'rewards_help_ar' => 'nullable|string|max:600',
-            'rewards_help_en' => 'nullable|string|max:600',
-            'reward_balance_cap' => 'required|integer|min:0|max:1000000',
-            'max_reward_contribution_per_course' => 'required|integer|min:0|max:1000000',
-            'max_course_promotion_percent' => 'sometimes|required|integer|min:0|max:20',
-            'recommended_social_provider' => [
-                'required',
-                'string',
-                Rule::in(app(SocialAuthProviderRegistry::class)->declared()->all()),
-            ],
-            'recommended_provider_bonus_coins' => 'required|integer|min:0|max:1000000',
-            'recommended_provider_badge_ar' => 'nullable|string|max:255',
-            'recommended_provider_badge_en' => 'nullable|string|max:255',
-            'editor_version' => 'required|string|size:64',
-        ]);
+        $validated = $request->validated();
 
         $editorVersion = (string) $validated['editor_version'];
         unset($validated['editor_version']);
@@ -75,12 +37,12 @@ class CoinEarningMethodController extends Controller
 
     public function create()
     {
-        return view('admin.coin_earning_methods.create');
+        return redirect(CoinEarningMethodResource::getUrl('create'));
     }
 
-    public function store(Request $request, AdminAuthoringCreateIntentService $createIntents)
+    public function store(CoinEarningMethodProfileRequest $request, AdminAuthoringCreateIntentService $createIntents)
     {
-        $payload = $this->methodPayload($request);
+        $payload = $request->authoringData();
         $this->authoring->createMethod($payload, function (CoinEarningMethod $method) use ($request, $createIntents): void {
             $createIntents->completeRedirect(
                 $request,
@@ -97,24 +59,22 @@ class CoinEarningMethodController extends Controller
 
     public function edit(CoinEarningMethod $coinEarningMethod)
     {
-        $editorVersion = RewardConfigurationVersion::method($coinEarningMethod);
-
-        return view('admin.coin_earning_methods.edit', compact('coinEarningMethod', 'editorVersion'));
+        return redirect(CoinEarningMethodResource::getUrl('edit', ['record' => $coinEarningMethod->id]));
     }
 
-    public function update(Request $request, CoinEarningMethod $coinEarningMethod)
+    public function update(CoinEarningMethodProfileRequest $request, CoinEarningMethod $coinEarningMethod)
     {
-        $payload = $this->methodPayload($request, $coinEarningMethod);
-        $editorVersion = (string) $request->input('editor_version');
+        $payload = $request->authoringData();
+        $editorVersion = (string) $request->validated('editor_version');
         $this->authoring->updateMethod($coinEarningMethod, $payload, $editorVersion);
 
         return redirect()->route('admin.coin-earning-methods.index')
             ->with('success', 'تم تحديث طريقة ربح العملات بنجاح');
     }
 
-    public function destroy(Request $request, CoinEarningMethod $coinEarningMethod)
+    public function destroy(EditorVersionRequest $request, CoinEarningMethod $coinEarningMethod)
     {
-        $validated = $request->validate(['editor_version' => 'required|string|size:64']);
+        $validated = $request->validated();
         $this->authoring->deleteMethod($coinEarningMethod, (string) $validated['editor_version']);
 
         return redirect()->route('admin.coin-earning-methods.index')
@@ -122,10 +82,10 @@ class CoinEarningMethodController extends Controller
     }
 
     public function storeRewardRule(
-        Request $request,
+        RewardRuleProfileRequest $request,
         AdminAuthoringCreateIntentService $createIntents
     ) {
-        $payload = $this->rewardRulePayload($request);
+        $payload = $request->authoringData();
         $this->authoring->createRule($payload, function (RewardRule $rule) use ($request, $createIntents): void {
             $createIntents->completeRedirect(
                 $request,
@@ -140,136 +100,22 @@ class CoinEarningMethodController extends Controller
             ->with('success', 'تمت إضافة قاعدة المكافأة وربطها بالحدث.');
     }
 
-    public function updateRewardRule(Request $request, RewardRule $rewardRule)
+    public function updateRewardRule(RewardRuleProfileRequest $request, RewardRule $rewardRule)
     {
-        $version = $request->validate(['editor_version' => 'required|string|size:64']);
-        $payload = $this->rewardRulePayload($request, $rewardRule);
+        $version = $request->validated();
+        $payload = $request->authoringData();
         $this->authoring->updateRule($rewardRule, $payload, (string) $version['editor_version']);
 
         return redirect()->route('admin.coin-earning-methods.index')
             ->with('success', 'تم تحديث قاعدة المكافأة.');
     }
 
-    public function destroyRewardRule(Request $request, RewardRule $rewardRule)
+    public function destroyRewardRule(EditorVersionRequest $request, RewardRule $rewardRule)
     {
-        $validated = $request->validate(['editor_version' => 'required|string|size:64']);
+        $validated = $request->validated();
         $this->authoring->deleteRule($rewardRule, (string) $validated['editor_version']);
 
         return redirect()->route('admin.coin-earning-methods.index')
             ->with('success', 'تم حذف القاعدة وإيقاف مكافأتها فورًا.');
-    }
-
-    /** @return array<string, mixed> */
-    private function methodPayload(Request $request, ?CoinEarningMethod $existing = null): array
-    {
-        $campaignKey = Rule::unique('coin_earning_methods', 'campaign_key');
-        if ($existing) {
-            $campaignKey->ignore($existing->id);
-        }
-        $validated = $request->validate([
-            'title_ar' => ['required', 'string', 'max:255'],
-            'title_en' => ['required', 'string', 'max:255'],
-            'coins_amount' => ['required', 'integer', 'min:1'],
-            'action_key' => ['required', 'string', 'max:255', Rule::notIn(CoinEarningMethod::AUTOMATIC_ACTION_KEYS)],
-            'campaign_key' => [
-                'nullable', 'string', 'max:80', 'regex:/^[A-Za-z0-9._:-]+$/', $campaignKey,
-            ],
-            'action_url' => ['nullable', 'url', 'max:2000'],
-            'requires_external_visit' => ['nullable', 'boolean'],
-            'verification_delay_seconds' => ['nullable', 'integer', 'min:0', 'max:300'],
-            'starts_at' => ['nullable', 'date'],
-            'ends_at' => ['nullable', 'date', 'after:starts_at'],
-            'total_claim_limit' => ['nullable', 'integer', 'min:1', 'max:10000000'],
-            'sort_order' => ['nullable', 'integer', 'min:0', 'max:10000'],
-            'is_active' => ['nullable', 'boolean'],
-            'authoring_request_id' => [$existing ? 'nullable' : 'required', 'uuid'],
-            'editor_version' => [$existing ? 'required' : 'nullable', 'string', 'size:64'],
-        ]);
-
-        unset($validated['authoring_request_id'], $validated['editor_version']);
-        foreach (['title_ar', 'title_en'] as $field) {
-            $validated[$field] = trim((string) $validated[$field]);
-        }
-        foreach (['action_key', 'campaign_key', 'action_url'] as $field) {
-            $value = trim((string) ($validated[$field] ?? ''));
-            $validated[$field] = $value !== '' ? $value : null;
-        }
-        foreach (['starts_at', 'ends_at'] as $field) {
-            $validated[$field] = BusinessClock::localInputToUtc($validated[$field] ?? null);
-        }
-        $validated['coins_amount'] = (int) $validated['coins_amount'];
-        $validated['requires_external_visit'] = $request->boolean('requires_external_visit');
-        $validated['verification_delay_seconds'] = (int) ($validated['verification_delay_seconds'] ?? 0);
-        $validated['total_claim_limit'] = filled($validated['total_claim_limit'] ?? null)
-            ? (int) $validated['total_claim_limit']
-            : null;
-        $validated['sort_order'] = (int) ($validated['sort_order'] ?? 100);
-        $validated['is_active'] = $request->boolean('is_active');
-        $validated['is_repeatable'] = false;
-
-        return $validated;
-    }
-
-    private function rewardRulePayload(Request $request, ?RewardRule $existing = null): array
-    {
-        $eventRule = Rule::in(array_keys(RewardRule::EVENTS));
-        $uniqueRule = Rule::unique('reward_rules', 'event_key');
-        if ($existing) {
-            $uniqueRule->ignore($existing->id);
-        }
-
-        $validated = $request->validate([
-            'event_key' => ['required', 'string', $eventRule, $uniqueRule],
-            'title_ar' => 'required|string|max:255',
-            'title_en' => 'nullable|string|max:255',
-            'coins_amount' => 'required|integer|min:0|max:1000000',
-            'interval_count' => 'nullable|integer|min:1|max:1440',
-            'daily_cap' => 'nullable|integer|min:0|max:1000000',
-            'rolling_30_day_cap' => 'nullable|integer|min:0|max:1000000',
-            'sort_order' => 'nullable|integer|min:0|max:10000',
-            'is_active' => 'nullable|boolean',
-            'authoring_request_id' => [$existing ? 'nullable' : 'required', 'uuid'],
-        ]);
-        unset($validated['authoring_request_id']);
-        $validated['is_active'] = $request->boolean('is_active');
-        $validated['sort_order'] = (int) ($validated['sort_order'] ?? 100);
-        $validated['coins_amount'] = (int) $validated['coins_amount'];
-
-        $event = (string) $validated['event_key'];
-        $usesInterval = in_array($event, ['streak_milestone', 'study_session'], true);
-        if ($usesInterval && ! filled($validated['interval_count'] ?? null)) {
-            throw ValidationException::withMessages([
-                'interval_count' => ['أدخل مدة الاستمرارية أو الدراسة لهذه القاعدة.'],
-            ]);
-        }
-        if ($event === 'streak_milestone' && (int) $validated['interval_count'] < 2) {
-            throw ValidationException::withMessages([
-                'interval_count' => ['مدة الاستمرارية تبدأ من يومين.'],
-            ]);
-        }
-        $validated['interval_count'] = $usesInterval
-            ? (int) $validated['interval_count']
-            : 1;
-        $validated['daily_cap'] = $event === 'study_session'
-            && filled($validated['daily_cap'] ?? null)
-                ? (int) $validated['daily_cap']
-                : null;
-        $validated['rolling_30_day_cap'] = $event !== 'welcome_bonus'
-            && filled($validated['rolling_30_day_cap'] ?? null)
-                ? (int) $validated['rolling_30_day_cap']
-                : null;
-
-        if (
-            $validated['is_active']
-            && $validated['coins_amount'] > 0
-            && in_array($event, ['daily_checkin', 'streak_milestone', 'study_session', 'course_completed'], true)
-            && $validated['rolling_30_day_cap'] === null
-        ) {
-            throw ValidationException::withMessages([
-                'rolling_30_day_cap' => ['أدخل حدًا خلال 30 يومًا حتى تظل تكلفة المكافأة منضبطة.'],
-            ]);
-        }
-
-        return $validated;
     }
 }

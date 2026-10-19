@@ -9,6 +9,7 @@ use App\Models\User;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Testing\TestResponse;
+use Livewire\Livewire;
 
 /**
  * Requests dashboard pages the way an operator's browser does and reads the
@@ -33,6 +34,9 @@ trait RendersAdminPages
     {
         $this->withoutMiddleware(RequireAdminMfa::class);
         $this->flushSession();
+        // PHPUnit reuses a PHP process across HTTP requests. Match Livewire's
+        // request boundary instead of injecting the previous page's assets.
+        Livewire::flushState();
 
         return $this->actingAs($user, 'web')->get($url);
     }

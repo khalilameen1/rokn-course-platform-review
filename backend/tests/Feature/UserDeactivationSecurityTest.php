@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\Admin\UsersController;
 use App\Models\User;
 use App\Services\StudentAccountStateService;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -77,15 +75,12 @@ final class UserDeactivationSecurityTest extends TestCase
         self::assertSame(2, $user->apiTokens()->count());
         $user->refresh();
 
-        app(UsersController::class)->deactive(
-            Request::create('/dashboard/users/'.$user->id.'/deactive', 'POST', [
-                'expected_active' => true,
-                'state_version' => app(StudentAccountStateService::class)
-                    ->editorVersion($user),
-            ]),
-            $user,
-            app(StudentAccountStateService::class)
-        );
+        $admin = User::query()->forceCreate(['email' => 'admin-deactivation@rokn.test', 'role' => 'admin', 'active' => true]);
+        $this->actingAs($admin, 'web')->patch(route('admin.users.deactive', $user), [
+            'expected_active' => true,
+            'state_version' => app(StudentAccountStateService::class)
+                ->editorVersion($user),
+        ])->assertRedirect()->assertSessionHasNoErrors();
 
         $user->refresh();
         self::assertFalse((bool) $user->active);

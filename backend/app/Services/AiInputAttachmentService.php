@@ -10,6 +10,7 @@ use App\Models\CourseChatTurn;
 use App\Models\ProjectFeedbackMessage;
 use App\Models\User;
 use App\Support\DownloadFilename;
+use App\Support\OfficeDocumentText;
 use App\Support\UnicodeText;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
@@ -22,6 +23,18 @@ use ZipArchive;
 
 final class AiInputAttachmentService
 {
+    /** Office package bounds shared with the upload gate (isGenuineOoxml). */
+    private const MAX_PACKAGE_ENTRIES = 10000;
+
+    private const MAX_PACKAGE_BYTES = 104857600;
+
+    /** Largest XML part any reader may parse, and all XML parts together. */
+    private const MAX_PART_BYTES = 2097152;
+
+    private const MAX_TEXT_PARTS_BYTES = 8388608;
+
+    private const MAX_SLIDES = 100;
+
     public function __construct(
         private readonly StoredFileDeletionService $storedFiles,
         private readonly StoredFileUploadService $uploads
@@ -208,7 +221,7 @@ final class AiInputAttachmentService
             return false;
         }
         try {
-            if ($zip->numFiles < 3 || $zip->numFiles > 10000) {
+            if ($zip->numFiles < 3 || $zip->numFiles > self::MAX_PACKAGE_ENTRIES) {
                 return false;
             }
             $main = $extension === 'docx' ? 'word/document.xml' : 'ppt/presentation.xml';
@@ -227,7 +240,7 @@ final class AiInputAttachmentService
                 }
                 $stat = $zip->statIndex($index);
                 $expandedBytes += max(0, (int) ($stat['size'] ?? 0));
-                if ($expandedBytes > 104857600) {
+                if ($expandedBytes > self::MAX_PACKAGE_BYTES) {
                     return false;
                 }
             }
@@ -555,6 +568,15 @@ final class AiInputAttachmentService
         return max(100, (int) ceil(mb_strlen($text) / 3.2));
     }
 
+    /**
+     * Text of a Word attachment through PhpWord, or of a PowerPoint
+     * attachment through the ECMA-376 slide order (App\Support\OfficeDocumentText).
+     * The package is bounded before any reader opens it: at most 10000 entries
+     * and 100 MB expanded (the upload gate's limits), every XML part at most
+     * 2 MB and all XML parts together at most 8 MB, and at most 100 slides.
+     * Full-text review throws when the file does not fit; other callers get
+     * what fits, as before.
+     */
     private function officeTextFromBytes(string $bytes, string $mime, bool $preserveFullText = false): string
     {
         if (! class_exists(ZipArchive::class) || $bytes === '') {
@@ -564,47 +586,82 @@ final class AiInputAttachmentService
         if (! is_string($temporary)) {
             return '';
         }
+        $zip = new ZipArchive;
+        $open = false;
         try {
             file_put_contents($temporary, $bytes);
-            $zip = new ZipArchive;
             if ($zip->open($temporary) !== true) {
                 return '';
             }
-            $files = $mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-                ? ['word/document.xml']
-                : array_values(array_filter(
-                    iterator_to_array($this->zipNames($zip)),
-                    static fn (string $name): bool => preg_match('#^ppt/slides/slide\d+\.xml$#', $name) === 1
-                ));
-            $chunks = [];
-            $expandedBytes = 0;
-            if ($preserveFullText && count($files) > 100) {
+            $open = true;
+            if ($zip->numFiles < 1 || $zip->numFiles > self::MAX_PACKAGE_ENTRIES) {
+                return '';
+            }
+            $sizes = [];
+            $packageBytes = 0;
+            $xmlBytes = 0;
+            $oversizedXml = false;
+            for ($index = 0; $index < $zip->numFiles; $index++) {
+                $stat = $zip->statIndex($index);
+                $size = is_array($stat) ? max(0, (int) ($stat['size'] ?? 0)) : 0;
+                $name = is_array($stat) ? (string) $stat['name'] : '';
+                $sizes[$name] = $size;
+                $packageBytes += $size;
+                if ($packageBytes > self::MAX_PACKAGE_BYTES) {
+                    return '';
+                }
+                if (preg_match('/\.(?:xml|rels)$/i', $name) === 1) {
+                    $xmlBytes += $size;
+                    $oversizedXml = $oversizedXml || $size > self::MAX_PART_BYTES;
+                }
+            }
+            $readerFits = ! $oversizedXml && $xmlBytes <= self::MAX_TEXT_PARTS_BYTES;
+
+            if ($mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                if (! $readerFits || ($sizes['word/document.xml'] ?? 0) <= 0) {
+                    if ($preserveFullText) {
+                        throw new UnexpectedValueException('The whole document cannot be extracted within the review limit.');
+                    }
+
+                    return '';
+                }
                 $zip->close();
+                $open = false;
+
+                try {
+                    return OfficeDocumentText::word($temporary);
+                } catch (Throwable) {
+                    return '';
+                }
+            }
+
+            $slides = OfficeDocumentText::slideParts($zip, self::MAX_PART_BYTES);
+            if ($preserveFullText && count($slides) > self::MAX_SLIDES) {
                 throw new UnexpectedValueException('The whole presentation exceeds the review extraction limit.');
             }
-            foreach (array_slice($files, 0, 100) as $file) {
-                $index = $zip->locateName($file);
-                $stat = $index === false ? false : $zip->statIndex($index);
-                $entryBytes = is_array($stat) ? (int) ($stat['size'] ?? 0) : 0;
-                if ($entryBytes <= 0 || $entryBytes > 2 * 1024 * 1024
-                    || $expandedBytes + $entryBytes > 8 * 1024 * 1024) {
+            $slideXml = [];
+            $slideBytes = 0;
+            foreach (array_slice($slides, 0, self::MAX_SLIDES) as $slide) {
+                $size = $sizes[$slide] ?? 0;
+                $xml = $size > 0 && $size <= self::MAX_PART_BYTES && $slideBytes + $size <= self::MAX_TEXT_PARTS_BYTES
+                    ? $zip->getFromName($slide)
+                    : false;
+                if (! is_string($xml)) {
                     if ($preserveFullText) {
-                        $zip->close();
                         throw new UnexpectedValueException('The whole document cannot be extracted within the review limit.');
                     }
 
                     continue;
                 }
-                $xml = $zip->getFromName($file);
-                if (is_string($xml)) {
-                    $expandedBytes += strlen($xml);
-                    $chunks[] = html_entity_decode(strip_tags(str_replace(['</w:p>', '</a:p>'], "\n", $xml)));
-                }
+                $slideBytes += $size;
+                $slideXml[] = $xml;
             }
-            $zip->close();
 
-            return trim(implode("\n", $chunks));
+            return OfficeDocumentText::slideText($slideXml);
         } finally {
+            if ($open) {
+                $zip->close();
+            }
             @unlink($temporary);
         }
     }
@@ -623,16 +680,6 @@ final class AiInputAttachmentService
         }
 
         return $text;
-    }
-
-    private function zipNames(ZipArchive $zip): \Generator
-    {
-        for ($index = 0; $index < $zip->numFiles; $index++) {
-            $name = $zip->getNameIndex($index);
-            if (is_string($name)) {
-                yield $name;
-            }
-        }
     }
 
     private function assertReplay(

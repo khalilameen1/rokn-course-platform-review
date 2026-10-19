@@ -5,6 +5,7 @@ import {
   type AccountSessionBoundary,
 } from '../../constants/helpers';
 import {firstBoolean, isApiRecord, payload} from './common';
+import {invalidateAccountProfile} from '../query/profileInvalidation';
 import {withUploadStallTimeout} from '../uploadStallTimeout';
 
 const profileAvatar = (...values: unknown[]): string | undefined => {
@@ -160,6 +161,7 @@ export const updateProfile = async (
   if (updated.profileRevision <= expectedProfileRevision) {
     throw new Error('PROFILE_REVISION_NOT_ADVANCED');
   }
+  invalidateAccountProfile(boundary.scope);
   return updated;
 };
 

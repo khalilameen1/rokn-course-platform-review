@@ -38,10 +38,8 @@ jest.mock('../src/services/roknApi', () => ({
     lessons: [],
     page: 1,
     hasMore: false,
+    total: 0,
   })),
-  removeSavedFolderFromCache: jest.fn(async () => undefined),
-  removeSavedLessonFromCache: jest.fn(async () => undefined),
-  removeSavedLessonEverywhereFromCache: jest.fn(async () => undefined),
 }));
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () =>
   jest.requireActual(
@@ -68,6 +66,8 @@ import {
   toggleWatchLater,
 } from '../src/components/VideoPlayer/courseLearning/savedCollections';
 import {useSavedLibrary} from '../src/screens/savedLibrary/useSavedLibrary';
+import {queryClient} from '../src/services/query/queryClient';
+import {withQueryClient} from './helpers/queryClient';
 
 const api = jest.mocked(publicRequest);
 const folder = {id: '7', name: 'قائمتي', lessons_count: 1};
@@ -92,6 +92,7 @@ describe('saved folder reads across committed mutations', () => {
     mockFocus = undefined;
     mockCleanup = undefined;
     await AsyncStorage.clear();
+    queryClient.clear();
     api.get.mockResolvedValue(response([folder]));
     api.delete.mockResolvedValue(response(null));
   });
@@ -107,8 +108,9 @@ describe('saved folder reads across committed mutations', () => {
     };
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(withQueryClient(<Harness />, queryClient));
       await flush();
+      await new Promise(resolve => setTimeout(resolve, 20));
     });
     try {
       await act(async () => library.setNewFolderName('قائمتي'));
@@ -130,6 +132,7 @@ describe('saved folder reads across committed mutations', () => {
       await act(async () => {
         oldRead.resolve(response([]));
         await flush();
+        await new Promise(resolve => setTimeout(resolve, 20));
       });
       expect(library.folderOptions).toEqual([
         expect.objectContaining({id: '7', name: 'قائمتي'}),

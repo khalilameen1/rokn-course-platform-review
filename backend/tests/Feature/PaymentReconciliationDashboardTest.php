@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\PaymentFindingResource;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\AdminAuditLog;
 use App\Models\PaymentReconciliationFinding;
@@ -126,7 +127,7 @@ final class PaymentReconciliationDashboardTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_administrator_can_filter_the_review_queue(): void
+    public function test_saved_review_filters_redirect_to_the_native_queue(): void
     {
         $admin = $this->user('admin');
         $expected = $this->finding('ORDER-MATCH-100', 'provider_unavailable');
@@ -146,11 +147,9 @@ final class PaymentReconciliationDashboardTest extends TestCase
             ]
         ));
 
-        $response->assertOk()
-            ->assertSee($expected->order_ref)
-            ->assertDontSee('ORDER-OTHER-200')
-            ->assertDontSee('ORDER-CLOSED-300')
-            ->assertSee('لا تغيّر الطلب أو الرصيد');
+        $response->assertRedirect(PaymentFindingResource::listUrl([
+            'state' => PaymentReconciliationFinding::STATE_OPEN, 'kind' => 'provider_unavailable', 'order_ref' => 'MATCH',
+        ]));
     }
 
     public function test_review_actions_only_change_the_finding_and_are_audited(): void

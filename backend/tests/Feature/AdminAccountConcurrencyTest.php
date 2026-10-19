@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\ModeratorResource;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -144,12 +145,7 @@ final class AdminAccountConcurrencyTest extends TestCase
             'profile_revision' => 1,
         ]);
 
-        $page = $this->get(route('admin.moderators.edit', $moderator))->assertOk();
-        $document = new \DOMDocument;
-        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$page->getContent());
-        $xpath = new \DOMXPath($document);
-        self::assertSame(1, $xpath->query('//input[@name="email" and @disabled]')->length);
-        self::assertSame(1, $xpath->query('//input[@name="password" and @disabled]')->length);
+        $this->get(route('admin.moderators.edit', $moderator))->assertRedirect(ModeratorResource::getUrl('edit', ['record' => $moderator->id]));
 
         $this->put(route('admin.moderators.update', $moderator), [
             'name_ar' => 'مسؤول المحتوى الأول',

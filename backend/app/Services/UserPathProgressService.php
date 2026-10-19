@@ -37,7 +37,7 @@ final readonly class UserPathProgressService
             })
             ->with([
                 'course.coursePath',
-                'course.level',
+                'course.level.photo',
                 'course.sections',
             ])
             ->get()
@@ -54,7 +54,7 @@ final readonly class UserPathProgressService
             $publicCourses = Course::query()
                 ->whereIn('path_id', $pathIds)
                 ->whereNotNull('level_id')
-                ->with('level');
+                ->with('level.photo');
             $this->catalogue->constrainPublic($publicCourses);
             $publicCourses
                 ->where('is_coming_soon', false)

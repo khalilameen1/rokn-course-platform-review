@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\OrderFinancialEvent;
 use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 
 final readonly class OrderLifecycleService
@@ -528,10 +529,10 @@ final readonly class OrderLifecycleService
         $order->loadMissing(['package', 'user']);
         $coins = $order->packageCoinAmount();
         $verifiedTest = $order->gateway_settlement_status === 'test_purchase'
-            && (float) $order->amount === 0.0
-            && (float) $order->final_amount === 0.0
+            && Money::ofEgp($order->amount)->isZero()
+            && Money::ofEgp($order->final_amount)->isZero()
             && $order->gateway_gross_amount !== null
-            && (float) $order->gateway_gross_amount === 0.0
+            && Money::ofEgp($order->gateway_gross_amount)->isZero()
             && $order->storePurchase()
                 ->where('user_id', $order->user_id)
                 ->where('package_id', $order->package_id)
@@ -543,7 +544,8 @@ final readonly class OrderLifecycleService
                 ->whereIn('environment', ['test', 'sandbox'])
                 ->whereNotNull('verified_at')
                 ->exists();
-        if (! $order->package || ! $order->user || $coins <= 0 || ((float) $order->final_amount <= 0 && ! $verifiedTest)) {
+        if (! $order->package || ! $order->user || $coins <= 0
+            || (Money::ofEgp($order->final_amount)->isNegativeOrZero() && ! $verifiedTest)) {
             throw new \DomainException('Coin package order is incomplete and cannot be approved.');
         }
         $existingCredit = WalletTransaction::query()

@@ -2,39 +2,29 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\CouponResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CouponRequest;
+use App\Http\Requests\Admin\EditorVersionRequest;
 use App\Models\Coupon;
 use App\Services\AdminAuthoringCreateIntentService;
-use App\Services\AdminContentInventoryReadService;
 use App\Services\AdminCouponAuthoringService;
-use App\Support\CouponEditorVersion;
-use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class CouponController extends Controller
 {
     public function __construct(
         private readonly AdminCouponAuthoringService $authoring,
-        private readonly AdminContentInventoryReadService $inventory
     ) {}
 
     public function index()
     {
-        $coupons = Coupon::query()->with('course:id,name_ar')->withCount('redemptions')
-            ->latest()->paginate(25)->withQueryString();
-        $editorVersions = $coupons->mapWithKeys(fn (Coupon $coupon): array => [
-            $coupon->id => CouponEditorVersion::for($coupon),
-        ]);
-
-        return view('admin.coupons.index', compact('coupons', 'editorVersions'));
+        return redirect(CouponResource::getUrl());
     }
 
     public function create()
     {
-        $courses = $this->inventory->courses()->orderBy('name_ar')->get(['id', 'name_ar']);
-
-        return view('admin.coupons.create', compact('courses'));
+        return redirect(CouponResource::getUrl('create'));
     }
 
     public function store(CouponRequest $request, AdminAuthoringCreateIntentService $createIntents)
@@ -55,10 +45,7 @@ class CouponController extends Controller
 
     public function edit(Coupon $coupon)
     {
-        $courses = $this->inventory->courses()->orderBy('name_ar')->get(['id', 'name_ar']);
-        $editorVersion = CouponEditorVersion::for($coupon);
-
-        return view('admin.coupons.edit', compact('coupon', 'courses', 'editorVersion'));
+        return redirect(CouponResource::getUrl('edit', ['record' => $coupon->id]));
     }
 
     public function update(CouponRequest $request, Coupon $coupon)
@@ -75,9 +62,9 @@ class CouponController extends Controller
         return redirect()->route('admin.coupons.index')->with('success', 'تم التعديل بنجاح');
     }
 
-    public function destroy(Request $request, Coupon $coupon)
+    public function destroy(EditorVersionRequest $request, Coupon $coupon)
     {
-        $validated = $request->validate(['editor_version' => 'required|string|size:64']);
+        $validated = $request->validated();
         $this->authoring->delete((int) $coupon->id, (string) $validated['editor_version']);
 
         return redirect()->route('admin.coupons.index')->with('success', 'تم الحذف بنجاح ');

@@ -2,41 +2,32 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\ClassificationResource;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ClassificationProfileRequest;
 use App\Models\Classification;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminClassificationAuthoringService;
-use App\Services\AdminClassificationReadService;
-use Illuminate\Http\Request;
 
 class ClassificationController extends Controller
 {
     public function __construct(
-        private readonly AdminClassificationReadService $read,
         private readonly AdminClassificationAuthoringService $authoring
     ) {}
 
     public function index()
     {
-        return view('admin.classifications.index', ['classifications' => $this->read->rows()]);
+        return redirect(ClassificationResource::getUrl());
     }
 
     public function create()
     {
-        return view('admin.classifications.create', ['courses' => $this->read->homeCourseOptions()]);
+        return redirect(ClassificationResource::getUrl('create'));
     }
 
-    public function store(Request $request, AdminAuthoringCreateIntentService $createIntents)
+    public function store(ClassificationProfileRequest $request, AdminAuthoringCreateIntentService $createIntents)
     {
-        $validated = $request->validate([
-            'name_ar' => 'required|string|max:255',
-            'name_en' => 'required|string|max:255',
-            'show_on_home' => 'nullable|boolean',
-            'home_order' => 'required|integer|min:0|max:10000',
-            'course_ids' => 'nullable|array|max:500',
-            'course_ids.*' => 'integer|distinct|exists:courses,id',
-            'authoring_request_id' => 'required|uuid',
-        ]);
+        $validated = $request->validated();
         $courseIds = $validated['course_ids'] ?? [];
         unset($validated['authoring_request_id'], $validated['course_ids']);
         $validated['show_on_home'] = $request->boolean('show_on_home');
@@ -51,25 +42,12 @@ class ClassificationController extends Controller
 
     public function edit(Classification $classification)
     {
-        return view('admin.classifications.edit', [
-            'classification' => $classification,
-            'courses' => $this->read->homeCourseOptions(),
-            'selectedCourseIds' => $this->read->visibleCanonicalCourseIds($classification),
-            'editorVersion' => $this->read->editorVersion($classification),
-        ]);
+        return redirect(ClassificationResource::getUrl('edit', ['record' => $classification->id]));
     }
 
-    public function update(Request $request, Classification $classification)
+    public function update(ClassificationProfileRequest $request, Classification $classification)
     {
-        $validated = $request->validate([
-            'name_ar' => 'required|string|max:255',
-            'name_en' => 'required|string|max:255',
-            'show_on_home' => 'nullable|boolean',
-            'home_order' => 'required|integer|min:0|max:10000',
-            'course_ids' => 'nullable|array|max:500',
-            'course_ids.*' => 'integer|distinct|exists:courses,id',
-            'editor_version' => 'required|string|size:64',
-        ]);
+        $validated = $request->validated();
         $validated['show_on_home'] = $request->boolean('show_on_home');
         $courseIds = $validated['course_ids'] ?? [];
         $editorVersion = (string) $validated['editor_version'];

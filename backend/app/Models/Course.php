@@ -260,7 +260,8 @@ class Course extends Model
         return $this->hasMany(CourseEnrollment::class);
     }
 
-    public function activeEnrollments()
+    /** @return HasMany<CourseEnrollment, $this> */
+    public function activeEnrollments(): HasMany
     {
         return $this->enrollments()
             ->whereHas('user', function ($users) {

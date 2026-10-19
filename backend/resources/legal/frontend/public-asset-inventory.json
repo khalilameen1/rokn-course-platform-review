@@ -8,11 +8,6 @@
       "classification": "deployment"
     },
     {
-      "path": "public/admin/assets/css/admin-learning-views.css",
-      "sha256": "69f0007c9cb74581411be45586738abdff9596ce5e4120aa2826aca534aea634",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/admin-reports.css",
       "sha256": "be360712db83f79e53ac782d0e6e2d679a9aa63684f69e54dec3547807758519",
       "classification": "first_party"
@@ -29,11 +24,6 @@
       "family": "animate"
     },
     {
-      "path": "public/admin/assets/css/app-versions.css",
-      "sha256": "36c467f4dd038fc00da935204c636e0a08a457db9de6ee87be4f683cab93cfd9",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/bootstrap.min.css",
       "sha256": "c5f61edec6b397e80cc0b467d1154e0c9866655e5a237b9a3402a1c4f72a7212",
       "classification": "third_party",
@@ -42,26 +32,6 @@
     {
       "path": "public/admin/assets/css/course-certificate-preview.css",
       "sha256": "f6ca1882e3c538b38c3e82dadea19ed9a767670af311090ed627a52755af3cab",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/course-codes-create.css",
-      "sha256": "3a6dbc3f082ed76093a41ca3fc914e3965b847cc314867b01acd7290459b28ea",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/course-codes-edit.css",
-      "sha256": "f7c3f3bfb69491e0cf6aba0a03578dd54ffd0687f401e3de392996998591fe1e",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/course-codes-index.css",
-      "sha256": "4f25d973ca06eb2856696167501dbabe9ef58c72261eef3df69d3d1fba2b2f87",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/course-codes-show.css",
-      "sha256": "ce9f7e4e775650023a1f892fd4b3829a1f6a1c65f16063c57453e3e46878e291",
       "classification": "first_party"
     },
     {
@@ -95,34 +65,14 @@
       "classification": "first_party"
     },
     {
-      "path": "public/admin/assets/css/design-settings.css",
-      "sha256": "41f15d96effb86fc47bffdcd8a7b684de5748558479a7e567d8539859494de0b",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/font-awesome.min.css",
       "sha256": "799aeb25cc0373fdee0e1b1db7ad6c2f6a0e058dfadaa3379689f583213190bd",
       "classification": "third_party",
       "family": "font-awesome"
     },
     {
-      "path": "public/admin/assets/css/home-dashboard.css",
-      "sha256": "e03310ae6d72bda98761a07045eda06bef7c4a4a676cd9b6251ed72c67a4e205",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/levels-dashboard.css",
-      "sha256": "6a600146550aac3e4e77164dee1aca6a301cfe15a45bf59a748baed28021f24b",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/login.css",
       "sha256": "2fd82a9d2d4e4ab4a4143e5db5221381e49dedcce05e576fc59e9fc08093693c",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/moderator-workspace.css",
-      "sha256": "9e619a001f93bb8c2a51fe41a2127d4bbb345bf88fcae3628bfa8e4931e5c290",
       "classification": "first_party"
     },
     {
@@ -132,70 +82,10 @@
       "family": "normalize"
     },
     {
-      "path": "public/admin/assets/css/notifications-dashboard.css",
-      "sha256": "da63509a1bebaa41169f9dc9fd00b43926efa93f9500fbbbabe52723afb760be",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/orders-index.css",
-      "sha256": "392b3202b974bc4728db95d0ed1bce85cc55f08909e01d6bc9877d670c17efb0",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/orders-show.css",
-      "sha256": "902e21ed4315a98883615e07ef5546d725663f75b239b638286b64d1e270251b",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/settings-admin-data.css",
-      "sha256": "3d333c439bf557c8d2eeb674e965764ccb1ac16e6098d27c5247e8f811580b3f",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/settings-dashboard.css",
-      "sha256": "a101f48641a44a9e59279d734501d4f7520c963f13e4fb50d586082e5c6cd443",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/student-progress-index.css",
-      "sha256": "e472d2f5fde8c4cd96c5d44326c033ab28e0b1597883ecb6a8e61e06e306b35d",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/student-progress-show.css",
-      "sha256": "244addc2a85fb48ada8b37183f9f882edc6e4401a0027fc6647bc6f31f2682b8",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/themify-icons.css",
       "sha256": "08a0af9f03516172bb3d8d31eebb64510f1e7ba84881c9d99f9809a28b94374f",
       "classification": "third_party",
       "family": "themify"
-    },
-    {
-      "path": "public/admin/assets/css/users-editor.css",
-      "sha256": "13932f2dd460749b589b2a461c52eef75da0f133060be6de3d919bcbade5ab0b",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/users-form.css",
-      "sha256": "911b1b276c1c629ba3b3325cefa8059c53ee1903bed6b7361addb4f0a9f218d7",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/users-index.css",
-      "sha256": "c3b33686aed27838dd999e26b41643bf77b86a56c50ea5f37116c253eeaebaa7",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/users-show.css",
-      "sha256": "98e11b374f568949de0355a592ad89be8942fcd74c57be72acae3c323a6f1541",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/users-theme.css",
-      "sha256": "33d8415afd11b78a8ef3b90d6a2c31e1631dc1baad9df30d873ef3e9b2d7b863",
-      "classification": "first_party"
     },
     {
       "path": "public/admin/assets/fonts/cairo/Cairo-Bold.ttf",
@@ -351,16 +241,6 @@
       "classification": "first_party"
     },
     {
-      "path": "public/admin/assets/js/reward-rule-form.js",
-      "sha256": "483b638f507aba9aa86df08fc90acd12116d47c1d6af198c278d2b2cee09d934",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/js/users-index.js",
-      "sha256": "e14f39c75cdad36baebed0956ab3a63ce49bf2ecaf33c508d877f5b1357a20a9",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/js/vendor/select2/select2.min.css",
       "sha256": "15d6ad4dfdb43d0affad683e70029f97a8f8fc8637a28845009ee0542dccdf81",
       "classification": "third_party",
@@ -444,6 +324,11 @@
     {
       "path": "public/css/landing.css",
       "sha256": "ed2ec50cb9d114628b0b87b280125e07aac617a9d8de7e8ef9c54aa6fbffa5d9",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/css/operations-font.css",
+      "sha256": "8f478b4c102c5e91da65fe00ae969057ac87bc073cc4bbe71ba53995da6720cc",
       "classification": "first_party"
     },
     {
@@ -597,6 +482,11 @@
       "family": "frontend-bundle"
     },
     {
+      "path": "public/js/authoring-draft.js",
+      "sha256": "a25aace936683b7d99a679b4cd86e15f99e1aa2ceda3fbf075403205da9453eb",
+      "classification": "first_party"
+    },
+    {
       "path": "public/js/landing.js",
       "sha256": "d5681e57158e5d501e4178ce8d439daf3815cdf4983b7f7bf54577cb184e67de",
       "classification": "first_party"
@@ -677,8 +567,254 @@
     },
     {
       "path": "public/THIRD_PARTY_NOTICES.frontend.md",
-      "sha256": "b935244af3aeaf3f39f00e4a539190c4592718a5c1017d89e3332674f6930c44",
+      "sha256": "61407320b6f63bce2ef420c3b173d362dd1c6def30e6c5dd9bcb85e7c68c51f8",
       "classification": "generated"
+    },
+    {
+      "path": "public/vendor/filament/css/filament/filament/app.css",
+      "sha256": "4ea9d9d9864086b28debed234f312d9e6e3a0f2f3caff91961a0da3c672c2f47",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/fonts/filament/filament/inter/index.css",
+      "sha256": "a1844126529a6698ea00885e62f8e6a9f5402945cdf281adfe4f5a506ab2609d",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/fonts/filament/filament/inter/inter-cyrillic-ext-wght-normal-SP7Z6XGK.woff2",
+      "sha256": "72ef5fb91eb7060a703770d85801c1686a21fa5a73b132923e05b59773e91a7c",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/fonts/filament/filament/inter/inter-cyrillic-wght-normal-DR6K5BQD.woff2",
+      "sha256": "e3d19eea5d41f003696b212ec6721788c0993bc6be869a1a46a4b5fd81f10414",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/fonts/filament/filament/inter/inter-greek-ext-wght-normal-A2J6H3EX.woff2",
+      "sha256": "607a497e27bba457cb7489593019b13e23228a73d4bbc4fc85d7ca3b48e8651e",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/fonts/filament/filament/inter/inter-greek-wght-normal-ZABHMKQG.woff2",
+      "sha256": "59e001476c4a50e62474740c72beafcfdb4124c1d7d4b8b0d65942e7bda45d23",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/fonts/filament/filament/inter/inter-latin-ext-wght-normal-ZIT2UBIY.woff2",
+      "sha256": "198833bad46168b8a48c453cf5a7ca11a6ccafd26d336eea35d8178f961cae53",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/fonts/filament/filament/inter/inter-latin-wght-normal-DIHYUR35.woff2",
+      "sha256": "63a867b874311b9d2d7b392e61f398bd1373a8e1076a1abdae011e2f788bf2dc",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/fonts/filament/filament/inter/inter-vietnamese-wght-normal-VWEHJHBA.woff2",
+      "sha256": "55b684c729874120ce313190bbe520f5fb1bd9efb65fa39a9c45e682e560c351",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/actions/actions.js",
+      "sha256": "8400d0120bd171677c8cb9699bb36082772c67056f8c81ad97b2a9ab2893e7a8",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/filament/app.js",
+      "sha256": "156fa7c703650815e0b4b7577f87d596ff71ed9c076c35a2c0cd70eaad42a52f",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/filament/echo.js",
+      "sha256": "febc1fedb869be7e37150dbf2fe862b4a150e5fbc62c1ca23d5cd9be9635c059",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/forms/components/builder.js",
+      "sha256": "488ce8377600a3edfd1ebced5cf6924f7ae7ac01b4bee8196aa67443b89181a6",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/forms/components/checkbox-list.js",
+      "sha256": "a847e290c667fcf298fd5230ffd491e99852de4cdf75d241ca6a511a7b98a15e",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/forms/components/code-editor.js",
+      "sha256": "b143495c033d693bd388b5fb792e0ccaf0c320a10e6e5ed8d09647a511311c22",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/forms/components/color-picker.js",
+      "sha256": "73801523f0a2c2020fb1d221276b704fa63424767d520062e2eba061d80cf775",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/forms/components/date-time-picker.js",
+      "sha256": "be19040020f0ec6fa8d4b689df41c52b82c04fc5fd222abeea4ffcbadb123d4e",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/forms/components/file-upload.js",
+      "sha256": "433dfb76aca2c8f58842a69cd7312908764efcd299c11a52d75e0fe76ff2a80b",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/forms/components/key-value.js",
+      "sha256": "fb9b8c2c93a209079ac746fa2e69e05dfd08bd4cae1c2001bec19d001dd3cb9e",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/forms/components/markdown-editor.js",
+      "sha256": "2a99bef8bd46d0e233833c3ef40ffe27167af7367423976ae86f7ac7b7cf628e",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/forms/components/repeater.js",
+      "sha256": "47174ac31c42104334dda24e7bd5835d5e682d03a3c79b71d905b5827a810ea2",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/forms/components/rich-editor.js",
+      "sha256": "48b57216248f0ca8257a5c69871fb4ee3a54e826690446f59d230beb425d1fde",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/forms/components/select.js",
+      "sha256": "00b15324c7abcb464a9a41dd892dab615e3d98f450df59b4443feb5a8a59ec29",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/forms/components/slider.js",
+      "sha256": "129afc4d84fa83efd193d7620e7f695b90827cf5d53e38b3869af94c37d9e60b",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/forms/components/tags-input.js",
+      "sha256": "63af88c5a45a83658ec5047941d74c959118b1a8495e69248da9fe2eb7410074",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/forms/components/text-input/password-reveal.js",
+      "sha256": "3ec263cf243077557155d8ceddc0e1ec3b7073419cb441ae79ea37e5506c8cc0",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/forms/components/textarea.js",
+      "sha256": "7cc3e9c69bec6c491977699c825c6cd14cf9a0926916fb7e258469b9705b9572",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/forms/components/toggle-buttons.js",
+      "sha256": "175e4d554046593cb33a6ab2968c361ef1389fd035301872526129484351131a",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/notifications/notifications.js",
+      "sha256": "47f0da02889a756a2723ee8109e52e7260ff9e7356a7533d7551658c3e8d24d5",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/schemas/components/actions.js",
+      "sha256": "bf492e090d800749691cca4b5df3424a144ea48b784f50ce2acb355f8dbf5e91",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/schemas/components/tabs.js",
+      "sha256": "54810983ea7089ccd27c42aa9681b9ba5374d40108f89fefc99e56eede19c501",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/schemas/components/wizard.js",
+      "sha256": "ecb4809f7f0520fd0100985847e998b703c947c0704346870db04a35db99c326",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/schemas/schemas.js",
+      "sha256": "19dc306e474bad4c7314091321ffffe825d1ce910510df33093045b3f1b693c4",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/support/support.js",
+      "sha256": "0e0b47be1d21dd738c013577420c07ead576cb17a49af47c1c270c3b7ed69f02",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/tables/components/columns/checkbox.js",
+      "sha256": "04b123595ea008ba0151330ca82c33ba8a36e8637c91d46b4bd0dd0187cb13bd",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/tables/components/columns/select.js",
+      "sha256": "f83c75fb977848bec3bcc42128edcb0f83af46d66744bd6c9dd59584e10b363f",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/tables/components/columns/text-input.js",
+      "sha256": "a91b4d00eed68bb93f51e49776cb9601b46e02bd229da7597362359132300c35",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/tables/components/columns/toggle.js",
+      "sha256": "c3ff92a1fb4224eace8138863c03923e4db316f5cd0fe97ac855b1dda259544e",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/tables/tables.js",
+      "sha256": "59c4c76efada38e345ec0931b9a79767b3e9ca3e0a29c7d463b60142a22356a9",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/widgets/components/chart.js",
+      "sha256": "57a7ca418c957d5e5a8b704fd5f4be225dd9466e261258fb3d7912482d9e578c",
+      "classification": "third_party",
+      "family": "filament"
+    },
+    {
+      "path": "public/vendor/filament/js/filament/widgets/components/stats-overview/stat/chart.js",
+      "sha256": "c5cbc929b9bf3b8296591a9e9384c6022d47e8ae24f17d800c3fdbb5cd3c9439",
+      "classification": "third_party",
+      "family": "filament"
     },
     {
       "path": "public/web.config",

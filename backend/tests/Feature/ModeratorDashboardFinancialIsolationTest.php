@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\ContentWorkspace;
+use App\Filament\Pages\Dashboard;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\User;
 use App\Services\AdminPaymentOperationsReadService;
 use App\Services\CourseFinancialLedgerReportService;
 use App\Services\PaymentChannelReportService;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class ModeratorDashboardFinancialIsolationTest extends TestCase
@@ -38,10 +42,12 @@ final class ModeratorDashboardFinancialIsolationTest extends TestCase
         }
 
         $this->withoutMiddleware(RequireAdminMfa::class);
-        $response = $this->actingAs($moderator, 'web')
+        $this->actingAs($moderator, 'web')
             ->get(route('admin.dashboard'))
-            ->assertOk()
-            ->assertViewIs('admin.home.moderator');
+            ->assertRedirect(ContentWorkspace::getUrl(['page' => 1]));
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $page = Livewire::test(ContentWorkspace::class)->assertOk();
+        Livewire::test(Dashboard::class)->assertOk()->assertActionHasUrl('content', ContentWorkspace::getUrl());
 
         foreach ([
             'designSettings',
@@ -51,7 +57,7 @@ final class ModeratorDashboardFinancialIsolationTest extends TestCase
             'courseStats',
             'platformStats',
         ] as $financialViewKey) {
-            $response->assertViewMissing($financialViewKey);
+            self::assertArrayNotHasKey($financialViewKey, $page->instance()->report());
         }
 
         self::assertSame([], $resolved);

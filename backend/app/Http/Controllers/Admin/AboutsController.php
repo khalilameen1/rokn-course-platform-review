@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Pages\PublicContent;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\PublicContentRequest;
 use App\Services\AdminPublicContentAuthoringService;
-use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 
 class AboutsController extends Controller
 {
@@ -15,32 +15,24 @@ class AboutsController extends Controller
         $this->middleware('auth');
     }
 
-    public function privacy(): View
+    public function privacy(): RedirectResponse
     {
-        return view('admin.abouts.privacy', $this->content->editorState());
+        return redirect(PublicContent::getUrl(['tab' => 'privacy']));
     }
 
-    public function policy(): View
+    public function policy(): RedirectResponse
     {
-        return view('admin.abouts.policy', $this->content->editorState());
+        return redirect(PublicContent::getUrl(['tab' => 'policy']));
     }
 
-    public function about(): View
+    public function about(): RedirectResponse
     {
-        return view('admin.abouts.about', $this->content->editorState());
+        return redirect(PublicContent::getUrl(['tab' => 'about']));
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(PublicContentRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'about_ar' => 'nullable|string|max:100000',
-            'about_en' => 'nullable|string|max:100000',
-            'privacy_ar' => 'nullable|string|max:100000',
-            'privacy_en' => 'nullable|string|max:100000',
-            'policy_ar' => 'nullable|string|max:100000',
-            'policy_en' => 'nullable|string|max:100000',
-            'editor_version' => 'required|string|size:64',
-        ]);
+        $validated = $request->validated();
         $editorVersion = (string) $validated['editor_version'];
         unset($validated['editor_version']);
         $this->content->save($validated, $editorVersion);

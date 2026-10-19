@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
   "generatedFrom": "package-lock.json production dependency closure",
-  "packageCount": 737,
-  "packagePathCount": 822,
-  "inventoryHash": "325e65d151dde4071d10cd0e5124b1619f4bd9920ed9082cf56d067e8c2ec02c",
+  "packageCount": 754,
+  "packagePathCount": 839,
+  "inventoryHash": "d06ccc10a812abe43ab9ffe6827c922cf641db290a45be16182e1680dcfa4dc6",
   "packages": [
     {
       "name": "@babel/code-frame",
@@ -3446,6 +3446,16 @@
       "apacheNotice": null
     },
     {
+      "name": "combine-errors",
+      "version": "3.0.3",
+      "license": "MIT",
+      "declaredLicense": null,
+      "sourceUrl": "https://www.npmjs.com/package/combine-errors/v/3.0.3",
+      "legalSource": "reviewed-metadata-fallback",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
       "name": "combined-stream",
       "version": "1.0.8",
       "license": "MIT",
@@ -3582,6 +3592,16 @@
       "declaredLicense": "BSD-2-Clause",
       "sourceUrl": "https://www.npmjs.com/package/css-what/v/6.2.2",
       "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "custom-error-instance",
+      "version": "2.1.1",
+      "license": "ISC",
+      "declaredLicense": "ISC",
+      "sourceUrl": "https://www.npmjs.com/package/custom-error-instance/v/2.1.1",
+      "legalSource": "reviewed-metadata-fallback",
       "legalFileCount": 1,
       "apacheNotice": null
     },
@@ -4716,6 +4736,16 @@
       "apacheNotice": null
     },
     {
+      "name": "is-stream",
+      "version": "2.0.1",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/is-stream/v/2.0.1",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
       "name": "is-wsl",
       "version": "2.2.0",
       "license": "MIT",
@@ -4852,6 +4882,16 @@
       "declaredLicense": "MIT",
       "sourceUrl": "https://www.npmjs.com/package/jimp-compact/v/0.16.1",
       "legalSource": "reviewed-metadata-fallback",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "js-base64",
+      "version": "3.9.4",
+      "license": "BSD-3-Clause",
+      "declaredLicense": "BSD-3-Clause",
+      "sourceUrl": "https://www.npmjs.com/package/js-base64/v/3.9.4",
+      "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
     },
@@ -5086,6 +5126,66 @@
       "apacheNotice": null
     },
     {
+      "name": "lodash._baseiteratee",
+      "version": "4.7.0",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/lodash._baseiteratee/v/4.7.0",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "lodash._basetostring",
+      "version": "4.12.0",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/lodash._basetostring/v/4.12.0",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "lodash._baseuniq",
+      "version": "4.6.0",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/lodash._baseuniq/v/4.6.0",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "lodash._createset",
+      "version": "4.0.3",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/lodash._createset/v/4.0.3",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "lodash._root",
+      "version": "3.0.1",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/lodash._root/v/3.0.1",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "lodash._stringtopath",
+      "version": "4.8.0",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/lodash._stringtopath/v/4.8.0",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
       "name": "lodash.camelcase",
       "version": "4.3.0",
       "license": "MIT",
@@ -5111,6 +5211,16 @@
       "license": "MIT",
       "declaredLicense": "MIT",
       "sourceUrl": "https://www.npmjs.com/package/lodash.throttle/v/4.1.1",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "lodash.uniqby",
+      "version": "4.5.0",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/lodash.uniqby/v/4.5.0",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
@@ -5986,6 +6096,16 @@
       "apacheNotice": null
     },
     {
+      "name": "proper-lockfile",
+      "version": "4.1.2",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/proper-lockfile/v/4.1.2",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
       "name": "protobufjs",
       "version": "7.6.6",
       "license": "BSD-3-Clause",
@@ -6011,6 +6131,16 @@
       "license": "MIT",
       "declaredLicense": "MIT",
       "sourceUrl": "https://www.npmjs.com/package/proxy-from-env/v/2.1.0",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "querystringify",
+      "version": "2.2.0",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/querystringify/v/2.2.0",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
@@ -6366,6 +6496,16 @@
       "apacheNotice": null
     },
     {
+      "name": "requires-port",
+      "version": "1.0.0",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/requires-port/v/1.0.0",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
       "name": "reselect",
       "version": "5.1.1",
       "license": "MIT",
@@ -6411,6 +6551,16 @@
       "license": "MIT",
       "declaredLicense": "MIT",
       "sourceUrl": "https://www.npmjs.com/package/restore-cursor/v/2.0.0",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "retry",
+      "version": "0.12.0",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/retry/v/0.12.0",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
@@ -6926,6 +7076,16 @@
       "apacheNotice": null
     },
     {
+      "name": "tus-js-client",
+      "version": "4.3.1",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/tus-js-client/v/4.3.1",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
       "name": "type-detect",
       "version": "4.0.8",
       "license": "MIT",
@@ -7021,6 +7181,16 @@
       "license": "MIT",
       "declaredLicense": "MIT",
       "sourceUrl": "https://www.npmjs.com/package/update-browserslist-db/v/1.3.2",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
+      "name": "url-parse",
+      "version": "1.5.10",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/url-parse/v/1.5.10",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null

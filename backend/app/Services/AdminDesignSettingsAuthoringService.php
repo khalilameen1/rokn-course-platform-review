@@ -71,7 +71,7 @@ final readonly class AdminDesignSettingsAuthoringService
                 $complete($settings);
 
                 return $settings;
-            });
+            }, 3);
         } catch (\Throwable $exception) {
             foreach ($newFiles as $path) {
                 $this->cleanup->deleteOrQueue('public', $path);

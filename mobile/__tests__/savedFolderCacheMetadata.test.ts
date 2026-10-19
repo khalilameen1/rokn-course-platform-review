@@ -18,9 +18,9 @@ jest.mock('../src/constants/helpers', () => ({
 }));
 jest.mock('../src/services/roknApi', () => ({
   hasSession: jest.fn(async () => true),
-  removeSavedFolderFromCache: jest.fn(async () => undefined),
-  removeSavedLessonEverywhereFromCache: jest.fn(async () => undefined),
-  removeSavedLessonFromCache: jest.fn(async () => undefined),
+}));
+jest.mock('../src/services/query/savedLibraryInvalidation', () => ({
+  applySavedMembershipChange: jest.fn(async () => undefined),
 }));
 jest.mock('../src/services/learningPlayerState', () => ({
   updatePlayerStateForScope: jest.fn(async () => undefined),
@@ -30,11 +30,7 @@ jest.mock('../src/utils/secureRandom', () => ({
 }));
 
 import {publicRequest} from '../src/constants/api';
-import {
-  removeSavedFolderFromCache,
-  removeSavedLessonEverywhereFromCache,
-  removeSavedLessonFromCache,
-} from '../src/services/roknApi';
+import {applySavedMembershipChange} from '../src/services/query/savedLibraryInvalidation';
 import {updatePlayerStateForScope} from '../src/services/learningPlayerState';
 import {
   createSavedFolderOption,
@@ -243,10 +239,22 @@ describe('saved folder cache metadata round-trip', () => {
         await expect(removeLessonFromSavedFolder('11', '7')).resolves.toEqual({
           stillSaved: null,
         });
-        expect(removeSavedLessonFromCache).toHaveBeenCalledTimes(1);
+        expect(applySavedMembershipChange).toHaveBeenCalledWith(
+          expect.anything(),
+          'user-a',
+          expect.objectContaining({
+            kind: 'remove',
+            folderId: '7',
+            lessonId: '11',
+          }),
+        );
       } else {
         await expect(toggleWatchLater('11', true)).resolves.toBe(false);
-        expect(removeSavedLessonEverywhereFromCache).toHaveBeenCalledTimes(1);
+        expect(applySavedMembershipChange).toHaveBeenCalledWith(
+          expect.anything(),
+          'user-a',
+          {kind: 'remove-everywhere', lessonId: '11'},
+        );
       }
       expect(updatePlayerStateForScope).toHaveBeenCalledTimes(1);
       expect(
@@ -344,10 +352,18 @@ describe('saved folder cache metadata round-trip', () => {
         expect(offline.result.error).toEqual(new Error('offline'));
         expect(offline.result.value).toBeUndefined();
         if (operation === 'remove') {
-          expect(removeSavedLessonFromCache).toHaveBeenCalledTimes(1);
+          expect(applySavedMembershipChange).toHaveBeenCalledWith(
+            expect.anything(),
+            'user-a',
+            expect.objectContaining({kind: 'remove'}),
+          );
           expect(updatePlayerStateForScope).toHaveBeenCalledTimes(1);
         } else if (operation === 'delete') {
-          expect(removeSavedFolderFromCache).toHaveBeenCalledTimes(1);
+          expect(applySavedMembershipChange).toHaveBeenCalledWith(
+            expect.anything(),
+            'user-a',
+            {kind: 'delete-folder', folderId: '7'},
+          );
           expect(updatePlayerStateForScope).toHaveBeenCalledTimes(1);
         } else if (operation === 'save') {
           expect(updatePlayerStateForScope).toHaveBeenCalledTimes(1);

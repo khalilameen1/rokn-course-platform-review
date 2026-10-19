@@ -29,6 +29,38 @@ final class AdminPathAuthoringOwnershipTest extends TestCase
         });
     }
 
+    public function test_listing_counts_courses_without_issuing_a_query_per_path(): void
+    {
+        Path::query()->create($this->titles());
+        $reader = app(AdminPathReadService::class);
+        $measure = static function () use ($reader): array {
+            DB::enableQueryLog();
+            DB::flushQueryLog();
+            try {
+                $paths = $reader->listing('', []);
+                foreach ($paths as $path) {
+                    self::assertTrue($path->relationLoaded('interests'));
+                    self::assertSame(0, (int) $path->courses_count);
+                }
+
+                return [$paths->total(), count(DB::getQueryLog())];
+            } finally {
+                DB::disableQueryLog();
+                DB::flushQueryLog();
+            }
+        };
+        [$beforeCount, $beforeQueries] = $measure();
+        foreach (range(1, 4) as $unused) {
+            Path::query()->create($this->titles());
+        }
+        [$afterCount, $afterQueries] = $measure();
+
+        self::assertSame(1, $beforeCount);
+        self::assertSame(5, $afterCount);
+        self::assertGreaterThan(0, $beforeQueries);
+        self::assertSame($beforeQueries, $afterQueries);
+    }
+
     public function test_form_and_version_ignore_revision_rows_but_include_unpublished_canonical_courses(): void
     {
         $path = Path::query()->create($this->titles());
@@ -42,6 +74,8 @@ final class AdminPathAuthoringOwnershipTest extends TestCase
         $form = $reader->form((int) $path->id);
         self::assertEqualsCanonicalizing([$course->id, $unpublished->id], $form['courses']->modelKeys());
         self::assertSame([$course->id], $form['path']->courses->modelKeys());
+        $listedPath = $reader->listing('', [])->getCollection()->firstWhere('id', $path->id);
+        self::assertSame(1, (int) $listedPath->courses_count);
         $draft->update(['path_id' => null]);
         self::assertSame($before, $reader->editorVersion($path->fresh()));
         CourseAuthoringRevision::query()->where('revision_course_id', $draft->id)

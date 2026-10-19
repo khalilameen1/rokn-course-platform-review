@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\OrderResource;
+use App\Filament\Resources\StudentResource;
+use App\Filament\Resources\StudentResource\Pages\ListStudents;
+use App\Filament\Resources\StudentResource\Pages\ViewStudent;
+use App\Filament\Resources\StudentResource\RelationManagers\NotesRelationManager;
+use App\Filament\Resources\StudentResource\RelationManagers\OrdersRelationManager;
+use App\Filament\Resources\StudentResource\RelationManagers\ProjectsRelationManager;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Order;
 use App\Models\Package;
@@ -11,12 +18,13 @@ use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Models\UserNote;
-use DOMDocument;
-use DOMXPath;
+use Filament\Actions\Testing\TestAction;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class AdminStudentWorkspaceContractTest extends TestCase
@@ -24,6 +32,8 @@ final class AdminStudentWorkspaceContractTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
+    private array $listQueries = [];
 
     protected function setUp(): void
     {
@@ -38,23 +48,20 @@ final class AdminStudentWorkspaceContractTest extends TestCase
     {
         $student = $this->student('Workspace Student');
         $neighbour = $this->student('Neighbour Student');
+        $records = [];
         foreach ([$student, $neighbour] as $owner) {
-            $this->order($owner);
-            $this->note($owner, 'ملاحظة '.$owner->name);
-            $this->submission($owner);
+            $records[] = [$this->order($owner), $this->note($owner, 'ملاحظة '.$owner->name), $this->submission($owner)];
         }
-
-        $response = $this->actingAs($this->admin, 'web')
-            ->get(route('admin.users.show', $student))
-            ->assertOk();
-
-        foreach (['orders' => 'orders_page', 'notes' => 'notes_page', 'projectSubmissions' => 'projects_page'] as $key => $pageName) {
-            $page = $response->viewData($key);
-            self::assertSame($pageName, $page->getPageName(), $key);
-            self::assertSame(1, $page->total(), $key);
-            self::assertSame([(int) $student->id], $page->getCollection()->pluck('user_id')->map('intval')->unique()->values()->all(), $key);
+        $this->actingAs($this->admin, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        foreach ([
+            OrdersRelationManager::class,
+            NotesRelationManager::class,
+            ProjectsRelationManager::class,
+        ] as $index => $manager) {
+            Livewire::test($manager, ['ownerRecord' => $student, 'pageClass' => ViewStudent::class])
+                ->assertCanSeeTableRecords([$records[0][$index]])->assertCanNotSeeTableRecords([$records[1][$index]]);
         }
-        self::assertSame(['approved' => 0, 'pending' => 1], $response->viewData('orderStats'));
     }
 
     public function test_student_workspace_does_not_build_platform_wide_payment_reports(): void
@@ -62,22 +69,19 @@ final class AdminStudentWorkspaceContractTest extends TestCase
         $student = $this->student('Workspace Student');
         $this->order($student);
         $this->order($this->student('Other Buyer'));
-
+        $this->actingAs($this->admin, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
         DB::flushQueryLog();
         DB::enableQueryLog();
-        $this->actingAs($this->admin, 'web')->get(route('admin.users.show', $student))->assertOk();
-        $orderQueries = collect(DB::getQueryLog())
-            ->pluck('query')
-            ->filter(fn (string $sql): bool => (bool) preg_match('/\bfrom\s+"orders"/i', $sql))
-            ->values();
+        Livewire::test(OrdersRelationManager::class, [
+            'ownerRecord' => $student, 'pageClass' => ViewStudent::class,
+        ])->assertCountTableRecords(1);
+        $orderQueries = collect(DB::getQueryLog())->pluck('query')
+            ->filter(fn (string $sql): bool => (bool) preg_match('/\\bfrom\\s+"orders"/i', $sql))->values();
         DB::disableQueryLog();
-
-        // Listing page, its total and the per-status counts.
-        self::assertCount(3, $orderQueries);
+        self::assertNotEmpty($orderQueries);
         foreach ($orderQueries as $sql) {
-            // A platform summary (pending checkouts, channel totals) would
-            // read orders without the opened student's id.
-            self::assertMatchesRegularExpression('/"user_id"\s*=\s*\?/', $sql, $sql);
+            self::assertMatchesRegularExpression('/"user_id"\\s*=\\s*\\?/', $sql, $sql);
         }
     }
 
@@ -86,20 +90,17 @@ final class AdminStudentWorkspaceContractTest extends TestCase
         $student = $this->student('Workspace Student');
         $order = $this->order($student);
         $submission = $this->submission($student);
-
-        $response = $this->actingAs($this->admin, 'web')
-            ->get(route('admin.users.show', $student))
-            ->assertOk();
-        $xpath = $this->xpath($response->getContent());
-
-        foreach ([
-            route('admin.student-progress.show', $student->id),
-            route('admin.project-submissions.show', $submission),
-            route('admin.orders.show', $order->id),
-        ] as $href) {
-            self::assertGreaterThan(0, $xpath->query('//a[@href="'.$href.'"]')->length, $href);
-        }
-        self::assertSame(0, $xpath->query('//a[contains(@href, "/dashboard/bills")]')->length);
+        $this->actingAs($this->admin, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $this->get(route('admin.users.show', $student))->assertRedirect(StudentResource::getUrl('view', ['record' => $student->id]));
+        Livewire::test(ViewStudent::class, ['record' => $student->id])
+            ->assertSee(route('admin.student-progress.show', $student->id), false)->assertDontSee('/dashboard/bills', false);
+        Livewire::test(ProjectsRelationManager::class, [
+            'ownerRecord' => $student, 'pageClass' => ViewStudent::class,
+        ])->assertSee(route('admin.project-submissions.show', $submission), false);
+        Livewire::test(OrdersRelationManager::class, [
+            'ownerRecord' => $student, 'pageClass' => ViewStudent::class,
+        ])->assertSee(OrderResource::getUrl('view', ['record' => $order->id]), false);
         self::assertFalse(Route::has('admin.bills.show'));
     }
 
@@ -114,55 +115,36 @@ final class AdminStudentWorkspaceContractTest extends TestCase
             $this->travel(1)->seconds();
             $this->note($student, 'أحدث ملاحظة '.$i);
         }
-        self::assertSame($small, $this->listingQueryCount(), 'Student list queries must not grow per row.');
+        self::assertSame($small, $this->listingQueryCount(), 'Student list queries must not grow per row. '.json_encode($this->listQueries));
 
-        $response = $this->actingAs($this->admin, 'web')->get(route('admin.users.index'))->assertOk();
-        foreach ($response->viewData('users') as $user) {
-            self::assertTrue($user->relationLoaded('photo'));
-            self::assertTrue($user->relationLoaded('latestNote'));
-        }
-        $listed = $response->viewData('users')->getCollection()->keyBy('id');
+        $this->actingAs($this->admin, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $page = Livewire::test(ListStudents::class);
+        $listed = collect($page->instance()->getTableRecords()->items())->keyBy('id');
         foreach ($students as $i => $student) {
+            self::assertTrue($listed[$student->id]->relationLoaded('photo'));
+            self::assertTrue($listed[$student->id]->relationLoaded('latestNote'));
             self::assertSame('أحدث ملاحظة '.$i, $listed[$student->id]->latestNote?->note);
         }
-
-        // users-index.js retargets the single shared modal from each row's
-        // data-note-action; the server must render that contract.
-        $xpath = $this->xpath($response->getContent());
-        self::assertSame(1, $xpath->query('//*[@id="addNoteModal"]')->length);
-        self::assertSame(1, $xpath->query('//*[@id="addNoteModal"]//form[@data-student-note-form]//textarea[@name="note"]')->length);
-        self::assertSame(1, $xpath->query('//script[contains(@src, "admin/assets/js/users-index.js")]')->length);
-        foreach ($students as $student) {
-            self::assertSame(1, $xpath->query('//*[@data-note-action="'.route('admin.users.notes.store', $student->id).'"]')->length);
-        }
-
         $target = $students[2];
-        $this->actingAs($this->admin, 'web')
-            ->post(route('admin.users.notes.store', $target->id), [
-                'authoring_request_id' => (string) Str::uuid(),
-                'note' => 'ملاحظة من النافذة المشتركة',
-            ])
-            ->assertRedirect();
-        self::assertSame('ملاحظة من النافذة المشتركة', $target->fresh()->latestNote?->note);
+        $page->callAction(TestAction::make('addNote')->table($target), data: ['note' => 'ملاحظة من القائمة الأصلية'])
+            ->assertHasNoActionErrors();
+        self::assertSame('ملاحظة من القائمة الأصلية', $target->fresh()->latestNote?->note);
     }
 
     private function listingQueryCount(): int
     {
+        $this->actingAs($this->admin, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(ListStudents::class);
         DB::flushQueryLog();
         DB::enableQueryLog();
-        $this->actingAs($this->admin, 'web')->get(route('admin.users.index'))->assertOk();
-        $count = count(DB::getQueryLog());
+        Livewire::test(ListStudents::class);
+        $this->listQueries = collect(DB::getQueryLog())->pluck('query')->all();
+        $count = count($this->listQueries);
         DB::disableQueryLog();
 
         return $count;
-    }
-
-    private function xpath(string $html): DOMXPath
-    {
-        $document = new DOMDocument;
-        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$html);
-
-        return new DOMXPath($document);
     }
 
     private function student(string $name): User

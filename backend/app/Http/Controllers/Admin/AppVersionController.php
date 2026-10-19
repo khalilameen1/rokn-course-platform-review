@@ -2,75 +2,49 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\AppVersionResource;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\AppVersionProfileRequest;
+use App\Http\Requests\Admin\EditorVersionRequest;
 use App\Models\AppVersion;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AppReleaseAuthoringService;
-use App\Services\AppReleasePolicyService;
-use App\Support\AppVersionEditorVersion;
-use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use Illuminate\Validation\Rule;
+use Illuminate\Http\RedirectResponse;
 
 class AppVersionController extends Controller
 {
     public function __construct(
-        private readonly AppReleasePolicyService $releasePolicy,
         private readonly AppReleaseAuthoringService $authoring
     ) {}
 
     /**
      * Display a listing of the resource.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function index()
     {
-        $versions = AppVersion::orderBy('id', 'desc')->paginate(10);
-        $releaseReadiness = $this->releasePolicy->launchReadiness();
-        $editorVersions = $versions->getCollection()->mapWithKeys(
-            fn (AppVersion $version): array => [$version->id => AppVersionEditorVersion::for($version)]
-        );
-
-        return view('admin.app-versions.index', compact('versions', 'releaseReadiness', 'editorVersions'));
+        return redirect(AppVersionResource::getUrl());
     }
 
     /**
      * Show the form for creating a new resource.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function create()
     {
-        $latestIdentifiers = collect($this->releasePolicy->channels())
-            ->mapWithKeys(function (string $channel): array {
-                $platform = $this->releasePolicy->platformForChannel($channel);
-                $identifier = $channel === AppReleasePolicyService::CHANNEL_APP_STORE
-                    ? 'build_number'
-                    : 'version_code';
-
-                return [$channel => [
-                    'channel' => (int) AppVersion::query()
-                        ->where('platform', $platform)
-                        ->where('distribution_channel', $channel)
-                        ->max($identifier),
-                    'platform' => (int) AppVersion::query()
-                        ->where('platform', $platform)
-                        ->max($identifier),
-                ]];
-            })->all();
-
-        return view('admin.app-versions.create', compact('latestIdentifiers'));
+        return redirect(AppVersionResource::getUrl('create'));
     }
 
     /**
      * Store a newly created resource in storage.
      *
-     * @return Response
+     * @return RedirectResponse
      */
-    public function store(Request $request, AdminAuthoringCreateIntentService $createIntents)
+    public function store(AppVersionProfileRequest $request, AdminAuthoringCreateIntentService $createIntents)
     {
-        $data = $this->validatedPayload($request);
+        $data = $request->authoringData();
 
         $this->authoring->create($data, function (AppVersion $version) use ($request, $createIntents): void {
             $createIntents->completeRedirect(
@@ -86,23 +60,10 @@ class AppVersionController extends Controller
     }
 
     /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return Response
-     */
-    public function show($id)
-    {
-        AppVersion::findOrFail($id);
-
-        return redirect()->route('admin.app-versions.edit', $id);
-    }
-
-    /**
      * Show the form for editing the specified resource.
      *
      * @param  int  $id
-     * @return Response
+     * @return RedirectResponse
      */
     public function edit($id)
     {
@@ -113,24 +74,21 @@ class AppVersionController extends Controller
                 'هذا سجل قديم بلا قناة محددة ويمكن إيقافه فقط. أنشئ إصدارًا جديدًا للقناة الصحيحة.'
             );
         }
-        $editorVersion = AppVersionEditorVersion::for($version);
 
-        return view('admin.app-versions.edit', compact('version', 'editorVersion'));
+        return redirect(AppVersionResource::getUrl('edit', ['record' => $version->id]));
     }
 
     /**
      * Update the specified resource in storage.
      *
      * @param  int  $id
-     * @return Response
+     * @return RedirectResponse
      */
-    public function update(Request $request, $id)
+    public function update(AppVersionProfileRequest $request, $id)
     {
         $version = AppVersion::findOrFail($id);
-        $editorVersion = (string) $request->validate([
-            'editor_version' => 'required|string|size:64',
-        ])['editor_version'];
-        $data = $this->validatedPayload($request, $version);
+        $editorVersion = (string) $request->validated('editor_version');
+        $data = $request->authoringData();
 
         $this->authoring->update((int) $version->id, $data, $editorVersion);
 
@@ -141,14 +99,12 @@ class AppVersionController extends Controller
      * Remove the specified resource from storage.
      *
      * @param  int  $id
-     * @return Response
+     * @return RedirectResponse
      */
-    public function destroy(Request $request, $id)
+    public function destroy(EditorVersionRequest $request, $id)
     {
         $version = AppVersion::findOrFail($id);
-        $editorVersion = (string) $request->validate([
-            'editor_version' => 'required|string|size:64',
-        ])['editor_version'];
+        $editorVersion = (string) $request->validated('editor_version');
         $blocked = ! $this->authoring->delete((int) $version->id, $editorVersion);
         if ($blocked) {
             return redirect()->back()->with(
@@ -164,14 +120,12 @@ class AppVersionController extends Controller
      * Toggle the active status of the specified resource.
      *
      * @param  int  $id
-     * @return Response
+     * @return RedirectResponse
      */
-    public function toggleActive(Request $request, $id)
+    public function toggleActive(EditorVersionRequest $request, $id)
     {
         $version = AppVersion::findOrFail($id);
-        $editorVersion = (string) $request->validate([
-            'editor_version' => 'required|string|size:64',
-        ])['editor_version'];
+        $editorVersion = (string) $request->validated('editor_version');
 
         $blocked = ! $this->authoring->toggleActive((int) $version->id, $editorVersion);
         if ($blocked) {
@@ -182,79 +136,5 @@ class AppVersionController extends Controller
         }
 
         return redirect()->back()->with('success', 'تم تغيير الحالة بنجاح');
-    }
-
-    /**
-     * Keep the dashboard contract aligned with the native stores: Android is
-     * ordered by versionCode and iOS by CFBundleVersion (build number).
-     */
-    private function validatedPayload(Request $request, ?AppVersion $existing = null): array
-    {
-        $platform = (string) $request->input('platform');
-        $channel = (string) $request->input('distribution_channel');
-        $requiresUrl = $request->boolean('is_active') || $request->boolean('is_force_update');
-
-        $data = $request->validate([
-            'platform' => ['required', 'in:android,ios'],
-            'distribution_channel' => $platform === 'ios'
-                ? ['required', Rule::in(['appstore'])]
-                : ['required', Rule::in(['play', 'direct'])],
-            'version_name' => ['required', 'string', 'max:40', 'regex:/^\d+(?:\.\d+){1,3}$/'],
-            'version_code' => [
-                Rule::requiredIf($platform === 'android'),
-                'nullable',
-                'integer',
-                'min:1',
-                Rule::unique('app_versions', 'version_code')
-                    ->where(fn ($query) => $query
-                        ->where('platform', 'android')
-                        ->where('distribution_channel', $channel))
-                    ->ignore($existing?->id),
-            ],
-            'build_number' => [
-                Rule::requiredIf($platform === 'ios'),
-                'nullable',
-                'integer',
-                'min:1',
-                Rule::unique('app_versions', 'build_number')
-                    ->where(fn ($query) => $query
-                        ->where('platform', 'ios')
-                        ->where('distribution_channel', $channel))
-                    ->ignore($existing?->id),
-            ],
-            'is_force_update' => ['sometimes', 'boolean'],
-            'is_active' => ['sometimes', 'boolean'],
-            'update_message_ar' => ['nullable', 'string', 'max:500'],
-            'update_message_en' => ['nullable', 'string', 'max:500'],
-            'download_url' => [
-                Rule::requiredIf($requiresUrl),
-                'nullable',
-                'string',
-                'max:2048',
-                'url',
-                function (string $attribute, $value, $fail) use ($channel): void {
-                    if (! $this->releasePolicy->isAllowedDownloadUrl($channel, $value)) {
-                        $fail(match ($channel) {
-                            'play' => 'استخدم صفحة تطبيق ركن الصحيحة على Google Play',
-                            'appstore' => 'استخدم صفحة تطبيق ركن على App Store',
-                            'direct' => 'استخدم رابط APK مباشرًا على rokn.app',
-                            default => 'رابط التحديث لا يطابق قناة التوزيع',
-                        });
-                    }
-                },
-            ],
-            'release_notes_ar' => ['nullable', 'string', 'max:5000'],
-            'release_notes_en' => ['nullable', 'string', 'max:5000'],
-            'authoring_request_id' => [$existing ? 'nullable' : 'required', 'uuid'],
-        ]);
-
-        unset($data['authoring_request_id']);
-
-        $data['is_force_update'] = $request->boolean('is_force_update');
-        $data['is_active'] = $request->boolean('is_active');
-        $data['version_code'] = $platform === 'android' ? (int) $data['version_code'] : null;
-        $data['build_number'] = $platform === 'ios' ? (int) $data['build_number'] : null;
-
-        return $data;
     }
 }

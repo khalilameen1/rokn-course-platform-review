@@ -57,26 +57,16 @@ final class ProductFeatureFlagService
         if (! array_key_exists($key, $definitions)) {
             return false;
         }
-        if ($key === 'checkout' && (bool) config('operations.disaster_recovery_mode', false)) {
+        if ($this->suspendedByRecovery($key)) {
             return false;
         }
         $rows = $this->rows();
-        if ($rows === null) {
-            return $definitions[$key]['safe_default'];
-        }
-
-        $row = $rows->get($key);
-        if (! $row) {
-            return $definitions[$key]['default_enabled'];
-        }
-        if ($row->expires_at?->isPast()) {
-            return $definitions[$key]['safe_default'];
-        }
-        if (! $row->enabled) {
+        $state = $this->resolvedState($key, $definitions[$key], $rows?->get($key), $rows !== null);
+        if (! $state['enabled']) {
             return false;
         }
 
-        $rollout = max(0, min(100, (int) $row->rollout_percentage));
+        $rollout = $state['rollout_percentage'];
         if ($rollout >= 100) {
             return true;
         }
@@ -104,17 +94,11 @@ final class ProductFeatureFlagService
                 ? max(0, min(99, $subject))
                 : $this->bucket($key, (string) $subject);
             $row = $rows->get($key);
-            $expired = $row?->expires_at?->isPast() ?? false;
-            $enabled = ! $configurationAvailable
-                ? $definition['safe_default']
-                : ($row
-                ? (! $expired && (bool) $row->enabled)
-                : $definition['default_enabled']);
-            $rollout = $row ? max(0, min(100, (int) $row->rollout_percentage)) : 100;
+            $state = $this->resolvedState($key, $definition, $row, $configurationAvailable);
+            $expired = $state['expired'];
+            $enabled = $state['enabled'];
+            $rollout = $state['rollout_percentage'];
             $flags[$key] = $enabled && $bucket < $rollout;
-            if ($expired) {
-                $flags[$key] = $definition['safe_default'];
-            }
             $versionSource[$key] = [
                 $configurationAvailable,
                 $enabled, $rollout, $expired, $row?->updated_at?->getTimestamp() ?? 0,
@@ -122,9 +106,6 @@ final class ProductFeatureFlagService
         }
 
         $disasterRecoveryMode = (bool) config('operations.disaster_recovery_mode', false);
-        if ($disasterRecoveryMode && array_key_exists('checkout', $flags)) {
-            $flags['checkout'] = false;
-        }
         $versionSource['runtime'] = ['disaster_recovery_mode' => $disasterRecoveryMode];
 
         $ttl = max(60, (int) config('product_features.client_ttl_seconds', 300));
@@ -168,14 +149,10 @@ final class ProductFeatureFlagService
         $result = [];
         foreach ($this->definitions() as $key => $definition) {
             $row = $rows->get($key);
-            $expired = $row?->expires_at?->isPast() ?? false;
+            $state = $this->resolvedState($key, $definition, $row, $configurationAvailable);
             $result[$key] = [
-                'enabled' => ! $configurationAvailable
-                    ? $definition['safe_default']
-                    : ($row
-                    ? (! $expired && (bool) $row->enabled)
-                    : $definition['default_enabled']),
-                'rollout_percentage' => $row ? (int) $row->rollout_percentage : 100,
+                'enabled' => $state['enabled'],
+                'rollout_percentage' => $state['rollout_percentage'],
                 'owner' => $row?->owner,
                 'reason' => $configurationAvailable
                     ? $row?->reason
@@ -188,6 +165,31 @@ final class ProductFeatureFlagService
         }
 
         return $result;
+    }
+
+    /**
+     * Effective policy before subject bucketing, shared by the server, client and dashboard.
+     * Expired decisions no longer control rollout: the declared fallback applies to everyone.
+     *
+     * @param  array{default_enabled: bool, safe_default: bool, description: string}  $definition
+     * @return array{enabled: bool, rollout_percentage: int, expired: bool}
+     */
+    private function resolvedState(string $key, array $definition, ?ProductFeatureFlag $row, bool $available): array
+    {
+        $expired = $row?->expires_at?->isPast() ?? false;
+        $fallback = ! $available || $expired;
+
+        return [
+            'enabled' => ! $this->suspendedByRecovery($key) && ($fallback
+                ? $definition['safe_default'] : ($row ? (bool) $row->enabled : $definition['default_enabled'])),
+            'rollout_percentage' => $fallback || ! $row ? 100 : max(0, min(100, (int) $row->rollout_percentage)),
+            'expired' => $expired,
+        ];
+    }
+
+    private function suspendedByRecovery(string $key): bool
+    {
+        return $key === 'checkout' && (bool) config('operations.disaster_recovery_mode', false);
     }
 
     public function editorVersion(string $key, ?ProductFeatureFlag $flag): string

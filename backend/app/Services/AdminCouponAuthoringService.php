@@ -27,7 +27,7 @@ final readonly class AdminCouponAuthoringService
      */
     public function create(array $validated, string $requestId, ?UploadedFile $image, Closure $complete): Coupon
     {
-        $payload = $this->payload($validated);
+        $payload = $this->payload($validated, creating: true);
         $existing = Coupon::withTrashed()->where('authoring_request_id', $requestId)->first();
         if ($existing) {
             $this->assertCreateReplay($existing, $payload, $image, $requestId);
@@ -135,7 +135,7 @@ final readonly class AdminCouponAuthoringService
     }
 
     /** @param array<string,mixed> $validated @return array<string,mixed> */
-    private function payload(array $validated): array
+    private function payload(array $validated, bool $creating = false): array
     {
         $payload = Arr::only($validated, [
             'name_ar', 'name_en', 'code', 'course_id', 'starts_at', 'balance',
@@ -143,6 +143,13 @@ final readonly class AdminCouponAuthoringService
         ]);
         $payload['course_id'] = filled($payload['course_id'] ?? null) ? (int) $payload['course_id'] : null;
         $payload['starts_at'] = BusinessClock::localInputToUtc($payload['starts_at'] ?? null);
+        $expiryDay = BusinessClock::localDate((string) $payload['expiry_date']);
+        if ($creating && $expiryDay->isBefore(BusinessClock::now()->startOfDay())) {
+            throw ValidationException::withMessages(['expiry_date' => 'تاريخ الانتهاء يجب أن يكون اليوم أو بعده']);
+        }
+        if ($payload['starts_at'] && ! $payload['starts_at']->lessThan($expiryDay->addDay()->startOfDay()->utc())) {
+            throw ValidationException::withMessages(['starts_at' => 'وقت البداية يجب أن يسبق نهاية الكوبون']);
+        }
 
         return $payload;
     }

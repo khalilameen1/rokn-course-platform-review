@@ -8,6 +8,7 @@ use App\Exceptions\KashierCheckoutConflict;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\User;
+use App\Support\Money;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -132,7 +133,7 @@ final readonly class KashierCheckoutFlowService
                     $user,
                     $package,
                     $clientRequestKey,
-                    isset($validated['expected_amount']) ? (float) $validated['expected_amount'] : null,
+                    isset($validated['expected_amount']) ? Money::ofEgp($validated['expected_amount']) : null,
                     isset($validated['expected_coins']) ? (int) $validated['expected_coins'] : null,
                     $validated['course_checkout_id'] ?? null
                 );
@@ -232,7 +233,7 @@ final readonly class KashierCheckoutFlowService
                             'order_status' => (string) $pendingOrder->status,
                             'checkout_state' => 'payment_under_review',
                             'financial_status' => (string) $pendingOrder->financial_status,
-                            'amount' => (float) $pendingOrder->final_amount,
+                            'amount' => Money::ofEgp($pendingOrder->final_amount)->toFloat(),
                             'package' => [
                                 'id' => (int) $pendingOrder->package_id,
                                 'coins' => $pendingOrder->packageCoinAmount(),
@@ -278,7 +279,7 @@ final readonly class KashierCheckoutFlowService
         try {
             $hppUrl = $this->kashier->getHppUrl(
                 $orderRef,
-                number_format((float) $order->final_amount, 2, '.', ''),
+                Money::ofEgp($order->final_amount)->toDecimalString(),
                 'EGP',
                 $callbackUrl
             );
@@ -575,7 +576,7 @@ final readonly class KashierCheckoutFlowService
                     ? app(CourseBrowserPaymentService::class)->urlFor($order, $browserCheckoutId)
                     : $this->kashier->getHppUrl(
                         (string) $order->order_ref,
-                        number_format((float) $order->final_amount, 2, '.', ''),
+                        Money::ofEgp($order->final_amount)->toDecimalString(),
                         'EGP',
                         $callbackUrl
                     );

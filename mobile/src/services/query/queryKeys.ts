@@ -45,7 +45,18 @@ export const accountQueryKeys = (scope: string | null) => {
       [owner, 'course-details', courseId] as const,
     learningDashboard: () => [owner, 'learning-dashboard'] as const,
     savedFolders: () => [owner, 'saved-folders'] as const,
+    /** Every saved-lessons list of this owner (all lists and each folder). */
+    savedLessonLists: () => [owner, 'saved-lessons'] as const,
+    /** One saved-lessons list: `'all'` or a folder id. */
+    savedLessons: (folderId: string) =>
+      [owner, 'saved-lessons', folderId] as const,
     wallet: () => [owner, 'wallet'] as const,
     coinTasks: () => [owner, 'coin-tasks'] as const,
+    /** The account profile (name, avatar, headline) behind the أنا tab. */
+    accountProfile: () => [owner, 'account-profile'] as const,
+    /** Reviewed sharing status of the portfolio (the only share authority). */
+    portfolioProfile: () => [owner, 'portfolio-profile'] as const,
+    /** The owner's portfolio project list. */
+    portfolio: () => [owner, 'portfolio'] as const,
   };
 };

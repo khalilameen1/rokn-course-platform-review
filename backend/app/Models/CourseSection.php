@@ -57,17 +57,13 @@ class CourseSection extends Model
         return $this->morphTo();
     }
 
-    /**
-     * Get the course that owns this section.
-     */
+    /** @return BelongsTo<Course, $this> */
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
 
-    /**
-     * Get the module that owns this section (if any).
-     */
+    /** @return BelongsTo<CourseModule, $this> */
     public function module(): BelongsTo
     {
         return $this->belongsTo(CourseModule::class, 'module_id');

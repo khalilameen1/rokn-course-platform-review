@@ -2,6 +2,13 @@ module.exports = {
   preset: 'react-native',
   cacheDirectory: '<rootDir>/.cache/jest',
   setupFiles: ['./jest.setup.js'],
+  moduleNameMapper: {
+    // Metro resolves tus-js-client through its `browser` field (the
+    // XMLHttpRequest stack the app runs); Jest would take `main` (Node http).
+    // Upload tests fake XMLHttpRequest against the same build as the app.
+    '^tus-js-client$':
+      '<rootDir>/node_modules/tus-js-client/lib.es5/browser/index.js',
+  },
   // The desktop recorder owns a separate `node:test` suite. Let Jest run only
   // the React Native app tests instead of treating those files as empty suites.
   testPathIgnorePatterns: [

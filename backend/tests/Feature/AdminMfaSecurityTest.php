@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Auth\Totp;
+use App\Auth\TwoFactorAuthenticationProvider;
 use App\Models\User;
+use App\Services\AdminMfaService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use PragmaRX\Google2FA\Google2FA;
 use Tests\TestCase;
 
 final class AdminMfaSecurityTest extends TestCase
@@ -45,6 +47,13 @@ final class AdminMfaSecurityTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_malformed_setup_input_is_not_flashed_back_to_the_session(): void
+    {
+        $response = $this->actingAs($this->admin())->post(route('admin.mfa.setup.confirm'), ['code' => 'invalid-mfa-setup-code'])
+            ->assertRedirect()->assertSessionHasErrors('code');
+        self::assertArrayNotHasKey('code', $response->getSession()->getOldInput());
+    }
+
     public function test_admin_is_forced_through_setup_and_secret_is_encrypted_at_rest(): void
     {
         Carbon::setTestNow('2026-08-12 12:00:00');
@@ -60,7 +69,7 @@ final class AdminMfaSecurityTest extends TestCase
 
         $secret = Crypt::decryptString((string) session('admin_mfa_setup_secret_ciphertext'));
         self::assertNotSame('', $secret);
-        $code = app(Totp::class)->code($secret);
+        $code = app(Google2FA::class)->getCurrentOtp($secret);
 
         $this->post(route('admin.mfa.setup.confirm'), ['code' => $code])
             ->assertRedirect(route('admin.mfa.backup-codes'))
@@ -102,13 +111,13 @@ final class AdminMfaSecurityTest extends TestCase
         $pendingSecret = Crypt::decryptString((string) session('admin_mfa_setup_secret_ciphertext'));
 
         // Another browser tab finished enrolment with its own secret first.
-        $otherSecret = app(Totp::class)->generateSecret();
+        $otherSecret = app(TwoFactorAuthenticationProvider::class)->generateSecretKey();
         $admin->newQuery()->whereKey($admin->id)->first()->forceFill([
             'admin_totp_secret' => $otherSecret,
             'admin_totp_confirmed_at' => now(),
         ])->save();
 
-        $this->post(route('admin.mfa.setup.confirm'), ['code' => app(Totp::class)->code($pendingSecret)])
+        $this->post(route('admin.mfa.setup.confirm'), ['code' => app(Google2FA::class)->getCurrentOtp($pendingSecret)])
             ->assertStatus(409);
 
         self::assertSame($otherSecret, $admin->fresh()->admin_totp_secret);
@@ -119,13 +128,13 @@ final class AdminMfaSecurityTest extends TestCase
     public function test_recovery_code_is_single_use_and_invalid_responses_do_not_identify_code_type(): void
     {
         Carbon::setTestNow('2026-08-12 12:00:00');
-        $totp = app(Totp::class);
-        $secret = $totp->generateSecret();
-        $recovery = $totp->generateRecoveryCodes();
+        $provider = app(TwoFactorAuthenticationProvider::class);
+        $secret = $provider->generateSecretKey();
+        $recovery = $provider->generateRecoveryCodes();
         $admin = $this->admin([
             'admin_totp_secret' => $secret,
             'admin_totp_confirmed_at' => now(),
-            'admin_mfa_backup_codes' => array_map($totp->hashRecoveryCode(...), $recovery),
+            'admin_mfa_backup_codes' => array_map(app(AdminMfaService::class)->hashRecoveryCode(...), $recovery),
         ]);
 
         $this->actingAs($admin)
@@ -148,14 +157,13 @@ final class AdminMfaSecurityTest extends TestCase
     public function test_totp_step_cannot_be_replayed_across_sessions(): void
     {
         Carbon::setTestNow('2026-08-12 12:00:00');
-        $totp = app(Totp::class);
-        $secret = $totp->generateSecret();
+        $secret = app(TwoFactorAuthenticationProvider::class)->generateSecretKey();
         $admin = $this->admin([
             'admin_totp_secret' => $secret,
             'admin_totp_confirmed_at' => now(),
             'admin_mfa_backup_codes' => [],
         ]);
-        $code = $totp->code($secret);
+        $code = app(Google2FA::class)->getCurrentOtp($secret);
 
         $this->actingAs($admin)
             ->post(route('admin.mfa.challenge.verify'), ['code' => $code])
@@ -171,10 +179,28 @@ final class AdminMfaSecurityTest extends TestCase
         self::assertSame($usedStep, $admin->fresh()->admin_totp_last_used_step);
     }
 
+    public function test_secret_enrolled_before_the_library_swap_still_passes_the_challenge(): void
+    {
+        // RFC 6238's SHA-1 reference secret, stored exactly as the previous
+        // in-house generator wrote secrets: 32 unpadded Base32 characters.
+        $legacySecret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
+        $admin = $this->admin([
+            'admin_totp_secret' => $legacySecret,
+            'admin_totp_confirmed_at' => now(),
+            'admin_totp_last_used_step' => 1,
+            'admin_mfa_backup_codes' => [],
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.mfa.challenge.verify'), ['code' => app(Google2FA::class)->getCurrentOtp($legacySecret)])
+            ->assertRedirect(route('admin.dashboard'));
+
+        self::assertGreaterThan(1, $admin->fresh()->admin_totp_last_used_step);
+    }
+
     public function test_malformed_challenge_input_is_not_flashed_back_to_the_session(): void
     {
-        $totp = app(Totp::class);
-        $secret = $totp->generateSecret();
+        $secret = app(TwoFactorAuthenticationProvider::class)->generateSecretKey();
         $admin = $this->admin([
             'admin_totp_secret' => $secret,
             'admin_totp_confirmed_at' => now(),

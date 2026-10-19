@@ -4,19 +4,27 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\PortfolioReviewResource;
+use App\Filament\Resources\PortfolioReviewResource\Pages\ListPortfolioReviews;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Certificate;
 use App\Models\PortfolioItem;
+use App\Models\StaffRole;
 use App\Models\User;
 use App\Services\BunnyDeliveryService;
 use App\Services\BunnyService;
 use App\Services\CertificateQrDestinationService;
+use App\Services\PortfolioModerationService;
 use App\Services\PortfolioReviewReadService;
 use App\Services\PublicPortfolioService;
+use App\Services\StaffRoleService;
 use App\Support\RoknPublicUrl;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Tests\TestCase;
 
 final class PortfolioPrepublicationReviewTest extends TestCase
@@ -27,6 +35,7 @@ final class PortfolioPrepublicationReviewTest extends TestCase
     {
         parent::setUp();
         $this->withoutMiddleware(RequireAdminMfa::class);
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
         $this->mock(BunnyDeliveryService::class)->shouldReceive('storageUrl')
             ->andReturnUsing(fn (string $path) => 'https://cdn.rokn.test/'.$path);
     }
@@ -58,10 +67,10 @@ final class PortfolioPrepublicationReviewTest extends TestCase
 
         $this->actingAs($this->owner('admin'), 'web')
             ->get(route('admin.portfolio-reviews.index'))
-            ->assertOk()
-            ->assertSee($submitted->name)
-            ->assertDontSee($empty->name)
-            ->assertDontSee($private->name);
+            ->assertRedirect(PortfolioReviewResource::listUrl());
+        Livewire::test(ListPortfolioReviews::class)
+            ->assertCanSeeTableRecords([$submitted])
+            ->assertCanNotSeeTableRecords([$empty, $private]);
     }
 
     public function test_only_admin_can_review_and_review_consumes_the_exact_preview_revision(): void
@@ -79,7 +88,7 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         }
         $this->flushSession();
         $admin = $this->owner('admin');
-        $this->actingAs($admin, 'web')->get(route('admin.portfolio-reviews.index'))->assertOk()->assertSee($owner->name);
+        $this->actingAs($admin, 'web')->get(PortfolioReviewResource::getUrl())->assertOk()->assertSee($owner->name);
         $this->get(route('admin.portfolio-preview.show', $owner))->assertOk()->assertSee('اعتماد هذه النسخة للمشاركة');
         $this->post($route, $decision)->assertRedirect()->assertSessionHas('success');
         $this->post($route, $decision + ['reason' => 'سبب متأخر'])->assertStatus(409);
@@ -182,7 +191,9 @@ final class PortfolioPrepublicationReviewTest extends TestCase
             $otherItem->mediaFiles->first()->public_id, (string) $preview['review']['revision'], $preview['review']['snapshot_hash']));
         DB::table('portfolio_items')->where('id', $item->id)->update(['description' => 'Unreviewed bulk edit']);
         $this->assertPublishedWithout($owner, 'Unreviewed bulk edit');
-        self::assertSame('pending', $owner->fresh()->portfolio_sharing_status);
+        self::assertSame('pending', app(PortfolioReviewReadService::class)->status($owner->fresh()));
+        // Reading detects an out-of-band edit but never repairs stored rows.
+        self::assertSame('approved', $owner->fresh()->portfolio_sharing_status);
         $this->approve($owner);
         $url = app(PublicPortfolioService::class)->find($owner->portfolio_slug)['projects'][0]['media'][0]['image_url'];
         $item->mediaFiles->first()->delete();
@@ -243,6 +254,41 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         $preview = app(PublicPortfolioService::class)->adminPreview($owner);
         $this->postJson(route('admin.portfolio-reviews.decide', $owner), $this->decision($preview))
             ->assertUnprocessable();
+        self::assertSame('pending', $owner->fresh()->portfolio_sharing_status);
+    }
+
+    public function test_assigned_portfolio_reviewer_can_record_a_decision_without_a_legacy_admin_role(): void
+    {
+        $owner = $this->owner();
+        $this->work($owner);
+        $administrator = $this->owner('admin');
+        $reviewer = $this->owner('moderator');
+        $roles = app(StaffRoleService::class);
+        $roles->seedDefaults();
+        $roles->assign($administrator, $reviewer->id, [(int) StaffRole::findByName('portfolio_reviewer', 'web')->id]);
+        $preview = app(PublicPortfolioService::class)->adminPreview($owner);
+        $this->actingAs($reviewer, 'web')->post(route('admin.portfolio-reviews.decide', $owner), [
+            ...$this->decision($preview), 'decision' => 'rejected', 'reason' => 'ارفع صورة أوضح للنتيجة',
+        ])->assertRedirect()->assertSessionHas('success');
+        self::assertSame('rejected', $owner->fresh()->portfolio_sharing_status);
+        self::assertSame($reviewer->id, $owner->fresh()->portfolio_reviewed_by);
+    }
+
+    public function test_finance_only_staff_cannot_bypass_the_portfolio_owner_permission_boundary(): void
+    {
+        $owner = $this->owner()->fresh();
+        $administrator = $this->owner('admin');
+        $finance = $this->owner('admin');
+        $roles = app(StaffRoleService::class);
+        $roles->seedDefaults();
+        $roles->assign($administrator, $finance->id, [(int) StaffRole::findByName('finance', 'web')->id]);
+        $snapshot = app(PortfolioReviewReadService::class)->snapshot($owner);
+        try {
+            app(PortfolioModerationService::class)->decide($owner, $finance, $snapshot['revision'], $snapshot['hash'], 'rejected', 'غير مخول بالمراجعة');
+            self::fail('The aggregate owner must honor the assigned permission profile.');
+        } catch (HttpExceptionInterface $exception) {
+            self::assertSame(403, $exception->getStatusCode());
+        }
         self::assertSame('pending', $owner->fresh()->portfolio_sharing_status);
     }
 

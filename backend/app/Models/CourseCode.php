@@ -153,6 +153,8 @@ class CourseCode extends Model
 
     /**
      * Get the course associated with this code
+     *
+     * @return BelongsTo<Course, $this>
      */
     public function course(): BelongsTo
     {
@@ -161,6 +163,8 @@ class CourseCode extends Model
 
     /**
      * Get the lesson associated with this code
+     *
+     * @return BelongsTo<Lesson, $this>
      */
     public function lesson(): BelongsTo
     {
@@ -169,6 +173,8 @@ class CourseCode extends Model
 
     /**
      * Get all usages of this code
+     *
+     * @return HasMany<CourseCodeUsage, $this>
      */
     public function usages(): HasMany
     {
@@ -177,6 +183,8 @@ class CourseCode extends Model
 
     /**
      * Orders that preserve this code as part of their financial provenance.
+     *
+     * @return HasMany<Order, $this>
      */
     public function orders(): HasMany
     {

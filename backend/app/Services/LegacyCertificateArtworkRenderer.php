@@ -14,9 +14,17 @@ use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\ErrorCorrectionLevel;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
-use Intervention\Image\Facades\Image;
+use Intervention\Image\Alignment;
+use Intervention\Image\Encoders\PngEncoder;
+use Intervention\Image\Laravel\Facades\Image;
 
-/** Historical artwork retained only for recovery of pre-editorial credentials. */
+/**
+ * Historical artwork retained only for recovery of pre-editorial credentials.
+ *
+ * Text is drawn with GD directly, reproducing the Intervention Image 2 font
+ * arithmetic (point size, entity escaping, bounding-box alignment) so that
+ * recovered credentials stay pixel-identical to the originally issued ones.
+ */
 final class LegacyCertificateArtworkRenderer
 {
     /** @param array{url:string,title:string,hint:string,type:string} $qrDestination */
@@ -35,7 +43,11 @@ final class LegacyCertificateArtworkRenderer
             }
 
             // Load the template
-            $img = Image::make($templatePath);
+            $img = Image::decodePath($templatePath);
+            $canvas = $img->core()->native();
+            if (! $canvas instanceof \GdImage) {
+                throw new \RuntimeException('Certificate template did not decode to a GD image.');
+            }
             $width = $img->width();
             $height = $img->height();
 
@@ -49,13 +61,16 @@ final class LegacyCertificateArtworkRenderer
             $pos = $positions['name'];
             $pos['size'] = $this->fittedFontSize($studentName, $fontPath, $pos, $width);
             $placement = $this->horizontalTextPlacement($studentName, $fontPath, $pos, $width);
-            $img->text($studentName, $placement['x'], (int) ($height * $pos['y']), function ($font) use ($fontPath, $pos, $placement) {
-                $font->file($fontPath);
-                $font->size($pos['size']);
-                $font->color($pos['color']);
-                $font->align($placement['align']);
-                $font->valign('middle');
-            });
+            $this->drawText(
+                $canvas,
+                $studentName,
+                $placement['x'],
+                (int) ($height * $pos['y']),
+                $fontPath,
+                (int) $pos['size'],
+                (string) $pos['color'],
+                $placement['align']
+            );
 
             // ----- 2. Achievement wording -----
             // This comes from the immutable certificate snapshot, never from
@@ -76,17 +91,15 @@ final class LegacyCertificateArtworkRenderer
                     $achievementPosition,
                     $width
                 );
-                $img->text(
+                $this->drawText(
+                    $canvas,
                     $achievementText,
                     $placement['x'],
                     (int) ($height * $achievementPosition['y']),
-                    function ($font) use ($fontPath, $achievementPosition, $placement): void {
-                        $font->file($fontPath);
-                        $font->size($achievementPosition['size']);
-                        $font->color($achievementPosition['color']);
-                        $font->align($placement['align']);
-                        $font->valign('middle');
-                    }
+                    $fontPath,
+                    (int) $achievementPosition['size'],
+                    (string) $achievementPosition['color'],
+                    $placement['align']
                 );
             }
 
@@ -99,26 +112,32 @@ final class LegacyCertificateArtworkRenderer
             $pos = $positions['course'];
             $pos['size'] = $this->fittedFontSize($courseName, $fontPath, $pos, $width);
             $placement = $this->horizontalTextPlacement($courseName, $fontPath, $pos, $width);
-            $img->text($courseName, $placement['x'], (int) ($height * $pos['y']), function ($font) use ($fontPath, $pos, $placement) {
-                $font->file($fontPath);
-                $font->size($pos['size']);
-                $font->color($pos['color']);
-                $font->align($placement['align']);
-                $font->valign('middle');
-            });
+            $this->drawText(
+                $canvas,
+                $courseName,
+                $placement['x'],
+                (int) ($height * $pos['y']),
+                $fontPath,
+                (int) $pos['size'],
+                (string) $pos['color'],
+                $placement['align']
+            );
 
             // ----- 4. Certificate ID -----
             // The printed credential must match the public API and QR target;
             // database sequence IDs are implementation details, not credentials.
             $certIdText = (string) $certificate->public_id;
             $pos = $positions['cert_id'];
-            $img->text($certIdText, (int) ($width * $pos['x']), (int) ($height * $pos['y']), function ($font) use ($fontPath, $pos) {
-                $font->file($fontPath);
-                $font->size($pos['size']);
-                $font->color($pos['color']);
-                $font->align($pos['align'] ?? 'center');
-                $font->valign('middle');
-            });
+            $this->drawText(
+                $canvas,
+                $certIdText,
+                (int) ($width * $pos['x']),
+                (int) ($height * $pos['y']),
+                $fontPath,
+                (int) $pos['size'],
+                (string) $pos['color'],
+                (string) ($pos['align'] ?? 'center')
+            );
 
             // ----- 5. Date -----
             $dateText = CarbonImmutable::instance($generatedAt)
@@ -131,19 +150,22 @@ final class LegacyCertificateArtworkRenderer
             $dateText = $this->shapeIfArabic($dateText);
             $pos = $positions['date'];
             $placement = $this->horizontalTextPlacement($dateText, $fontPath, $pos, $width);
-            $img->text($dateText, $placement['x'], (int) ($height * $pos['y']), function ($font) use ($fontPath, $pos, $placement) {
-                $font->file($fontPath);
-                $font->size($pos['size']);
-                $font->color($pos['color']);
-                $font->align($placement['align']);
-                $font->valign('middle');
-            });
+            $this->drawText(
+                $canvas,
+                $dateText,
+                $placement['x'],
+                (int) ($height * $pos['y']),
+                $fontPath,
+                (int) $pos['size'],
+                (string) $pos['color'],
+                $placement['align']
+            );
 
             // ----- 6. QR code -----
             // Practical certificates lead to the learner's unlisted body of
             // work. Theoretical certificates lead to this exact credential.
             $this->drawQrCaption(
-                $img,
+                $canvas,
                 $qrDestination,
                 (string) $certificate->public_id,
                 $positions,
@@ -156,13 +178,13 @@ final class LegacyCertificateArtworkRenderer
             if (! $qrPng) {
                 throw new \RuntimeException('Certificate QR code could not be generated.');
             }
-            $qrImage = Image::make($qrPng);
+            $qrImage = Image::decodeBinary($qrPng);
             // Position the QR so its centre aligns with the configured point
             $qrX = (int) ($width * $positions['qr_code']['x']) - (int) ($qrImage->width() / 2);
             $qrY = (int) ($height * $positions['qr_code']['y']) - (int) ($qrImage->height() / 2);
-            $img->insert($qrImage, 'top-left', max(0, $qrX), max(0, $qrY));
+            $img->insert($qrImage, max(0, $qrX), max(0, $qrY), Alignment::TOP_LEFT);
 
-            return (string) $img->encode('png', 95);
+            return $img->encode(new PngEncoder)->toString();
         } catch (\Throwable $exception) {
             report($exception);
 
@@ -202,11 +224,11 @@ final class LegacyCertificateArtworkRenderer
     }
 
     /**
-     * Intervention's GD right/middle correction is based on font-coordinate
+     * The historical right/middle correction is based on font-coordinate
      * extrema and becomes unreliable after Arabic glyph shaping. Convert a
      * right edge into an explicit left drawing origin using the exact GD box,
-     * then ask Intervention to draw left-aligned. This keeps the visual box,
-     * not the logical string, inside the main editorial field.
+     * then draw left-aligned. This keeps the visual box, not the logical
+     * string, inside the main editorial field.
      *
      * @param  array{x:float,size:int,align?:string}  $position
      * @return array{x:int,align:string,left:int,right:int}
@@ -241,15 +263,12 @@ final class LegacyCertificateArtworkRenderer
             return null;
         }
 
-        // Intervention Image v2 converts configured pixel sizes to GD points.
-        $pointSize = (int) ceil(max(1, $pixelSize) * 0.75);
-        $encoded = preg_replace('/&(#(?:x[a-fA-F0-9]+|[0-9]+);)/', '&#38;\\1', $text);
-        $encoded = mb_encode_numericentity(
-            (string) $encoded,
-            [0x0080, 0xFFFF, 0, 0xFFFF],
-            'UTF-8'
+        $box = imagettfbbox(
+            $this->pointSize(max(1, $pixelSize)),
+            0,
+            $fontPath,
+            $this->gdText($text)
         );
-        $box = imagettfbbox($pointSize, 0, $fontPath, $encoded);
         if (! is_array($box)) {
             return null;
         }
@@ -260,8 +279,113 @@ final class LegacyCertificateArtworkRenderer
         return ['width' => $maxX - $minX, 'min_x' => $minX, 'max_x' => $maxX];
     }
 
+    /** Configured pixel sizes were converted to GD points by the historical renderer. */
+    private function pointSize(int $pixelSize): int
+    {
+        return (int) ceil($pixelSize * 0.75);
+    }
+
+    /**
+     * imagettfbbox()/imagettftext() decode numeric entities. Preserve the
+     * literal snapshot and hand GD numeric entities for non-ASCII glyphs.
+     */
+    private function gdText(string $text): string
+    {
+        $encoded = preg_replace('/&(#(?:x[a-fA-F0-9]+|[0-9]+);)/', '&#38;\\1', $text);
+
+        return mb_encode_numericentity((string) $encoded, [0x0080, 0xFFFF, 0, 0xFFFF], 'UTF-8');
+    }
+
+    /**
+     * Draw one text line with the historical alignment corrections: the
+     * anchor is shifted by the bounding-box corner(s) that the horizontal
+     * and vertical alignment pair selects, then the text is painted at the
+     * resulting baseline origin.
+     */
+    private function drawText(
+        \GdImage $canvas,
+        string $text,
+        int $x,
+        int $y,
+        string $fontPath,
+        int $pixelSize,
+        string $color,
+        string $align,
+        string $valign = 'middle'
+    ): void {
+        $pointSize = $this->pointSize($pixelSize);
+        $encoded = $this->gdText($text);
+        $box = imagettfbbox($pointSize, 0, $fontPath, $encoded);
+        if (! is_array($box)) {
+            throw new \RuntimeException('Unable to measure certificate text.');
+        }
+
+        $align = strtolower($align);
+        $valign = strtolower($valign);
+        switch ($align.'-'.$valign) {
+            case 'center-top':
+                $x -= (int) round(($box[6] + $box[4]) / 2);
+                $y -= (int) round(($box[7] + $box[5]) / 2);
+                break;
+            case 'right-top':
+                $x -= $box[4];
+                $y -= $box[5];
+                break;
+            case 'left-top':
+                $x -= $box[6];
+                $y -= $box[7];
+                break;
+            case 'center-center':
+            case 'center-middle':
+                $x -= (int) round(($box[0] + $box[4]) / 2);
+                $y -= (int) round(($box[1] + $box[5]) / 2);
+                break;
+            case 'right-center':
+            case 'right-middle':
+                $x -= (int) round(($box[2] + $box[4]) / 2);
+                $y -= (int) round(($box[3] + $box[5]) / 2);
+                break;
+            case 'left-center':
+            case 'left-middle':
+                $x -= (int) round(($box[0] + $box[6]) / 2);
+                $y -= (int) round(($box[1] + $box[7]) / 2);
+                break;
+            case 'center-bottom':
+                $x -= (int) round(($box[0] + $box[2]) / 2);
+                $y -= (int) round(($box[1] + $box[3]) / 2);
+                break;
+            case 'right-bottom':
+                $x -= $box[2];
+                $y -= $box[3];
+                break;
+            case 'left-bottom':
+                $x -= $box[0];
+                $y -= $box[1];
+                break;
+        }
+
+        imagealphablending($canvas, true);
+        if (imagettftext($canvas, $pointSize, 0, $x, $y, $this->colorInt($color), $fontPath, $encoded) === false) {
+            throw new \RuntimeException('Unable to draw certificate text.');
+        }
+    }
+
+    /** Packed opaque GD colour from a "#rgb" or "#rrggbb" configuration value. */
+    private function colorInt(string $color): int
+    {
+        $hex = ltrim(trim($color), '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+        if (! preg_match('/^[0-9a-fA-F]{6}$/', $hex)) {
+            throw new \RuntimeException("Unsupported certificate colour: {$color}");
+        }
+
+        return (int) hexdec($hex);
+    }
+
     private function drawQrCaption(
-        $image,
+        \GdImage $canvas,
         array $destination,
         string $certificatePublicId,
         array $positions,
@@ -272,17 +396,15 @@ final class LegacyCertificateArtworkRenderer
         foreach (['qr_title' => 'title', 'qr_hint' => 'hint'] as $positionKey => $textKey) {
             $position = $positions[$positionKey];
             $text = $this->shapeIfArabic($destination[$textKey]);
-            $image->text(
+            $this->drawText(
+                $canvas,
                 $text,
                 (int) round($width * $position['x']),
                 (int) round($height * $position['y']),
-                function ($font) use ($fontPath, $position): void {
-                    $font->file($fontPath);
-                    $font->size($position['size']);
-                    $font->color($position['color']);
-                    $font->align('center');
-                    $font->valign('middle');
-                }
+                $fontPath,
+                (int) $position['size'],
+                (string) $position['color'],
+                'center'
             );
         }
 
@@ -303,17 +425,15 @@ final class LegacyCertificateArtworkRenderer
                 $position,
                 $width
             );
-            $image->text(
+            $this->drawText(
+                $canvas,
                 $text,
                 (int) round($width * $position['x']),
                 (int) round($height * $position['y']),
-                function ($font) use ($fontPath, $position): void {
-                    $font->file($fontPath);
-                    $font->size($position['size']);
-                    $font->color($position['color']);
-                    $font->align('center');
-                    $font->valign('middle');
-                }
+                $fontPath,
+                (int) $position['size'],
+                (string) $position['color'],
+                'center'
             );
         }
     }

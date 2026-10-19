@@ -2,9 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Auth\AdminPermissionMatrix;
+use App\Filament\Resources\StudentResource;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StudentDeviceResetRequest;
+use App\Http\Requests\Admin\StudentIndexRequest;
+use App\Http\Requests\Admin\StudentNoteRequest;
+use App\Http\Requests\Admin\StudentStateRequest;
 use App\Http\Requests\Admin\UserRequest;
-use App\Models\DesignSetting;
 use App\Models\User;
 use App\Models\UserNote;
 use App\Services\AdminAuthoringCreateIntentService;
@@ -13,11 +18,8 @@ use App\Services\AdminStudentNoteService;
 use App\Services\AdminStudentReadService;
 use App\Services\StudentAccountStateService;
 use App\Support\CsvCell;
-use App\Support\StudentEditorVersion;
-use Illuminate\Contracts\View\Factory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class UsersController extends Controller
@@ -27,37 +29,15 @@ class UsersController extends Controller
         private readonly AdminStudentNoteService $notes
     ) {}
 
-    /**
-     * Get design settings for the views
-     */
-    private function getDesignSettings()
+    public function index(StudentIndexRequest $request): RedirectResponse
     {
-        return DesignSetting::getDefaultSettings();
-    }
-
-    /**
-     * @return Factory|View
-     */
-    public function index(Request $request, AdminStudentReadService $students)
-    {
-        $filters = $request->validate([
-            'search' => ['nullable', 'string', 'max:120'],
-            'active' => ['nullable', 'in:0,1'],
-        ]);
-
-        return view('admin.users.index', array_merge(
-            $students->listing($filters, $request->query()),
-            ['designSettings' => $this->getDesignSettings()]
-        ));
+        return redirect()->to(StudentResource::listUrl($request->validated(), max(1, $request->integer('page', 1))));
     }
 
     /** Streamed CSV of the current list filters (UTF-8 BOM so Excel reads Arabic). */
-    public function export(Request $request, AdminStudentReadService $students): StreamedResponse
+    public function export(StudentIndexRequest $request, AdminStudentReadService $students): StreamedResponse
     {
-        $filters = $request->validate([
-            'search' => ['nullable', 'string', 'max:120'],
-            'active' => ['nullable', 'in:0,1'],
-        ]);
+        $filters = $request->validated();
 
         return response()->streamDownload(function () use ($students, $filters): void {
             $file = fopen('php://output', 'wb');
@@ -78,14 +58,9 @@ class UsersController extends Controller
         }, 'students-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    /**
-     * @return Factory|View
-     */
-    public function create()
+    public function create(): RedirectResponse
     {
-        $designSettings = $this->getDesignSettings();
-
-        return view('admin.users.create', compact('designSettings'));
+        return redirect()->to(StudentResource::getUrl('create'));
     }
 
     /**
@@ -109,32 +84,18 @@ class UsersController extends Controller
         return redirect()->route('admin.users.index')->with('success', 'تمت الإضافة بنجاح ');
     }
 
-    /**
-     * @return Factory|View
-     */
-    public function show(
-        User $user,
-        Request $request,
-        AdminStudentReadService $students
-    ) {
-        $this->assertStudent($user);
-
-        return view('admin.users.show', array_merge(
-            $students->workspace($user, $request->query()),
-            ['designSettings' => $this->getDesignSettings()]
-        ));
-    }
-
-    /**
-     * @return Factory|View
-     */
-    public function edit(User $user)
+    public function show(User $user): RedirectResponse
     {
         $this->assertStudent($user);
-        $designSettings = $this->getDesignSettings();
-        $editorVersion = StudentEditorVersion::for($user);
 
-        return view('admin.users.edit', compact('user', 'designSettings', 'editorVersion'));
+        return redirect()->to(StudentResource::getUrl('view', ['record' => $user->id]));
+    }
+
+    public function edit(User $user): RedirectResponse
+    {
+        $this->assertStudent($user);
+
+        return redirect()->to(StudentResource::getUrl('edit', ['record' => $user->id]));
     }
 
     /**
@@ -156,15 +117,12 @@ class UsersController extends Controller
      * @return RedirectResponse
      */
     public function deactive(
-        Request $request,
+        StudentStateRequest $request,
         User $user,
         StudentAccountStateService $accounts
     ) {
         abort_if(in_array(strtolower((string) $user->role), ['admin', 'moderator', 'teacher'], true), 403);
-        $validated = $request->validate([
-            'expected_active' => ['required', 'boolean'],
-            'state_version' => ['required', 'string', 'size:64'],
-        ]);
+        $validated = $request->validated();
         $user = $accounts->setActive(
             $user,
             (bool) $validated['expected_active'],
@@ -179,14 +137,11 @@ class UsersController extends Controller
      * Store a new note for the user.
      */
     public function storeNote(
-        Request $request,
+        StudentNoteRequest $request,
         User $user,
         AdminAuthoringCreateIntentService $createIntents
     ) {
-        $validated = $request->validate([
-            'note' => 'required|string|max:1000',
-            'authoring_request_id' => 'required|uuid',
-        ]);
+        $validated = $request->validated();
 
         $this->notes->create(
             (int) $user->id, $validated['note'], (int) $request->user()->id,
@@ -207,7 +162,7 @@ class UsersController extends Controller
      */
     public function deleteNote(UserNote $note, Request $request)
     {
-        if (! $this->notes->delete((int) $note->id, (int) $request->user()->id, $request->user()->role === 'admin')) {
+        if (! $this->notes->delete((int) $note->id, (int) $request->user()->id, app(AdminPermissionMatrix::class)->allows($request->user(), 'admin.users.notes.delete', 'DELETE'))) {
             return redirect()->back()->with('error', 'غير مصرح لك بحذف هذه الملاحظة');
         }
 
@@ -218,14 +173,11 @@ class UsersController extends Controller
      * Reset the locked device for a user (single_device_permanent policy).
      */
     public function resetDevice(
-        Request $request,
+        StudentDeviceResetRequest $request,
         User $user,
         StudentAccountStateService $accounts
     ) {
-        $validated = $request->validate([
-            'state_version' => ['required', 'string', 'size:64'],
-            'expected_policy' => ['required', 'string'],
-        ]);
+        $validated = $request->validated();
         $accounts->resetDevice(
             $user, (string) $validated['expected_policy'], (string) $validated['state_version']
         );

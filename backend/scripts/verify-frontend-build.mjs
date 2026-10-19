@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const artifacts = [
+    'public/js/authoring-draft.js',
     'public/js/app.js',
     'public/js/app.js.LEGAL.txt',
     'public/css/app.css',

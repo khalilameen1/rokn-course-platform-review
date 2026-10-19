@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\ContentWorkspace;
+use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\FinancialOverview;
 use App\Http\Controllers\Admin\HomeController;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Course;
@@ -111,13 +114,13 @@ final class AdminHomeReadOwnershipTest extends TestCase
         $this->actingAs($this->user('admin'), 'web');
         $this->get(route('admin.dashboard', ['period' => 'invalid']))->assertSessionHasErrors('period');
         $this->get(route('admin.dashboard', ['period' => '30d']))
-            ->assertOk()->assertViewIs('admin.home.index')
-            ->assertViewHas('period', fn (ReportPeriod $period): bool => $period->key === '30d');
+            ->assertRedirect(FinancialOverview::getUrl(['filters' => ['period' => '30d']]));
+        $this->get(route('admin.dashboard'))->assertRedirect(Dashboard::getUrl());
         // A different operator needs a new session, as in the real login flow.
         $this->flushSession();
         $this->actingAs($this->user('moderator'), 'web');
         $this->get(route('admin.dashboard', ['period' => 'invalid']))
-            ->assertOk()->assertViewIs('admin.home.moderator')->assertViewMissing('revenueStats');
+            ->assertRedirect(ContentWorkspace::getUrl(['page' => 1]));
     }
 
     private function course(bool $unpublished): Course

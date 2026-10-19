@@ -20,6 +20,26 @@ use Throwable;
 
 final class OperationalRuntimeService
 {
+    /** Bounded recovery projection; never exposes or deserializes queued payloads. @return array<string, array<string, mixed>> */
+    public function recoveryRecords(): array
+    {
+        $records = [];
+        foreach ($this->failedJobs()['recent'] as $job) {
+            $records['job:'.$job['id']] = [
+                'kind' => 'job', 'id' => $job['id'], 'title' => $job['queue'],
+                'description' => 'مهمة فاشلة #'.$job['id'], 'occurred_at' => $job['failed_at'],
+            ];
+        }
+        foreach ($this->outbox()['failed_events'] ?? [] as $event) {
+            $records['event:'.$event->id] = [
+                'kind' => 'event', 'id' => (int) $event->id, 'title' => (string) $event->topic,
+                'description' => 'حدث #'.$event->id.' · '.$event->attempts.' محاولات', 'occurred_at' => $event->updated_at,
+            ];
+        }
+
+        return $records;
+    }
+
     /** @return array<string, mixed> */
     public function snapshot(): array
     {

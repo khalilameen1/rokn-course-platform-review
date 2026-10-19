@@ -15,10 +15,14 @@ final class AdminClassificationReadService
     /** @return Collection<int, Classification> */
     public function rows(): Collection
     {
-        return Classification::query()
-            ->withCount(['courses as home_courses_count' => fn ($courses) => $this
-                ->onlyCanonicalCourses($courses)->where('is_catalog_visible', true)])
-            ->orderBy('home_order')->orderBy('name_ar')->get();
+        return $this->listQuery()->orderBy('home_order')->orderBy('name_ar')->get();
+    }
+
+    /** @return Builder<Classification> */
+    public function listQuery(): Builder
+    {
+        return Classification::query()->withCount(['courses as home_courses_count' => fn ($courses) => $this
+            ->onlyCanonicalCourses($courses)->where('is_catalog_visible', true)]);
     }
 
     /** @return Builder<Course> */

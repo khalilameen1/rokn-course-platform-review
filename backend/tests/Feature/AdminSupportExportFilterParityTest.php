@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\FeedbackResource;
+use App\Filament\Resources\FeedbackResource\Pages\ListFeedback;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Course;
 use App\Models\FeedbackReport;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -64,6 +68,17 @@ final class AdminSupportExportFilterParityTest extends TestCase
             'first_response_due_at' => now()->subHour(),
         ]);
         $this->actingAs($this->admin, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+    }
+
+    public function test_end_date_alone_is_valid_for_inbox_and_export_but_inverted_range_is_rejected(): void
+    {
+        $filters = ['to' => '2026-09-09'];
+        $this->get(route('admin.feedback.index', $filters))->assertRedirect(FeedbackResource::getUrl('index', ['filters' => ['criteria' => $filters]]))->assertSessionHasNoErrors();
+        $this->get(route('admin.feedback.export', $filters))->assertOk()->assertSessionHasNoErrors();
+        foreach (['admin.feedback.index', 'admin.feedback.export'] as $route) {
+            $this->get(route($route, ['from' => '2026-09-10', 'to' => '2026-09-09']))->assertSessionHasErrors('to');
+        }
     }
 
     protected function tearDown(): void
@@ -95,8 +110,8 @@ final class AdminSupportExportFilterParityTest extends TestCase
             ],
         };
         $expected = $kind === 'guest_email' ? $this->guest : $this->wanted;
-        $inbox = $this->get(route('admin.feedback.index', $filters))->assertOk();
-        self::assertSame([$expected->public_id], $inbox->viewData('reports')->pluck('public_id')->all());
+        $inbox = $this->inbox($filters);
+        self::assertSame([$expected->public_id], $inbox->instance()->getTableRecords()->pluck('public_id')->all());
         $inbox->assertSee(route('admin.feedback.export', $filters));
 
         $rows = $this->exportRows($filters);
@@ -111,7 +126,7 @@ final class AdminSupportExportFilterParityTest extends TestCase
             $records[] = $this->report(['app_version' => 'calendar', 'created_at' => $instant]);
         }
         $filters = ['app_version' => 'calendar', 'from' => '2026-09-09', 'to' => '2026-09-09'];
-        $reports = $this->get(route('admin.feedback.index', $filters))->assertOk()->viewData('reports');
+        $reports = $this->inbox($filters)->instance()->getTableRecords();
         self::assertEqualsCanonicalizing([$records[1]->id, $records[2]->id], $reports->pluck('id')->all());
         self::assertSame(
             array_map(static fn (FeedbackReport $report): string => strtoupper(substr($report->public_id, -8)), [$records[1], $records[2]]),
@@ -131,7 +146,7 @@ final class AdminSupportExportFilterParityTest extends TestCase
         }
         FeedbackReport::query()->insert($records);
         $filters = ['app_version' => 'many', 'page' => 2];
-        $reports = $this->get(route('admin.feedback.index', $filters))->assertOk()->viewData('reports');
+        $reports = $this->inbox($filters)->call('gotoPage', 2)->instance()->getTableRecords();
         self::assertSame(30, $reports->count());
         self::assertSame(501, $reports->total());
         self::assertSame(
@@ -156,6 +171,20 @@ final class AdminSupportExportFilterParityTest extends TestCase
         foreach (['index', 'export'] as $action) {
             $this->get(route('admin.feedback.'.$action))->assertForbidden();
         }
+    }
+
+    public function test_search_preserves_literal_underscores_and_percent_in_the_inbox_and_export(): void
+    {
+        $literal = $this->report(['message' => 'رفع project_50% توقف']);
+        $this->report(['message' => 'رفع projectX500 توقف']);
+        $filters = ['q' => 'project_50%'];
+        self::assertSame([$literal->public_id], $this->inbox($filters)->instance()->getTableRecords()->pluck('public_id')->all());
+        self::assertSame([strtoupper(substr($literal->public_id, -8))], array_column($this->exportRows($filters), 0));
+    }
+
+    private function inbox(array $filters)
+    {
+        return Livewire::test(ListFeedback::class)->filterTable('criteria', array_diff_key($filters, ['page' => true]));
     }
 
     private function exportRows(array $filters): array

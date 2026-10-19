@@ -18,6 +18,7 @@ import type {
   PortfolioTransferObserver,
   PortfolioTransferProgress,
 } from './portfolioUploadProgress';
+import {invalidatePortfolio} from './query/portfolioInvalidation';
 
 export type PortfolioMediaDeliveryResult =
   | {state: 'uploaded'; media: PortfolioMedia}
@@ -118,6 +119,9 @@ const upload = (
         flight.controller.signal,
       );
       assertAccountSessionBoundary(boundary);
+      // The server now holds a project the gallery's own mutations did not
+      // write; the owner's list is stale (ARCHITECTURE.md M2).
+      invalidatePortfolio(boundary.scope);
       return {outcome: 'ack', value: {state: 'uploaded', media}};
     } catch (error: unknown) {
       if (
