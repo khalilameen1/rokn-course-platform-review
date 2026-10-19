@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PathResource\Pages;
 
+use App\Filament\Concerns\RestoresAuthoringDraft;
 use App\Filament\Resources\PathResource;
 use App\Filament\Support\FormValidation;
 use App\Models\Path;
@@ -17,6 +18,8 @@ use Livewire\Attributes\Locked;
 /** @extends EditRecord<Path> */
 final class EditPath extends EditRecord
 {
+    use RestoresAuthoringDraft;
+
     protected static string $resource = PathResource::class;
 
     #[Locked]

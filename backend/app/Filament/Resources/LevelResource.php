@@ -37,6 +37,16 @@ final class LevelResource extends DomainResource
 
     protected static string $permissionRoute = 'admin.levels';
 
+    public static function draftFields(): array
+    {
+        return ['name_ar', 'name_en', 'description_ar', 'description_en', 'order'];
+    }
+
+    public static function draftFileFields(): array
+    {
+        return ['badge_upload'];
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return app(AdminLevelReadService::class)->listQuery();
@@ -45,6 +55,7 @@ final class LevelResource extends DomainResource
     public static function form(Schema $schema): Schema
     {
         return $schema->columns(2)->components([
+            self::draftRecovery(),
             TextInput::make('name_ar')->label('الاسم بالعربية')->required()->maxLength(255),
             TextInput::make('name_en')->label('الاسم بالإنجليزية')->required()->maxLength(255)->extraInputAttributes(['dir' => 'ltr']),
             TextInput::make('order')->label('الترتيب')->integer()->required()->minValue(1)->maxValue(1000)->default(1),

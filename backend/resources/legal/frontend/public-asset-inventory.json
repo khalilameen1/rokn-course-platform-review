@@ -592,6 +592,11 @@
       "family": "frontend-bundle"
     },
     {
+      "path": "public/js/authoring-draft.js",
+      "sha256": "1d139300a51a3e91e26bb20f21aae9988d2a179f757f681de42b7dbaabc5eabf",
+      "classification": "first_party"
+    },
+    {
       "path": "public/js/landing.js",
       "sha256": "247431524b9c5b3f88aad3c33a73d03e34be580233835305c4c32fa0a2f8c76c",
       "classification": "first_party"

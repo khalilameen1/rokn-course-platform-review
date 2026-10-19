@@ -35,6 +35,11 @@ final class PathResource extends DomainResource
 
     protected static string $permissionRoute = 'admin.paths';
 
+    public static function draftFields(): array
+    {
+        return ['title_ar', 'title_en', 'interest_ids', 'course_ids'];
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return app(AdminPathReadService::class)->listQuery();
@@ -43,6 +48,7 @@ final class PathResource extends DomainResource
     public static function form(Schema $schema): Schema
     {
         return $schema->columns(2)->components([
+            self::draftRecovery(),
             TextInput::make('title_ar')->label('الاسم بالعربية')->required()->maxLength(255),
             TextInput::make('title_en')->label('الاسم بالإنجليزية')->required()->maxLength(255)->extraInputAttributes(['dir' => 'ltr']),
             Select::make('interest_ids')->label('المجالات')->multiple()->searchable()->options(fn (): array => app(AdminPathReadService::class)->interestOptions())

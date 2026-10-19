@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\LevelResource\Pages;
 
+use App\Filament\Concerns\RestoresAuthoringDraft;
 use App\Filament\Resources\LevelResource;
 use App\Filament\Support\FormValidation;
 use App\Models\Level;
@@ -18,6 +19,8 @@ use Livewire\Attributes\Locked;
 /** @extends EditRecord<Level> */
 final class EditLevel extends EditRecord
 {
+    use RestoresAuthoringDraft;
+
     protected static string $resource = LevelResource::class;
 
     #[Locked]

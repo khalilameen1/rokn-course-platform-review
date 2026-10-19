@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TeacherResource\Pages;
 
+use App\Filament\Concerns\RestoresAuthoringDraft;
 use App\Filament\Resources\TeacherResource;
 use App\Filament\Support\FormValidation;
 use App\Models\User;
@@ -18,6 +19,8 @@ use Livewire\Attributes\Locked;
 /** @extends EditRecord<User> */
 final class EditTeacher extends EditRecord
 {
+    use RestoresAuthoringDraft;
+
     protected static string $resource = TeacherResource::class;
 
     #[Locked]

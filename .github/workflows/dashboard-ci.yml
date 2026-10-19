@@ -44,7 +44,9 @@ jobs:
           composer install --no-interaction --no-progress --prefer-dist --optimize-autoloader
           npx playwright install --with-deps chromium
       - name: Authenticated RTL, responsive, mutation and axe checks
-        run: npm run test:dashboard
+        run: |
+          npm run test:authoring-draft
+          npm run test:dashboard
       - name: Lighthouse on authenticated dashboard pages
         run: npm run measure:dashboard
       - name: Keep screenshots, traces and measurement reports

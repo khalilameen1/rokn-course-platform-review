@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ClassificationResource\Pages;
 
+use App\Filament\Concerns\RestoresAuthoringDraft;
 use App\Filament\Resources\ClassificationResource;
 use App\Filament\Support\FormValidation;
 use App\Models\Classification;
@@ -17,6 +18,8 @@ use Livewire\Attributes\Locked;
 /** @extends EditRecord<Classification> */
 final class EditClassification extends EditRecord
 {
+    use RestoresAuthoringDraft;
+
     protected static string $resource = ClassificationResource::class;
 
     #[Locked]

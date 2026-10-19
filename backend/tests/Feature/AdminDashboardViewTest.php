@@ -207,8 +207,8 @@ final class AdminDashboardViewTest extends TestCase
         }
         self::assertSame(0, $xpath->query('//*[@name="image" or starts-with(@name, "access_plans")]')->length);
         self::assertSame(0, $xpath->query('//*[@id="studioCoursePanel"]')->length);
-        // The shell keeps an unsent draft locally until the course is created.
-        self::assertStringContainsString('rokn:course-authoring-draft:', (string) $xpath->evaluate('string(//body)'));
+        // Refresh recovery is exercised in the real browser, not inferred from script bytes.
+        self::assertSame(1, $xpath->query($form.'//*[@name="authoring_request_id"]')->length);
         self::assertNotContains('admin/assets/css/course-create.css', $this->linkedLocalAssets($html));
     }
 

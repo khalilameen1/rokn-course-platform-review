@@ -37,6 +37,11 @@ final class ClassificationResource extends DomainResource
 
     protected static string $permissionRoute = 'admin.classifications';
 
+    public static function draftFields(): array
+    {
+        return ['name_ar', 'name_en', 'home_order', 'show_on_home', 'course_ids'];
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return app(AdminClassificationReadService::class)->listQuery();
@@ -45,6 +50,7 @@ final class ClassificationResource extends DomainResource
     public static function form(Schema $schema): Schema
     {
         return $schema->columns(2)->components([
+            self::draftRecovery(),
             TextInput::make('name_ar')->label('الاسم بالعربية')->required()->maxLength(255),
             TextInput::make('name_en')->label('الاسم بالإنجليزية')->required()->maxLength(255)->extraInputAttributes(['dir' => 'ltr']),
             TextInput::make('home_order')->label('الترتيب')->integer()->required()->minValue(0)->maxValue(10000)->default(0),

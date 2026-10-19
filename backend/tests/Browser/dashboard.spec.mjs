@@ -1,6 +1,70 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('native drafts survive refresh, retain receipt and clear after save', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    page.on('dialog', dialog => dialog.accept());
+    const name = `مسودة المتصفح ${Date.now()}`;
+    await page.goto('/operations/paths/create');
+    await expect(page.locator('[data-authoring-draft]')).toHaveAttribute('data-draft-ready', 'true');
+    await page.getByLabel(/الاسم بالعربية/).fill(name);
+    await page.getByLabel(/الاسم بالإنجليزية/).fill('Recovered path');
+    const drafts = () => page.evaluate(() => Object.entries(localStorage)
+        .filter(([key]) => key.startsWith('rokn:course-authoring-draft:') && key.includes('/operations/paths/create:'))
+        .map(([, value]) => JSON.parse(value)));
+    await expect.poll(async () => (await drafts())[0]?.values.title_ar).toBe(name);
+    const receipt = (await drafts())[0].receipt;
+    await page.reload();
+    await expect(page.getByLabel(/الاسم بالعربية/)).toHaveValue(name);
+    expect((await drafts())[0].receipt).toBe(receipt);
+    await page.getByRole('button', { name: 'إضافة', exact: true }).click();
+    await page.waitForURL('**/operations/paths');
+    expect(await drafts()).toEqual([]);
+    expect(errors).toEqual([]);
+});
+
+test('teacher drafts omit credentials even when the form changes', async ({ page }) => {
+    const name = `مسودة المحاضر ${Date.now()}`;
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.goto('/operations/teachers/create');
+    await expect(page.locator('[data-authoring-draft]')).toHaveAttribute('data-draft-ready', 'true');
+    await page.getByLabel(/الاسم بالعربية/).fill(name);
+    await expect.poll(() => page.evaluate(() => {
+        return Object.entries(localStorage).filter(([key]) => key.startsWith('rokn:course-authoring-draft:') && key.includes('/operations/teachers/create:'))
+            .map(([, value]) => JSON.parse(value).values.name_ar);
+    })).toContain(name);
+    await page.getByRole('switch', { name: 'تعديل بيانات الدخول' }).check();
+    await expect(page.getByLabel(/الاسم بالعربية/)).toHaveValue(name);
+    await page.getByLabel('البريد الإلكتروني', { exact: true }).fill('private@example.test');
+    await page.getByLabel('كلمة المرور الجديدة', { exact: true }).fill('Private-do-not-persist-123');
+    await expect.poll(() => page.evaluate(() => {
+        return Object.entries(localStorage).filter(([key]) => key.startsWith('rokn:course-authoring-draft:') && key.includes('/operations/teachers/create:'))
+            .map(([, value]) => JSON.parse(value).values.name_ar);
+    })).toContain(name);
+    const publicDrafts = await page.evaluate(() => Object.entries(localStorage)
+        .filter(([key]) => key.startsWith('rokn:course-authoring-draft:')).map(([, value]) => value).join(''));
+    expect(publicDrafts).not.toContain('private@example.test');
+    expect(publicDrafts).not.toContain('Private-do-not-persist');
+    expect(errors).toEqual([]);
+});
+
+test('course studio shell keeps the existing unsent draft across refresh', async ({ page }) => {
+    page.on('dialog', dialog => dialog.accept());
+    const name = `كورس لم يحفظ ${Date.now()}`;
+    await page.goto('/dashboard/courses/create');
+    await page.getByLabel('اسم الكورس', { exact: true }).fill(name);
+    await expect.poll(() => page.evaluate(() => Object.entries(localStorage)
+        .filter(([key]) => key.startsWith('rokn:course-authoring-draft:') && key.includes('/dashboard/courses/create:'))
+        .some(([, value]) => JSON.parse(value).values.name_ar?.trim().length > 0))).toBe(true);
+    const receipt = await page.locator('[name=authoring_draft_receipt]').inputValue();
+    await page.reload();
+    await expect(page.getByLabel('اسم الكورس', { exact: true })).toHaveValue(name);
+    await expect(page.locator('[name=authoring_draft_receipt]')).toHaveValue(receipt);
+    await expect(page.locator('[name=authoring_request_id]')).toHaveValue(receipt);
+});
+
 test('real dashboard session, RTL search, mobile reflow, dark mode and accessibility', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => { errors.push(error.message); console.error(error.message); });

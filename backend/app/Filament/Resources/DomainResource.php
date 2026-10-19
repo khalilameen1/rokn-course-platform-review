@@ -6,6 +6,7 @@ namespace App\Filament\Resources;
 
 use App\Auth\AdminPermissionMatrix;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\View;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
@@ -23,6 +24,24 @@ abstract class DomainResource extends Resource
     protected static bool $isDiscovered = false;
 
     protected static string $permissionRoute;
+
+    /** Public, non-sensitive fields that may be recovered on this device. */
+    abstract public static function draftFields(): array;
+
+    public static function draftFileFields(): array
+    {
+        return [];
+    }
+
+    public static function draftOperation(): string
+    {
+        return 'filament.'.str_replace('admin.', '', static::$permissionRoute).'.store';
+    }
+
+    protected static function draftRecovery(): View
+    {
+        return View::make('filament.forms.authoring-draft')->key('authoring-draft-recovery')->columnSpanFull();
+    }
 
     public static function getAuthorizationResponse(string|UnitEnum $action, ?Model $record = null): Response
     {

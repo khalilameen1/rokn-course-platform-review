@@ -17,6 +17,8 @@ use Livewire\Attributes\Locked;
 /** Adapts the existing authoring receipt ledger to native CreateRecord pages. */
 trait UsesAuthoringCreateReceipt
 {
+    use RestoresAuthoringDraft;
+
     #[Locked]
     public string $creationIntent;
 

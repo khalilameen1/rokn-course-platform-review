@@ -43,6 +43,16 @@ final class TeacherResource extends DomainResource
 
     protected static string $permissionRoute = 'admin.teachers';
 
+    public static function draftFields(): array
+    {
+        return ['name_ar', 'name_en', 'job_title', 'bio_ar', 'bio_en', 'active'];
+    }
+
+    public static function draftFileFields(): array
+    {
+        return ['image'];
+    }
+
     public static function canManageCredentials(): bool
     {
         return app(AdminPermissionMatrix::class)->allowsCapability(auth('web')->user(), AdminPermissionMatrix::ACCOUNT_CREDENTIALS);
@@ -56,6 +66,7 @@ final class TeacherResource extends DomainResource
     public static function form(Schema $schema): Schema
     {
         $fields = [
+            self::draftRecovery(),
             TextInput::make('name_ar')->label('الاسم بالعربية')->required()->maxLength(255),
             TextInput::make('name_en')->label('الاسم بالإنجليزية')->maxLength(255)->extraInputAttributes(['dir' => 'ltr']),
             TextInput::make('job_title')->label('المسمى الوظيفي')->maxLength(255),
