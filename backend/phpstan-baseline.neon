@@ -746,41 +746,11 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/Admin/PackageController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PathController\:\:create\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PathController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PathController\:\:destroy\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 2
-			path: app/Http/Controllers/Admin/PathController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PathController\:\:edit\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PathController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PathController\:\:index\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PathController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PathController\:\:store\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PathController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PathController\:\:update\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PathController.php
 
 		-
 			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\PortfolioMedia\|null given\.$#'

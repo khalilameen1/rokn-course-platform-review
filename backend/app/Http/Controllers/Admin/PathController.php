@@ -9,7 +9,7 @@ use App\Http\Requests\Admin\PathProfileRequest;
 use App\Models\Path;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminPathAuthoringService;
-use Illuminate\Http\Response;
+use Illuminate\Http\RedirectResponse;
 
 class PathController extends Controller
 {
@@ -20,7 +20,7 @@ class PathController extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function index(PathIndexRequest $request)
     {
@@ -30,7 +30,7 @@ class PathController extends Controller
     /**
      * Show the form for creating a new resource.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function create()
     {
@@ -40,7 +40,7 @@ class PathController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function store(PathProfileRequest $request, AdminAuthoringCreateIntentService $createIntents)
     {
@@ -57,7 +57,7 @@ class PathController extends Controller
      * Show the form for editing the specified resource.
      *
      * @param  int  $id
-     * @return Response
+     * @return RedirectResponse
      */
     public function edit($id)
     {
@@ -68,7 +68,7 @@ class PathController extends Controller
      * Update the specified resource in storage.
      *
      * @param  int  $id
-     * @return Response
+     * @return RedirectResponse
      */
     public function update(PathProfileRequest $request, $id)
     {
@@ -83,7 +83,7 @@ class PathController extends Controller
      * Remove the specified resource from storage.
      *
      * @param  int  $id
-     * @return Response
+     * @return RedirectResponse
      */
     public function destroy($id)
     {
