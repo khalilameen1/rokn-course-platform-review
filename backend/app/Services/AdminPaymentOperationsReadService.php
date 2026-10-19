@@ -175,7 +175,7 @@ final readonly class AdminPaymentOperationsReadService
     }
 
     /** @param Collection<int, Order> $orders */
-    private function decorate(Collection $orders): void
+    public function decorate(Collection $orders): void
     {
         $this->financialLedger->attachAllocations($orders);
         foreach ($orders as $order) {
@@ -194,7 +194,7 @@ final readonly class AdminPaymentOperationsReadService
         }
     }
 
-    private function ordersQuery(): Builder
+    public function ordersQuery(): Builder
     {
         return Order::query()->with([
             'user', 'course', 'package', 'coupon', 'courseCode', 'approvedBy',
@@ -203,8 +203,11 @@ final readonly class AdminPaymentOperationsReadService
     }
 
     /** @param array<string, mixed> $filters */
-    private function applyFilters(Builder $query, array $filters): void
+    public function applyFilters(Builder $query, array $filters): void
     {
+        if (! empty($filters['search'])) {
+            $this->applySearch($query, (string) $filters['search']);
+        }
         if (! empty($filters['state'])) {
             $this->applyOperationState($query, (string) $filters['state']);
         }
@@ -220,6 +223,8 @@ final readonly class AdminPaymentOperationsReadService
                 $escaped = '%'.addcslashes($search, '%_\\').'%';
                 $user->where(function (Builder $match) use ($escaped): void {
                     $match->where('name', 'like', $escaped)
+                        ->orWhere('name_ar', 'like', $escaped)
+                        ->orWhere('name_en', 'like', $escaped)
                         ->orWhere('email', 'like', $escaped)
                         ->orWhere('phone', 'like', $escaped);
                 });
@@ -248,6 +253,26 @@ final readonly class AdminPaymentOperationsReadService
         if (isset($filters['amount_max'])) {
             $query->where('final_amount', '<=', (float) $filters['amount_max']);
         }
+    }
+
+    /** One search contract for the native table and its streamed export. */
+    public function applySearch(Builder $query, string $search): void
+    {
+        $search = trim($search);
+        if ($search === '') {
+            return;
+        }
+        $pattern = '%'.addcslashes($search, '%_\\').'%';
+        $query->where(function (Builder $match) use ($search, $pattern): void {
+            $match->where('order_ref', 'like', $pattern);
+            if (ctype_digit($search)) {
+                $match->orWhere('orders.id', $search);
+            }
+            $match->orWhereHas('user', fn (Builder $user) => $user->where(function (Builder $person) use ($pattern): void {
+                $person->where('name', 'like', $pattern)->orWhere('name_ar', 'like', $pattern)
+                    ->orWhere('name_en', 'like', $pattern)->orWhere('email', 'like', $pattern)->orWhere('phone', 'like', $pattern);
+            }));
+        });
     }
 
     private function applyOperationState(Builder $query, string $state): void

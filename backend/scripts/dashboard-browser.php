@@ -1,6 +1,8 @@
 <?php
 
 declare(strict_types=1);
+use App\Models\Order;
+use App\Models\Package;
 use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\Artisan;
@@ -92,4 +94,13 @@ foreach (['admin', 'moderator', 'client'] as $role) {
         'admin_totp_last_used_step' => null,
     ])->save();
 }
+$student = User::query()->where('email', 'client@dashboard.example.test')->firstOrFail();
+$package = Package::query()->firstOrCreate(['name_en' => 'Browser fixture coins'], ['name_ar' => 'حزمة المتصفح', 'price' => '11.11', 'coins' => 900]);
+Order::query()->firstOrCreate(['order_ref' => 'BROWSER-PAID-900'], [
+    'user_id' => $student->id, 'package_id' => $package->id, 'package_coins' => 900,
+    'payment_method' => Order::PAYMENT_METHOD_GOOGLE_PLAY, 'status' => Order::STATUS_APPROVED,
+    'financial_status' => Order::FINANCIAL_SETTLED, 'approved_at' => now(),
+    'amount' => '11.11', 'final_amount' => '11.11', 'gateway_gross_amount' => '11.11',
+    'gateway_currency' => 'EGP', 'gateway_settlement_status' => 'test_purchase', 'total_coins' => 900,
+]);
 echo "Disposable dashboard browser database prepared\n";

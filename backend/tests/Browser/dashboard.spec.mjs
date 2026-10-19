@@ -1,6 +1,45 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('financial table shows actual states and keeps search scope in CSV on a phone', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/orders');
+    await page.locator('.fi-ta-search-field input').fill('BROWSER-PAID-900');
+    const table = page.getByRole('table', { name: 'الطلبات', exact: true });
+    await expect(table.getByText('11.11 EGP', { exact: true })).toBeVisible();
+    await expect(table.getByText('الصافي بانتظار التسوية', { exact: true })).toBeVisible();
+    await expect(table.getByText('مدفوع', { exact: true })).toBeInViewport();
+    await expect(table.getByText('اختبار خارج الإيراد', { exact: true })).toBeInViewport();
+    await expect(table.getByText('11.11 EGP', { exact: true })).toBeInViewport();
+    const exportLink = page.getByRole('link', { name: 'تصدير CSV', exact: true });
+    await expect(exportLink).toHaveAttribute('href', /search=BROWSER-PAID-900/);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('orders-phone.png'), fullPage: true });
+    await page.getByRole('button', { name: 'تصفية', exact: true }).click();
+    await expect(page.getByLabel('أعلى مبلغ', { exact: true })).toBeVisible();
+    await expect(page.locator('.fi-modal-window').filter({ has: page.getByLabel('أعلى مبلغ', { exact: true }) })).toHaveCSS('opacity', '1');
+    await page.screenshot({ path: testInfo.outputPath('orders-filters-phone.png'), fullPage: true });
+    const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+    expect(audit.violations).toEqual([]);
+    await page.getByLabel('أعلى مبلغ', { exact: true }).fill('100');
+    const applyFilters = page.getByRole('button', { name: 'تطبيق التصفيات', exact: true });
+    await applyFilters.scrollIntoViewIfNeeded();
+    await expect(applyFilters).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('orders-filters-apply-phone.png'), fullPage: true });
+    await applyFilters.click();
+    await expect(page.getByLabel('أعلى مبلغ', { exact: true })).not.toBeVisible();
+    await expect.poll(async () => new URL(await exportLink.getAttribute('href')).searchParams.get('amount_max')).toBe('100');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const navigationLabel = page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'الطلبات', exact: true }).locator('.fi-sidebar-item-label');
+    await expect(navigationLabel).toBeVisible();
+    await expect(navigationLabel).toHaveCSS('opacity', '1');
+    await expect(table.getByText('اختبار خارج الإيراد', { exact: true })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('orders-desktop.png'), fullPage: true });
+    expect(errors).toEqual([]);
+});
+
 test('native drafts survive refresh, retain receipt and clear after save', async ({ page }) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

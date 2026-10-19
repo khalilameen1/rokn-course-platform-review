@@ -12,11 +12,6 @@ parameters:
 			count: 2
 			path: app/Console/Commands/AuditOrderState.php
 
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Console/Commands/AuditOrderState.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Order\:\:\$provider\.$#'
@@ -24,17 +19,7 @@ parameters:
 			count: 6
 			path: app/Console/Commands/FinishedOrders.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$access_token\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Console/Commands/FinishedOrders.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$device_os\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Console/Commands/FinishedOrders.php
 
 		-
 			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
@@ -620,35 +605,10 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/Admin/OrdersController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/OrdersController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/OrdersController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_ar\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/OrdersController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_en\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/OrdersController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$phone\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/OrdersController.php
 
 		-
 			message: '#^PHPDoc tag @param for parameter \$request with type Illuminate\\Http\\Request is not subtype of native type App\\Http\\Requests\\Admin\\OrderIndexRequest\.$#'
@@ -4562,11 +4522,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminPaymentOperationsReadService.php
 
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminPaymentOperationsReadService.php
 
 		-
 			message: '#^Strict comparison using \=\=\= between ''pending'' and ''pending'' will always evaluate to true\.$#'
@@ -4676,11 +4631,6 @@ parameters:
 			count: 2
 			path: app/Services/AdminStudentReadService.php
 
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminStudentReadService.php
 
 
 		-
@@ -4995,11 +4945,6 @@ parameters:
 			count: 1
 			path: app/Services/CourseCommercialReportService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CourseCommercialReportService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$role\.$#'
@@ -5007,11 +4952,6 @@ parameters:
 			count: 1
 			path: app/Services/CourseCommercialReportService.php
 
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isInstitutionalGrant\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/CourseCommercialReportService.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:trashed\(\)\.$#'
@@ -5645,23 +5585,8 @@ parameters:
 			count: 1
 			path: app/Services/KashierCallbackSignatureService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/KashierCheckoutFlowService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_ar\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/KashierCheckoutFlowService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_en\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/KashierCheckoutFlowService.php
 
 		-
 			message: '#^Variable \$user on left side of \?\?\= always exists and is not nullable\.$#'
@@ -5681,11 +5606,6 @@ parameters:
 			count: 1
 			path: app/Services/KashierCheckoutOrderService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$wallet_coins\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/KashierNotificationFlowService.php
 
 		-
 			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
@@ -5906,17 +5826,7 @@ parameters:
 			count: 1
 			path: app/Services/OperationalRuntimeService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/OrderLifecycleService.php
 
-		-
-			message: '#^Relation ''course'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/OrderLifecycleService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Package\:\:\$apple_product_id\.$#'
