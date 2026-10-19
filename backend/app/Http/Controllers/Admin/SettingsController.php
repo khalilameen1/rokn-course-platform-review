@@ -20,7 +20,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class SettingsController extends Controller
@@ -34,36 +33,11 @@ class SettingsController extends Controller
         // the explicit POST below, not by opening the settings screen.
         $settings = Setting::query()->first() ?? new Setting;
         $designSettings = DesignSetting::getDefaultSettings();
-        $bunnyCleanupCandidates = collect();
-        $bunnyCleanupStats = ['pending_review' => 0, 'approved' => 0, 'deleted' => 0];
-        if (Schema::hasTable('bunny_video_cleanup_candidates')) {
-            $base = BunnyVideoCleanupCandidate::query();
-            $bunnyCleanupStats = [
-                'pending_review' => (clone $base)->whereNull('remote_deleted_at')->whereNull('reviewed_at')->count(),
-                'approved' => (clone $base)->whereNull('remote_deleted_at')->whereNotNull('reviewed_at')->count(),
-                'deleted' => (clone $base)->whereNotNull('remote_deleted_at')->count(),
-            ];
-            $cleanupFilter = (string) $request->query('cleanup_filter', 'verified');
-            $candidateQuery = BunnyVideoCleanupCandidate::query();
-            if ($cleanupFilter === 'verified') {
-                $candidateQuery->whereIn('reason', AdminBunnyCleanupReviewService::VERIFIED_REASONS);
-            } elseif ($cleanupFilter === 'failed') {
-                $candidateQuery->whereNotNull('last_error');
-            }
-            $bunnyCleanupCandidates = $candidateQuery->latest('updated_at')
-                ->limit(20)
-                ->get();
-        } else {
-            $cleanupFilter = 'verified';
-        }
         $editorVersion = AppSettingsEditorVersion::for($settings, $designSettings);
 
         return view('admin.settings.index', compact(
             'settings',
             'designSettings',
-            'bunnyCleanupCandidates',
-            'bunnyCleanupStats',
-            'cleanupFilter',
             'editorVersion'
         ));
     }

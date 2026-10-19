@@ -1,6 +1,29 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('video cleanup queue confirms approval without deleting bytes on phone', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/bunny-cleanups');
+    const row = page.getByRole('row').filter({ hasText: 'browser-cleanup-video' });
+    await expect(row).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('video-cleanup-phone.png'), fullPage: true });
+    await row.getByRole('button', { name: 'اعتماد التنظيف', exact: true }).click();
+    await expect(page.getByRole('alertdialog')).toContainText('سيعيد العامل فحص ارتباط الفيديو');
+    await page.getByRole('alertdialog').getByRole('button', { name: 'تأكيد', exact: true }).click();
+    await expect(page.getByText('تم اعتماد 1 فيديو', { exact: true })).toBeVisible();
+    await expect(row).not.toBeVisible();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.reload();
+    await page.getByRole('button', { name: 'تصفية', exact: true }).click();
+    await page.getByRole('combobox', { name: 'المراجعة', exact: true }).selectOption('approved');
+    await page.getByRole('button', { name: 'تطبيق التصفيات', exact: true }).click();
+    await expect(row).toContainText('معتمد وينتظر العامل');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('video-cleanup-desktop.png'), fullPage: true });
+});
+
 const artworkLabels = ['رمز العملة', 'صورة رصيد العملات', 'شارة Junior الافتراضية', 'شارة Mid-level الافتراضية', 'شارة Senior الافتراضية'];
 const artworkPanel = (page, label) => page.getByRole('region').filter({ has: page.getByRole('heading', { name: label, exact: true }) });
 async function hydrateArtworkPanels(page) {

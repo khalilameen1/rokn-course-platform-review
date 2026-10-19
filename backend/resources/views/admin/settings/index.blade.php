@@ -260,88 +260,7 @@
                         </div>
                     </div>
 
-                    <div class="settings-cleanup-panel">
-                        <h3 class="settings-cleanup-title">تنظيف فيديوهات Bunny بأمان</h3>
-                        <p class="settings-cleanup-description">
-                            تُنظف الرفوعات المتروكة تلقائيًا بعد فترة الاحتفاظ. ويعيد العامل فحص ارتباط الفيديو بأي مقطع قبل الحذف.
-                        </p>
-                        <div class="settings-cleanup-filters">
-                            <span class="badge badge-warning">بانتظار المراجعة: {{ $bunnyCleanupStats['pending_review'] }}</span>
-                            <span class="badge badge-info">معتمد: {{ $bunnyCleanupStats['approved'] }}</span>
-                            <span class="badge badge-success">تم تنظيفه: {{ $bunnyCleanupStats['deleted'] }}</span>
-                        </div>
-
-                        <div class="settings-cleanup-actions">
-                            <a href="{{ route('admin.settings', ['cleanup_filter' => 'verified']) }}#integrations" class="btn btn-sm {{ $cleanupFilter === 'verified' ? 'btn-primary' : 'btn-outline-primary' }}">مرشحات موثقة</a>
-                            <a href="{{ route('admin.settings', ['cleanup_filter' => 'failed']) }}#integrations" class="btn btn-sm {{ $cleanupFilter === 'failed' ? 'btn-primary' : 'btn-outline-primary' }}">بها خطأ</a>
-                            <a href="{{ route('admin.settings', ['cleanup_filter' => 'all']) }}#integrations" class="btn btn-sm {{ $cleanupFilter === 'all' ? 'btn-primary' : 'btn-outline-primary' }}">الكل</a>
-                            <button
-                                type="submit"
-                                formaction="{{ route('admin.settings.bunny-cleanup.approve-batch') }}"
-                                formmethod="POST"
-                                class="btn btn-sm btn-outline-danger"
-                                onclick="return confirmSelectedBunnyCleanup()"
-                            >اعتماد المحدد</button>
-                        </div>
-
-                        @if($bunnyCleanupCandidates->isEmpty())
-                            <div class="settings-cleanup-empty">لا توجد فيديوهات في قائمة التنظيف.</div>
-                        @else
-                            <div class="table-responsive">
-                                <table class="table table-sm settings-cleanup-table">
-                                    <thead>
-                                        <tr>
-                                            <th><input type="checkbox" id="cleanup-select-all" aria-label="تحديد الكل"></th>
-                                            <th>Video GUID</th>
-                                            <th>السبب</th>
-                                            <th>موعد الأهلية</th>
-                                            <th>المحاولات</th>
-                                            <th>الحالة</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($bunnyCleanupCandidates as $cleanupCandidate)
-                                            <tr>
-                                                <td>
-                                                    @if(!$cleanupCandidate->remote_deleted_at && !$cleanupCandidate->reviewed_at)
-                                                        <input type="checkbox" class="cleanup-candidate-checkbox" name="cleanup_ids[]" value="{{ $cleanupCandidate->id }}" aria-label="تحديد {{ $cleanupCandidate->video_guid }}">
-                                                    @endif
-                                                </td>
-                                                <td><code>{{ $cleanupCandidate->video_guid }}</code></td>
-                                                <td>{{ $cleanupCandidate->reason }}</td>
-                                                <td>{{ optional($cleanupCandidate->eligible_after)->format('Y-m-d H:i') }}</td>
-                                                <td>{{ (int) $cleanupCandidate->attempts }}</td>
-                                                <td>
-                                                    @if($cleanupCandidate->remote_deleted_at)
-                                                        <span class="text-success">تم التنظيف</span>
-                                                    @elseif($cleanupCandidate->reviewed_at)
-                                                        <span class="text-info">معتمد وينتظر العامل</span>
-                                                    @else
-                                                        <span class="text-warning">يحتاج مراجعة</span>
-                                                    @endif
-                                                    @if($cleanupCandidate->last_error)
-                                                        <small class="text-danger settings-cleanup-error">{{ $cleanupCandidate->last_error }}</small>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    @if(!$cleanupCandidate->remote_deleted_at && !$cleanupCandidate->reviewed_at)
-                                                        <button
-                                                            type="submit"
-                                                            formaction="{{ route('admin.settings.bunny-cleanup.approve', $cleanupCandidate) }}"
-                                                            formmethod="POST"
-                                                            class="btn btn-sm btn-outline-danger"
-                                                            onclick="return confirm('اعتماد حذف هذا الفيديو من Bunny بعد فترة الاحتفاظ؟')"
-                                                        >اعتماد التنظيف</button>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @endif
-                    </div>
+                    <a href="{{ \App\Filament\Resources\BunnyCleanupResource::getUrl() }}">مراجعة تنظيف الفيديوهات</a>
                 </div>
 
                 <!-- App Links and Pages Tab -->
@@ -682,23 +601,5 @@
         });
     }
 
-    const cleanupSelectAll = document.getElementById('cleanup-select-all');
-    if (cleanupSelectAll) {
-        cleanupSelectAll.addEventListener('change', function () {
-            document.querySelectorAll('.cleanup-candidate-checkbox').forEach(checkbox => {
-                checkbox.checked = cleanupSelectAll.checked;
-            });
-        });
-    }
-
-    function confirmSelectedBunnyCleanup() {
-        const count = document.querySelectorAll('.cleanup-candidate-checkbox:checked').length;
-        if (count === 0) {
-            alert('حدد فيديو واحدًا على الأقل');
-            return false;
-        }
-
-        return confirm(`سيتم اعتماد ${count} فيديو للتنظيف بعد فترة الاحتفاظ وإعادة فحص الارتباطات هل تريد المتابعة؟`);
-    }
 </script>
 @endsection

@@ -5,6 +5,7 @@ use App\Models\AdminAuditLog;
 use App\Models\AdminNotification;
 use App\Models\AiInputAttachment;
 use App\Models\ApiToken;
+use App\Models\BunnyVideoCleanupCandidate;
 use App\Models\Contact;
 use App\Models\Course;
 use App\Models\CourseCode;
@@ -133,6 +134,7 @@ try {
         ])->save();
     }
     $student = User::query()->where('email', 'client@dashboard.example.test')->firstOrFail();
+    BunnyVideoCleanupCandidate::query()->create(['video_guid' => 'browser-cleanup-video', 'reason' => 'superseded_video', 'requires_review' => true, 'eligible_after' => now()->addDay()]);
     $student->forceFill(['portfolio_slug' => 'browser-selected-work'])->save();
     $portfolioItem = PortfolioItem::query()->create(['user_id' => $student->id, 'title' => 'عمل المتصفح المختار', 'is_public' => true]);
     $portfolioItem->mediaFiles()->create(['file_path' => 'portfolio/browser-fixture.jpg', 'file_type' => 'image', 'content_sha256' => str_repeat('a', 64)]);
