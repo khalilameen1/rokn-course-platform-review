@@ -147,29 +147,9 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/API/CourseChatController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$description_ar\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CourseCodeController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 6
-			path: app/Http/Controllers/API/CourseCodeController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_ar\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Http/Controllers/API/CourseCodeController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CourseCodeController.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$used_at\.$#'
@@ -177,11 +157,6 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/API/CourseCodeController.php
 
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\CourseCode\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/CourseCodeController.php
 
 		-
 			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\User\|null given\.$#'
@@ -383,11 +358,6 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/Admin/CourseCodeController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\CourseCodeController\:\:index\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/CourseCodeController.php
 
 		-
 			message: '#^Method App\\Http\\Controllers\\Admin\\CourseCodeController\:\:show\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
@@ -3552,23 +3522,8 @@ parameters:
 			count: 1
 			path: app/Models/CourseAccessPlan.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/CourseCode.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name_ar\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/CourseCode.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/CourseCode.php
 
 		-
 			message: '#^Right side of && is always false\.$#'
@@ -5092,11 +5047,6 @@ parameters:
 			count: 1
 			path: app/Services/CourseRevisionResolver.php
 
-		-
-			message: '#^Parameter \#1 \$course of method App\\Services\\CourseRevisionResolver\:\:activeArchiveForCourse\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/CourseRevisionResolver.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -5453,11 +5403,6 @@ parameters:
 			count: 1
 			path: app/Services/MediaReconciliationService.php
 
-		-
-			message: '#^Parameter \#1 \$course of method App\\Services\\MediaReconciliationService\:\:courseIssues\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/MediaReconciliationService.php
 
 		-
 			message: '#^Parameter \#1 \$lesson of method App\\Services\\MediaReconciliationService\:\:inspectLesson\(\) expects App\\Models\\Lesson, Illuminate\\Database\\Eloquent\\Model given\.$#'
@@ -5757,29 +5702,9 @@ parameters:
 			count: 2
 			path: app/Services/PlaybackManifestService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Services/PlaybackManifestService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_coming_soon\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/PlaybackManifestService.php
 
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isPublishedForLearning\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/PlaybackManifestService.php
 
-		-
-			message: '#^Parameter \#1 \$course of method App\\Services\\CourseRevisionResolver\:\:activeArchiveForCourse\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/PlaybackManifestService.php
 
 		-
 			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
@@ -6145,11 +6070,6 @@ parameters:
 			count: 1
 			path: app/Services/RecoveryEvidenceService.php
 
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isPublishedForLearning\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/SavedLibraryService.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\:\:publishedLearningGraph\(\)\.$#'
@@ -6235,11 +6155,6 @@ parameters:
 			count: 1
 			path: app/Services/StudentHomeNotificationReadService.php
 
-		-
-			message: '#^Method App\\Services\\StudentNotificationPresentationService\:\:courseFor\(\) should return App\\Models\\Course\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: return.type
-			count: 2
-			path: app/Services/StudentNotificationPresentationService.php
 
 		-
 			message: '#^Method App\\Services\\StudentProgressSummaryService\:\:latestForUsers\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{user\: App\\Models\\User, has_enrollment\: bool, course\: Illuminate\\Database\\Eloquent\\Model\|null, enrolled_at\: Carbon\\Carbon\|null, progress\: array\<string, mixed\>\}\|array\{user\: App\\Models\\User, has_enrollment\: bool, course\: null, progress\: null\}\>\.$#'
@@ -6397,23 +6312,8 @@ parameters:
 			count: 1
 			path: app/Services/WatchHistoryRecorder.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_coming_soon\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/WatchHistoryRecorder.php
 
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isPublishedForLearning\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/WatchHistoryRecorder.php
 
-		-
-			message: '#^Parameter \#1 \$course of method App\\Services\\CourseRevisionResolver\:\:activeArchiveForCourse\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/WatchHistoryRecorder.php
 
 		-
 			message: '#^Comparison operation "\>" between int\<1, 65535\> and 65535 is always false\.$#'

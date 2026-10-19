@@ -83,6 +83,44 @@ test('student progress uses the canonical completion projection on phone and des
     expect(errors).toEqual([]);
 });
 
+test('grant code list filters exports and confirms an unused deletion on phone', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/course-codes');
+    await page.getByRole('button', { name: 'تصفية', exact: true }).click();
+    const name = page.getByLabel('اسم الدفعة', { exact: true });
+    await name.fill('منحة المتصفح');
+    await page.getByLabel('الحالة', { exact: true }).selectOption('active');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('grant-code-filters-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.getByRole('button', { name: 'تطبيق التصفيات', exact: true }).click();
+    await expect(name).not.toBeVisible();
+    await expect(page.locator('.fi-modal-window').filter({ has: name })).not.toBeVisible();
+    const row = page.getByRole('row').filter({ hasText: 'BROWSER-GRANT' });
+    await expect(row).toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'BROWSER-INACTIVE' })).not.toBeVisible();
+    const csv = page.getByRole('link', { name: 'تصدير CSV', exact: true });
+    const url = await csv.getAttribute('href');
+    expect(new URL(url).searchParams.get('status')).toBe('active');
+    const response = await page.request.get(url);
+    expect(response.ok()).toBe(true);
+    const body = await response.text();
+    expect(body).toContain('BROWSER-GRANT');
+    expect(body).not.toContain('BROWSER-INACTIVE');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('grant-code-list-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.screenshot({ path: testInfo.outputPath('grant-code-list-desktop.png'), fullPage: true, animations: 'disabled' });
+    await row.getByRole('button', { name: 'إجراءات الكود', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'حذف', exact: true }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'تأكيد', exact: true }).click();
+    await expect(page.getByText('تم حذف الكود', { exact: true })).toBeVisible();
+    await expect(row).not.toBeVisible();
+    expect(errors).toEqual([]);
+});
+
 test('portfolio queue filters selected work and opens the exact shared review preview', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

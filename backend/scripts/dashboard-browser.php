@@ -6,6 +6,7 @@ use App\Models\AiInputAttachment;
 use App\Models\ApiToken;
 use App\Models\Contact;
 use App\Models\Course;
+use App\Models\CourseCode;
 use App\Models\CourseEnrollment;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
@@ -159,6 +160,10 @@ try {
         'mime_type' => 'text/plain', 'size_bytes' => 32, 'sha256' => hash('sha256', 'Private project browser evidence'), 'status' => 'ready']);
     DB::table('student_section_progress')->insert(['user_id' => $student->id, 'course_section_id' => $reportSection->id,
         'is_completed' => true, 'completed_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+    CourseCode::query()->forceCreate(['tenant_id' => 1, 'code' => 'BROWSER-GRANT', 'name' => 'منحة المتصفح', 'course_id' => $course->id,
+        'type' => 'course', 'max_uses' => 10, 'used_count' => 0, 'is_active' => true, 'is_grant' => true]);
+    CourseCode::query()->forceCreate(['tenant_id' => 1, 'code' => 'BROWSER-INACTIVE', 'name' => 'منحة المتصفح', 'course_id' => $course->id,
+        'type' => 'course', 'max_uses' => 10, 'used_count' => 0, 'is_active' => false, 'is_grant' => true]);
     FeedbackReport::query()->firstOrCreate(['message' => 'رسالة دعم المتصفح'], [
         'public_id' => (string) Str::ulid(), 'user_id' => $student->id, 'category' => 'playback',
         'status' => 'new', 'priority' => 'high', 'version' => 1, 'app_version' => '1.0.68',

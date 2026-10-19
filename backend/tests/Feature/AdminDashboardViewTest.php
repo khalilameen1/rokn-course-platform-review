@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\CourseCodeResource;
 use App\Filament\Resources\OrderResource;
 use App\Filament\Resources\OrderResource\Pages\ListOrders;
 use App\Filament\Resources\OrderResource\Pages\ViewOrder;
@@ -67,7 +68,6 @@ final class AdminDashboardViewTest extends TestCase
             'playback operations' => route('admin.playback-operations.index'),
             'settings dashboard' => route('admin.settings'),
             'home dashboard' => route('admin.dashboard'),
-            'course codes list' => route('admin.course-codes.index'),
             'course code details' => route('admin.course-codes.show', $code),
             'course code create' => route('admin.course-codes.create'),
             'course code edit' => route('admin.course-codes.edit', $code),
@@ -79,6 +79,8 @@ final class AdminDashboardViewTest extends TestCase
             $this->assertAdminMarkupWithoutInlineStyles($this->adminGet($admin, $url)->assertOk()->getContent(), $page);
         }
         $this->adminGet($admin, route('admin.project-submissions.index'))->assertRedirect(ProjectSubmissionResource::listUrl());
+        $this->adminGet($admin, route('admin.course-codes.index'))->assertRedirect(CourseCodeResource::listUrl());
+        $this->adminGet($admin, CourseCodeResource::getUrl())->assertOk()->assertSee($code->code);
         $this->adminGet($admin, ProjectSubmissionResource::getUrl())->assertOk()->assertSee($submission->public_id);
         $this->adminGet($admin, route('admin.project-submissions.show', $submission))
             ->assertRedirect(ProjectSubmissionResource::getUrl('view', ['record' => $submission]));

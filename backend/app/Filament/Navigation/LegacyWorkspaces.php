@@ -15,7 +15,6 @@ final class LegacyWorkspaces
     {
         $links = [
             ['الكورسات', 'المحتوى', 'admin.courses.index', 10],
-            ['أكواد المنح', 'التجارة', 'admin.course-codes.index', 50],
             ['الإشعارات', 'التطبيق', 'admin.notifications.index', 10],
             ['صور وهوية التطبيق', 'التطبيق', 'admin.design-settings.index', 20],
             ['تشغيل المنتج', 'التشغيل', 'admin.product-operations.index', 10],

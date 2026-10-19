@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\CourseCode;
 use App\Models\Lesson;
+use App\Support\AdminStudentSearch;
 use App\Support\BusinessClock;
 use App\Support\CsvCell;
 use App\Support\UnicodeText;
@@ -34,11 +35,18 @@ final class AdminCourseCodeReadService
     public function query(array $filters): Builder
     {
         $query = CourseCode::query()->with(['course', 'lesson']);
+
+        return $this->applyFilters($query, $filters);
+    }
+
+    /** @param Builder<CourseCode> $query @return Builder<CourseCode> */
+    public function applyFilters(Builder $query, array $filters): Builder
+    {
         if (filled($filters['code'] ?? null)) {
-            $query->where('code', 'like', '%'.UnicodeText::identifier($filters['code']).'%');
+            $query->whereRaw("code LIKE ? ESCAPE '!'", ['%'.AdminStudentSearch::escape(UnicodeText::identifier($filters['code'])).'%']);
         }
         if (filled($filters['name'] ?? null)) {
-            $query->where('name', 'like', '%'.UnicodeText::clean($filters['name'], false).'%');
+            $query->whereRaw("name LIKE ? ESCAPE '!'", ['%'.AdminStudentSearch::escape(UnicodeText::clean($filters['name'], false)).'%']);
         }
         foreach (['type', 'course_id', 'lesson_id'] as $field) {
             if (filled($filters[$field] ?? null)) {

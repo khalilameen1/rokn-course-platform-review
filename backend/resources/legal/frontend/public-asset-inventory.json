@@ -55,11 +55,6 @@
       "classification": "first_party"
     },
     {
-      "path": "public/admin/assets/css/course-codes-index.css",
-      "sha256": "4f25d973ca06eb2856696167501dbabe9ef58c72261eef3df69d3d1fba2b2f87",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/course-codes-show.css",
       "sha256": "ce9f7e4e775650023a1f892fd4b3829a1f6a1c65f16063c57453e3e46878e291",
       "classification": "first_party"

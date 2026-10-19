@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\CourseCodeResource;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Course;
 use App\Models\CourseCode;
@@ -61,7 +62,8 @@ final class AdminCourseCodeFormsTest extends TestCase
             self::assertSame((string) $selected->id,
                 $xpath->evaluate('string(//select[@id="course_id"]/option[@selected]/@value)'));
         }
-        $this->get(route('admin.course-codes.index'))->assertOk();
+        $this->get(route('admin.course-codes.index'))->assertRedirect(CourseCodeResource::listUrl());
+        $this->get(CourseCodeResource::getUrl())->assertOk();
         self::assertSame([], $lessonQueries, 'Course-code pages must not fetch the entire lesson catalogue.');
         Http::assertNothingSent();
     }

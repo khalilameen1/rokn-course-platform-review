@@ -37,7 +37,6 @@ final class AdminInlineStyleContractTest extends TestCase
     private const STYLE_BLOCK_PAGES = [
         'admin.course-codes.create',
         'admin.course-codes.edit',
-        'admin.course-codes.index',
         'admin.course-codes.show',
         'admin.courses.index',
         'admin.courses.show',

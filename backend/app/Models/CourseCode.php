@@ -153,6 +153,8 @@ class CourseCode extends Model
 
     /**
      * Get the course associated with this code
+     *
+     * @return BelongsTo<Course, $this>
      */
     public function course(): BelongsTo
     {
@@ -161,6 +163,8 @@ class CourseCode extends Model
 
     /**
      * Get the lesson associated with this code
+     *
+     * @return BelongsTo<Lesson, $this>
      */
     public function lesson(): BelongsTo
     {

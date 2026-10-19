@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\CourseCodeResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CourseCodeBulkRequest;
 use App\Http\Requests\Admin\CourseCodeIndexRequest;
@@ -15,6 +16,7 @@ use App\Services\AdminCourseCodeReadService;
 use App\Support\BusinessClock;
 use App\Support\CourseCodeEditorVersion;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
@@ -37,23 +39,10 @@ class CourseCodeController extends Controller
 
     /**
      * Display a listing of the resource.
-     *
-     * @return Response
      */
-    public function index(CourseCodeIndexRequest $request)
+    public function index(CourseCodeIndexRequest $request): RedirectResponse
     {
-        $query = $this->reader->query($request->validated());
-
-        $courseCodes = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(10)->withQueryString();
-        $courses = $this->reader->courseOptions();
-        $designSettings = $this->getDesignSettings();
-        $editorVersions = $courseCodes->getCollection()->mapWithKeys(
-            fn (CourseCode $code): array => [$code->id => CourseCodeEditorVersion::for($code)]
-        );
-
-        return view('admin.course-codes.index', compact(
-            'courseCodes', 'courses', 'designSettings', 'editorVersions'
-        ));
+        return redirect()->to(CourseCodeResource::listUrl($request->validated()));
     }
 
     /**
