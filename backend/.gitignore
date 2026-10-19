@@ -104,6 +104,10 @@ storage/*.key
 
 /vendor/
 node_modules/
+playwright-report/
+test-results/
+.lighthouseci/
+playwright/.auth/
 npm-debug.log
 yarn-error.log
 
