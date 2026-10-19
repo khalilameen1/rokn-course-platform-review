@@ -1,6 +1,42 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('content staff native editor creates an account and confirms isolated MFA recovery', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/content-staff/create');
+    await page.getByRole('textbox', { name: /^الاسم بالعربية/ }).fill('مسؤول واجهة الفريق');
+    await page.getByRole('textbox', { name: /^بريد تسجيل الدخول/ }).fill('native-staff@dashboard.example.test');
+    await page.getByRole('textbox', { name: /^كلمة السر/ }).fill('Native-browser-password-2026');
+    await page.getByRole('textbox', { name: /^تأكيد كلمة السر/ }).fill('Native-browser-password-2026');
+    await page.getByRole('button', { name: 'إضافة', exact: true }).click();
+    await page.waitForURL('**/operations/content-staff');
+    const row = page.getByRole('row').filter({ hasText: 'مسؤول واجهة الفريق' });
+    await expect(row).toBeVisible();
+    await page.evaluate(() => scrollTo(0, 0));
+    await expect(page.getByRole('heading', { level: 1, name: 'فريق المحتوى', exact: true })).toBeInViewport();
+    await expect(row.getByRole('link', { name: 'تعديل', exact: true })).toBeInViewport({ ratio: 1 });
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('content-staff-list-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.getByRole('row').filter({ hasText: 'مسؤول استعادة الدخول' }).getByRole('link', { name: 'تعديل', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: /^بريد تسجيل الدخول/ })).not.toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('content-staff-edit-phone.png'), fullPage: true });
+    await page.getByRole('button', { name: 'إعادة ضبط التحقق بخطوتين', exact: true }).click();
+    const modal = page.getByRole('alertdialog');
+    await modal.getByRole('textbox', { name: /^اكتب بريد المسؤول للتأكيد/ }).fill('browser-recovery@dashboard.example.test');
+    await modal.getByRole('button', { name: 'تأكيد', exact: true }).click();
+    await expect(page.getByText('سيُطلب إعداد التحقق بخطوتين عند الدخول التالي', { exact: true })).toBeVisible();
+});
+
+test('content staff native desktop form keeps account and credential inputs distinct', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/operations/content-staff/create');
+    await expect(page.getByRole('textbox', { name: /^بريد تسجيل الدخول/ })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('content-staff-create-desktop.png'), fullPage: true });
+});
+
 test('public content native tabs preserve blank translations and published preview', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/operations/public-content?tab=privacy');

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\AppSettings;
 use App\Filament\Resources\AuditLogResource;
 use App\Filament\Resources\ContactResource;
 use App\Filament\Resources\CouponResource;
+use App\Filament\Resources\ModeratorResource;
 use App\Filament\Resources\OrderResource;
 use App\Filament\Resources\StudentProgressResource;
 use App\Filament\Resources\StudentResource;
@@ -161,10 +163,10 @@ final class AdminDashboardListsAndExportsTest extends TestCase
         }
 
         foreach ([
-            'moderator form' => route('admin.moderators.create'),
-            'settings' => route('admin.settings'),
+            'moderator form' => ModeratorResource::getUrl('create'),
+            'settings' => AppSettings::getUrl(),
         ] as $page => $url) {
-            self::assertSame(1, $this->page($url)->query('//input[@name="phone" and @dir="ltr"]')->length, $page);
+            self::assertSame(1, $this->page($url)->query('//input[contains(@id, "phone") and @dir="ltr"]')->length, $page);
         }
     }
 

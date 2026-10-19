@@ -51,6 +51,8 @@ parameters:
                 - app/Http/Controllers/Admin/NotificationsController.php
                 - app/Http/Controllers/Admin/DesignSettingController.php
                 - app/Http/Controllers/Admin/SettingsController.php
+                - app/Http/Controllers/Admin/AboutsController.php
+                - app/Http/Controllers/Admin/ModeratorController.php
         # Larastan resolves the DB facade to Illuminate\Database\Connection.
         -
             method:
@@ -96,6 +98,8 @@ parameters:
                 - app/Http/Controllers/Admin/NotificationsController.php
                 - app/Http/Controllers/Admin/DesignSettingController.php
                 - app/Http/Controllers/Admin/SettingsController.php
+                - app/Http/Controllers/Admin/AboutsController.php
+                - app/Http/Controllers/Admin/ModeratorController.php
         -
             method:
                 - 'Illuminate\Database\Eloquent\Builder::lockForUpdate()'

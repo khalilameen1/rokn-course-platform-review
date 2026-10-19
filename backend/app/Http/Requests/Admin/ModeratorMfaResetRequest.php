@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Admin;
 
+use App\Auth\AdminPermissionMatrix;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class ModeratorMfaResetRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return app(AdminPermissionMatrix::class)->allowsCapability($this->user(), AdminPermissionMatrix::ACCOUNT_CREDENTIALS);
     }
 
     public function rules(): array

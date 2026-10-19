@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\ModeratorResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ModeratorMfaResetRequest;
 use App\Http\Requests\Admin\ModeratorProfileRequest;
@@ -11,25 +12,21 @@ use App\Models\User;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminMfaResetService;
 use App\Services\AdminModeratorAuthoringService;
-use App\Support\ModeratorEditorVersion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
 
 final class ModeratorController extends Controller
 {
     public function __construct(private readonly AdminModeratorAuthoringService $authoring) {}
 
-    public function index(): View
+    public function index(): RedirectResponse
     {
-        $moderators = User::query()->where('role', 'moderator')->latest('id')->paginate(25);
-
-        return view('admin.moderators.index', compact('moderators'));
+        return redirect(ModeratorResource::getUrl());
     }
 
-    public function create(): View
+    public function create(): RedirectResponse
     {
-        return view('admin.moderators.create');
+        return redirect(ModeratorResource::getUrl('create'));
     }
 
     public function store(ModeratorProfileRequest $request, AdminAuthoringCreateIntentService $createIntents): RedirectResponse
@@ -44,12 +41,11 @@ final class ModeratorController extends Controller
             ->with('success', 'تم إنشاء حساب مسؤول المحتوى. سيُطلب منه إعداد التحقق بخطوتين عند الدخول.');
     }
 
-    public function edit(User $moderator): View
+    public function edit(User $moderator): RedirectResponse
     {
         $this->assertModerator($moderator);
-        $editorVersion = ModeratorEditorVersion::for($moderator);
 
-        return view('admin.moderators.edit', compact('moderator', 'editorVersion'));
+        return redirect(ModeratorResource::getUrl('edit', ['record' => $moderator->id]));
     }
 
     public function update(ModeratorProfileRequest $request, User $moderator): RedirectResponse

@@ -134,6 +134,8 @@ try {
         ])->save();
     }
     $student = User::query()->where('email', 'client@dashboard.example.test')->firstOrFail();
+    User::query()->forceCreate(['name_ar' => 'مسؤول استعادة الدخول', 'email' => 'browser-recovery@dashboard.example.test', 'role' => 'moderator', 'active' => true,
+        'password' => Hash::make('Recovery-fixture-password-2026'), 'admin_totp_secret' => 'JBSWY3DPEHPK3PXP', 'admin_totp_confirmed_at' => now()]);
     BunnyVideoCleanupCandidate::query()->create(['video_guid' => 'browser-cleanup-video', 'reason' => 'superseded_video', 'requires_review' => true, 'eligible_after' => now()->addDay()]);
     $student->forceFill(['portfolio_slug' => 'browser-selected-work'])->save();
     $portfolioItem = PortfolioItem::query()->create(['user_id' => $student->id, 'title' => 'عمل المتصفح المختار', 'is_public' => true]);

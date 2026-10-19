@@ -63,10 +63,11 @@ final class AdminModeratorAuthoringService
 
     private function profileFields(array $validated): array
     {
-        return [
+        return (array_key_exists('phone', $validated) ? [
+            'phone' => filled($validated['phone']) ? trim((string) $validated['phone']) : null,
+        ] : []) + [
             'name_ar' => trim((string) $validated['name_ar']),
             'name_en' => filled($validated['name_en'] ?? null) ? trim((string) $validated['name_en']) : null,
-            'phone' => filled($validated['phone'] ?? null) ? trim((string) $validated['phone']) : null,
             'active' => (bool) ($validated['active'] ?? false),
         ];
     }

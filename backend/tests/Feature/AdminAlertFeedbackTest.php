@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\ModeratorResource;
+use App\Filament\Resources\ModeratorResource\Pages\CreateModerator;
 use App\Filament\Resources\NotificationCampaignResource;
 use App\Filament\Resources\NotificationTemplateResource;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Contact;
 use App\Models\FeedbackReport;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\MessageBag;
 use Illuminate\Support\Str;
 use Illuminate\Support\ViewErrorBag;
+use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -49,19 +53,14 @@ final class AdminAlertFeedbackTest extends TestCase
             ? NotificationCampaignResource::getUrl('create') : NotificationTemplateResource::getUrl());
     }
 
-    public function test_shared_moderator_form_leaves_validation_to_its_admin_shell(): void
+    public function test_moderator_form_uses_native_field_validation(): void
     {
         $this->actingAsAdministrator();
-        $errors = (new ViewErrorBag)->put('default', new MessageBag(['name_ar' => 'اسم المشرف مطلوب']));
-
-        $content = (string) $this->withSession(['errors' => $errors])
-            ->get(route('admin.moderators.create'))
-            ->assertOk()
-            ->assertSee('name="name_ar"', false)
-            ->getContent();
-
-        self::assertSame(1, substr_count($content, 'حدثت أخطاء في النموذج'));
-        self::assertSame(1, substr_count($content, 'اسم المشرف مطلوب'));
+        $this->get(route('admin.moderators.create'))->assertRedirect(ModeratorResource::getUrl('create'));
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(CreateModerator::class)
+            ->fillForm(['name_ar' => '', 'email' => '', 'password' => ''])->call('create')
+            ->assertHasFormErrors(['name_ar' => 'required', 'email' => 'required', 'password' => 'required']);
     }
 
     public function test_validation_errors_remain_authoritative_over_success_flash(): void

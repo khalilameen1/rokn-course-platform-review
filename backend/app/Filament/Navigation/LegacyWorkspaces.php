@@ -17,7 +17,6 @@ final class LegacyWorkspaces
             ['الكورسات', 'المحتوى', 'admin.courses.index', 10],
             ['تشغيل المنتج', 'التشغيل', 'admin.product-operations.index', 10],
             ['تحليلات المنتج', 'التشغيل', 'admin.product-analytics.index', 20],
-            ['فريق العمل', 'الإدارة', 'admin.moderators.index', 20],
         ];
 
         return array_map(static fn (array $link): NavigationItem => NavigationItem::make($link[0])
