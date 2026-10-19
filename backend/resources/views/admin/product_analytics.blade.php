@@ -61,7 +61,7 @@
     </div>
 
     @if($paymentChannelReport !== null)
-        @include('admin.orders.partials.index.payment-channel-report')
+        @include('admin.payments.partials.channel-report')
         @include('admin.reports.provider-invoices', ['invoiceReport' => $invoiceReport])
     @else
         <p class="text-muted">تحصيل باقات العملات على مستوى المنصة لا يُنسب إلى كورس بعينه</p>

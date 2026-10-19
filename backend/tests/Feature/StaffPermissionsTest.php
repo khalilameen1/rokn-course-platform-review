@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Auth\AdminPermissionMatrix;
-use App\Auth\AdminSessionIdentity;
+use App\Filament\Resources\OrderResource;
 use App\Filament\Resources\StaffMemberResource;
 use App\Filament\Widgets\TodayStats;
 use App\Http\Middleware\RequireAdminMfa;
@@ -32,7 +32,8 @@ final class StaffPermissionsTest extends TestCase
         $this->withoutMiddleware(RequireAdminMfa::class);
         $this->actingAs($operator, 'web');
         $this->get('/operations/orders')->assertOk();
-        $this->get(route('admin.orders.index'))->assertOk();
+        $this->get(route('admin.orders.index'))->assertRedirect(OrderResource::listUrl());
+        $this->get('/operations/orders/report')->assertOk();
         $this->get('/operations/students')->assertForbidden();
         $this->get(route('admin.courses.index'))->assertForbidden();
         $this->get('/operations/health')->assertForbidden();

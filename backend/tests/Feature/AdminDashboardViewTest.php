@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\OrderResource;
+use App\Filament\Resources\OrderResource\Pages\ListOrders;
 use App\Models\Course;
 use App\Models\CourseCode;
 use App\Models\CourseModule;
@@ -15,10 +17,12 @@ use App\Models\PaymentReconciliationFinding;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\Support\RendersAdminPages;
 use Tests\TestCase;
 
@@ -71,7 +75,6 @@ final class AdminDashboardViewTest extends TestCase
             'course code details' => route('admin.course-codes.show', $code),
             'course code create' => route('admin.course-codes.create'),
             'course code edit' => route('admin.course-codes.edit', $code),
-            'orders list' => route('admin.orders.index'),
             'order details' => route('admin.orders.show', $order),
             'courses list' => route('admin.courses.index'),
             'course details' => route('admin.courses.show', $course),
@@ -180,12 +183,10 @@ final class AdminDashboardViewTest extends TestCase
             'payment_screenshot' => 'payment-evidence/receipt.jpg',
         ]);
 
-        $index = $this->dom((string) $this->adminGet($admin, route('admin.orders.index'))->assertOk()->getContent());
-        foreach (['select[@name="state"]', 'select[@name="payment_method"]', 'input[@name="date_from"]'] as $filter) {
-            self::assertSame(1, $index->query('//form//'.$filter)->length, $filter);
-        }
-        self::assertGreaterThan(0, $index->query('//img[starts-with(@onclick, "showPaymentScreenshot(")]')->length);
-        self::assertStringContainsString('function showPaymentScreenshot(', (string) $index->evaluate('string(//body)'));
+        $this->adminGet($admin, route('admin.orders.index'))->assertRedirect(OrderResource::listUrl());
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(ListOrders::class)
+            ->callTableAction('receipt', $order)->assertSee('إيصال الدفع');
 
         $show = $this->dom((string) $this->adminGet($admin, route('admin.orders.show', $order))->assertOk()->getContent());
         $resolve = '//form[@action="'.route('admin.orders.resolve-financial-review', $order).'"]';

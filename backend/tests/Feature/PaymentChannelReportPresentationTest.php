@@ -131,7 +131,7 @@ final class PaymentChannelReportPresentationTest extends TestCase
 
     private function renderTable(): DOMXPath
     {
-        $html = view('admin.orders.partials.index.payment-channel-report', [
+        $html = view('admin.payments.partials.channel-report', [
             'paymentChannelReport' => app(PaymentChannelReportService::class)->summary(),
         ])->render();
         $document = new DOMDocument;

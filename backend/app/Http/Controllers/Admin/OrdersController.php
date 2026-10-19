@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\OrderResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\OrderIndexRequest;
 use App\Models\DesignSetting;
@@ -12,6 +13,7 @@ use App\Services\OrderLifecycleService;
 use App\Services\SupportCaseCompensationService;
 use App\Support\CsvCell;
 use Illuminate\Contracts\View\Factory;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -26,18 +28,10 @@ class OrdersController extends Controller
         return DesignSetting::getDefaultSettings();
     }
 
-    /**
-     * Display a listing of orders with filtering and pagination.
-     *
-     * @param  Request  $request
-     * @return Factory|View
-     */
-    public function index(OrderIndexRequest $request, AdminPaymentOperationsReadService $payments)
+    /** Preserve old bookmarks; the native resource owns the only list UI. */
+    public function index(OrderIndexRequest $request): RedirectResponse
     {
-        return view('admin.orders.index', $payments->index($request->validated()) + [
-            'designSettings' => $this->getDesignSettings(),
-            'operationStateLabels' => AdminPaymentOperationsReadService::stateLabels(),
-        ]);
+        return redirect()->to(OrderResource::listUrl($request->validated(), max(1, $request->integer('page', 1))));
     }
 
     /** Streamed CSV of the current filters (UTF-8 BOM so Excel reads Arabic). */

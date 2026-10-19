@@ -105,7 +105,7 @@
         </section>
     </div>
 
-    @include('admin.orders.partials.index.payment-channel-report')
+    @include('admin.payments.partials.channel-report')
     @include('admin.reports.provider-invoices', ['invoiceReport' => $invoiceReport])
 
     @if($courseStats->count() > 0)

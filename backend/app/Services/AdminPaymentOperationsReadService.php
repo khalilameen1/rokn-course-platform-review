@@ -71,6 +71,20 @@ final readonly class AdminPaymentOperationsReadService
             ->withQueryString();
         $this->decorate($orders->getCollection());
 
+        return ['orders' => $orders, 'filters' => $filters] + $this->summary($filteredScope);
+    }
+
+    /** Financial summaries use the same filtered scope without loading a page of orders. */
+    public function report(array $filters): array
+    {
+        $query = $this->ordersQuery();
+        $this->applyFilters($query, $filters);
+
+        return $this->summary($query);
+    }
+
+    private function summary(Builder $filteredScope): array
+    {
         $paymentChannelReport = $this->channels->summary(null, null, clone $filteredScope);
         $rawStatusCounts = (clone $filteredScope)
             ->withoutEagerLoads()
@@ -81,8 +95,6 @@ final readonly class AdminPaymentOperationsReadService
         $paymentMethodOptions = collect($this->channelLabels());
 
         return [
-            'orders' => $orders,
-            'filters' => $filters,
             'stats' => [
                 'total' => (int) $rawStatusCounts->sum(),
                 'pending' => (int) ($rawStatusCounts[Order::STATUS_PENDING] ?? 0),

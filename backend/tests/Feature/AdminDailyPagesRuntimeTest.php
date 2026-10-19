@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\OrderResource;
 use App\Filament\Resources\TeacherResource\Pages\EditTeacher;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Classification;
@@ -55,7 +56,8 @@ final class AdminDailyPagesRuntimeTest extends TestCase
             'admin.courses.index',
             'admin.courses.create',
             'admin.users.index',
-            'admin.orders.index',
+            'filament.operations.resources.orders.index',
+            'filament.operations.resources.orders.report',
         ] as $routeName) {
             $this->actingAs($admin, 'web')
                 ->get(route($routeName))
@@ -156,7 +158,8 @@ final class AdminDailyPagesRuntimeTest extends TestCase
             route('admin.users.show', $student),
             route('admin.users.edit', $student),
             route('admin.orders.show', $order),
-            route('admin.orders.index'),
+            route('filament.operations.resources.orders.index'),
+            route('filament.operations.resources.orders.report'),
             route('admin.dashboard'),
         ] as $url) {
             $this->get($url)->assertOk();
@@ -167,7 +170,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
             ->assertRedirect(route('admin.courses.show', $course).'#studioCourseAttachments');
 
         foreach (array_keys(AdminPaymentOperationsReadService::stateLabels()) as $state) {
-            $this->get(route('admin.orders.index', ['state' => $state]))->assertOk();
+            $this->get(route('admin.orders.index', ['state' => $state]))->assertRedirect(OrderResource::listUrl(['state' => $state]));
         }
     }
 

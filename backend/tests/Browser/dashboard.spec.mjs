@@ -1,6 +1,39 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('payment report keeps currency separate and applies its native filters on mobile', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/orders/report');
+    await expect(page.getByRole('heading', { name: 'تقارير التحصيل', exact: true })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'التحصيل حسب القناة', exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('payment-report-phone.png'), fullPage: true });
+    await page.getByRole('heading', { name: 'تصفية التقرير', exact: true }).click();
+    await page.getByLabel('رقم الطلب أو المرجع أو الطالب', { exact: true }).fill('NO-REPORT-RESULT');
+    await page.getByRole('button', { name: 'تطبيق التصفيات', exact: true }).click();
+    await expect.poll(async () => new URL(await page.getByRole('link', { name: 'تصدير CSV', exact: true }).getAttribute('href')).searchParams.get('search')).toBe('NO-REPORT-RESULT');
+    await expect(page.locator('.fi-wi-stats-overview-stat').filter({ hasText: 'إجمالي الطلبات' }).locator('.fi-wi-stats-overview-stat-value')).toHaveText('0');
+    const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+    expect(audit.violations).toEqual([]);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('payment-report-filtered-phone.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const navigationLabel = page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'الطلبات', exact: true }).locator('.fi-sidebar-item-label');
+    await expect(navigationLabel).toHaveCSS('opacity', '1');
+    await page.getByLabel('رقم الطلب أو المرجع أو الطالب', { exact: true }).fill('BROWSER-PAID-900');
+    await page.getByRole('button', { name: 'تطبيق التصفيات', exact: true }).click();
+    await expect.poll(async () => new URL(await page.getByRole('link', { name: 'تصدير CSV', exact: true }).getAttribute('href')).searchParams.get('search')).toBe('BROWSER-PAID-900');
+    await expect(page.locator('.fi-wi-stats-overview-stat').filter({ hasText: 'إجمالي الطلبات' }).locator('.fi-wi-stats-overview-stat-value')).toHaveText('1');
+    await expect(page.getByRole('table', { name: 'التحصيل حسب القناة', exact: true }).getByRole('row').filter({ hasText: 'Google Play' }).getByText('900 عملة', { exact: true })).toBeVisible();
+    await page.getByRole('heading', { name: 'تصفية التقرير', exact: true }).click();
+    await expect(page.getByLabel('رقم الطلب أو المرجع أو الطالب', { exact: true })).not.toBeVisible();
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('payment-report-desktop.png'), fullPage: true });
+    expect(errors).toEqual([]);
+});
+
 test('financial table shows actual states and keeps search scope in CSV on a phone', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

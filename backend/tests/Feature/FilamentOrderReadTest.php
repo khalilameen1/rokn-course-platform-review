@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Filament\Resources\OrderResource\Pages\ListOrders;
+use App\Filament\Resources\OrderResource\Pages\PaymentReport;
+use App\Filament\Widgets\OrderChannelReport;
+use App\Filament\Widgets\OrderSummary;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\User;
@@ -108,6 +111,42 @@ final class FilamentOrderReadTest extends TestCase
             $this->order();
         }
         self::assertLessThanOrEqual($one + 1, $measure());
+    }
+
+    public function test_report_preserves_confirmed_money_and_excludes_test_and_foreign_currency(): void
+    {
+        $paid = ['status' => Order::STATUS_APPROVED, 'financial_status' => Order::FINANCIAL_SETTLED, 'approved_at' => now()];
+        $this->order($paid + ['gateway_gross_amount' => 100, 'gateway_fee_amount' => 4, 'gateway_net_amount' => 96]);
+        $this->order($paid + ['gateway_gross_amount' => 11.11, 'gateway_settlement_status' => 'test_purchase']);
+        $this->order($paid + ['gateway_gross_amount' => 30, 'gateway_currency' => 'USD']);
+        $page = Livewire::test(PaymentReport::class)->assertOk();
+        $data = $page->instance()->getWidgetData();
+        self::assertSame(100.0, $data['report']['stats']['total_amount']);
+        self::assertTrue($data['report']['paymentChannelReport']['has_other_currencies']);
+        Livewire::test(OrderSummary::class, $data)->assertSee('100.00');
+        Livewire::test(OrderChannelReport::class, $data)->assertSee('96.00')->assertSee('USD')->assertSee('لا تُجمع العملات المختلفة');
+    }
+
+    public function test_report_validates_before_applying_filters_and_exports_only_the_applied_scope(): void
+    {
+        $target = $this->order(['order_ref' => 'REPORT-ONE', 'status' => Order::STATUS_APPROVED, 'financial_status' => Order::FINANCIAL_SETTLED, 'approved_at' => now()]);
+        $this->order(['order_ref' => 'REPORT-TWO']);
+        $page = Livewire::test(PaymentReport::class)->set('filters.search', 'REPORT-ONE')->call('applyReportFilters')->assertHasNoErrors();
+        self::assertSame(1, $page->instance()->getWidgetData()['report']['stats']['total']);
+        self::assertSame('REPORT-ONE', $page->instance()->appliedFilters['search']);
+        $page->set('filters.amount_min', 100)->set('filters.amount_max', 10)->call('applyReportFilters')->assertHasErrors('filters.amount_max');
+        self::assertSame(['search' => 'REPORT-ONE'], $page->instance()->appliedFilters);
+        Livewire::test(OrderChannelReport::class, $page->instance()->getWidgetData())->assertSee('بانتظار التسوية');
+        self::assertNotNull($target->fresh());
+    }
+
+    public function test_report_and_its_widgets_deny_staff_without_finance_access(): void
+    {
+        $moderator = User::query()->forceCreate(['email' => 'non-finance@example.test', 'role' => 'moderator', 'active' => true]);
+        $this->actingAs($moderator, 'web');
+        Livewire::test(PaymentReport::class)->assertForbidden();
+        Livewire::test(OrderChannelReport::class)->assertForbidden();
+        Livewire::test(OrderSummary::class)->assertForbidden();
     }
 
     private function order(array $overrides = []): Order

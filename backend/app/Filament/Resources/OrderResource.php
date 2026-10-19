@@ -79,10 +79,10 @@ final class OrderResource extends ReadResource
                 Action::make('reports')->label('تقارير التحصيل')->url(fn (OrderResource\Pages\ListOrders $livewire): string => $livewire->reportsUrl()),
             ])
             ->recordUrl(null)
-            ->defaultSort('id', 'desc')->poll('30s')->emptyStateHeading('لا توجد طلبات')->emptyStateDescription('');
+            ->defaultSort('id', 'desc')->defaultPaginationPageOption(25)->poll('30s')->emptyStateHeading('لا توجد طلبات')->emptyStateDescription('');
     }
 
-    private static function filterSchema(): array
+    public static function filterSchema(): array
     {
         return [
             Select::make('state')->label('حالة عملية الدفع')->options(AdminPaymentOperationsReadService::stateLabels()),
@@ -96,6 +96,15 @@ final class OrderResource extends ReadResource
             TextInput::make('amount_max')->label('أعلى مبلغ')->numeric()->minValue(0)->maxValue(9999999999.99)
                 ->gte(fn (Get $get): ?string => filled($get('amount_min')) ? 'amount_min' : null),
         ];
+    }
+
+    /** Translate legacy/report filters once into the native table's URL contract. */
+    public static function listUrl(array $filters = [], int $page = 1): string
+    {
+        $search = $filters['search'] ?? '';
+        unset($filters['search']);
+
+        return self::getUrl('index', ['filters' => ['criteria' => $filters], 'search' => $search, ...($page > 1 ? ['page' => $page] : [])]);
     }
 
     private static function filterIndicators(array $data): array
@@ -158,6 +167,6 @@ final class OrderResource extends ReadResource
 
     public static function getPages(): array
     {
-        return ['index' => OrderResource\Pages\ListOrders::route('/')];
+        return ['index' => OrderResource\Pages\ListOrders::route('/'), 'report' => OrderResource\Pages\PaymentReport::route('/report')];
     }
 }

@@ -32,7 +32,7 @@ final class ListOrders extends ListRecords
 
     public function reportsUrl(): string
     {
-        return route('admin.orders.index', $this->reportFilters());
+        return OrderResource::getUrl('report', ['filters' => $this->reportFilters()]);
     }
 
     private function reportFilters(): array

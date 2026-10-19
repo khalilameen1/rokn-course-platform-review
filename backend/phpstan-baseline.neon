@@ -611,12 +611,6 @@ parameters:
 
 
 		-
-			message: '#^PHPDoc tag @param for parameter \$request with type Illuminate\\Http\\Request is not subtype of native type App\\Http\\Requests\\Admin\\OrderIndexRequest\.$#'
-			identifier: parameter.phpDocType
-			count: 1
-			path: app/Http/Controllers/Admin/OrdersController.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>name_ar" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1

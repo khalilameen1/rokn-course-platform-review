@@ -40,7 +40,6 @@ final class AdminInlineStyleContractTest extends TestCase
         'admin.course-codes.show',
         'admin.courses.index',
         'admin.courses.show',
-        'admin.orders.index',
         'admin.orders.show',
     ];
 
