@@ -9,6 +9,10 @@ use App\Http\Controllers\Admin\CoinEarningMethodController;
 use App\Http\Controllers\Admin\CourseCodeController;
 use App\Http\Controllers\Admin\PackageController;
 use App\Http\Requests\Admin\AdminNotificationRequest;
+use App\Http\Requests\Admin\CourseCodeBulkRequest;
+use App\Http\Requests\Admin\EditorVersionRequest;
+use App\Http\Requests\Admin\PackageProfileRequest;
+use App\Http\Requests\Admin\RewardRuleProfileRequest;
 use App\Models\AdminNotification;
 use App\Models\Coupon;
 use App\Models\CourseCode;
@@ -30,10 +34,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route as RouteFacade;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\ValidatesFormRequests;
 use Tests\TestCase;
 
 final class AdminMutableConfigurationConcurrencyTest extends TestCase
 {
+    use ValidatesFormRequests;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -192,7 +199,7 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
 
         try {
             $controller->updateRewardRule(
-                $this->updateRequest($staleVersion, 120),
+                $this->updateRequest($rule, $staleVersion, 120),
                 $rule
             );
             self::fail('A stale dashboard form must not overwrite a newer reward contract.');
@@ -205,7 +212,7 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
         self::assertSame('إكمال الكورس', $rule->title_ar);
 
         $controller->updateRewardRule(
-            $this->updateRequest(RewardConfigurationVersion::rule($rule), 220),
+            $this->updateRequest($rule, RewardConfigurationVersion::rule($rule), 220),
             $rule
         );
 
@@ -228,9 +235,9 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
 
         try {
             $controller->destroyRewardRule(
-                Request::create('/dashboard/reward-rules/'.$rule->id, 'DELETE', [
+                $this->validatedFormRequest(EditorVersionRequest::class, Request::create('/dashboard/reward-rules/'.$rule->id, 'DELETE', [
                     'editor_version' => $staleVersion,
-                ]),
+                ]), 'admin.reward-rules.destroy', ['rewardRule' => $rule]),
                 $rule
             );
             self::fail('A stale dashboard card must not delete a newer reward contract.');
@@ -321,7 +328,7 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
         $package->update(['price' => 150]);
 
         try {
-            $controller->update(Request::create('/dashboard/packages/'.$package->id, 'PUT', [
+            $controller->update($this->validatedFormRequest(PackageProfileRequest::class, Request::create('/dashboard/packages/'.$package->id, 'PUT', [
                 'name_ar' => 'باقة 100',
                 'name_en' => '100 coins',
                 'price' => 130,
@@ -331,7 +338,7 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
                 'google_enabled' => '0',
                 'apple_enabled' => '0',
                 'editor_version' => $staleVersion,
-            ]), $package);
+            ]), 'admin.packages.update', ['package' => $package]), $package);
             self::fail('A stale package editor must not replace newer live pricing.');
         } catch (ValidationException $exception) {
             self::assertArrayHasKey('editor_version', $exception->errors());
@@ -354,11 +361,11 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
         DB::table('course_codes')->where('id', $code->id)->update(['name' => 'دفعة الجامعة الجديدة']);
 
         try {
-            $controller->bulkAction(Request::create('/dashboard/course-codes/bulk-action', 'POST', [
+            $controller->bulkAction($this->validatedFormRequest(CourseCodeBulkRequest::class, Request::create('/dashboard/course-codes/bulk-action', 'POST', [
                 'action' => 'deactivate',
                 'selected_codes' => [$code->id],
                 'editor_versions' => [$code->id => $staleVersion],
-            ]));
+            ]), 'admin.course-codes.bulk-action'));
             self::fail('A stale bulk action must not override a newer course-code contract.');
         } catch (ValidationException $exception) {
             self::assertArrayHasKey('editor_versions', $exception->errors());
@@ -413,9 +420,9 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
         self::assertNull(RouteFacade::getRoutes()->getByName('admin.coin-earning-methods.toggle-status'));
     }
 
-    private function updateRequest(string $editorVersion, int $coins): Request
+    private function updateRequest(RewardRule $rule, string $editorVersion, int $coins): RewardRuleProfileRequest
     {
-        return Request::create('/dashboard/reward-rules/1', 'PUT', [
+        return $this->validatedFormRequest(RewardRuleProfileRequest::class, Request::create('/dashboard/reward-rules/'.$rule->id, 'PUT', [
             'event_key' => 'course_completed',
             'title_ar' => 'إكمال الكورس',
             'title_en' => 'Course completion',
@@ -425,6 +432,6 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
             'sort_order' => 10,
             'is_active' => '1',
             'editor_version' => $editorVersion,
-        ]);
+        ]), 'admin.reward-rules.update', ['rewardRule' => $rule]);
     }
 }
