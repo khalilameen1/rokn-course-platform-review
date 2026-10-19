@@ -181,6 +181,6 @@ final class AdminAppSettingsAuthoringService
             }
             $design ??= DesignSetting::getDefaultSettings();
             $design->fill($designUpdates)->save();
-        });
+        }, 3);
     }
 }

@@ -117,11 +117,6 @@
       "classification": "first_party"
     },
     {
-      "path": "public/admin/assets/css/settings-dashboard.css",
-      "sha256": "a101f48641a44a9e59279d734501d4f7520c963f13e4fb50d586082e5c6cd443",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/themify-icons.css",
       "sha256": "08a0af9f03516172bb3d8d31eebb64510f1e7ba84881c9d99f9809a28b94374f",
       "classification": "third_party",

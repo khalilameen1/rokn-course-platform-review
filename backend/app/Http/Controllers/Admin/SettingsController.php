@@ -3,43 +3,31 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Auth\AdminSessionIdentity;
+use App\Filament\Pages\AppSettings;
+use App\Filament\Resources\BunnyCleanupResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AppSettingsRequest;
 use App\Http\Requests\Admin\BunnyCleanupBatchRequest;
 use App\Http\Requests\Admin\BunnyConnectionTestRequest;
 use App\Http\Requests\Admin\StaffSelfAccountRequest;
 use App\Models\BunnyVideoCleanupCandidate;
-use App\Models\DesignSetting;
-use App\Models\Setting;
 use App\Services\AdminAppSettingsAuthoringService;
 use App\Services\AdminBunnyCleanupReviewService;
-use App\Services\BunnyService;
-use App\Support\AppSettingsEditorVersion;
-use Illuminate\Contracts\View\Factory;
+use App\Services\AdminBunnyConnectionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\View\View;
 
 class SettingsController extends Controller
 {
-    /**
-     * @return Factory|View
-     */
-    public function index(Request $request)
+    public function index(Request $request): RedirectResponse
     {
-        // Keep page reads idempotent. Database defaults are persisted only by
-        // the explicit POST below, not by opening the settings screen.
-        $settings = Setting::query()->first() ?? new Setting;
-        $designSettings = DesignSetting::getDefaultSettings();
-        $editorVersion = AppSettingsEditorVersion::for($settings, $designSettings);
+        if ($request->has('cleanup_filter')) {
+            return redirect(BunnyCleanupResource::getUrl('index', ['filters' => ['review' => ['value' => $request->query('cleanup_filter') === 'all' ? '' : $request->query('cleanup_filter')]]]));
+        }
 
-        return view('admin.settings.index', compact(
-            'settings',
-            'designSettings',
-            'editorVersion'
-        ));
+        return redirect(AppSettings::getUrl());
     }
 
     public function approveBunnyCleanup(
@@ -123,25 +111,10 @@ class SettingsController extends Controller
      *
      * @return JsonResponse
      */
-    public function testBunnyConnection(BunnyConnectionTestRequest $request)
+    public function testBunnyConnection(BunnyConnectionTestRequest $request, AdminBunnyConnectionService $connection)
     {
-        $submittedApiKey = $request->validated('api_key');
-        $settings = Setting::first();
-        $apiKey = $submittedApiKey
-            ?: config('bunny.stream_api_key')
-            ?: $settings?->bunny_api_key_secret;
-        $libraryId = $request->input('library_id')
-            ?: config('bunny.library_id')
-            ?: $settings?->bunny_library_id;
-        if (! $apiKey || ! $libraryId) {
-            return response()->json(['success' => false, 'message' => 'بيانات Bunny غير مكتملة.'], 422);
-        }
+        $result = $connection->test($request->validated());
 
-        $result = BunnyService::testConnection(
-            $apiKey,
-            $libraryId
-        );
-
-        return response()->json($result);
+        return response()->json($result, ($result['code'] ?? null) === 'credentials_missing' ? 422 : 200);
     }
 }

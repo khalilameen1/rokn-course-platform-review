@@ -1,6 +1,41 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('app settings native phone form saves links without persisting secret fields', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/app-settings');
+    await page.getByRole('textbox', { name: 'هاتف التواصل', exact: true }).fill('+201234567890');
+    await page.getByRole('heading', { name: 'روابط التواصل', exact: true }).click();
+    await page.getByRole('textbox', { name: 'YouTube', exact: true }).fill('https://www.youtube.com/@rokn');
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page.getByText('تم الحفظ', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole('textbox', { name: 'هاتف التواصل', exact: true })).toHaveValue('+201234567890');
+    await page.getByRole('heading', { name: 'Bunny للفيديو', exact: true }).click();
+    await expect(page.getByLabel('مفتاح مكتبة الفيديو', { exact: true })).toHaveValue('');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('app-settings-phone.png'), fullPage: true });
+});
+
+test('app settings native desktop exposes tier limits and explicit connection test', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/operations/app-settings');
+    await page.getByRole('heading', { name: 'مزايا الاشتراكات الجديدة', exact: true }).click();
+    await expect(page.getByText('Basic', { exact: true })).toBeVisible();
+    await expect(page.getByText('Plus', { exact: true })).toBeVisible();
+    await expect(page.getByText('Pro', { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('app-settings-desktop.png'), fullPage: true });
+    await page.getByRole('button', { name: 'اختبار اتصال Bunny', exact: true }).click();
+    const modal = page.getByRole('dialog');
+    await expect(modal.getByLabel('مفتاح اختبار بديل', { exact: true })).toHaveValue('');
+    await expect(modal).toContainText('اترك الحقلين فارغين لاختبار الاتصال المحفوظ');
+    await modal.getByRole('button', { name: 'إلغاء', exact: true }).click();
+});
+
 test('video cleanup queue confirms approval without deleting bytes on phone', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/operations/bunny-cleanups');

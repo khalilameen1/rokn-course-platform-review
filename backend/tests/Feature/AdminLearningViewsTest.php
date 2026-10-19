@@ -89,9 +89,11 @@ final class AdminLearningViewsTest extends TestCase
     public function test_public_links_and_legal_copy_have_one_dashboard_editor(): void
     {
         [$admin] = $this->records();
-        $settings = $this->dom((string) $this->adminGet($admin, route('admin.settings'))->assertOk()->getContent());
+        $this->adminGet($admin, route('admin.settings'))->assertRedirect(\App\Filament\Pages\AppSettings::getUrl());
+        \Filament\Facades\Filament::setCurrentPanel(\Filament\Facades\Filament::getPanel('operations'));
+        $settings = \Livewire\Livewire::test(\App\Filament\Pages\AppSettings::class);
         foreach (['facebook_url', 'instagram_url', 'tiktok_url', 'whatsapp_url', 'support_whatsapp_url'] as $field) {
-            self::assertGreaterThan(0, $settings->query('//form//input[@name="'.$field.'"]')->length, $field);
+            $settings->assertFormFieldExists($field);
         }
 
         $design = $this->dom((string) $this->adminGet($admin, ArtworkSettings::getUrl())->assertOk()->getContent());
