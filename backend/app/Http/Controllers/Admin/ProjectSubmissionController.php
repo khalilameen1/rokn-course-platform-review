@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ProjectReviewIndexRequest;
+use App\Http\Requests\Admin\ProjectReviewRequest;
 use App\Models\AiInputAttachment;
 use App\Models\ProjectSubmission;
 use App\Models\User;
@@ -24,13 +26,10 @@ final class ProjectSubmissionController extends Controller
         private readonly AdminProjectSubmissionReviewReadService $reviewReads
     ) {}
 
-    public function index(Request $request): View
+    public function index(ProjectReviewIndexRequest $request): View
     {
         $isAdministrator = $this->isAdministrator($request);
-        $filters = $request->validate([
-            'status' => 'nullable|in:pending,passed,needs_resubmission',
-            'search' => 'nullable|string|max:100',
-        ]);
+        $filters = $request->validated();
 
         $page = $this->reviewReads->index($filters, $isAdministrator);
         $submissions = $page['submissions'];
@@ -93,13 +92,11 @@ final class ProjectSubmissionController extends Controller
     }
 
     public function pass(
-        Request $request,
+        ProjectReviewRequest $request,
         ProjectSubmission $projectSubmission,
         ProjectSubmissionReviewService $reviews
     ): RedirectResponse {
-        $data = $request->validate([
-            'feedback' => 'nullable|string|max:2000',
-        ]);
+        $data = $request->validated();
 
         $reviews->reviewByStaff(
             $projectSubmission,
@@ -114,13 +111,11 @@ final class ProjectSubmissionController extends Controller
     }
 
     public function reject(
-        Request $request,
+        ProjectReviewRequest $request,
         ProjectSubmission $projectSubmission,
         ProjectSubmissionReviewService $reviews
     ): RedirectResponse {
-        $data = $request->validate([
-            'feedback' => 'required|string|min:3|max:2000',
-        ]);
+        $data = $request->validated();
 
         $reviews->reviewByStaff(
             $projectSubmission,

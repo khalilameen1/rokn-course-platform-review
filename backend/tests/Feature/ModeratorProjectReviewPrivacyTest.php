@@ -75,6 +75,16 @@ final class ModeratorProjectReviewPrivacyTest extends TestCase
         self::assertSame($moderator->id, $submission->reviewed_by);
     }
 
+    public function test_rejection_requires_feedback_and_cannot_change_the_submission_without_it(): void
+    {
+        [$moderator, , $submission] = $this->records();
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $before = $submission->fresh()->getRawOriginal();
+        $this->actingAs($moderator)->post(route('admin.project-submissions.reject', $submission), ['feedback' => ''])
+            ->assertSessionHasErrors('feedback');
+        self::assertSame($before, $submission->fresh()->getRawOriginal());
+    }
+
     /** @return array{User, User, ProjectSubmission} */
     private function records(): array
     {

@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\SupportCaseCompensationRequest;
+use App\Http\Requests\Admin\SupportCaseIndexRequest;
+use App\Http\Requests\Admin\SupportCaseMessageRequest;
+use App\Http\Requests\Admin\SupportCaseStateRequest;
 use App\Models\FeedbackAttachment;
 use App\Models\FeedbackReport;
 use App\Models\SupportCaseMessage;
@@ -16,16 +20,14 @@ use App\Support\BusinessClock;
 use App\Support\CsvCell;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class FeedbackController extends Controller
 {
-    public function index(Request $request): View
+    public function index(SupportCaseIndexRequest $request): View
     {
         [$filters, $query] = $this->filteredReports($request);
         $reports = $query->latest('updated_at')->latest('id')->paginate(30)->withQueryString();
@@ -35,20 +37,9 @@ final class FeedbackController extends Controller
     }
 
     /** @return array{array<string, mixed>, Builder<FeedbackReport>} */
-    private function filteredReports(Request $request): array
+    private function filteredReports(SupportCaseIndexRequest $request): array
     {
-        $filters = $request->validate([
-            'q' => 'nullable|string|max:120',
-            'status' => ['nullable', Rule::in(SupportCaseService::CUSTOMER_STATUSES)],
-            'category' => ['nullable', Rule::in(['bug', 'suggestion', 'course_content', 'playback'])],
-            'priority' => ['nullable', Rule::in(['low', 'normal', 'high', 'urgent'])],
-            'assigned_to' => 'nullable|integer|exists:users,id',
-            'overdue' => 'nullable|boolean',
-            'app_version' => 'nullable|string|max:32',
-            'course_id' => 'nullable|integer',
-            'from' => 'nullable|date_format:Y-m-d',
-            'to' => 'nullable|date_format:Y-m-d|after_or_equal:from',
-        ]);
+        $filters = $request->validated();
         $from = isset($filters['from']) ? BusinessClock::localDayRangeUtc($filters['from'])[0] : null;
         $toExclusive = isset($filters['to']) ? BusinessClock::localDayRangeUtc($filters['to'])[1] : null;
         $queryText = trim((string) ($filters['q'] ?? ''));
@@ -110,7 +101,7 @@ final class FeedbackController extends Controller
         return view('admin.feedback.show', compact('feedback', 'admins', 'compensableCoins'));
     }
 
-    public function export(Request $request): StreamedResponse
+    public function export(SupportCaseIndexRequest $request): StreamedResponse
     {
         [, $query] = $this->filteredReports($request);
         $query->limit(10000);
@@ -138,33 +129,22 @@ final class FeedbackController extends Controller
     }
 
     public function update(
-        Request $request,
+        SupportCaseStateRequest $request,
         FeedbackReport $feedback,
         SupportCaseService $cases
     ): RedirectResponse {
-        $validated = $request->validate([
-            'version' => 'required|integer|min:1',
-            'status' => ['required', Rule::in(SupportCaseService::CUSTOMER_STATUSES)],
-            'priority' => ['required', Rule::in(['low', 'normal', 'high', 'urgent'])],
-            'assigned_to' => ['nullable', Rule::exists('users', 'id')->where(fn ($q) => $q->where('role', 'admin'))],
-            'resolution_kind' => ['nullable', Rule::in(['fixed', 'guidance', 'compensated', 'not_reproducible', 'duplicate'])],
-        ]);
+        $validated = $request->validated();
         $cases->updateState($feedback, $validated, $request->user()?->id);
 
         return back()->with('success', 'تم تحديث الحالة');
     }
 
     public function message(
-        Request $request,
+        SupportCaseMessageRequest $request,
         FeedbackReport $feedback,
         SupportCaseService $cases
     ): RedirectResponse {
-        $validated = $request->validate([
-            'version' => 'required|integer|min:1',
-            'client_request_id' => 'required|uuid',
-            'visibility' => ['required', Rule::in(['customer', 'internal'])],
-            'message' => 'required|string|min:2|max:4000',
-        ]);
+        $validated = $request->validated();
         $cases->appendStaffMessage(
             $feedback,
             $request->user(),
@@ -178,15 +158,11 @@ final class FeedbackController extends Controller
     }
 
     public function compensate(
-        Request $request,
+        SupportCaseCompensationRequest $request,
         FeedbackReport $feedback,
         SupportCaseCompensationService $compensation
     ): RedirectResponse {
-        $validated = $request->validate([
-            'version' => 'required|integer|min:1',
-            'amount' => 'required|integer|min:1|max:100000000',
-            'note' => 'required|string|min:8|max:1000',
-        ]);
+        $validated = $request->validated();
         if (! $feedback->order_id) {
             return back()->with('error', 'اربط البلاغ بطلب موثّق أولًا');
         }

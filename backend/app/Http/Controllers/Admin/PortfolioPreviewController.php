@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\PortfolioDecisionRequest;
+use App\Http\Requests\Admin\PortfolioReviewIndexRequest;
 use App\Http\Resources\PortfolioMediaResource;
 use App\Models\User;
 use App\Services\PortfolioModerationService;
@@ -16,11 +18,9 @@ use Illuminate\Http\Response;
 /** Routes require both admin-only authorization and the dashboard MFA guard. */
 final class PortfolioPreviewController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(PortfolioReviewIndexRequest $request): Response
     {
-        $filters = $request->validate([
-            'status' => ['nullable', 'in:pending,approved,rejected,suspended'],
-        ]);
+        $filters = $request->validated();
         $status = $filters['status'] ?? 'pending';
         $owners = User::query()->whereNotNull('portfolio_slug')
             ->when($status === 'pending', fn ($query) => $query
@@ -59,14 +59,9 @@ final class PortfolioPreviewController extends Controller
         return redirect()->away($url)->withHeaders($this->headers());
     }
 
-    public function decide(User $user, Request $request, PortfolioModerationService $moderation): RedirectResponse
+    public function decide(User $user, PortfolioDecisionRequest $request, PortfolioModerationService $moderation): RedirectResponse
     {
-        $input = $request->validate([
-            'revision' => ['required', 'integer', 'min:1'],
-            'snapshot_hash' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/'],
-            'decision' => ['required', 'in:approved,rejected'],
-            'reason' => ['nullable', 'required_if:decision,rejected', 'string', 'max:2000'],
-        ]);
+        $input = $request->validated();
         $moderation->decide($user, $request->user(), (int) $input['revision'],
             $input['snapshot_hash'], $input['decision'], $input['reason'] ?? null);
 

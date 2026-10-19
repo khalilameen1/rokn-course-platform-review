@@ -66,6 +66,16 @@ final class AdminSupportExportFilterParityTest extends TestCase
         $this->actingAs($this->admin, 'web');
     }
 
+    public function test_end_date_alone_is_valid_for_inbox_and_export_but_inverted_range_is_rejected(): void
+    {
+        $filters = ['to' => '2026-09-09'];
+        $this->get(route('admin.feedback.index', $filters))->assertOk()->assertSessionHasNoErrors();
+        $this->get(route('admin.feedback.export', $filters))->assertOk()->assertSessionHasNoErrors();
+        foreach (['admin.feedback.index', 'admin.feedback.export'] as $route) {
+            $this->get(route($route, ['from' => '2026-09-10', 'to' => '2026-09-09']))->assertSessionHasErrors('to');
+        }
+    }
+
     protected function tearDown(): void
     {
         Carbon::setTestNow();
