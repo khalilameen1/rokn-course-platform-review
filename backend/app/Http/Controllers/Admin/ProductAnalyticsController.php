@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ProductAnalyticsIndexRequest;
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
 use App\Models\Order;
@@ -12,20 +13,15 @@ use App\Services\PaymentChannelReportService;
 use App\Services\ProductAnalyticsService;
 use App\Services\ProviderInvoiceReportService;
 use App\Support\ReportPeriod;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 final class ProductAnalyticsController extends Controller
 {
     public function index(
-        Request $request,
+        ProductAnalyticsIndexRequest $request,
         ProductAnalyticsService $analytics,
         PaymentChannelReportService $payments
     ) {
-        $filters = $request->validate([
-            'course_id' => ['nullable', 'integer', 'exists:courses,id'],
-            'period' => ['nullable', Rule::in(array_keys(ReportPeriod::labels()))],
-        ]);
+        $filters = $request->validated();
         $courseId = isset($filters['course_id']) ? (int) $filters['course_id'] : null;
         if ($courseId !== null) {
             // Reporting retains archived canonical identities without granting

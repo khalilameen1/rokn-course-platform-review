@@ -3,19 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StudentProgressIndexRequest;
 use App\Services\AdminStudentProgressReadService;
-use Illuminate\Http\Request;
 
 class StudentProgressController extends Controller
 {
     public function __construct(private readonly AdminStudentProgressReadService $progress) {}
 
-    public function index(Request $request)
+    public function index(StudentProgressIndexRequest $request)
     {
-        $filters = $request->validate([
-            'search' => 'nullable|string|max:120',
-            'course_id' => 'nullable|integer|exists:courses,id',
-        ]);
+        $filters = $request->validated();
 
         return view('admin.student-progress.index', $this->progress->listing($filters, $request->query()));
     }

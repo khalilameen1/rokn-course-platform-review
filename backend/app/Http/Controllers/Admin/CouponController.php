@@ -4,12 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CouponRequest;
+use App\Http\Requests\Admin\EditorVersionRequest;
 use App\Models\Coupon;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminContentInventoryReadService;
 use App\Services\AdminCouponAuthoringService;
 use App\Support\CouponEditorVersion;
-use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class CouponController extends Controller
@@ -75,9 +75,9 @@ class CouponController extends Controller
         return redirect()->route('admin.coupons.index')->with('success', 'تم التعديل بنجاح');
     }
 
-    public function destroy(Request $request, Coupon $coupon)
+    public function destroy(EditorVersionRequest $request, Coupon $coupon)
     {
-        $validated = $request->validate(['editor_version' => 'required|string|size:64']);
+        $validated = $request->validated();
         $this->authoring->delete((int) $coupon->id, (string) $validated['editor_version']);
 
         return redirect()->route('admin.coupons.index')->with('success', 'تم الحذف بنجاح ');

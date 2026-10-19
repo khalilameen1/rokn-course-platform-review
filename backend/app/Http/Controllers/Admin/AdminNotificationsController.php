@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AdminNotificationRequest;
+use App\Http\Requests\Admin\EditorVersionRequest;
 use App\Models\AdminNotification;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminNotificationTemplateAuthoringService;
 use App\Support\NotificationTemplateEditorVersion;
-use Illuminate\Http\Request;
 
 class AdminNotificationsController extends Controller
 {
@@ -64,9 +64,9 @@ class AdminNotificationsController extends Controller
         return redirect()->route('admin.admin_notifications.index')->with('success', 'تم التعديل بنجاح');
     }
 
-    public function destroy(Request $request, AdminNotification $admin_notification)
+    public function destroy(EditorVersionRequest $request, AdminNotification $admin_notification)
     {
-        $validated = $request->validate(['editor_version' => 'required|string|size:64']);
+        $validated = $request->validated();
         $disabled = $this->authoring->deleteOrDisable((int) $admin_notification->id, (string) $validated['editor_version']);
 
         return redirect()->route('admin.admin_notifications.index')

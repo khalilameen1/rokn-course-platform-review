@@ -44,6 +44,9 @@ final class AdminAuditLogPageTest extends TestCase
             ->assertOk()->assertSee('admin.courses.update')->assertDontSee('admin.coupons.update');
         $this->actingAs($admin)->get(route('admin.audit-log.index', ['from' => '2026-10-10', 'to' => '2026-10-01']))
             ->assertSessionHasErrors('to');
+        $this->flushSession();
+        $this->actingAs($admin)->get(route('admin.audit-log.index', ['to' => now()->subDay()->format('Y-m-d')]))
+            ->assertOk()->assertSessionHasNoErrors()->assertSee('admin.coupons.update')->assertDontSee('admin.courses.update');
     }
 
     public function test_moderators_cannot_read_the_audit_trail_and_page_has_no_mutations(): void
