@@ -21,6 +21,19 @@ notifyManager.setScheduler(callback => {
 
 const testClients = new Set<QueryClient>();
 
+const ownTestQueryClient = (client: QueryClient) => {
+  if (testClients.has(client)) return;
+  // Apply the documented testing policy to explicit clients too. Disabled
+  // identity queries can leave the cache before their observer detaches; their
+  // default five-minute GC timer cannot then be reached by client.clear().
+  const defaults = client.getDefaultOptions();
+  client.setDefaultOptions({
+    ...defaults,
+    queries: {...defaults.queries, gcTime: Number.POSITIVE_INFINITY},
+  });
+  testClients.add(client);
+};
+
 // Explicit query gcTime overrides the client default. Unmounted catalogue
 // observers therefore leave two-hour timers unless their owning cache is
 // cleared. Dispose persistence first so teardown cannot create new writes.
@@ -55,7 +68,7 @@ export const createTestQueryClient = () => {
 };
 
 export const queryWrapper = (client: QueryClient = createTestQueryClient()) => {
-  testClients.add(client);
+  ownTestQueryClient(client);
   const Wrapper = ({children}: {children: ReactNode}) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
@@ -69,7 +82,7 @@ export const withQueryClient = (
 ) => {
   // Explicit clients (including the application singleton) need the same
   // persistence/cache teardown as clients created by this test helper.
-  testClients.add(client);
+  ownTestQueryClient(client);
   return <QueryClientProvider client={client}>{element}</QueryClientProvider>;
 };
 
@@ -82,7 +95,7 @@ export const withAppQueryProvider = (
   client: QueryClient,
   identityKey = 'guest',
 ) => {
-  testClients.add(client);
+  ownTestQueryClient(client);
   attachQueryPersistence(client, {throttleTime: 0});
   return (
     <RoknQueryProvider client={client} identityKey={identityKey}>
