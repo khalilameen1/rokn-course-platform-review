@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Data\NotificationAuthoringInput;
+use App\Filament\Resources\NotificationCampaignResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\NotificationAudienceRequest;
 use App\Http\Requests\Admin\NotificationCampaignRequest;
@@ -23,11 +24,9 @@ use Illuminate\View\View;
 
 final class NotificationsController extends Controller
 {
-    public function index(AdminNotificationCampaignReadService $notifications): View
+    public function index(): RedirectResponse
     {
-        return view('admin.notifications.index', [
-            'campaigns' => $notifications->campaigns(),
-        ]);
+        return redirect()->to(NotificationCampaignResource::getUrl());
     }
 
     public function create(NotificationCreateContextRequest $request, AdminNotificationCampaignReadService $notifications): View

@@ -11,6 +11,7 @@ use App\Models\CourseEnrollment;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
 use App\Models\FeedbackReport;
+use App\Models\NotificationCampaign;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\PaymentReconciliationFinding;
@@ -170,6 +171,11 @@ try {
     $historyCode = CourseCode::query()->create(['code' => 'BROWSER-HISTORY', 'name' => 'سجل المنحة', 'course_id' => $course->id,
         'type' => 'course', 'max_uses' => 10, 'used_count' => 1, 'is_active' => true, 'is_grant' => true]);
     $historyCode->usages()->create(['user_id' => $student->id, 'used_at' => now(), 'ip_address' => '127.0.0.1', 'user_agent' => 'Browser fixture']);
+    NotificationCampaign::query()->create(['delivery_key' => 'browser-notification-scheduled', 'notification_type' => 'service_notice', 'audience' => 'all',
+        'title_ar' => 'حملة المتصفح المجدولة', 'message_ar' => 'نص الإشعار الكامل في تجربة المتصفح',
+        'action_label_ar' => 'ابدأ الكورس', 'link' => 'rokn://course/'.$course->id, 'course_id' => $course->id,
+        'image_url' => 'http://127.0.0.1:8793/assets/app-artwork/v1/coin-stack.png',
+        'status' => NotificationCampaign::STATUS_SCHEDULED, 'scheduled_at' => now()->addDay(), 'user_ids' => [], 'exclude_user_ids' => []]);
     FeedbackReport::query()->firstOrCreate(['message' => 'رسالة دعم المتصفح'], [
         'public_id' => (string) Str::ulid(), 'user_id' => $student->id, 'category' => 'playback',
         'status' => 'new', 'priority' => 'high', 'version' => 1, 'app_version' => '1.0.68',

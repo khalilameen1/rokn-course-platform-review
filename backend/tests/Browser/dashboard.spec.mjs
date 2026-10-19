@@ -1,6 +1,41 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('notification campaign native workspace previews and cancels without sending', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/notifications');
+    await page.locator('.fi-ta-search-field input').fill('حملة المتصفح');
+    const row = page.getByRole('row').filter({ hasText: 'حملة المتصفح المجدولة' });
+    await expect(row).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('notification-campaign-list-phone.png'), fullPage: true, animations: 'disabled' });
+    await row.getByRole('button', { name: 'إجراءات الحملة', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'التفاصيل', exact: true }).click();
+    await expect(page.getByText('نص الإشعار الكامل في تجربة المتصفح', { exact: true })).toBeVisible();
+    const image = page.locator('main img').first();
+    await expect.poll(() => image.evaluate(element => element.naturalWidth)).toBeGreaterThan(0);
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('notification-campaign-detail-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.reload();
+    await expect(page.getByRole('heading', { level: 1, name: 'حملة المتصفح المجدولة', exact: true })).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('notification-campaign-detail-desktop.png'), fullPage: true, animations: 'disabled' });
+    await page.getByRole('button', { name: 'إلغاء الحملة', exact: true }).click();
+    const dialog = page.getByRole('alertdialog');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await dialog.getByRole('button', { name: 'تأكيد', exact: true }).click();
+    await expect(dialog).not.toBeVisible();
+    await expect(page.getByText('أُلغيت الحملة ولن تُرسل', { exact: true })).toBeVisible();
+    await expect(page.getByText('أُلغيت قبل الإرسال', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByText('أُلغيت قبل الإرسال', { exact: true })).toBeVisible();
+    expect(errors).toEqual([]);
+});
+
 test('grant code detail shows retained usage history on phone and desktop', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

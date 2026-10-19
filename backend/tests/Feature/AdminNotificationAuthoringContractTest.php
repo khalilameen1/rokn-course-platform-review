@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\NotificationCampaignResource;
+use App\Filament\Resources\NotificationCampaignResource\Pages\ListNotificationCampaigns;
 use App\Filament\Resources\StudentResource;
 use App\Http\Controllers\Admin\UsersController;
 use App\Http\Middleware\RequireAdminMfa;
@@ -19,6 +21,7 @@ use App\Services\CourseContentNotificationService;
 use App\Services\CoursePublishingService;
 use DOMDocument;
 use DOMXPath;
+use Filament\Facades\Filament;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -27,6 +30,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Livewire\Livewire;
 use Mockery;
 use Tests\TestCase;
 
@@ -81,6 +85,8 @@ final class AdminNotificationAuthoringContractTest extends TestCase
 
         $this->actingAs($this->admin, 'web')
             ->get(route('admin.notifications.index'))
+            ->assertRedirect(NotificationCampaignResource::getUrl());
+        $this->get(NotificationCampaignResource::getUrl())
             ->assertOk()
             ->assertSee('توقف توزيع الحملة قبل اكتماله')
             ->assertSee('الكورس')
@@ -136,8 +142,9 @@ final class AdminNotificationAuthoringContractTest extends TestCase
             ]);
         }
 
-        $campaigns = $this->actingAs($this->admin, 'web')
-            ->get(route('admin.notifications.index'))->assertOk()->viewData('campaigns');
+        $this->actingAs($this->admin, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $campaigns = Livewire::test(ListNotificationCampaigns::class)->instance()->getTableRecords();
         self::assertSame(30, $campaigns->perPage());
         self::assertCount(30, $campaigns->items());
 

@@ -7,12 +7,13 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\NotificationCampaign;
 use App\Models\User;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 final class AdminNotificationCampaignReadService
 {
-    public function campaigns(): LengthAwarePaginator
+    /** @return Builder<NotificationCampaign> */
+    public function query(): Builder
     {
         return NotificationCampaign::query()
             ->withCount([
@@ -23,9 +24,7 @@ final class AdminNotificationCampaignReadService
                     ->whereNotNull('push_failed_at')->whereNull('push_sent_at'),
                 'notifications as push_partial_count' => fn ($query) => $query
                     ->whereNotNull('push_sent_at')->whereNotNull('push_failed_at'),
-            ])
-            ->orderByRaw('COALESCE(scheduled_at, queued_at, created_at) DESC')
-            ->paginate(30);
+            ]);
     }
 
     /** @return array{courses:Collection,targetStudent:?User} */
