@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Auth\EditStaffProfile;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -28,10 +29,10 @@ final class FilamentNavigationGroupingTest extends TestCase
             }
         }
         self::assertSame(['لوحة رُكن'], $items['root']);
-        self::assertSame(['الكورسات', 'صفوف الرئيسية', 'المسارات', 'المحاضرون'], $items['المحتوى']);
+        self::assertSame(['مساحة المحتوى', 'الكورسات', 'صفوف الرئيسية', 'المسارات', 'المحاضرون'], $items['المحتوى']);
         self::assertSame(['مشاريع الطلاب', 'مراجعة البورتفوليو', 'رسائل الدعم', 'رسائل التواصل'], $items['المراجعة']);
-        self::assertSame(['الطلبات', 'حزم المتاجر', 'الخصومات', 'المصروفات', 'أكواد المنح'], $items['التجارة']);
-        self::assertSame(['الإشعارات', 'صور وهوية التطبيق', 'الشارات', 'المكافآت التلقائية', 'مهام العملات', 'إعدادات المكافآت'], $items['التطبيق']);
+        self::assertSame(['الأداء المالي', 'الطلبات', 'مطابقة المدفوعات', 'حزم المتاجر', 'الخصومات', 'المصروفات', 'اقتصاديات التشغيل', 'أكواد المنح'], $items['التجارة']);
+        self::assertSame(['الإشعارات', 'قوالب الإشعارات', 'صور وهوية التطبيق', 'الشارات', 'المكافآت التلقائية', 'مهام العملات', 'إعدادات المكافآت'], $items['التطبيق']);
         self::assertSame(count($destinations), count(array_unique($destinations)));
     }
 
@@ -51,7 +52,7 @@ final class FilamentNavigationGroupingTest extends TestCase
             }
         }
         self::assertContains('الكورسات', $labels);
-        self::assertContains('بيانات حسابي', $labels);
+        self::assertSame(EditStaffProfile::getUrl(), Filament::getProfileUrl());
         self::assertNotContains('الأدوار', $labels);
         self::assertNotContains('صلاحيات الفريق', $labels);
     }
