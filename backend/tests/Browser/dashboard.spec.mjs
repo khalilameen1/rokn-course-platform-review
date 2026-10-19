@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import AxeBuilder from './support/settled-axe.mjs';
 
 test('native content workspace and daily home preserve the studio entry on phones', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -1498,6 +1498,7 @@ test('payment findings show evidence and document reversible review decisions on
     const reopen = page.getByRole('alertdialog', { name: 'إعادة فتح المراجعة', exact: true });
     await reopen.getByRole('textbox', { name: /^سبب القرار/ }).fill('ظهر دليل جديد يحتاج إلى فحص');
     await reopen.getByRole('button', { name: 'حفظ القرار', exact: true }).click();
+    await expect(page.getByText('تم توثيق القرار', { exact: true })).toBeVisible();
     await page.goto('/operations/payment-findings');
     await expect(row.getByText('مفتوحة', { exact: true })).toBeVisible();
     await expect(page.locator('.fi-wi-stats-overview-stat').filter({ hasText: 'إجمالي النتائج' }).locator('.fi-wi-stats-overview-stat-value')).toHaveText('1');

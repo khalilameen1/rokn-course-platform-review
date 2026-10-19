@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import AxeBuilder from './support/settled-axe.mjs';
 
 // Reuse Filament's actual theme switch, not injected CSS or a screenshot-only shell.
 const workspaces = [
