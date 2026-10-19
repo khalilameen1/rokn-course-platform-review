@@ -64,7 +64,6 @@ final class AdminDashboardViewTest extends TestCase
         ]);
 
         $pages = [
-            'playback operations' => route('admin.playback-operations.index'),
             'settings dashboard' => route('admin.settings'),
             'home dashboard' => route('admin.dashboard'),
             'courses list' => route('admin.courses.index'),

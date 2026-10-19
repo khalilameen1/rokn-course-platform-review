@@ -4,19 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Pages\PlaybackOperations;
 use App\Http\Controllers\Controller;
 use App\Models\PlaybackSession;
 use App\Services\PlaybackOperationsService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 
 class PlaybackOperationsController extends Controller
 {
-    public function index(PlaybackOperationsService $operations): View
+    public function index(): RedirectResponse
     {
-        return view('admin.playback_operations', [
-            'operations' => $operations->snapshot(50),
-        ]);
+        return redirect(PlaybackOperations::getUrl());
     }
 
     public function terminateStale(

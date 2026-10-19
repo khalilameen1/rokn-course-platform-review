@@ -13,11 +13,13 @@ use App\Models\CourseEnrollment;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
 use App\Models\FeedbackReport;
+use App\Models\Lesson;
 use App\Models\NotificationCampaign;
 use App\Models\Order;
 use App\Models\OutboxEvent;
 use App\Models\Package;
 use App\Models\PaymentReconciliationFinding;
+use App\Models\PlaybackSession;
 use App\Models\PortfolioItem;
 use App\Models\ProductEvent;
 use App\Models\Project;
@@ -146,6 +148,9 @@ try {
     $instructor = User::query()->forceCreate(['name_ar' => 'محاضر تجربة التصفح', 'name_en' => 'Browser instructor', 'job_title' => 'تصميم الإعلانات',
         'bio_ar' => 'تطبيق عملي على تصميم الإعلانات', 'role' => 'teacher', 'email' => 'instructor@dashboard.example.test', 'phone' => '201055550004', 'active' => true]);
     $course->teachers()->attach($instructor);
+    $playbackLesson = Lesson::query()->create(['list_id' => $course->id, 'title_ar' => 'مقطع اختبار التشغيل', 'video_source_type' => 'bunny', 'bunny_video_id' => 'browser-playback-video']);
+    PlaybackSession::query()->create(['id' => (string) Str::uuid(), 'user_id' => $student->id, 'lesson_id' => $playbackLesson->id,
+        'started_at' => now()->subHour(), 'last_heartbeat_at' => now()->subHour(), 'last_position_seconds' => 42, 'duration_seconds' => 75, 'effective_quality' => '720p']);
     ProductEvent::query()->create(['event_id' => (string) Str::uuid(), 'actor_key' => hash('sha256', 'browser-analytics'),
         'session_key' => hash('sha256', 'browser-analytics-session'), 'event_name' => 'course_opened', 'course_id' => $course->id,
         'source' => 'app', 'occurred_at' => now()->subMinute(), 'received_at' => now()]);

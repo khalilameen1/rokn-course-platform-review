@@ -1,6 +1,40 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('native playback monitor opens anonymous details and terminates one stale session', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/playback-operations');
+    await expect(page.getByRole('heading', { name: 'مراقبة تشغيل الفيديو', level: 1, exact: true })).toBeVisible();
+    const row = page.getByRole('row').filter({ hasText: 'مقطع اختبار التشغيل' });
+    await row.scrollIntoViewIfNeeded();
+    await expect(row.getByRole('button', { name: 'إجراءات الجلسة', exact: true })).toBeInViewport({ ratio: 1 });
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('playback-phone.png'), fullPage: true });
+    await row.getByRole('button', { name: 'إجراءات الجلسة', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'تفاصيل الجلسة', exact: true }).click();
+    await expect(page.getByRole('dialog').getByText('لم يُرصد', { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('playback-details-phone.png'), fullPage: true });
+    await page.getByRole('dialog').getByRole('heading', { name: 'جلسة تشغيل مجهّلة', exact: true }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath('playback-details-top-phone.png'), fullPage: true });
+    await page.getByRole('dialog').getByText('إغلاق', { exact: true }).click();
+    await expect(page.getByRole('dialog')).toBeHidden();
+    await row.getByRole('button', { name: 'إجراءات الجلسة', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'إنهاء الجلسة', exact: true }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'تأكيد', exact: true }).click();
+    await expect(page.getByText('تم إنهاء الجلسة العالقة وتسجيل العملية', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(row).toContainText('انتهت');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.reload();
+    await page.evaluate(() => scrollTo(0, 0));
+    await expect(page.getByRole('heading', { name: 'مراقبة تشغيل الفيديو', level: 1, exact: true })).toBeInViewport();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('playback-desktop.png'), fullPage: true });
+});
+
 test('native operations report keeps diagnostics and course actions usable on phones', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/operations/product-operations');
