@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Middleware\RequireAdminMfa;
+use App\Models\CoinEarningMethod;
 use App\Models\Package;
 use App\Models\User;
 use App\Support\PackageEditorVersion;
@@ -36,6 +37,18 @@ final class AdminEconomyHttpInputTest extends TestCase
         ])->assertRedirect(route('admin.packages.index'))->assertSessionHasNoErrors();
         self::assertSame('حزمة محدثة', $package->fresh()->name_ar);
         self::assertSame('150.00', $package->fresh()->price);
+    }
+
+    public function test_task_with_an_expiry_date_does_not_require_a_separate_start_date(): void
+    {
+        $this->post(route('admin.coin-earning-methods.store'), [
+            'title_ar' => 'مهمة مؤقتة', 'title_en' => 'Timed task', 'coins_amount' => 5,
+            'action_key' => 'local_task_contract', 'ends_at' => now()->addDay()->format('Y-m-d\\TH:i'),
+            'authoring_request_id' => (string) Str::uuid(),
+        ])->assertRedirect(route('admin.coin-earning-methods.index'))->assertSessionHasNoErrors();
+        $method = CoinEarningMethod::query()->where('action_key', 'local_task_contract')->sole();
+        self::assertNull($method->starts_at);
+        self::assertNotNull($method->ends_at);
     }
 
     public function test_operating_cost_index_accepts_end_date_only_and_rejects_an_inverted_range(): void

@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Controllers\Admin\CoinEarningMethodController;
+use App\Http\Requests\Admin\CoinEarningMethodProfileRequest;
+use App\Http\Requests\Admin\RewardRuleProfileRequest;
+use App\Http\Requests\Admin\RewardSettingsRequest;
 use App\Models\CoinEarningMethod;
 use App\Models\RewardRule;
 use App\Models\Setting;
@@ -14,11 +17,13 @@ use App\Support\RewardConfigurationVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\ValidatesFormRequests;
 use Tests\TestCase;
 
 final class AdminCoinRewardConfigurationTest extends TestCase
 {
     use RefreshDatabase;
+    use ValidatesFormRequests;
 
     public function test_rewards_help_is_separate_from_legacy_copy_and_invalidates_the_projection(): void
     {
@@ -268,9 +273,9 @@ final class AdminCoinRewardConfigurationTest extends TestCase
     }
 
     /** @param array<string, mixed> $overrides */
-    private function ruleRequest(RewardRule $rule, array $overrides = []): Request
+    private function ruleRequest(RewardRule $rule, array $overrides = []): RewardRuleProfileRequest
     {
-        return Request::create('/dashboard/reward-rules/'.$rule->id, 'PUT', array_replace([
+        $request = Request::create('/dashboard/reward-rules/'.$rule->id, 'PUT', array_replace([
             'event_key' => $rule->event_key,
             'title_ar' => $rule->title_ar,
             'title_en' => $rule->title_en,
@@ -282,12 +287,14 @@ final class AdminCoinRewardConfigurationTest extends TestCase
             'is_active' => $rule->is_active ? '1' : '0',
             'editor_version' => RewardConfigurationVersion::rule($rule),
         ], $overrides));
+
+        return $this->validatedFormRequest(RewardRuleProfileRequest::class, $request, 'admin.reward-rules.update', ['rewardRule' => $rule]);
     }
 
     /** @param array<string, mixed> $overrides */
-    private function settingsRequest(Setting $setting, array $overrides = []): Request
+    private function settingsRequest(Setting $setting, array $overrides = []): RewardSettingsRequest
     {
-        return Request::create('/dashboard/coin-earning-methods-settings', 'POST', array_replace([
+        $request = Request::create('/dashboard/coin-earning-methods-settings', 'POST', array_replace([
             'how_to_use_coins_ar' => $setting->how_to_use_coins_ar,
             'how_to_use_coins_en' => $setting->how_to_use_coins_en,
             'reward_balance_cap' => $setting->reward_balance_cap ?? 1200,
@@ -298,12 +305,14 @@ final class AdminCoinRewardConfigurationTest extends TestCase
             'recommended_provider_badge_en' => $setting->recommended_provider_badge_en,
             'editor_version' => RewardConfigurationVersion::settings($setting),
         ], $overrides));
+
+        return $this->validatedFormRequest(RewardSettingsRequest::class, $request);
     }
 
     /** @param array<string, mixed> $overrides */
-    private function methodRequest(CoinEarningMethod $method, array $overrides = []): Request
+    private function methodRequest(CoinEarningMethod $method, array $overrides = []): CoinEarningMethodProfileRequest
     {
-        return Request::create('/dashboard/coin-earning-methods/'.$method->id, 'PUT', array_replace([
+        $request = Request::create('/dashboard/coin-earning-methods/'.$method->id, 'PUT', array_replace([
             'title_ar' => $method->title_ar,
             'title_en' => $method->title_en,
             'coins_amount' => $method->coins_amount,
@@ -319,5 +328,7 @@ final class AdminCoinRewardConfigurationTest extends TestCase
             'is_active' => $method->is_active ? '1' : '0',
             'editor_version' => RewardConfigurationVersion::method($method),
         ], $overrides));
+
+        return $this->validatedFormRequest(CoinEarningMethodProfileRequest::class, $request, 'admin.coin-earning-methods.update', ['coin_earning_method' => $method]);
     }
 }

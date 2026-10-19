@@ -96,6 +96,8 @@ final class AdminRewardAuthoringService
      */
     public function createRule(array $payload, Closure $completeIntent): RewardRule
     {
+        $payload = $this->normalizeRewardRule($payload);
+
         return DB::transaction(function () use ($payload, $completeIntent): RewardRule {
             AdminSingletonLock::acquire('settings');
             $settings = $this->lockedSettings();
@@ -153,6 +155,7 @@ final class AdminRewardAuthoringService
     /** @param array<string, mixed> $payload Validated, normalized editor values. */
     public function updateRule(RewardRule $rewardRule, array $payload, string $editorVersion): void
     {
+        $payload = $this->normalizeRewardRule($payload);
         DB::transaction(function () use ($rewardRule, $payload, $editorVersion): void {
             AdminSingletonLock::acquire('settings');
             $settings = $this->lockedSettings();
@@ -205,6 +208,47 @@ final class AdminRewardAuthoringService
                 ],
             ]);
         }
+    }
+
+    /** Normalization and cost-admission invariants shared by every authoring adapter. */
+    private function normalizeRewardRule(array $payload): array
+    {
+        $event = (string) $payload['event_key'];
+        $usesInterval = in_array($event, ['streak_milestone', 'study_session'], true);
+        if ($usesInterval && ! filled($payload['interval_count'] ?? null)) {
+            throw ValidationException::withMessages([
+                'interval_count' => ['أدخل مدة الاستمرارية أو الدراسة لهذه القاعدة.'],
+            ]);
+        }
+        if ($event === 'streak_milestone' && (int) $payload['interval_count'] < 2) {
+            throw ValidationException::withMessages([
+                'interval_count' => ['مدة الاستمرارية تبدأ من يومين.'],
+            ]);
+        }
+        $payload['interval_count'] = $usesInterval
+            ? (int) $payload['interval_count']
+            : 1;
+        $payload['daily_cap'] = $event === 'study_session'
+            && filled($payload['daily_cap'] ?? null)
+                ? (int) $payload['daily_cap']
+                : null;
+        $payload['rolling_30_day_cap'] = $event !== 'welcome_bonus'
+            && filled($payload['rolling_30_day_cap'] ?? null)
+                ? (int) $payload['rolling_30_day_cap']
+                : null;
+
+        if (
+            $payload['is_active']
+            && $payload['coins_amount'] > 0
+            && in_array($event, ['daily_checkin', 'streak_milestone', 'study_session', 'course_completed'], true)
+            && $payload['rolling_30_day_cap'] === null
+        ) {
+            throw ValidationException::withMessages([
+                'rolling_30_day_cap' => ['أدخل حدًا خلال 30 يومًا حتى تظل تكلفة المكافأة منضبطة.'],
+            ]);
+        }
+
+        return $payload;
     }
 
     private function ensureExecutableRewardRule(array $payload, ?Setting $settings): void

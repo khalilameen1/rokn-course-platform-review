@@ -177,6 +177,24 @@ final class AdminRewardAuthoringOwnershipTest extends TestCase
         self::assertFalse($rule->exists);
     }
 
+    public function test_rule_writer_enforces_interval_and_rolling_cap_without_resolving_a_controller(): void
+    {
+        $before = RewardRule::query()->count();
+        foreach ([
+            [['event_key' => 'study_session', 'interval_count' => null], 'interval_count'],
+            [['event_key' => 'streak_milestone', 'interval_count' => 1], 'interval_count'],
+            [['event_key' => 'course_completed', 'rolling_30_day_cap' => null], 'rolling_30_day_cap'],
+        ] as [$overrides, $field]) {
+            try {
+                app(AdminRewardAuthoringService::class)->createRule(array_replace($this->payload('rule'), $overrides), static function (): void {});
+                self::fail('Invalid reward configuration must be refused by its owning writer.');
+            } catch (ValidationException $error) {
+                self::assertArrayHasKey($field, $error->errors());
+            }
+        }
+        self::assertSame($before, RewardRule::query()->count());
+    }
+
     private function create(string $kind, \Closure $complete): CoinEarningMethod|RewardRule
     {
         $writer = app(AdminRewardAuthoringService::class);
