@@ -6,7 +6,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Auth\AdminPermissionMatrix;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\CourseAuthoringVersionRequest;
+use App\Http\Requests\Admin\CourseIndexRequest;
 use App\Http\Requests\Admin\CourseRequest;
+use App\Http\Requests\Admin\CourseStudentPreviewRequest;
+use App\Http\Requests\Admin\ReportPeriodRequest;
 use App\Models\Course;
 use App\Models\User;
 use App\Services\AdminAuthoringCreateIntentService;
@@ -21,18 +25,13 @@ use App\Services\CourseRevisionResolver;
 use App\Services\CourseStagedAuthoringService;
 use App\Support\ReportPeriod;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
 
 final class CourseController extends Controller
 {
-    public function index(Request $request, AdminCoursePageService $pages)
+    public function index(CourseIndexRequest $request, AdminCoursePageService $pages)
     {
-        $filters = $request->validate([
-            'search' => 'nullable|string|max:120',
-            'classification_id' => 'nullable|integer|exists:classifications,id',
-            'state' => 'nullable|string|in:active,archived,all',
-        ]);
+        $filters = $request->validated();
 
         return view(
             'admin.courses.index',
@@ -79,12 +78,12 @@ final class CourseController extends Controller
     }
 
     public function show(
-        Request $request,
+        ReportPeriodRequest $request,
         Course $course,
         AdminCoursePageService $pages
     ) {
         $summaryOnly = $request->boolean('summary') && $request->expectsJson();
-        $filters = $request->validate(['period' => ['nullable', Rule::in(array_keys(ReportPeriod::labels()))]]);
+        $filters = $request->validated();
         $period = ReportPeriod::fromKey($filters['period'] ?? 'all');
         $data = $pages->show(
             $course,
@@ -109,12 +108,12 @@ final class CourseController extends Controller
     }
 
     public function studentPreview(
-        Request $request,
+        CourseStudentPreviewRequest $request,
         Course $course,
         AdminCoursePreviewService $preview,
         CoursePresentationService $presentation
     ) {
-        $validated = $request->validate(['plan' => 'nullable|string|max:32']);
+        $validated = $request->validated();
         /** @var User $actor */
         $actor = $request->user();
         $data = $preview->prepare($course, $validated['plan'] ?? null);
@@ -157,12 +156,12 @@ final class CourseController extends Controller
     }
 
     public function exportCommercialReport(
-        Request $request,
+        ReportPeriodRequest $request,
         Course $course,
         AdminCourseReportService $reports
     ) {
         abort_unless($this->isAdministrator(), 403);
-        $filters = $request->validate(['period' => ['nullable', Rule::in(array_keys(ReportPeriod::labels()))]]);
+        $filters = $request->validated();
         $export = $reports->csv($course, ReportPeriod::fromKey($filters['period'] ?? 'all'));
 
         return response()->streamDownload(function () use ($export): void {
@@ -254,14 +253,12 @@ final class CourseController extends Controller
     }
 
     public function destroy(
-        Request $request,
+        CourseAuthoringVersionRequest $request,
         Course $course,
         AdminCourseLifecycleService $lifecycle
     ) {
         abort_unless($this->isAdministrator(), 403);
-        $validated = $request->validate([
-            'authoring_version' => 'required|integer|min:1',
-        ]);
+        $validated = $request->validated();
         $result = $lifecycle->archive($course, (int) $validated['authoring_version']);
 
         if ($result['unlisted']) {

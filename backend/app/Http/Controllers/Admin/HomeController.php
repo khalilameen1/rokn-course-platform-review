@@ -5,19 +5,20 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Auth\AdminPermissionMatrix;
+use App\Auth\StaffAccess;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ReportPeriodRequest;
 use App\Services\AdminHomeReadService;
 use App\Services\ModeratorHomeReadService;
 use App\Support\ReportPeriod;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class HomeController extends Controller
 {
-    public function index(Request $request, AdminPermissionMatrix $permissions): View|\Illuminate\Http\RedirectResponse
+    public function index(ReportPeriodRequest $request, AdminPermissionMatrix $permissions): View|RedirectResponse
     {
-        if (app(\App\Auth\StaffAccess::class)->allows($request->user(), 'content.read') !== null) {
+        if (app(StaffAccess::class)->allows($request->user(), 'content.read') !== null) {
             return redirect('/operations');
         }
         // Resolve only the authorized projection. In particular a moderator
@@ -29,9 +30,7 @@ class HomeController extends Controller
             ));
         }
 
-        $filters = $request->validate([
-            'period' => ['nullable', Rule::in(array_keys(ReportPeriod::labels()))],
-        ]);
+        $filters = $request->validated();
 
         return view('admin.home.index', app(AdminHomeReadService::class)->read(
             ReportPeriod::fromKey($filters['period'] ?? '30d')

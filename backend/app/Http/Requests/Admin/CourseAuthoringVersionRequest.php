@@ -6,7 +6,7 @@ namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-final class CourseModuleVersionRequest extends FormRequest
+final class CourseAuthoringVersionRequest extends FormRequest
 {
     public function authorize(): bool
     {

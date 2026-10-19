@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\CourseCodeBulkRequest;
+use App\Http\Requests\Admin\CourseCodeIndexRequest;
 use App\Http\Requests\Admin\CourseCodeRequest;
+use App\Http\Requests\Admin\EditorVersionRequest;
 use App\Models\CourseCode;
 use App\Models\DesignSetting;
 use App\Services\AdminAuthoringCreateIntentService;
@@ -37,9 +40,9 @@ class CourseCodeController extends Controller
      *
      * @return Response
      */
-    public function index(Request $request)
+    public function index(CourseCodeIndexRequest $request)
     {
-        $query = $this->reader->query($this->filters($request));
+        $query = $this->reader->query($request->validated());
 
         $courseCodes = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(10)->withQueryString();
         $courses = $this->reader->courseOptions();
@@ -197,9 +200,9 @@ class CourseCodeController extends Controller
      *
      * @return Response
      */
-    public function destroy(Request $request, CourseCode $courseCode)
+    public function destroy(EditorVersionRequest $request, CourseCode $courseCode)
     {
-        $validated = $request->validate(['editor_version' => 'required|string|size:64']);
+        $validated = $request->validated();
         $deactivated = $this->authoring->delete(
             (int) $courseCode->id,
             (string) $validated['editor_version']
@@ -231,16 +234,8 @@ class CourseCodeController extends Controller
      *
      * @return Response
      */
-    public function bulkAction(Request $request)
+    public function bulkAction(CourseCodeBulkRequest $request)
     {
-        $request->validate([
-            'action' => 'required|in:delete,activate,deactivate',
-            'selected_codes' => 'required|array|min:1',
-            'selected_codes.*' => 'integer|distinct|exists:course_codes,id',
-            'editor_versions' => 'required|array',
-            'editor_versions.*' => 'required|string|size:64',
-        ]);
-
         try {
             $action = $request->input('action');
             $selectedCodes = $request->input('selected_codes');
@@ -294,9 +289,9 @@ class CourseCodeController extends Controller
      *
      * @return StreamedResponse
      */
-    public function export(Request $request)
+    public function export(CourseCodeIndexRequest $request)
     {
-        $filters = $this->filters($request);
+        $filters = $request->validated();
         $filename = 'course_codes_'.BusinessClock::now()->format('Y-m-d_H-i-s').'.csv';
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -322,12 +317,12 @@ class CourseCodeController extends Controller
      *
      * @return \Symfony\Component\HttpFoundation\Response
      */
-    public function exportToPdf(Request $request)
+    public function exportToPdf(CourseCodeIndexRequest $request)
     {
         try {
             set_time_limit(300);
 
-            $courseCodes = $this->reader->pdfRows($this->filters($request));
+            $courseCodes = $this->reader->pdfRows($request->validated());
 
             if ($courseCodes->isEmpty()) {
                 return back()->with('error', 'لا توجد أكواد للتصدير');
@@ -368,20 +363,5 @@ class CourseCodeController extends Controller
 
             return back()->with('error', 'تعذر تصدير الأكواد الآن');
         }
-    }
-
-    /** @return array<string, mixed> */
-    private function filters(Request $request): array
-    {
-        return $request->validate([
-            'code' => ['nullable', 'string'],
-            'name' => ['nullable', 'string'],
-            'type' => ['nullable', 'string'],
-            'course_id' => ['nullable', 'integer'],
-            'lesson_id' => ['nullable', 'integer'],
-            'start_date' => ['nullable', 'date_format:Y-m-d'],
-            'expiry_date' => ['nullable', 'date_format:Y-m-d'],
-            'status' => ['nullable', 'string'],
-        ]);
     }
 }
