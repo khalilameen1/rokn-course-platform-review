@@ -24,7 +24,7 @@ Neither wallet balances nor order financial state are generic Filament model wri
 1. Keep the current worker running until a deployment window. Never add Horizon alongside it accidentally.
 2. Verify PHP `pcntl`, `posix`, Redis and the seven queue names from `config/operations.php`.
 3. Replace the managed worker command with `php artisan horizon` in the worker instance, not the web request process.
-4. Set `HORIZON_ENABLED=true` to schedule snapshots. `HORIZON_MAX_PROCESSES` controls concurrency; size it against the worker instance memory, not the web container. Default 4, 256 MiB per worker.
+4. Set `HORIZON_ENABLED=true` to schedule snapshots. `HORIZON_MAX_PROCESSES` controls the total shared-pool concurrency; size it against the worker instance memory, not the web container. Default 2, 256 MiB per worker. The existing 1 GiB cluster uses Horizon's native `balance=false` priority pool over all seven queues with `minProcesses=1`, rather than a worker minimum per queue. A zero minimum is rejected by the installed package. The configuration contract constructs the actual vendor `ProvisioningPlan` and `Supervisor` (without spawning a worker), so invalid plans and accidental per-queue pools fail before deployment. Source: https://laravel.com/docs/12.x/horizon#no-balancing .
 5. Job timeout max 300s < Horizon 330s < Redis retry_after 360s. Keep this ordering.
 6. Deploy hook: `php artisan horizon:terminate`; the process manager restarts the new release. Scheduler still uses its existing single owner.
 7. Prove one heartbeat/job on every queue and verify worker status before declaring activation complete. Windows configuration checks do not prove a running Linux supervisor.

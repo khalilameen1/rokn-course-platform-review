@@ -206,10 +206,11 @@ return [
         'supervisor-1' => [
             'connection' => 'redis',
             'queue' => ['default', 'notifications', 'ai-chat', 'ai-feedback', 'media', 'operations', 'webhooks'],
-            'balance' => 'auto',
-            'autoScalingStrategy' => 'time',
-            'minProcesses' => 0,
-            'maxProcesses' => 4,
+            // Native shared priority pool: the small cluster's process budget
+            // applies to all seven queues, not a minimum per queue.
+            'balance' => false,
+            'minProcesses' => 1,
+            'maxProcesses' => 2,
             'maxTime' => 0,
             'maxJobs' => 0,
             'memory' => 256,
@@ -222,7 +223,7 @@ return [
     'environments' => [
         'production' => [
             'supervisor-1' => [
-                'maxProcesses' => (int) env('HORIZON_MAX_PROCESSES', 4),
+                'maxProcesses' => max(1, (int) env('HORIZON_MAX_PROCESSES', 2)),
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
@@ -230,7 +231,7 @@ return [
 
         'local' => [
             'supervisor-1' => [
-                'maxProcesses' => 3,
+                'maxProcesses' => 2,
             ],
         ],
     ],

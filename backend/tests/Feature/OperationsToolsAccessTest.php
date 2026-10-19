@@ -11,6 +11,9 @@ use App\Models\User;
 use App\Services\StaffRoleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
+use Laravel\Horizon\Contracts\HorizonCommandQueue;
+use Laravel\Horizon\ProvisioningPlan;
+use Laravel\Horizon\Supervisor;
 use Tests\TestCase;
 
 final class OperationsToolsAccessTest extends TestCase
@@ -45,6 +48,30 @@ final class OperationsToolsAccessTest extends TestCase
         self::assertEqualsCanonicalizing(config('operations.queue_heartbeat_required_queues'), $supervisor['queue']);
         self::assertGreaterThan(300, $supervisor['timeout']);
         self::assertLessThan(config('queue.connections.redis.retry_after'), $supervisor['timeout']);
+    }
+
+    public function test_installed_horizon_accepts_the_plan_and_keeps_all_queues_in_one_bounded_pool(): void
+    {
+        $plan = ProvisioningPlan::get('configuration-contract');
+        $this->mock(HorizonCommandQueue::class)->shouldReceive('flush')->twice();
+
+        foreach (['production', 'local'] as $environment) {
+            $options = $plan->optionsFor($environment, 'supervisor-1');
+            self::assertNotNull($options);
+            self::assertGreaterThanOrEqual(1, $options->minProcesses);
+            self::assertGreaterThanOrEqual($options->minProcesses, $options->maxProcesses);
+            self::assertFalse($options->balancing());
+
+            // Native Horizon creates a pool per queue when balancing is on.
+            // The current 1 GiB cluster has a total budget of two workers,
+            // not a separate minimum worker for each of the seven queues.
+            $supervisor = new Supervisor($options);
+            self::assertCount(1, $supervisor->processPools);
+            self::assertEqualsCanonicalizing(
+                config('operations.queue_heartbeat_required_queues'),
+                explode(',', $supervisor->processPools->first()->queue()),
+            );
+        }
     }
 
     public function test_status_distinguishes_recording_configuration_from_running_worker_evidence(): void
