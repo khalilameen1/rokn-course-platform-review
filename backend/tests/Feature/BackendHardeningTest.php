@@ -44,7 +44,7 @@ use App\Services\ProjectSubmissionEvaluationScheduler;
 use App\Services\ProjectSubmissionReviewService;
 use App\Services\ProjectSubmissionService;
 use App\Services\WalletService;
-use App\Support\AdminEditorVersion;
+use App\Support\ContactEditorVersion;
 use App\Support\CourseAccessPlanSnapshot;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -1049,9 +1049,10 @@ final class BackendHardeningTest extends TestCase
         $this->actingAs($admin)
             ->from(route('admin.contacts.show', $contact))
             ->delete(route('admin.contacts.destroy', $contact), [
-                'editor_version' => $this->contactEditorVersion($contact),
+                'editor_version' => ContactEditorVersion::for($contact),
             ])
-            ->assertRedirect(route('admin.contacts.show', $contact));
+            ->assertRedirect(route('admin.contacts.show', $contact))
+            ->assertSessionHasErrors(['editor_version' => 'لا يمكن حذف سجل طلب حذف حساب']);
 
         $this->assertDatabaseHas('contacts', [
             'id' => $contact->id,
@@ -1077,20 +1078,20 @@ final class BackendHardeningTest extends TestCase
         $this->actingAs($admin)
             ->from(route('admin.contacts.show', $contact))
             ->post(route('admin.contacts.processing', $contact), [
-                'editor_version' => $this->contactEditorVersion($contact),
+                'editor_version' => ContactEditorVersion::for($contact),
             ])
-            ->assertRedirect(route('admin.contacts.show', $contact));
+            ->assertRedirect(route('admin.contacts.show', $contact))->assertSessionHasNoErrors();
         self::assertSame(Contact::RESOLUTION_PROCESSING, $contact->fresh()->resolution_status);
 
         $this->actingAs($admin)
             ->from(route('admin.contacts.show', $contact))
             ->post(route('admin.contacts.close-deletion-request', $contact), [
-                'editor_version' => $this->contactEditorVersion($contact->fresh()),
+                'editor_version' => ContactEditorVersion::for($contact->fresh()),
                 'outcome' => 'duplicate',
                 'resolution_note' => 'تم ربطه بالطلب الأصلي.',
                 'confirm_close' => '1',
             ])
-            ->assertRedirect(route('admin.contacts.show', $contact));
+            ->assertRedirect(route('admin.contacts.show', $contact))->assertSessionHasNoErrors();
 
         $contact->refresh();
         self::assertSame(Contact::RESOLUTION_CLOSED, $contact->resolution_status);
@@ -1119,11 +1120,12 @@ final class BackendHardeningTest extends TestCase
         $this->actingAs($admin)
             ->from(route('admin.contacts.show', $contact))
             ->post(route('admin.contacts.close-deletion-request', $contact), [
-                'editor_version' => $this->contactEditorVersion($contact),
+                'editor_version' => ContactEditorVersion::for($contact),
                 'outcome' => 'self_service_completed',
                 'confirm_close' => '1',
             ])
-            ->assertRedirect(route('admin.contacts.show', $contact));
+            ->assertRedirect(route('admin.contacts.show', $contact))
+            ->assertSessionHasErrors(['outcome' => 'الحساب المطابق ما زال موجودًا']);
 
         self::assertSame(Contact::RESOLUTION_PROCESSING, $contact->fresh()->resolution_status);
         $this->assertDatabaseHas('users', ['id' => $account->id, 'email' => 'still-active@example.com']);
@@ -2571,14 +2573,6 @@ final class BackendHardeningTest extends TestCase
         }
 
         return $user;
-    }
-
-    private function contactEditorVersion(Contact $contact): string
-    {
-        return AdminEditorVersion::for($contact, [
-            'request_type', 'email', 'read', 'resolution_status', 'resolved_at',
-            'resolved_by', 'resolved_user_id', 'resolution_metadata', 'updated_at',
-        ]);
     }
 
     private function course(array $overrides = []): Course
