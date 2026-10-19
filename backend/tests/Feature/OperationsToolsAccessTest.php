@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Auth\AdminSessionIdentity;
 use App\Http\Middleware\RequireAdminMfa;
+use App\Models\StaffRole;
 use App\Models\User;
+use App\Services\StaffRoleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
 use Tests\TestCase;
@@ -30,7 +33,7 @@ final class OperationsToolsAccessTest extends TestCase
         $this->get('/operations/health')->assertOk();
         self::assertTrue(Gate::forUser($admin)->allows('viewPulse'));
         $admin->forceFill(['role' => 'moderator'])->save();
-        session()->forget(\App\Auth\AdminSessionIdentity::SESSION_KEY);
+        session()->forget(AdminSessionIdentity::SESSION_KEY);
         foreach (['/operations/queues', '/operations/health'] as $path) {
             $this->get($path)->assertForbidden();
         }
@@ -42,5 +45,22 @@ final class OperationsToolsAccessTest extends TestCase
         self::assertEqualsCanonicalizing(config('operations.queue_heartbeat_required_queues'), $supervisor['queue']);
         self::assertGreaterThan(300, $supervisor['timeout']);
         self::assertLessThan(config('queue.connections.redis.retry_after'), $supervisor['timeout']);
+    }
+
+    public function test_operations_reader_can_open_pulse_but_cannot_manage_finance(): void
+    {
+        $owner = new User;
+        $owner->forceFill(['role' => 'admin', 'active' => true])->save();
+        $operator = new User;
+        $operator->forceFill(['role' => 'admin', 'active' => true])->save();
+        $roles = app(StaffRoleService::class);
+        $roles->seedDefaults();
+        $role = StaffRole::query()->create(['name' => 'operations_reader', 'guard_name' => 'web']);
+        $role->givePermissionTo('operations.read');
+        $roles->assign($owner, (int) $operator->id, [(int) $role->id]);
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $this->actingAs($operator, 'web')->get('/operations/health')->assertOk();
+        $this->get('/operations/system-status')->assertOk()->assertSee('التسجيل غير مفعّل');
+        $this->get('/operations/orders')->assertForbidden();
     }
 }
