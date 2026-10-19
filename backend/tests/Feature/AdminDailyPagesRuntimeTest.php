@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\TeacherResource\Pages\EditTeacher;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Classification;
 use App\Models\CoinEarningMethod;
@@ -21,11 +22,13 @@ use App\Models\User;
 use App\Services\AdminPaymentOperationsReadService;
 use DOMDocument;
 use DOMXPath;
+use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\LazyLoadingViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class AdminDailyPagesRuntimeTest extends TestCase
@@ -259,31 +262,11 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $moderator = $this->dashboardUser('moderator');
         $teacher = $this->dashboardUser('teacher');
         $this->withoutMiddleware(RequireAdminMfa::class);
-        $edit = $this->actingAs($moderator, 'web')
-            ->get(route('admin.teachers.edit', $teacher))
-            ->assertOk();
-        $document = new DOMDocument;
-        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$edit->getContent());
-        $xpath = new DOMXPath($document);
-        $editorVersion = trim((string) $xpath->evaluate(
-            'string(//input[@name="editor_version"]/@value)'
-        ));
-
-        $response = $this->from(route('admin.teachers.edit', $teacher))
-            ->put(route('admin.teachers.update', $teacher), [
-                'editor_version' => $editorVersion,
-                'name_ar' => '',
-                'active' => '0',
-            ]);
-
-        $response->assertRedirect(route('admin.teachers.edit', $teacher));
-        $page = $this->followRedirects($response)->assertOk();
-        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$page->getContent());
-        $xpath = new DOMXPath($document);
-        self::assertSame(0, $xpath->query('//input[@name="active" and @type="checkbox" and @checked]')->length);
-        self::assertSame('0', trim((string) $xpath->evaluate(
-            'string(//input[@name="active" and @type="hidden"]/@value)'
-        )));
+        $this->actingAs($moderator, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(EditTeacher::class, ['record' => $teacher->id])
+            ->fillForm(['name_ar' => '', 'active' => false])->call('save')
+            ->assertHasFormErrors(['name_ar' => 'required'])->assertSet('data.active', false);
     }
 
     public function test_failed_reward_rule_update_restores_only_its_own_card(): void

@@ -141,7 +141,6 @@ final class AdminDashboardListsAndExportsTest extends TestCase
             'order' => [route('admin.orders.show', $order), '201055550001'],
             'progress profile' => [route('admin.student-progress.show', $student), '201055550001'],
             'progress list' => [route('admin.student-progress.index'), '201055550001'],
-            'teachers' => [route('admin.teachers.index'), '201055550002'],
             'contacts' => [route('admin.contacts.index'), '201055550003'],
             'contact' => [route('admin.contacts.show', $contact), '201055550003'],
             'student profile' => [route('admin.users.show', $student), '201055550001'],
@@ -156,7 +155,6 @@ final class AdminDashboardListsAndExportsTest extends TestCase
 
         foreach ([
             'moderator form' => route('admin.moderators.create'),
-            'teacher form' => route('admin.teachers.create'),
             'student form' => route('admin.users.edit', $student),
             'settings' => route('admin.settings'),
         ] as $page => $url) {

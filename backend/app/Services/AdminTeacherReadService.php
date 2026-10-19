@@ -18,9 +18,7 @@ final class AdminTeacherReadService
     /** @param array<string, mixed> $queryParameters */
     public function listing(string $search, bool $includeCredentials, array $queryParameters): LengthAwarePaginator
     {
-        $teachers = $this->profiles($includeCredentials)->withCount([
-            'teachingCourses' => fn (Builder $courses) => $this->onlyCanonicalCourses($courses),
-        ]);
+        $teachers = $this->listQuery($includeCredentials);
         if ($search !== '') {
             $teachers->where(function (Builder $query) use ($search, $includeCredentials): void {
                 $query->where('name_ar', 'LIKE', "%{$search}%")
@@ -33,6 +31,14 @@ final class AdminTeacherReadService
         }
 
         return $teachers->latest()->latest('id')->paginate(10)->appends($queryParameters);
+    }
+
+    /** @return Builder<User> */
+    public function listQuery(bool $includeCredentials): Builder
+    {
+        return $this->profiles($includeCredentials)->withCount([
+            'teachingCourses' => fn (Builder $courses) => $this->onlyCanonicalCourses($courses),
+        ]);
     }
 
     /** @return array{teacher:User,courses:LengthAwarePaginator} */

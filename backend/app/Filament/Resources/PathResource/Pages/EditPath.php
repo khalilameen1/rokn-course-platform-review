@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\PathResource\Pages;
 
 use App\Filament\Resources\PathResource;
+use App\Filament\Support\FormValidation;
 use App\Models\Path;
 use App\Services\AdminPathAuthoringService;
 use App\Services\AdminPathReadService;
@@ -41,7 +42,7 @@ final class EditPath extends EditRecord
             app(AdminPathAuthoringService::class)->update((int) $path->getKey(), $data, $this->editorVersion);
         } catch (ValidationException $exception) {
             if (! isset($exception->errors()['editor_version'])) {
-                throw $exception;
+                throw FormValidation::forRecord($exception);
             }
             Notification::make()->title('تغير المسار أثناء التعديل')->body('أعد تحميل الصفحة قبل الحفظ')->warning()->send();
             throw new Halt;

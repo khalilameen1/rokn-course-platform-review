@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Auth\AdminPermissionMatrix;
+use App\Filament\Resources\TeacherResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\TeacherIndexRequest;
 use App\Http\Requests\Admin\TeacherProfileRequest;
@@ -23,24 +24,14 @@ class TeacherController extends Controller
         private readonly AdminTeacherReadService $teachers
     ) {}
 
-    public function index(TeacherIndexRequest $request): View
+    public function index(TeacherIndexRequest $request): RedirectResponse
     {
-        $canManageCredentials = $this->canManageCredentials($request);
-        $teachers = $this->teachers->listing(
-            (string) $request->validated('search', ''), $canManageCredentials, $request->query()
-        );
-        $canDeleteTeacher = $this->permissions->allows(
-            $request->user(), 'admin.teachers.destroy', 'DELETE'
-        );
-
-        return view('admin.teachers.index', compact('teachers', 'canManageCredentials', 'canDeleteTeacher'));
+        return redirect(TeacherResource::getUrl('index', ['search' => $request->validated('search', '')]));
     }
 
-    public function create(Request $request): View
+    public function create(Request $request): RedirectResponse
     {
-        return view('admin.teachers.create', [
-            'canManageCredentials' => $this->canManageCredentials($request),
-        ]);
+        return redirect(TeacherResource::getUrl('create'));
     }
 
     public function store(TeacherProfileRequest $request, AdminAuthoringCreateIntentService $createIntents): RedirectResponse
@@ -72,12 +63,9 @@ class TeacherController extends Controller
         ]);
     }
 
-    public function edit(Request $request, $id): View
+    public function edit(Request $request, $id): RedirectResponse
     {
-        return view('admin.teachers.edit', [
-            ...$this->teachers->editor((int) $id),
-            'canManageCredentials' => $this->canManageCredentials($request),
-        ]);
+        return redirect(TeacherResource::getUrl('edit', ['record' => $id]));
     }
 
     public function update(TeacherProfileRequest $request, $id): RedirectResponse

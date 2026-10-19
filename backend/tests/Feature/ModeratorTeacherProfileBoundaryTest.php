@@ -5,14 +5,20 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Auth\AdminPermissionMatrix;
+use App\Filament\Resources\TeacherResource;
+use App\Filament\Resources\TeacherResource\Pages\CreateTeacher;
+use App\Filament\Resources\TeacherResource\Pages\EditTeacher;
+use App\Filament\Resources\TeacherResource\Pages\ListTeachers;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class ModeratorTeacherProfileBoundaryTest extends TestCase
@@ -53,7 +59,7 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
         $this->withoutMiddleware(RequireAdminMfa::class);
 
         $this->actingAs($moderator)
-            ->get(route('admin.teachers.index'))
+            ->get(TeacherResource::getUrl())
             ->assertOk()
             ->assertSee($teacher->name_ar)
             ->assertDontSee($teacher->email)
@@ -67,7 +73,7 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
             ->assertDontSee($teacher->phone);
 
         $this->actingAs($moderator)
-            ->get(route('admin.teachers.edit', $teacher))
+            ->get(TeacherResource::getUrl('edit', ['record' => $teacher->id]))
             ->assertOk()
             ->assertDontSee('name="email"', false)
             ->assertDontSee('name="phone"', false)
@@ -103,12 +109,11 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
         $teacher = $this->teacher();
         $this->withoutMiddleware(RequireAdminMfa::class);
 
-        $this->actingAs($administrator)
-            ->get(route('admin.teachers.edit', $teacher))
-            ->assertOk()
-            ->assertSee('name="email"', false)
-            ->assertSee('name="phone"', false)
-            ->assertSee('name="password"', false);
+        $this->actingAs($administrator, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(EditTeacher::class, ['record' => $teacher->id])
+            ->fillForm(['manage_credentials' => true])->assertFormFieldIsVisible('email')
+            ->assertFormFieldIsVisible('phone')->assertFormFieldIsVisible('password');
 
         $permissions = app(AdminPermissionMatrix::class);
         self::assertTrue($permissions->allowsCapability('admin', AdminPermissionMatrix::ACCOUNT_CREDENTIALS));
@@ -120,19 +125,11 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
         $administrator = $this->dashboardUser('admin', 'owner@example.test');
         $this->withoutMiddleware(RequireAdminMfa::class);
 
-        $createPage = $this->actingAs($administrator)
-            ->get(route('admin.teachers.create'))
-            ->assertOk();
-        $document = new \DOMDocument;
-        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$createPage->getContent());
-        $xpath = new \DOMXPath($document);
-        self::assertSame(0, $xpath->query('//input[@name="email" and @required]')->length);
-        self::assertSame(0, $xpath->query('//input[@name="phone" and @required]')->length);
-        self::assertSame(0, $xpath->query('//input[@name="password" and @required]')->length);
-        self::assertSame(1, $xpath->query('//input[@name="email" and @disabled]')->length);
-        self::assertSame(1, $xpath->query('//input[@name="phone" and @disabled]')->length);
-        self::assertSame(1, $xpath->query('//input[@name="password" and @disabled]')->length);
-        self::assertSame(0, $xpath->query('//input[@name="manage_credentials" and @checked]')->length);
+        $this->actingAs($administrator, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(CreateTeacher::class)
+            ->assertSet('data.manage_credentials', false)->assertFormFieldIsHidden('email')
+            ->assertFormFieldIsHidden('phone')->assertFormFieldIsHidden('password');
 
         $this->actingAs($administrator)
             ->post(route('admin.teachers.store'), [
@@ -269,12 +266,10 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
         ]);
         $this->withoutMiddleware(RequireAdminMfa::class);
 
-        $index = $this->actingAs($administrator)
-            ->get(route('admin.teachers.index'))
-            ->assertOk();
-        $listedTeacher = $index->original->getData()['teachers']->firstWhere('id', $teacher->id);
-        self::assertNotNull($listedTeacher);
-        self::assertSame(1, (int) $listedTeacher->teaching_courses_count);
+        $this->actingAs($administrator, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(ListTeachers::class)
+            ->assertTableColumnStateSet('teaching_courses_count', 1, $teacher);
 
         $show = $this->actingAs($administrator)
             ->get(route('admin.teachers.show', $teacher))
@@ -291,11 +286,14 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
         $administrator = $this->dashboardUser('admin', 'search-admin@example.test');
         $moderator = $this->dashboardUser('moderator', 'search-moderator@example.test');
 
-        $adminResponse = $this->actingAs($administrator)->get(route('admin.teachers.index', ['search' => $teacher->email]))->assertOk();
-        self::assertSame([$teacher->id], $adminResponse->original->getData()['teachers']->getCollection()->modelKeys());
+        $this->actingAs($administrator, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(ListTeachers::class)->searchTable($teacher->email)
+            ->assertCanSeeTableRecords([$teacher]);
         session()->flush();
-        $moderatorResponse = $this->actingAs($moderator)->get(route('admin.teachers.index', ['search' => $teacher->email]))->assertOk();
-        self::assertSame([], $moderatorResponse->original->getData()['teachers']->getCollection()->modelKeys());
+        $this->actingAs($moderator, 'web');
+        Livewire::test(ListTeachers::class)->searchTable($teacher->email)
+            ->assertCanNotSeeTableRecords([$teacher]);
         $this->getJson(route('admin.teachers.index', ['search' => ['not-a-string']]))->assertUnprocessable()->assertJsonValidationErrors('search');
     }
 

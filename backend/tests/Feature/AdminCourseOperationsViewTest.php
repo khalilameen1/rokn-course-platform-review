@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\TeacherResource\Pages\CreateTeacher;
+use App\Filament\Resources\TeacherResource\Pages\EditTeacher;
 use App\Models\Classification;
 use App\Models\Course;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
 use App\Models\Lesson;
 use App\Models\Level;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\Support\RendersAdminPages;
 use Tests\TestCase;
 
@@ -28,15 +32,9 @@ final class AdminCourseOperationsViewTest extends TestCase
         $level = Level::query()->create(['name_ar' => 'مستوى', 'name_en' => 'Level', 'order' => 1]);
 
         foreach ([
-            'teacher list' => route('admin.teachers.index'),
-            'teacher create' => route('admin.teachers.create'),
-            'teacher edit' => route('admin.teachers.edit', $teacher),
             'teacher details' => route('admin.teachers.show', $teacher),
             'notifications list' => route('admin.notifications.index'),
             'notifications create' => route('admin.notifications.create'),
-            'classifications list' => route('admin.classifications.index'),
-            'classifications create' => route('admin.classifications.create'),
-            'classifications edit' => route('admin.classifications.edit', $classification),
             'levels list' => route('admin.levels.index'),
             'levels create' => route('admin.levels.create'),
             'levels edit' => route('admin.levels.edit', $level),
@@ -80,14 +78,13 @@ final class AdminCourseOperationsViewTest extends TestCase
         $admin = $this->dashboardUser('admin');
         $teacher = $this->dashboardUser('teacher');
 
-        foreach ([route('admin.teachers.create'), route('admin.teachers.edit', $teacher)] as $url) {
-            $xpath = $this->dom((string) $this->adminGet($admin, $url)->assertOk()->getContent());
+        $this->actingAs($admin, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        foreach ([CreateTeacher::class => [],
+            EditTeacher::class => ['record' => $teacher->id]] as $page => $parameters) {
+            $editor = Livewire::test($page, $parameters)->fillForm(['manage_credentials' => true]);
             foreach (['name_ar', 'email', 'phone', 'password', 'password_confirmation', 'bio_ar', 'image', 'active'] as $field) {
-                self::assertGreaterThan(
-                    0,
-                    $xpath->query('//form//*[(self::input or self::textarea or self::select) and @name="'.$field.'"]')->length,
-                    $url.' is missing '.$field
-                );
+                $editor->assertFormFieldIsVisible($field);
             }
         }
     }
