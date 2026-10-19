@@ -22,6 +22,7 @@ use App\Services\AdminPaymentOperationsReadService;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\LazyLoadingViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -30,6 +31,16 @@ use Tests\TestCase;
 final class AdminDailyPagesRuntimeTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_unloaded_relations_on_a_list_fail_the_test_instead_of_issuing_queries_per_row(): void
+    {
+        $first = $this->dashboardUser('client');
+        $second = $this->dashboardUser('admin');
+        $users = User::query()->whereIn('id', [$first->id, $second->id])->get();
+
+        $this->expectException(LazyLoadingViolationException::class);
+        $users->first()->photo;
+    }
 
     public function test_administrator_daily_index_pages_render_against_an_empty_catalogue(): void
     {

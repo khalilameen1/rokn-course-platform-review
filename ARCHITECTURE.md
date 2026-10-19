@@ -12,7 +12,10 @@ those; it does not invent parallel mechanisms.
 ## Backend (Laravel 12)
 
 ### B1. HTTP layer: validate, call one service, shape the response
-A controller action validates input (`$request->validate()` or a FormRequest),
+A dashboard controller validates input through a FormRequest (or the Filament
+form schema after that screen migrates); it does not define inline validation.
+Learner/provider HTTP endpoints retain their existing validation contracts.
+A controller action
 calls **one** application service method, and returns a response. It does
 not open transactions, take locks, write financial or enrollment tables, or
 catch generic exceptions to hand-build a 500.
@@ -130,6 +133,30 @@ registered through `core.provide`; third-party code is published by
 `scripts/publish-admin-vendor-assets.mjs` and pinned in the public asset
 inventory. Uploads use tus-js-client.
 
+### D2. Incremental Filament migration, shared application services
+Existing Blade screens use FormRequests. A migrated Filament screen uses its
+form schema for HTTP-facing input rules and calls the existing owning service
+for writes; services retain business invariants for every entry point. Do not
+move wallet, order or enrollment writes into resource callbacks. Delete the
+old screen and its routes only when its replacement has passed equivalent
+behavior checks. Do not migrate the course studio as a generic CRUD form.
+The teacher screen is the first converged legacy slice: reads live in
+`AdminTeacherReadService`, writes in `AdminTeacherAuthoringService`, and input
+rules in `TeacherIndexRequest`, `TeacherProfileRequest`, `TeacherStatusRequest`.
+Paths follow the same boundary with `AdminPathReadService`,
+`AdminPathAuthoringService`, `PathIndexRequest` and `PathProfileRequest`.
+- Reused implementation: Laravel FormRequest and Eloquent eager loading, the
+  same service-layer boundaries already used by `AdminStudentReadService`.
+- Enforced by: Larastan disallowed database calls in the converged teacher and
+  path controllers; expand that rule's coverage as other controllers converge.
+
+### D3. Rendered lists must declare their relations
+`Tests\TestCase` enables Laravel's `Model::preventLazyLoading()` for every
+application test. Multi-row page fixtures must render without deferred relation
+queries. Explicit per-row query methods (for example `relation()->count()`)
+also need bounded-query checks: Laravel's relation guard does not intercept
+those. Do not replace the guard with logging or disable it for a failing page.
+
 ## Tests
 Behaviour through HTTP, services, hooks or rendered output. No new tests that
 read source text (`SourceTextTestRatchetTest`).
@@ -144,7 +171,7 @@ Counts of code that still follows a second way. Each may only go down.
 | B2 | Controllers with their own `error()` helper | 6 | 0 |
 | B2 | Controllers hand-building a 500 | 5 | 0 |
 | B6 | GET endpoints that write | 7 | 2 (public portfolio page and admin preview call `PortfolioModerationService::reconcile`) |
-| B8 | Larastan baseline entries | 1550 | 1218 |
+| B8 | Larastan baseline entries | 1550 | 1187 |
 | B8 | Eloquent relations without a return type | 205 | 0 |
 | M1 | Read domains outside TanStack Query | 8 | 0 |
 | M2 | Feature-owned offline queues outside `durableOutbox` | 5 | 0 |
@@ -155,6 +182,7 @@ Counts of code that still follows a second way. Each may only go down.
 | B9 | Hand-written implementations of a protocol or algorithm a proven library provides (TUS upload in the app, TOTP/Base32, OOXML text extraction) | 3 | 0 |
 | B9 | EGP arithmetic outside `App\Support\Money` (float round/compare sites) | 31 | 0 |
 | B9 | Libraries past end of life (Intervention Image 2) | 1 | 0 |
+| D2 | Dashboard controllers with inline request validation | 33 | 31 |
 
 Dashboard JSON endpoints (course studio, uploads) answer `public/admin/assets/js/request.js`'s
 own contract and are outside B2's learner-API scope.

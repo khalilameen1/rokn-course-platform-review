@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\File;
 
@@ -14,6 +15,8 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Model::preventLazyLoading();
 
         // Never let a test depend on, or write into, the checkout's runtime
         // storage tree. Besides keeping the suite hermetic, this makes tests
@@ -38,6 +41,8 @@ abstract class TestCase extends BaseTestCase
     protected function tearDown(): void
     {
         $storagePath = $this->isolatedStoragePath;
+
+        Model::preventLazyLoading(false);
 
         parent::tearDown();
 
