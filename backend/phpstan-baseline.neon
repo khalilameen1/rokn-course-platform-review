@@ -407,11 +407,6 @@ parameters:
 			count: 2
 			path: app/Http/Controllers/Admin/CourseCodeController.php
 
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\>\:\:mapWithKeys\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\|string\)\: array\<int\<0, max\>, string\>, Closure\(App\\Models\\CourseCode\)\: non\-empty\-array\<int\<0, max\>, string\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Admin/CourseCodeController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'
@@ -3934,71 +3929,16 @@ parameters:
 			count: 2
 			path: app/Services/AdminCouponAuthoringService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$created_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$expiry_date\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$max_uses\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$start_date\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$target_content_name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$used_count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isInstitutionalGrant\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
 		-
 			message: '#^Method App\\Services\\AdminCourseCodeReadService\:\:lessonOptions\(\) should return Illuminate\\Support\\Collection\<int, array\{id\: int, title\: string\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int\<0, max\>, title\: mixed\}\>\.$#'
@@ -4012,11 +3952,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminCourseCodeReadService.php
 
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: \(object\{name\: string, target_content_name\: mixed, code\: string, type\: ''course''\|''lesson''\|''multiple_lessons'', max_uses\: int, is_grant\: bool, allowed_email_domains\: array\}&stdClass\), Closure\(App\\Models\\CourseCode\)\: \(object\{name\: string, target_content_name\: mixed, code\: string, type\: ''course''\|''lesson''\|''multiple_lessons'', max_uses\: int, is_grant\: bool, allowed_email_domains\: array\}&stdClass\) given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/AdminCourseCodeReadService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'

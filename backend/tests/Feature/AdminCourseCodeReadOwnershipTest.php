@@ -137,6 +137,26 @@ final class AdminCourseCodeReadOwnershipTest extends TestCase
         self::assertSame('المقطع الأول', $reader->pdfRows([])->sole()->target_content_name);
     }
 
+    public function test_historical_multi_lesson_csv_resolves_titles_once_per_chunk_not_per_code(): void
+    {
+        $course = Course::factory()->create(['tenant_id' => 1]);
+        $first = Lesson::query()->create(['list_id' => $course->id, 'title_ar' => 'التكوين', 'priority' => 1]);
+        $second = Lesson::query()->create(['list_id' => $course->id, 'title_ar' => 'الألوان', 'priority' => 2]);
+        foreach (range(1, 8) as $index) {
+            $this->code(['type' => 'multiple_lessons', 'lesson_ids' => [$second->id, $first->id]]);
+        }
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $rows = iterator_to_array(app(AdminCourseCodeReadService::class)->csvRows([]));
+        $queries = collect(DB::getQueryLog())->filter(fn (array $query): bool => str_starts_with(strtolower($query['query']), 'select') && str_contains($query['query'], '"lessons"'));
+        DB::disableQueryLog();
+        self::assertCount(9, $rows);
+        foreach (array_slice($rows, 1) as $row) {
+            self::assertSame('التكوين, الألوان', $row[3]);
+        }
+        self::assertLessThanOrEqual(1, $queries->count());
+    }
+
     private function code(array $values = []): CourseCode
     {
         return CourseCode::query()->create([

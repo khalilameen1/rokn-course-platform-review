@@ -27,7 +27,10 @@ final class AdminCourseCodeReadService
         return $this->inventory->courses()->orderBy('name_ar')->orderBy('id')->get();
     }
 
-    /** @param array<string, mixed> $filters Validated scalar filters and local Y-m-d dates. */
+    /**
+     * @param  array<string, mixed>  $filters  Validated scalar filters and local Y-m-d dates.
+     * @return Builder<CourseCode>
+     */
     public function query(array $filters): Builder
     {
         $query = CourseCode::query()->with(['course', 'lesson']);
@@ -72,24 +75,32 @@ final class AdminCourseCodeReadService
             'الاستخدامات', 'الحد الأقصى', 'منحة مؤسسية', 'نطاقات البريد', 'الحالة', 'تاريخ الإنشاء',
         ];
 
-        foreach ($this->query($filters)->lazyByIdDesc(500) as $code) {
-            yield CsvCell::row([
-                $code->code,
-                $code->name,
-                match ($code->type) {
-                    'course' => 'دورة', 'lesson' => 'درس', 'multiple_lessons' => 'دروس متعددة',
-                    default => $code->type,
-                },
-                $code->target_content_name,
-                $code->start_date ? BusinessClock::format($code->start_date, 'Y-m-d') : '',
-                $code->expiry_date ? BusinessClock::format($code->expiry_date, 'Y-m-d') : '',
-                $code->used_count,
-                $code->max_uses,
-                $code->isInstitutionalGrant() ? 'نعم' : 'لا',
-                implode(', ', $code->allowed_email_domains ?? []),
-                $code->is_active ? 'مفعل' : 'معطل',
-                BusinessClock::format($code->created_at, 'Y-m-d H:i:s'),
-            ]);
+        foreach ($this->query($filters)->lazyByIdDesc(500)->chunk(500) as $chunk) {
+            $codes = $chunk->collect();
+            $lessonIds = $codes->where('type', 'multiple_lessons')->flatMap(fn (CourseCode $code): array => $code->lesson_ids ?? [])->unique()->values();
+            $lessonTitles = $lessonIds->isEmpty() ? collect() : Lesson::query()->whereIn('id', $lessonIds)->orderBy('id')
+                ->get(['id', 'title', 'title_ar', 'title_en'])->mapWithKeys(fn (Lesson $lesson): array => [$lesson->id => $lesson->title]);
+            foreach ($codes as $code) {
+                $target = $code->type === 'multiple_lessons'
+                    ? ($lessonTitles->only($code->lesson_ids ?? [])->filter()->implode(', ') ?: 'غير محدد')
+                    : $code->target_content_name;
+                yield CsvCell::row([
+                    $code->code,
+                    $code->name,
+                    match ($code->type) {
+                        'course' => 'دورة', 'lesson' => 'درس', 'multiple_lessons' => 'دروس متعددة',
+                    },
+                    $target,
+                    $code->start_date ? BusinessClock::format($code->start_date, 'Y-m-d') : '',
+                    $code->expiry_date ? BusinessClock::format($code->expiry_date, 'Y-m-d') : '',
+                    $code->used_count,
+                    $code->max_uses,
+                    $code->isInstitutionalGrant() ? 'نعم' : 'لا',
+                    implode(', ', $code->allowed_email_domains ?? []),
+                    $code->is_active ? 'مفعل' : 'معطل',
+                    BusinessClock::format($code->created_at, 'Y-m-d H:i:s'),
+                ]);
+            }
         }
     }
 
