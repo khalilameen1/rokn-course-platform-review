@@ -7,9 +7,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Support\AdminStudentSearch;
 use App\Support\StudentEditorVersion;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
 
 /**
  * Builds the read models for the student list and student workspace.
@@ -27,49 +25,33 @@ final readonly class AdminStudentReadService
         private StudentProgressSummaryService $progressSummaries,
     ) {}
 
-    /**
-     * @param  array{search?:?string,active?:?string}  $filters
-     * @param  array<string, mixed>  $queryParameters
-     * @return array{users:LengthAwarePaginator,accountStateVersions:Collection<int, string>}
-     */
-    public function listing(array $filters, array $queryParameters): array
+    /** @return Builder<User> */
+    public function listQuery(array $filters = []): Builder
     {
-        $query = User::query()
-            ->students()
-            ->with(['photo', 'latestNote']);
+        $query = User::query()->students()->with(['photo', 'latestNote']);
+        $this->applyFilters($query, $filters);
 
+        return $query;
+    }
+
+    /** @param Builder<User> $query */
+    public function applyFilters(Builder $query, array $filters): void
+    {
         if (in_array($filters['active'] ?? null, ['0', '1'], true)) {
-            $query->where('active', ($filters['active'] ?? null) === '1');
+            $query->where('active', $filters['active'] === '1');
         }
-
         AdminStudentSearch::apply($query, (string) ($filters['search'] ?? ''));
-
-        $users = $query
-            ->orderByDesc('id')
-            ->paginate(10)
-            ->appends($queryParameters);
-        $accountStateVersions = $users->getCollection()->mapWithKeys(
-            fn (User $user): array => [
-                (int) $user->id => $this->accounts->editorVersion($user),
-            ]
-        );
-
-        return compact('users', 'accountStateVersions');
     }
 
     /**
-     * Same selection as listing(), streamed in id order for CSV export.
+     * Same selection as the native table, streamed in id order for CSV export.
      *
      * @param  array{search?:?string,active?:?string}  $filters
      * @param  callable(User):void  $each
      */
     public function eachForExport(array $filters, callable $each, int $limit = 100000): void
     {
-        $query = User::query()->students();
-        if (in_array($filters['active'] ?? null, ['0', '1'], true)) {
-            $query->where('active', ($filters['active'] ?? null) === '1');
-        }
-        AdminStudentSearch::apply($query, (string) ($filters['search'] ?? ''));
+        $query = $this->listQuery($filters)->withoutEagerLoads();
         $seen = 0;
         $query->select([
             'id', 'name', 'name_ar', 'name_en', 'email', 'phone', 'active',

@@ -56,7 +56,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
             'admin.dashboard',
             'admin.courses.index',
             'admin.courses.create',
-            'admin.users.index',
+            'filament.operations.resources.students.index',
             'filament.operations.resources.orders.index',
             'filament.operations.resources.orders.report',
         ] as $routeName) {

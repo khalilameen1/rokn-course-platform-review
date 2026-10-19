@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Filament\Resources\StudentResource;
+use App\Filament\Resources\StudentResource\Pages\ListStudents;
 use App\Filament\Resources\StudentResource\Pages\ViewStudent;
 use App\Filament\Resources\StudentResource\RelationManagers\NotesRelationManager;
 use App\Filament\Resources\StudentResource\RelationManagers\OrdersRelationManager;
@@ -16,8 +17,7 @@ use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Models\UserNote;
-use DOMDocument;
-use DOMXPath;
+use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +31,8 @@ final class AdminStudentWorkspaceContractTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
+    private array $listQueries = [];
 
     protected function setUp(): void
     {
@@ -112,55 +114,36 @@ final class AdminStudentWorkspaceContractTest extends TestCase
             $this->travel(1)->seconds();
             $this->note($student, 'أحدث ملاحظة '.$i);
         }
-        self::assertSame($small, $this->listingQueryCount(), 'Student list queries must not grow per row.');
+        self::assertSame($small, $this->listingQueryCount(), 'Student list queries must not grow per row. '.json_encode($this->listQueries));
 
-        $response = $this->actingAs($this->admin, 'web')->get(route('admin.users.index'))->assertOk();
-        foreach ($response->viewData('users') as $user) {
-            self::assertTrue($user->relationLoaded('photo'));
-            self::assertTrue($user->relationLoaded('latestNote'));
-        }
-        $listed = $response->viewData('users')->getCollection()->keyBy('id');
+        $this->actingAs($this->admin, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $page = Livewire::test(ListStudents::class);
+        $listed = collect($page->instance()->getTableRecords()->items())->keyBy('id');
         foreach ($students as $i => $student) {
+            self::assertTrue($listed[$student->id]->relationLoaded('photo'));
+            self::assertTrue($listed[$student->id]->relationLoaded('latestNote'));
             self::assertSame('أحدث ملاحظة '.$i, $listed[$student->id]->latestNote?->note);
         }
-
-        // users-index.js retargets the single shared modal from each row's
-        // data-note-action; the server must render that contract.
-        $xpath = $this->xpath($response->getContent());
-        self::assertSame(1, $xpath->query('//*[@id="addNoteModal"]')->length);
-        self::assertSame(1, $xpath->query('//*[@id="addNoteModal"]//form[@data-student-note-form]//textarea[@name="note"]')->length);
-        self::assertSame(1, $xpath->query('//script[contains(@src, "admin/assets/js/users-index.js")]')->length);
-        foreach ($students as $student) {
-            self::assertSame(1, $xpath->query('//*[@data-note-action="'.route('admin.users.notes.store', $student->id).'"]')->length);
-        }
-
         $target = $students[2];
-        $this->actingAs($this->admin, 'web')
-            ->post(route('admin.users.notes.store', $target->id), [
-                'authoring_request_id' => (string) Str::uuid(),
-                'note' => 'ملاحظة من النافذة المشتركة',
-            ])
-            ->assertRedirect();
-        self::assertSame('ملاحظة من النافذة المشتركة', $target->fresh()->latestNote?->note);
+        $page->callAction(TestAction::make('addNote')->table($target), data: ['note' => 'ملاحظة من القائمة الأصلية'])
+            ->assertHasNoActionErrors();
+        self::assertSame('ملاحظة من القائمة الأصلية', $target->fresh()->latestNote?->note);
     }
 
     private function listingQueryCount(): int
     {
+        $this->actingAs($this->admin, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(ListStudents::class);
         DB::flushQueryLog();
         DB::enableQueryLog();
-        $this->actingAs($this->admin, 'web')->get(route('admin.users.index'))->assertOk();
-        $count = count(DB::getQueryLog());
+        Livewire::test(ListStudents::class);
+        $this->listQueries = collect(DB::getQueryLog())->pluck('query')->all();
+        $count = count($this->listQueries);
         DB::disableQueryLog();
 
         return $count;
-    }
-
-    private function xpath(string $html): DOMXPath
-    {
-        $document = new DOMDocument;
-        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$html);
-
-        return new DOMXPath($document);
     }
 
     private function student(string $name): User

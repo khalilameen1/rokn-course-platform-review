@@ -3,11 +3,10 @@
 namespace App\Filament\Resources\StudentResource\RelationManagers;
 
 use App\Filament\Resources\StudentResource;
+use App\Filament\Support\StudentNoteAction;
 use App\Models\UserNote;
-use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminStudentNoteService;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
@@ -44,17 +43,9 @@ final class NotesRelationManager extends RelationManager
             TextColumn::make('createdBy.name')->label('كتبها')->placeholder('حساب محذوف')->visibleFrom('md'),
             TextColumn::make('created_at')->label('بتوقيت القاهرة')->dateTime('Y-m-d H:i')->timezone('Africa/Cairo')->visibleFrom('md'),
         ])->headerActions([
-            Action::make('addNote')->label('إضافة ملاحظة')->authorize(fn (): bool => StudentResource::allows('notes.store'))
-                ->modalSubmitActionLabel('حفظ الملاحظة')
-                ->schema([Textarea::make('note')->label('الملاحظة')->required()->maxLength(1000)->rows(4)])
-                ->action(function (array $data): void {
-                    abort_unless(StudentResource::allows('notes.store'), 403);
-                    $studentId = (int) $this->getOwnerRecord()->getKey();
-                    app(AdminAuthoringCreateIntentService::class)->createResource('filament.users.notes.store', $this->noteIntent, UserNote::class,
-                        ['student_id' => $studentId, 'note' => $data['note']],
-                        fn ($complete): UserNote => app(AdminStudentNoteService::class)->create($studentId, $data['note'], (int) auth('web')->id(), $complete));
+            StudentNoteAction::make(fn (): int => (int) $this->getOwnerRecord()->getKey(), fn (): string => $this->noteIntent,
+                function (): void {
                     $this->noteIntent = (string) Str::uuid();
-                    Notification::make()->title('تمت إضافة الملاحظة')->success()->send();
                 }),
         ])->recordActions([
             Action::make('removeNote')->label('حذف')->color('danger')->requiresConfirmation()

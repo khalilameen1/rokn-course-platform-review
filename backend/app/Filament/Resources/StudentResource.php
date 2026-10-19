@@ -9,18 +9,24 @@ use App\Filament\Resources\StudentResource\Pages\CreateStudent;
 use App\Filament\Resources\StudentResource\Pages\ViewStudent;
 use App\Filament\Resources\StudentResource\RelationManagers;
 use App\Filament\Resources\StudentResource\StudentProfileSchema;
+use App\Filament\Support\StudentNoteAction;
 use App\Models\User;
+use App\Services\AdminStudentReadService;
+use App\Support\AdminStudentSearch;
 use App\Support\UnicodeText;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 use UnitEnum;
@@ -130,23 +136,43 @@ final class StudentResource extends ReadResource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->students();
+        return app(AdminStudentReadService::class)->listQuery();
     }
 
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('id')->label('رقم الطالب')->sortable()->searchable(),
-            TextColumn::make('name_ar')->label('الاسم')->searchable(['name_ar', 'name_en', 'name'])->placeholder('بدون اسم')->wrap()
+            ImageColumn::make('portrait')->label('الصورة')->state(fn (User $record): ?string => $record->profile_image_url)
+                ->defaultImageUrl(asset('images/avatar/customer_blank.png'))->circular()->imageSize(40)->extraImgAttributes(['alt' => 'صورة الطالب']),
+            TextColumn::make('id')->label('رقم الطالب')->sortable()->visibleFrom('md'),
+            TextColumn::make('name_ar')->label('الاسم')->state(fn (User $record): string => $record->getFilamentName())->wrap()
+                ->description(fn (User $record): string => '#'.$record->id)
                 ->url(fn (User $record): string => self::getUrl('view', ['record' => $record->id])),
-            TextColumn::make('email')->label('البريد')->searchable()->copyable()->extraAttributes(['dir' => 'ltr']),
-            TextColumn::make('phone')->label('الهاتف')->searchable()->extraAttributes(['dir' => 'ltr']),
+            TextColumn::make('email')->label('البريد')->copyable()->extraAttributes(['dir' => 'ltr'])->visibleFrom('md'),
+            TextColumn::make('phone')->label('الهاتف')->extraAttributes(['dir' => 'ltr'])->visibleFrom('lg'),
             TextColumn::make('active')->label('الحالة')->badge()->formatStateUsing(fn (bool $state): string => $state ? 'نشط' : 'موقوف')->color(fn (bool $state): string => $state ? 'success' : 'danger'),
-            TextColumn::make('created_at')->label('تاريخ التسجيل')->dateTime('Y-m-d H:i')->sortable()->toggleable(),
-        ])->filters([TernaryFilter::make('active')->label('نشط')])
-            ->recordActions([Action::make('workspace')->label('ملف الطالب')->url(fn (User $record): string => self::getUrl('view', ['record' => $record->id]))])
+            TextColumn::make('latestNote.note')->label('آخر ملاحظة')->limit(60)->wrap()->visibleFrom('lg')->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('created_at')->label('التسجيل بتوقيت القاهرة')->dateTime('Y-m-d H:i')->timezone('Africa/Cairo')->sortable()->visibleFrom('lg')->toggleable(),
+        ])->searchable()->searchPlaceholder('رقم الطالب أو الاسم أو البريد أو الهاتف')
+            ->searchUsing(fn (Builder $query, string $search) => AdminStudentSearch::apply($query, $search))
+            ->filters([SelectFilter::make('active')->label('الحالة')->options(['1' => 'نشط', '0' => 'موقوف'])
+                ->query(fn (Builder $query, array $data) => app(AdminStudentReadService::class)->applyFilters($query, ['active' => $data['value'] ?? null]))])
+            ->recordActions([ActionGroup::make([
+                Action::make('workspace')->label('ملف الطالب')->url(fn (User $record): string => self::getUrl('view', ['record' => $record->id])),
+                StudentNoteAction::make(fn (User $record): int => $record->id,
+                    fn (StudentResource\Pages\ListStudents $livewire): string => $livewire->noteIntent,
+                    function (StudentResource\Pages\ListStudents $livewire): void {
+                        $livewire->noteIntent = (string) Str::uuid();
+                    }),
+            ])->label('إجراءات الطالب')])
             ->recordUrl(null)
             ->defaultSort('id', 'desc')->poll('30s')->emptyStateHeading('لا يوجد طلبة')->emptyStateDescription('');
+    }
+
+    public static function listUrl(array $filters = [], int $page = 1): string
+    {
+        return self::getUrl('index', ['search' => $filters['search'] ?? '', 'filters' => ['active' => ['value' => $filters['active'] ?? null]],
+            ...($page > 1 ? ['page' => $page] : [])]);
     }
 
     public static function getGloballySearchableAttributes(): array

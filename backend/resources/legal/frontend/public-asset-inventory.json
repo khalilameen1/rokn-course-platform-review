@@ -173,31 +173,6 @@
       "family": "themify"
     },
     {
-      "path": "public/admin/assets/css/users-editor.css",
-      "sha256": "13932f2dd460749b589b2a461c52eef75da0f133060be6de3d919bcbade5ab0b",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/users-form.css",
-      "sha256": "911b1b276c1c629ba3b3325cefa8059c53ee1903bed6b7361addb4f0a9f218d7",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/users-index.css",
-      "sha256": "c3b33686aed27838dd999e26b41643bf77b86a56c50ea5f37116c253eeaebaa7",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/users-show.css",
-      "sha256": "98e11b374f568949de0355a592ad89be8942fcd74c57be72acae3c323a6f1541",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/users-theme.css",
-      "sha256": "33d8415afd11b78a8ef3b90d6a2c31e1631dc1baad9df30d873ef3e9b2d7b863",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/fonts/cairo/Cairo-Bold.ttf",
       "sha256": "a0e58d71b85b15902ea87914d8e31a6d22da48ac2db70213dcfd1a7dad3f198a",
       "classification": "third_party",
@@ -348,11 +323,6 @@
     {
       "path": "public/admin/assets/js/request.js",
       "sha256": "c82f80332de0b26919e8660fafb681829dca6a5892c13bf6603b75dc56bb36e2",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/js/users-index.js",
-      "sha256": "e14f39c75cdad36baebed0956ab3a63ce49bf2ecaf33c508d877f5b1357a20a9",
       "classification": "first_party"
     },
     {

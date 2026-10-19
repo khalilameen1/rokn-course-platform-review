@@ -117,17 +117,17 @@ final class StudentAvatarPresentationParityTest extends TestCase
     {
         $this->actingAs($this->administrator, 'web');
         foreach ([
-            'user-avatar' => route('admin.users.index', ['search' => 'UID: '.$student->id]),
+            'user-avatar' => StudentResource::listUrl(['search' => 'UID: '.$student->id]),
             'profile-avatar' => StudentResource::getUrl('view', ['record' => $student->id]),
         ] as $class => $url) {
             $response = $this->get($url)->assertOk();
             preg_match_all(
-                $class === 'profile-avatar' ? '#<img\\b(?=[^>]*\\balt="الصورة")[^>]*>#' : '#<img\\b(?=[^>]*\\bclass="[^"<>]*\\b'.$class.'\\b[^"<>]*")[^>]*>#',
+                $class === 'profile-avatar' ? '#<img\\b(?=[^>]*\\balt="الصورة")[^>]*>#' : '#<img\\b(?=[^>]*\\balt="صورة الطالب")[^>]*>#',
                 $response->getContent(),
                 $images
             );
             self::assertCount(1, $images[0], $url);
-            $imageUrl = $class === 'profile-avatar' && str_starts_with($expected, '/') ? asset($expected) : $expected;
+            $imageUrl = str_starts_with($expected, '/') ? asset($expected) : $expected;
             self::assertStringContainsString('src="'.e($imageUrl).'"', $images[0][0]);
             $response->assertDontSee('legacy-featured-avatar.jpg', false);
             $response->assertDontSee('http://images.example.test/insecure.jpg', false);

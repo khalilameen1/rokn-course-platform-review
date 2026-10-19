@@ -9,7 +9,6 @@ use App\Http\Requests\Admin\StudentIndexRequest;
 use App\Http\Requests\Admin\StudentNoteRequest;
 use App\Http\Requests\Admin\StudentStateRequest;
 use App\Http\Requests\Admin\UserRequest;
-use App\Models\DesignSetting;
 use App\Models\User;
 use App\Models\UserNote;
 use App\Services\AdminAuthoringCreateIntentService;
@@ -18,10 +17,8 @@ use App\Services\AdminStudentNoteService;
 use App\Services\AdminStudentReadService;
 use App\Services\StudentAccountStateService;
 use App\Support\CsvCell;
-use Illuminate\Contracts\View\Factory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class UsersController extends Controller
@@ -31,25 +28,9 @@ class UsersController extends Controller
         private readonly AdminStudentNoteService $notes
     ) {}
 
-    /**
-     * Get design settings for the views
-     */
-    private function getDesignSettings()
+    public function index(StudentIndexRequest $request): RedirectResponse
     {
-        return DesignSetting::getDefaultSettings();
-    }
-
-    /**
-     * @return Factory|View
-     */
-    public function index(StudentIndexRequest $request, AdminStudentReadService $students)
-    {
-        $filters = $request->validated();
-
-        return view('admin.users.index', array_merge(
-            $students->listing($filters, $request->query()),
-            ['designSettings' => $this->getDesignSettings()]
-        ));
+        return redirect()->to(StudentResource::listUrl($request->validated(), max(1, $request->integer('page', 1))));
     }
 
     /** Streamed CSV of the current list filters (UTF-8 BOM so Excel reads Arabic). */

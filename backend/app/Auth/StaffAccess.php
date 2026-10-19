@@ -34,12 +34,12 @@ final class StaffAccess
         if (! $user->active || ! in_array(strtolower(trim((string) $user->role)), ['admin', 'moderator'], true)) {
             return false;
         }
-        if (! DatabaseCapabilities::hasTable('staff_members')) {
-            return null;
-        }
         $cacheKey = 'staff-permissions:'.$user->getKey();
         $attributes = request()->attributes;
         if (! $attributes->has($cacheKey)) {
+            if (! DatabaseCapabilities::hasTable('staff_members')) {
+                return null;
+            }
             $member = StaffMember::query()->where('user_id', $user->getKey())->with(['roles.permissions', 'permissions'])->first();
             $attributes->set($cacheKey, $member ? $member->getAllPermissions()->pluck('name')->all() : null);
         }

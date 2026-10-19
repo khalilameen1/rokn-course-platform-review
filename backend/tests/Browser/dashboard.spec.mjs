@@ -56,14 +56,38 @@ test('student profile creates and edits through native forms without a password 
     expect(errors).toEqual([]);
 });
 
+test('student list quick note and filtered export work on phone', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/students');
+    await page.locator('.fi-ta-search-field input').fill('client@dashboard.example.test');
+    const row = page.getByRole('row').filter({ hasText: 'حساب المتصفح client' });
+    await expect(row.getByRole('link', { name: /^حساب المتصفح client/ })).toBeVisible();
+    await expect.poll(async () => new URL(await page.getByRole('link', { name: 'تصدير CSV', exact: true }).getAttribute('href')).searchParams.get('search')).toBe('client@dashboard.example.test');
+    await row.getByRole('button', { name: 'إجراءات الطالب', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'إضافة ملاحظة', exact: true }).click();
+    const field = page.getByRole('textbox', { name: /^الملاحظة/ });
+    await field.fill('متابعة من قائمة الطلبة ' + Date.now());
+    await page.getByRole('dialog').getByRole('button', { name: 'حفظ الملاحظة', exact: true }).click();
+    await expect(page.locator('.fi-modal-window').filter({ has: field })).not.toBeVisible();
+    await expect(page.getByText('تمت إضافة الملاحظة', { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('student-list-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.screenshot({ path: testInfo.outputPath('student-list-desktop.png'), fullPage: true, animations: 'disabled' });
+    expect(errors).toEqual([]);
+});
+
 test('student workspace keeps notes and account actions in the native page', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/operations/students');
     await page.locator('.fi-ta-search-field input').fill('client@dashboard.example.test');
-    const row = page.getByRole('row').filter({ hasText: 'client@dashboard.example.test' });
-    await row.getByRole('link', { name: 'ملف الطالب', exact: true }).click();
+    const row = page.getByRole('row').filter({ hasText: 'حساب المتصفح client' });
+    await row.getByRole('link', { name: /^حساب المتصفح client/ }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'حساب المتصفح client', exact: true })).toBeVisible();
     await page.getByRole('tabpanel', { name: 'الملاحظات', exact: true }).scrollIntoViewIfNeeded();
     await page.getByRole('button', { name: 'إضافة ملاحظة', exact: true }).click();
@@ -680,7 +704,7 @@ test('real dashboard session, RTL search, mobile reflow, dark mode and accessibi
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
     const globalSearch = page.getByRole('searchbox', { name: 'بحث عام', exact: true });
     await globalSearch.fill('client@dashboard.example.test');
-    await expect(page.getByRole('link', { name: 'حساب المتصفح client', exact: true })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'نتائج البحث العام' }).getByRole('link', { name: /^حساب المتصفح client/ })).toBeVisible();
     await page.keyboard.press('Escape');
     const search = page.locator('.fi-ta-search-field input');
     await search.fill('notfound@example.test');
