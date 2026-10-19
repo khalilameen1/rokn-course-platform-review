@@ -55,6 +55,7 @@ export const createTestQueryClient = () => {
 };
 
 export const queryWrapper = (client: QueryClient = createTestQueryClient()) => {
+  testClients.add(client);
   const Wrapper = ({children}: {children: ReactNode}) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
@@ -65,7 +66,12 @@ export const queryWrapper = (client: QueryClient = createTestQueryClient()) => {
 export const withQueryClient = (
   element: React.ReactElement,
   client: QueryClient = createTestQueryClient(),
-) => <QueryClientProvider client={client}>{element}</QueryClientProvider>;
+) => {
+  // Explicit clients (including the application singleton) need the same
+  // persistence/cache teardown as clients created by this test helper.
+  testClients.add(client);
+  return <QueryClientProvider client={client}>{element}</QueryClientProvider>;
+};
 
 /**
  * The app's real root provider (persistence, account scope, unavailable
@@ -76,6 +82,7 @@ export const withAppQueryProvider = (
   client: QueryClient,
   identityKey = 'guest',
 ) => {
+  testClients.add(client);
   attachQueryPersistence(client, {throttleTime: 0});
   return (
     <RoknQueryProvider client={client} identityKey={identityKey}>

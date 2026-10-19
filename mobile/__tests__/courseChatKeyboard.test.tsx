@@ -81,6 +81,18 @@ import CourseChatOverlay from '../src/components/VideoPlayer/CourseChatOverlay';
 import FullTrackUpgradeSheet from '../src/components/FullTrackUpgradeSheet';
 import type {CourseLearningData} from '../src/components/VideoPlayer/types';
 
+// Resolve React Native's lazy native fixtures before timed behavior cases.
+// This follows settingsPreferenceWriteOrdering: cold Babel transformation is
+// test setup, not part of the restore action's five-second behavior budget.
+const nativeChatFixture = jest.requireActual<typeof import('react-native')>(
+  'react-native',
+);
+for (const component of [
+  'Modal', 'Pressable', 'ScrollView', 'Text', 'TextInput', 'View',
+] as const) {
+  void nativeChatFixture[component];
+}
+
 describe('course conversation keyboard ownership', () => {
   const onClose = jest.fn();
   let renderer: TestRenderer.ReactTestRenderer;
