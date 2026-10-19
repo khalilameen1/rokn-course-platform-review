@@ -244,7 +244,8 @@ describe('portfolio library query', () => {
     await settle();
     expect(mockGetPortfolio).toHaveBeenCalledTimes(2);
     expect(library.projects.map(entry => entry.id)).toEqual(['7', '8']);
-    appQueryClient.clear();
+    // Unmount before the shared helper clears this cache. Clearing while its
+    // observer is mounted lets unmount schedule GC on an already-removed query.
   });
 
   it('shows the saved portfolio with its offline note on a cold start, and never a deleted work', async () => {
