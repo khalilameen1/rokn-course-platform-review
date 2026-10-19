@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Auth\AdminPermissionMatrix;
 use App\Models\FeedbackReport;
 use App\Models\PortfolioPublication;
 use App\Models\User;
@@ -138,7 +139,7 @@ final class PortfolioModerationService
 
     public function decide(User $owner, User $reviewer, int $revision, string $hash, string $decision, ?string $reason): void
     {
-        abort_unless($reviewer->role === 'admin', 403);
+        abort_unless(app(AdminPermissionMatrix::class)->allows($reviewer, 'admin.portfolio-reviews.decide', 'POST'), 403);
         abort_unless(in_array($decision, ['approved', 'rejected'], true), 422);
 
         DB::transaction(function () use ($owner, $reviewer, $revision, $hash, $decision, $reason): void {

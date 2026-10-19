@@ -7,16 +7,20 @@ namespace Tests\Feature;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Certificate;
 use App\Models\PortfolioItem;
+use App\Models\StaffRole;
 use App\Models\User;
 use App\Services\BunnyDeliveryService;
 use App\Services\BunnyService;
 use App\Services\CertificateQrDestinationService;
+use App\Services\PortfolioModerationService;
 use App\Services\PortfolioReviewReadService;
 use App\Services\PublicPortfolioService;
+use App\Services\StaffRoleService;
 use App\Support\RoknPublicUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Tests\TestCase;
 
 final class PortfolioPrepublicationReviewTest extends TestCase
@@ -243,6 +247,41 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         $preview = app(PublicPortfolioService::class)->adminPreview($owner);
         $this->postJson(route('admin.portfolio-reviews.decide', $owner), $this->decision($preview))
             ->assertUnprocessable();
+        self::assertSame('pending', $owner->fresh()->portfolio_sharing_status);
+    }
+
+    public function test_assigned_portfolio_reviewer_can_record_a_decision_without_a_legacy_admin_role(): void
+    {
+        $owner = $this->owner();
+        $this->work($owner);
+        $administrator = $this->owner('admin');
+        $reviewer = $this->owner('moderator');
+        $roles = app(StaffRoleService::class);
+        $roles->seedDefaults();
+        $roles->assign($administrator, $reviewer->id, [(int) StaffRole::findByName('portfolio_reviewer', 'web')->id]);
+        $preview = app(PublicPortfolioService::class)->adminPreview($owner);
+        $this->actingAs($reviewer, 'web')->post(route('admin.portfolio-reviews.decide', $owner), [
+            ...$this->decision($preview), 'decision' => 'rejected', 'reason' => 'ارفع صورة أوضح للنتيجة',
+        ])->assertRedirect()->assertSessionHas('success');
+        self::assertSame('rejected', $owner->fresh()->portfolio_sharing_status);
+        self::assertSame($reviewer->id, $owner->fresh()->portfolio_reviewed_by);
+    }
+
+    public function test_finance_only_staff_cannot_bypass_the_portfolio_owner_permission_boundary(): void
+    {
+        $owner = $this->owner()->fresh();
+        $administrator = $this->owner('admin');
+        $finance = $this->owner('admin');
+        $roles = app(StaffRoleService::class);
+        $roles->seedDefaults();
+        $roles->assign($administrator, $finance->id, [(int) StaffRole::findByName('finance', 'web')->id]);
+        $snapshot = app(PortfolioReviewReadService::class)->snapshot($owner);
+        try {
+            app(PortfolioModerationService::class)->decide($owner, $finance, $snapshot['revision'], $snapshot['hash'], 'rejected', 'غير مخول بالمراجعة');
+            self::fail('The aggregate owner must honor the assigned permission profile.');
+        } catch (HttpExceptionInterface $exception) {
+            self::assertSame(403, $exception->getStatusCode());
+        }
         self::assertSame('pending', $owner->fresh()->portfolio_sharing_status);
     }
 

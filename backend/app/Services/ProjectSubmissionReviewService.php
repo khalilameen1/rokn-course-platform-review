@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Auth\AdminPermissionMatrix;
 use App\Jobs\GenerateProjectFeedback;
 use App\Models\CourseSection;
 use App\Models\Project;
@@ -13,7 +14,6 @@ use App\Support\DurableJobDispatch;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /** Records a review decision and its progression/report handoff, never learner uploads. */
@@ -74,8 +74,9 @@ final class ProjectSubmissionReviewService
         bool $passed,
         ?string $feedback = null
     ): ProjectSubmission {
-        $reviewerRole = Str::lower((string) $reviewer->role);
-        if (! (bool) $reviewer->active || ! in_array($reviewerRole, ['admin', 'moderator'], true)) {
+        if (! (bool) $reviewer->active || ! app(AdminPermissionMatrix::class)->allows(
+            $reviewer, 'admin.project-submissions.'.($passed ? 'pass' : 'reject'), 'POST'
+        )) {
             throw new AuthorizationException('Only an active dashboard reviewer can review project submissions.');
         }
 

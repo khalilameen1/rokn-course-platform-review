@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Auth\AdminPermissionMatrix;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ProjectReviewIndexRequest;
 use App\Http\Requests\Admin\ProjectReviewRequest;
@@ -139,6 +140,6 @@ final class ProjectSubmissionController extends Controller
 
     private function isAdministrator(Request $request): bool
     {
-        return strtolower((string) $request->user()?->role) === 'admin';
+        return app(AdminPermissionMatrix::class)->isAdministrator($request->user());
     }
 }
