@@ -140,11 +140,20 @@ for writes; services retain business invariants for every entry point. Do not
 move wallet, order or enrollment writes into resource callbacks. Delete the
 old screen and its routes only when its replacement has passed equivalent
 behavior checks. Do not migrate the course studio as a generic CRUD form.
-The teacher screen is the first converged legacy slice: reads live in
+Teacher reads live in
 `AdminTeacherReadService`, writes in `AdminTeacherAuthoringService`, and input
-rules in `TeacherIndexRequest`, `TeacherProfileRequest`, `TeacherStatusRequest`.
+rules in the active Filament schema. `TeacherIndexRequest`,
+`TeacherProfileRequest`, `TeacherStatusRequest` remain only for retained classic
+HTTP compatibility, not a second editor. Old teacher/path Blade forms have been
+removed and their saved GET URLs redirect to the native Filament editors.
 Paths follow the same boundary with `AdminPathReadService`,
 `AdminPathAuthoringService`, `PathIndexRequest` and `PathProfileRequest`.
+Home rows follow `AdminClassificationReadService` / `AdminClassificationAuthoringService`.
+`UsesAuthoringCreateReceipt` adapts the existing durable creation ledger for native
+Record pages; it does not introduce a second receipt store or own domain writes.
+`FormValidation` maps domain field names to Filament's `data.*` state so a rejected
+write has a visible field error. Media services stage tracked bytes outside their
+own transaction; do not enable a generic enclosing Filament transaction around them.
 - Reused implementation: Laravel FormRequest and Eloquent eager loading, the
   same service-layer boundaries already used by `AdminStudentReadService`.
 - Enforced by: Larastan disallowed database calls in the converged teacher and
@@ -171,7 +180,7 @@ Counts of code that still follows a second way. Each may only go down.
 | B2 | Controllers with their own `error()` helper | 6 | 0 |
 | B2 | Controllers hand-building a 500 | 5 | 0 |
 | B6 | GET endpoints that write | 7 | 2 (public portfolio page and admin preview call `PortfolioModerationService::reconcile`) |
-| B8 | Larastan baseline entries | 1550 | 1187 |
+| B8 | Larastan baseline entries | 1550 | 1181 |
 | B8 | Eloquent relations without a return type | 205 | 0 |
 | M1 | Read domains outside TanStack Query | 8 | 0 |
 | M2 | Feature-owned offline queues outside `durableOutbox` | 5 | 0 |
@@ -182,7 +191,7 @@ Counts of code that still follows a second way. Each may only go down.
 | B9 | Hand-written implementations of a protocol or algorithm a proven library provides (TUS upload in the app, TOTP/Base32, OOXML text extraction) | 3 | 0 |
 | B9 | EGP arithmetic outside `App\Support\Money` (float round/compare sites) | 31 | 0 |
 | B9 | Libraries past end of life (Intervention Image 2) | 1 | 0 |
-| D2 | Dashboard controllers with inline request validation | 33 | 31 |
+| D2 | Dashboard controllers with inline request validation | 33 | 30 |
 
 Dashboard JSON endpoints (course studio, uploads) answer `public/admin/assets/js/request.js`'s
 own contract and are outside B2's learner-API scope.

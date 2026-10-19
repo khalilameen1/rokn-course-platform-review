@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\ClassificationResource\Pages\EditClassification;
+use App\Filament\Resources\ClassificationResource\Pages\ListClassifications;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Classification;
 use App\Models\Course;
@@ -14,9 +16,13 @@ use App\Models\CourseSection;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Services\CourseStagedAuthoringService;
+use Filament\Facades\Filament;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportTesting\Testable;
+use Livewire\Livewire;
 use Tests\Support\RecordsRowLocks;
 use Tests\TestCase;
 
@@ -106,8 +112,8 @@ final class AdminHomeCurationTest extends TestCase
         ]);
         $row->courses()->sync([$selected->id]);
 
-        $edit = $this->get(route('admin.classifications.edit', $row))->assertOk();
-        $editorVersion = (string) $edit->original->getData()['editorVersion'];
+        $edit = $this->rowEditor($row);
+        $editorVersion = (string) $edit->get('editorVersion');
 
         $row->courses()->sync([$newerSelection->id]);
         $this->put(route('admin.classifications.update', $row), [
@@ -120,8 +126,8 @@ final class AdminHomeCurationTest extends TestCase
         ])->assertSessionHasErrors('editor_version');
         self::assertSame([$newerSelection->id], $row->courses()->pluck('courses.id')->all());
 
-        $freshEdit = $this->get(route('admin.classifications.edit', $row))->assertOk();
-        $freshVersion = (string) $freshEdit->original->getData()['editorVersion'];
+        $freshEdit = $this->rowEditor($row);
+        $freshVersion = (string) $freshEdit->get('editorVersion');
         $this->put(route('admin.classifications.update', $row), [
             'name_ar' => 'صف',
             'name_en' => 'Row',
@@ -144,10 +150,9 @@ final class AdminHomeCurationTest extends TestCase
             'home_order' => 30,
         ]);
 
-        $editor = $this->get(route('admin.classifications.edit', $row))->assertOk();
-        $editor->assertSee('قريبًا مختار');
-        $editor->assertDontSee('قريبًا مخفي');
-        $editorVersion = (string) $editor->original->getData()['editorVersion'];
+        $editor = $this->rowEditor($row);
+        $this->assertChoices($editor, $visible, $hidden);
+        $editorVersion = (string) $editor->get('editorVersion');
 
         $before = $this->getJson('/api/v1/courses/list?per_page=50')->assertOk();
         $beforeRevision = (int) $before->json('data.catalogue_revision');
@@ -181,10 +186,10 @@ final class AdminHomeCurationTest extends TestCase
         self::assertSame(['Coming soon'], collect($visiblePayload['tags'])->pluck('name_en')->all());
         self::assertFalse($courses->contains('id', $hidden->id));
 
-        $index = $this->get(route('admin.classifications.index'))->assertOk();
+        $index = $this->rowList();
         self::assertSame(
             1,
-            (int) $index->original->getData()['classifications']->firstWhere('id', $row->id)->home_courses_count
+            (int) $index->instance()->getTableRecords()->firstWhere('id', $row->id)->home_courses_count
         );
     }
 
@@ -199,8 +204,8 @@ final class AdminHomeCurationTest extends TestCase
             'home_order' => 10,
         ]);
         $row->courses()->sync([$current->id]);
-        $edit = $this->get(route('admin.classifications.edit', $row))->assertOk();
-        $editorVersion = (string) $edit->original->getData()['editorVersion'];
+        $edit = $this->rowEditor($row);
+        $editorVersion = (string) $edit->get('editorVersion');
 
         $queries = [];
         DB::listen(static function ($query) use (&$queries): void {
@@ -262,12 +267,12 @@ final class AdminHomeCurationTest extends TestCase
             ->where('course_id', $draft->id)
             ->exists());
 
-        $edit = $this->get(route('admin.classifications.edit', $row))->assertOk();
+        $edit = $this->rowEditor($row);
         self::assertSame(
             [$canonical->id],
-            $edit->original->getData()['selectedCourseIds']
+            array_map('intval', $edit->get('data.course_ids'))
         );
-        $editorVersion = (string) $edit->original->getData()['editorVersion'];
+        $editorVersion = (string) $edit->get('editorVersion');
         $this->put(route('admin.classifications.update', $row), [
             'name_ar' => 'صف محفوظ',
             'name_en' => 'Preserved row',
@@ -283,10 +288,8 @@ final class AdminHomeCurationTest extends TestCase
             ->exists());
         self::assertSame(
             1,
-            (int) $this->get(route('admin.classifications.index'))
-                ->assertOk()
-                ->original
-                ->getData()['classifications']
+            (int) $this->rowList()
+                ->instance()->getTableRecords()
                 ->firstWhere('id', $row->id)
                 ->home_courses_count
         );
@@ -304,10 +307,9 @@ final class AdminHomeCurationTest extends TestCase
         ]);
         $row->courses()->sync([$visible->id, $hidden->id]);
 
-        $edit = $this->get(route('admin.classifications.edit', $row))->assertOk();
-        $edit->assertSee('ظاهر في الاختيارات');
-        $edit->assertDontSee('منشور مخفي مؤقتًا');
-        self::assertSame([$visible->id], $edit->original->getData()['selectedCourseIds']);
+        $edit = $this->rowEditor($row);
+        $this->assertChoices($edit, $visible, $hidden);
+        self::assertSame([$visible->id], array_map('intval', $edit->get('data.course_ids')));
 
         $this->put(route('admin.classifications.update', $row), [
             'name_ar' => 'صف يحتفظ بالتصنيف بعد التعديل',
@@ -315,7 +317,7 @@ final class AdminHomeCurationTest extends TestCase
             'show_on_home' => '1',
             'home_order' => 10,
             'course_ids' => [$visible->id],
-            'editor_version' => (string) $edit->original->getData()['editorVersion'],
+            'editor_version' => (string) $edit->get('editorVersion'),
         ])->assertRedirect(route('admin.classifications.index'));
 
         self::assertEqualsCanonicalizing(
@@ -324,10 +326,8 @@ final class AdminHomeCurationTest extends TestCase
         );
         self::assertSame(
             1,
-            (int) $this->get(route('admin.classifications.index'))
-                ->assertOk()
-                ->original
-                ->getData()['classifications']
+            (int) $this->rowList()
+                ->instance()->getTableRecords()
                 ->firstWhere('id', $row->id)
                 ->home_courses_count
         );
@@ -344,7 +344,7 @@ final class AdminHomeCurationTest extends TestCase
         ]);
         $row->courses()->attach($course->id);
         $draft = app(CourseStagedAuthoringService::class)->draftFor($course);
-        $edit = $this->get(route('admin.classifications.edit', $row))->assertOk();
+        $edit = $this->rowEditor($row);
 
         $this->put(route('admin.classifications.update', $row), [
             'name_ar' => $row->name_ar,
@@ -352,10 +352,10 @@ final class AdminHomeCurationTest extends TestCase
             'show_on_home' => '1',
             'home_order' => 10,
             'course_ids' => [],
-            'editor_version' => (string) $edit->original->getData()['editorVersion'],
+            'editor_version' => (string) $edit->get('editorVersion'),
         ])->assertRedirect(route('admin.classifications.index'));
-        $index = $this->get(route('admin.classifications.index'))->assertOk();
-        self::assertSame(0, (int) $index->original->getData()['classifications']
+        $index = $this->rowList();
+        self::assertSame(0, (int) $index->instance()->getTableRecords()
             ->firstWhere('id', $row->id)->home_courses_count);
         self::assertTrue($draft->classifications()->whereKey($row->id)->exists());
 
@@ -476,6 +476,25 @@ final class AdminHomeCurationTest extends TestCase
         ]);
 
         return $course;
+    }
+
+    private function rowEditor(Classification $row): Testable
+    {
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+
+        return Livewire::test(EditClassification::class, ['record' => $row->id]);
+    }
+
+    private function rowList(): Testable
+    {
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+
+        return Livewire::test(ListClassifications::class);
+    }
+
+    private function assertChoices(Testable $editor, Course $visible, Course $hidden): void
+    {
+        $editor->assertFormFieldExists('course_ids', fn (Select $field): bool => isset($field->getOptions()[$visible->id]) && ! isset($field->getOptions()[$hidden->id]));
     }
 
     private function course(string $name, bool $comingSoon, bool $visible, int $order): Course

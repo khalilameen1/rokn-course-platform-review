@@ -23,7 +23,9 @@ foreach (['', '/framework/views', '/framework/sessions', '/framework/cache/data'
     }
 }
 foreach ([
-    'APP_ENV' => 'testing', 'APP_DEBUG' => 'false',
+    // This is real HTTP, not PHPUnit: Livewire's unit-test fake disk is not
+    // persistent between separate HTTP requests. Keep isolation explicit below.
+    'APP_ENV' => 'local', 'APP_DEBUG' => 'false',
     'APP_KEY' => 'base64:'.base64_encode(str_repeat('browser-fixture-', 2)),
     'APP_URL' => 'http://127.0.0.1:8793', 'APP_DOMAIN' => '127.0.0.1',
     'APP_CONFIG_CACHE' => $storage.'/unused-config.php',
@@ -35,12 +37,26 @@ foreach ([
     'CACHE_STORE' => 'file', 'CACHE_DRIVER' => 'file', 'QUEUE_CONNECTION' => 'sync',
     'MAIL_MAILER' => 'array', 'NIGHTWATCH_ENABLED' => 'false', 'PULSE_ENABLED' => 'false',
     'SENTRY_LARAVEL_DSN' => '', 'SENTRY_DSN' => '',
+    'FILESYSTEM_DRIVER' => 'local', 'PUBLIC_STORAGE_DRIVER' => 'local',
+    'SHARED_PUBLIC_STORAGE_PATH' => $storage.'/app/public',
+    'FEEDBACK_STORAGE_DRIVER' => 'local', 'FEEDBACK_SHARED_STORAGE_PATH' => $storage.'/app/feedback',
+    'SECURITY_QUARANTINE_STORAGE_DRIVER' => 'local', 'SECURITY_QUARANTINE_PATH' => $storage.'/app/quarantine',
 ] as $key => $value) {
     putenv($key.'='.$value);
     $_ENV[$key] = $_SERVER[$key] = $value;
 }
 if (PHP_SAPI === 'cli-server') {
     $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    if (str_starts_with((string) $path, '/storage/')) {
+        $portrait = realpath($storage.'/app/public/'.substr($path, strlen('/storage/')));
+        if ($portrait && str_starts_with($portrait, realpath($storage.'/app/public').DIRECTORY_SEPARATOR) && is_file($portrait)) {
+            header('Content-Type: '.mime_content_type($portrait));
+            header('X-Content-Type-Options: nosniff');
+            readfile($portrait);
+
+            return true;
+        }
+    }
     $asset = realpath($root.'/public/'.ltrim((string) $path, '/'));
     $public = realpath($root.'/public');
     if ($asset && str_starts_with($asset, $public.DIRECTORY_SEPARATOR) && is_file($asset)

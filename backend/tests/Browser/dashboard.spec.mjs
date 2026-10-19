@@ -60,3 +60,57 @@ test('path creation and editing use the actual responsive schema', async ({ page
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath('path-edit-phone.png'), fullPage: true });
 });
+
+test('instructor public profile saves without changing login credentials', async ({ page }, testInfo) => {
+    const name = `مدرب المتصفح ${Date.now()}`;
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/teachers/create');
+    await page.getByLabel(/الاسم بالعربية/).fill(name);
+    await page.getByLabel('المسمى الوظيفي', { exact: true }).fill('تصميم البراند');
+    await page.locator('.fi-fo-file-upload').scrollIntoViewIfNeeded();
+    await expect(page.locator('.filepond--root')).toBeVisible();
+    await page.locator('.filepond--root input[type=file]').setInputFiles('public/images/logo.png');
+    await expect(page.locator('[data-filepond-item-state="processing-complete"]')).toBeVisible();
+    await page.getByRole('button', { name: 'إضافة', exact: true }).click();
+    await page.waitForURL('**/operations/teachers');
+    await page.getByRole('row').filter({ hasText: name }).getByRole('link', { name: 'تعديل', exact: true }).click();
+    await page.getByLabel(/الاسم بالعربية/).fill(`${name} المعتمد`);
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page.getByText('تم الحفظ', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel(/الاسم بالعربية/)).toHaveValue(`${name} المعتمد`);
+    await expect(page.getByLabel('البريد الإلكتروني', { exact: true })).not.toBeVisible();
+    await page.locator('.fi-fo-file-upload').scrollIntoViewIfNeeded();
+    await expect(page.locator('.filepond--root')).toBeVisible();
+    const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+    expect(audit.violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('teacher-edit-phone.png'), fullPage: true });
+    expect(errors).toEqual([]);
+});
+
+test('home row is authored through the native schema on a phone', async ({ page }, testInfo) => {
+    const name = `صف المتصفح ${Date.now()}`;
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/classifications/create');
+    await page.getByLabel(/الاسم بالعربية/).fill(name);
+    await page.getByLabel(/الاسم بالإنجليزية/).fill('Content creation');
+    await page.getByRole('spinbutton', { name: /الترتيب/ }).fill('2');
+    await page.getByRole('button', { name: 'إضافة', exact: true }).click();
+    await page.waitForURL('**/operations/classifications');
+    await page.getByRole('row').filter({ hasText: name }).getByRole('link', { name: 'تعديل', exact: true }).click();
+    await page.getByLabel(/الاسم بالعربية/).fill(`${name} المعتمد`);
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page.getByText('تم الحفظ', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel(/الاسم بالعربية/)).toHaveValue(`${name} المعتمد`);
+    await page.getByRole('button', { name: 'الكورسات', exact: true }).scrollIntoViewIfNeeded();
+    const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+    expect(audit.violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('classification-edit-phone.png'), fullPage: true });
+});

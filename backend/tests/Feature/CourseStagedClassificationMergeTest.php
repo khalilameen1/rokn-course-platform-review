@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\ClassificationResource\Pages\EditClassification;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Classification;
 use App\Models\Course;
@@ -11,9 +12,11 @@ use App\Models\CourseAuthoringRevision;
 use App\Models\User;
 use App\Services\CoursePublishingService;
 use App\Services\CourseStagedAuthoringService;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -90,14 +93,15 @@ final class CourseStagedClassificationMergeTest extends TestCase
         $this->withoutMiddleware(RequireAdminMfa::class);
         $this->actingAs($administrator, 'web');
 
-        $edit = $this->get(route('admin.classifications.edit', $row))->assertOk();
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $edit = Livewire::test(EditClassification::class, ['record' => $row->id]);
         $this->put(route('admin.classifications.update', $row), [
             'name_ar' => $row->name_ar,
             'name_en' => $row->name_en,
             'show_on_home' => '1',
             'home_order' => (int) $row->home_order,
             'course_ids' => [],
-            'editor_version' => (string) $edit->original->getData()['editorVersion'],
+            'editor_version' => (string) $edit->get('editorVersion'),
         ])->assertRedirect(route('admin.classifications.index'));
 
         self::assertFalse($canonical->fresh()->classifications()->whereKey($row->id)->exists());
