@@ -672,7 +672,7 @@
     },
     {
       "path": "public/THIRD_PARTY_NOTICES.frontend.md",
-      "sha256": "warning: in the working copy of 'backend/tmp/dashboard-notice-stage.md', LF will be replaced by CRLF the next time Git touches it\n790b5e5d676953ec0f07ec41d7d5ef53ae82e8b4ff62cbcd7a9c8ae2e78ecd78",
+      "sha256": "86cf95cb7ffa2f1bcb5a35563e89a186e343ee0da389b57db20b8a62efb1e9e1",
       "classification": "generated"
     },
     {

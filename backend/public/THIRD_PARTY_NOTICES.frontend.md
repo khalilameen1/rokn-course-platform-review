@@ -41,7 +41,7 @@ SOFTWARE.
 
 ### Livewire MIT
 
-Exact legal text source: `vendor/livewire/livewire/LICENSE.md`
+Exact legal text source: `resources/legal/frontend/LIVEWIRE-MIT.md`
 
 ~~~text
 ## MIT License

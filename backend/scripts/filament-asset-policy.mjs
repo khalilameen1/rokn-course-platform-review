@@ -49,7 +49,7 @@ export const filamentAssetFamily = {
 ],
     legal: [
         ['Filament MIT', 'resources/legal/frontend/FILAMENT-MIT.md'],
-        ['Livewire MIT', 'vendor/livewire/livewire/LICENSE.md'],
+        ['Livewire MIT', 'resources/legal/frontend/LIVEWIRE-MIT.md'],
         ['Inter OFL', 'resources/legal/frontend/INTER-OFL.txt'],
     ],
     modifications: 'Unmodified package distributions under public/vendor/filament. Cairo is supplied by the existing separately licensed Rokn font family.',
