@@ -19,7 +19,6 @@ final class PublicPortfolioService
 {
     public function __construct(
         private readonly PortfolioShareIdentityService $shareIdentity,
-        private readonly PortfolioModerationService $moderation,
         private readonly PortfolioReviewReadService $reviews
     ) {}
 
@@ -33,9 +32,8 @@ final class PublicPortfolioService
             return null;
         }
 
-        // Keeps the review queue and a pre-publication approval current; the
-        // public result no longer depends on the draft being approved.
-        $this->moderation->reconcile($user, $this->reviews->snapshot($user));
+        // Publication fallback and privacy filtering are read-only. Draft state
+        // is reconciled by the existing write-path signal, never by a visitor.
         $live = $this->reviews->livePublication($user);
         if (! $live) {
             return null;
@@ -105,9 +103,9 @@ final class PublicPortfolioService
     public function adminPreview(User $user): array
     {
         $user = $user->fresh();
-        $status = $this->moderation->reconcile($user);
         $snapshot = $this->reviews->snapshot($user);
-        $live = $this->reviews->livePublication($user);
+        $status = $this->reviews->status($user, $snapshot);
+        $live = $this->reviews->livePublication($user, $snapshot);
 
         return $this->portfolioPayload(
             $user,

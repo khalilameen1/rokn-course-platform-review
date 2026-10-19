@@ -182,7 +182,7 @@ Counts of code that still follows a second way. Each may only go down.
 | B2 | Learner API controllers building the envelope by hand | 36 | 0 |
 | B2 | Controllers with their own `error()` helper | 6 | 0 |
 | B2 | Controllers hand-building a 500 | 5 | 0 |
-| B6 | GET endpoints that write | 7 | 2 (public portfolio page and admin preview call `PortfolioModerationService::reconcile`) |
+| B6 | GET endpoints that write | 7 | 0 |
 | B8 | Larastan baseline entries | 1550 | 1110 |
 | B8 | Eloquent relations without a return type | 205 | 0 |
 | M1 | Read domains outside TanStack Query | 8 | 0 |

@@ -186,7 +186,9 @@ final class PortfolioPrepublicationReviewTest extends TestCase
             $otherItem->mediaFiles->first()->public_id, (string) $preview['review']['revision'], $preview['review']['snapshot_hash']));
         DB::table('portfolio_items')->where('id', $item->id)->update(['description' => 'Unreviewed bulk edit']);
         $this->assertPublishedWithout($owner, 'Unreviewed bulk edit');
-        self::assertSame('pending', $owner->fresh()->portfolio_sharing_status);
+        self::assertSame('pending', app(PortfolioReviewReadService::class)->status($owner->fresh()));
+        // Reading detects an out-of-band edit but never repairs stored rows.
+        self::assertSame('approved', $owner->fresh()->portfolio_sharing_status);
         $this->approve($owner);
         $url = app(PublicPortfolioService::class)->find($owner->portfolio_slug)['projects'][0]['media'][0]['image_url'];
         $item->mediaFiles->first()->delete();

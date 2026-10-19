@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\PortfolioItem;
+use App\Models\PortfolioPublication;
 use App\Models\User;
 use App\Services\BunnyDeliveryService;
 use App\Services\CertificateQrDestinationService;
@@ -117,20 +118,47 @@ final class PortfolioReviewReadOwnershipTest extends TestCase
         self::assertSame($before, $owner->fresh()->getAttributes());
     }
 
-    public function test_public_read_explicitly_requeues_drift_and_admin_preview_uses_the_new_revision(): void
+    public function test_public_and_admin_preview_read_drift_without_rewriting_the_review(): void
     {
         [$owner, $item] = $this->approvedWork();
         $revision = (int) $owner->portfolio_sharing_revision;
+        $before = $owner->getAttributes();
         DB::table('portfolio_items')->where('id', $item->id)->update(['description' => 'Needs another review']);
+        $this->forbidWriterResolution();
+        DB::enableQueryLog();
+        DB::flushQueryLog();
         $public = app(PublicPortfolioService::class);
 
         $published = $public->find($owner->portfolio_slug);
         self::assertNull($published['projects'][0]['description']);
-        self::assertSame('pending', $owner->fresh()->portfolio_sharing_status);
         $preview = $public->adminPreview($owner);
         self::assertSame('pending', $preview['review']['status']);
-        self::assertSame($revision + 1, $preview['review']['revision']);
-        self::assertSame($revision + 1, (int) $owner->fresh()->portfolio_sharing_revision);
+        self::assertSame('Needs another review', $preview['projects'][0]['description']);
+        self::assertSame($revision, $preview['review']['revision']);
+        $this->assertOnlyReadQueries();
+        self::assertSame($before, $owner->fresh()->getAttributes());
+    }
+
+    public function test_legacy_approval_without_a_publication_is_read_without_backfilling_on_get(): void
+    {
+        $owner = $this->owner();
+        $item = PortfolioItem::query()->create(['user_id' => $owner->id, 'title' => 'Legacy approved work', 'is_public' => true]);
+        $item->mediaFiles()->create(['file_path' => 'portfolio/legacy.jpg', 'file_type' => 'image', 'content_sha256' => str_repeat('a', 64)]);
+        $snapshot = app(PortfolioReviewReadService::class)->snapshot($owner->fresh());
+        DB::table('users')->where('id', $owner->id)->update([
+            'portfolio_sharing_status' => 'approved', 'portfolio_approved_hash' => $snapshot['hash'],
+        ]);
+        $owner = $owner->fresh();
+        $before = $owner->getAttributes();
+        $this->forbidWriterResolution();
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $public = app(PublicPortfolioService::class);
+        self::assertSame('Legacy approved work', $public->find($owner->portfolio_slug)['projects'][0]['title']);
+        self::assertSame('approved', $public->adminPreview($owner)['review']['status']);
+        $this->assertOnlyReadQueries();
+        self::assertSame($before, $owner->fresh()->getAttributes());
+        self::assertSame(0, PortfolioPublication::query()->count());
     }
 
     private function approvedWork(): array
