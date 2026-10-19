@@ -4,22 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Pages\ProductOperations;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\OperationalRecoveryRequest;
 use App\Http\Requests\Admin\ProductFeatureUpdateRequest;
 use App\Models\OutboxEvent;
 use App\Services\AdminOperationalRecoveryService;
 use App\Services\AdminProductFeatureAuthoringService;
-use App\Services\AdminProductOperationsReadService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
 
 class ProductOperationsController extends Controller
 {
-    public function index(AdminProductOperationsReadService $operations): View
+    public function index(): RedirectResponse
     {
-        return view('admin.product_operations', $operations->report());
+        return redirect(ProductOperations::getUrl());
     }
 
     public function retryOutbox(

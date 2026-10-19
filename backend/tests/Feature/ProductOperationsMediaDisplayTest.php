@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\ProductOperations;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\LessonMediaState;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class ProductOperationsMediaDisplayTest extends TestCase
@@ -83,19 +86,14 @@ final class ProductOperationsMediaDisplayTest extends TestCase
 
         $this->withoutMiddleware(RequireAdminMfa::class);
 
-        $this->actingAs($administrator, 'web')
-            ->withSession(['warning' => 'الفيديو يعمل لكن توجد تفاصيل تحتاج مراجعة'])
-            ->get(route('admin.product-operations.index'))
+        $this->actingAs($administrator, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $page = Livewire::test(ProductOperations::class)
             ->assertOk()
-            ->assertSeeText('صالح للمشاهدة 1')
-            ->assertSeeText('تنبيهات 2')
-            ->assertSeeText('مقطع جاهز')
-            ->assertSeeText('جاهز')
-            ->assertSeeText('غلاف الكورس غير مكتمل')
-            ->assertSeeText('مقطع بملف تشغيل تالف')
-            ->assertSeeText('غير جاهز')
-            ->assertSeeText('ملف تشغيل الفيديو غير صالح')
-            ->assertSeeText('الفيديو يعمل لكن توجد تفاصيل تحتاج مراجعة');
+            ->assertSee('مقطع جاهز')->assertSee('جاهز')->assertSee('غلاف الكورس غير مكتمل')
+            ->assertSee('مقطع بملف تشغيل تالف')->assertSee('غير جاهز')->assertSee('ملف تشغيل الفيديو غير صالح');
+        self::assertSame(1, $page->instance()->report()['counts']['media_ready']);
+        self::assertSame(2, $page->instance()->report()['counts']['media_attention']);
     }
 
     public function test_stale_ready_state_is_not_counted_as_playable(): void
@@ -133,12 +131,9 @@ final class ProductOperationsMediaDisplayTest extends TestCase
 
         $this->withoutMiddleware(RequireAdminMfa::class);
 
-        $this->actingAs($administrator, 'web')
-            ->get(route('admin.product-operations.index'))
-            ->assertOk()
-            ->assertSeeText('صالح للمشاهدة 0')
-            ->assertSeeText('مقطع استبدل')
-            ->assertSeeText('غير جاهز')
-            ->assertSeeText('تفاصيل التشغيل تحتاج مراجعة');
+        $this->actingAs($administrator, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $page = Livewire::test(ProductOperations::class)->assertOk()->assertSee('مقطع استبدل')->assertSee('غير جاهز')->assertSee('تفاصيل التشغيل تحتاج مراجعة');
+        self::assertSame(0, $page->instance()->report()['counts']['media_ready']);
     }
 }

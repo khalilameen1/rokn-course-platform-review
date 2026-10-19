@@ -1,6 +1,32 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('native operations report keeps diagnostics and course actions usable on phones', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/product-operations');
+    await expect(page.getByRole('heading', { name: 'تشغيل المنتج', level: 1, exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('operations-runtime-phone.png'), fullPage: true });
+    await page.getByRole('tab', { name: 'الوسائط', exact: true }).click();
+    await expect(page.getByText('جاهزية الوسائط', { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('operations-media-phone.png'), fullPage: true });
+    const row = page.getByRole('row').filter({ hasText: 'كورس المتصفح' });
+    await row.scrollIntoViewIfNeeded();
+    await expect(row.getByRole('button', { name: 'إجراءات الكورس', exact: true })).toBeInViewport({ ratio: 1 });
+    await row.getByRole('button', { name: 'إجراءات الكورس', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'المؤشرات', exact: true }).click();
+    await expect(page.getByRole('dialog').getByText('Rokn AI', { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('operations-course-phone.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/operations/product-operations');
+    await page.getByRole('tab', { name: 'التحصيل', exact: true }).click();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('operations-finance-desktop.png'), fullPage: true });
+});
+
 test('native product analytics applies period and course scope without stale cash sections', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/operations/product-analytics');

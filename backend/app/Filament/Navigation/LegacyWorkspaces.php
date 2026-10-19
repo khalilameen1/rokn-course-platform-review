@@ -15,7 +15,6 @@ final class LegacyWorkspaces
     {
         $links = [
             ['الكورسات', 'المحتوى', 'admin.courses.index', 10],
-            ['تشغيل المنتج', 'التشغيل', 'admin.product-operations.index', 10],
         ];
 
         return array_map(static fn (array $link): NavigationItem => NavigationItem::make($link[0])
