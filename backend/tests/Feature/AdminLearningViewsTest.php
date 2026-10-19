@@ -69,43 +69,6 @@ final class AdminLearningViewsTest extends TestCase
             self::assertSame(1, $xpath->query('//*[@class="admin-page__header"]//h1[@class="admin-page__title"]')->length, $url);
         }
 
-        $index = $this->dom((string) $this->adminGet($admin, route('admin.coin-earning-methods.index'))->getContent());
-        self::assertGreaterThan(0, $index->query('//span[contains(concat(" ", normalize-space(@class), " "), " admin-status ")]')->length);
-    }
-
-    public function test_coin_method_routes_and_reward_fields_are_preserved(): void
-    {
-        [$admin, $method] = $this->records();
-        $index = $this->dom((string) $this->adminGet($admin, route('admin.coin-earning-methods.index'))->assertOk()->getContent());
-        $create = $this->dom((string) $this->adminGet($admin, route('admin.coin-earning-methods.create'))->assertOk()->getContent());
-        $edit = $this->dom((string) $this->adminGet($admin, route('admin.coin-earning-methods.edit', $method))->assertOk()->getContent());
-
-        $settings = '//form[@action="'.route('admin.coin-earning-methods.update-settings').'"]';
-        self::assertSame(1, $index->query($settings)->length);
-        foreach (['how_to_use_coins_ar', 'how_to_use_coins_en', 'editor_version'] as $field) {
-            self::assertGreaterThan(0, $index->query($settings.'//*[@name="'.$field.'"]')->length, $field);
-        }
-        self::assertGreaterThan(0, $index->query('//a[@href="'.route('admin.coin-earning-methods.create').'"]')->length);
-        self::assertGreaterThan(0, $index->query('//a[@href="'.route('admin.coin-earning-methods.edit', $method->id).'"]')->length);
-        $destroy = '//form[@action="'.route('admin.coin-earning-methods.destroy', $method->id).'"]';
-        self::assertSame('DELETE', $index->evaluate('string('.$destroy.'//input[@name="_method"]/@value)'));
-        self::assertSame(1, $index->query($destroy.'//input[@name="editor_version"]')->length);
-        self::assertSame(
-            'noopener noreferrer',
-            $index->evaluate('string(//a[@href="https://wa.me/201000000000" and @target="_blank"]/@rel)')
-        );
-
-        $fields = ['title_ar', 'title_en', 'coins_amount', 'action_key', 'is_active', 'action_url',
-            'requires_external_visit', 'verification_delay_seconds', 'sort_order'];
-        $store = '//form[@action="'.route('admin.coin-earning-methods.store').'"]';
-        $update = '//form[@action="'.route('admin.coin-earning-methods.update', $method->id).'"]';
-        foreach ($fields as $field) {
-            self::assertGreaterThan(0, $create->query($store.'//*[@name="'.$field.'"]')->length, 'create '.$field);
-            self::assertGreaterThan(0, $edit->query($update.'//*[@name="'.$field.'"]')->length, 'edit '.$field);
-        }
-        self::assertSame('PUT', $edit->evaluate('string('.$update.'//input[@name="_method"]/@value)'));
-        self::assertSame(1, $edit->query($update.'//input[@name="editor_version"]')->length);
-        self::assertGreaterThan(0, $edit->query('//a[@href="'.route('admin.coin-earning-methods.index').'"]')->length);
     }
 
     public function test_legal_editor_contracts_are_preserved(): void
@@ -157,8 +120,6 @@ final class AdminLearningViewsTest extends TestCase
     {
         return [
             'coin method list' => ['admin.coin-earning-methods.index', 'coins'],
-            'coin method create' => ['admin.coin-earning-methods.create', 'coins'],
-            'coin method edit' => ['admin.coin-earning-methods.edit', 'coins'],
             'privacy editor' => ['admin.privacy', 'legal'],
             'policy editor' => ['admin.policy', 'legal'],
         ];

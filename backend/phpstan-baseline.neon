@@ -372,12 +372,6 @@ parameters:
 
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\:\:getCollection\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/CoinEarningMethodController.php
-
-		-
 			message: '#^Call to an undefined method Barryvdh\\DomPDF\\PDF\:\:setAuthor\(\)\.$#'
 			identifier: method.notFound
 			count: 1

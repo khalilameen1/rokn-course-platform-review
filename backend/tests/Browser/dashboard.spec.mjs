@@ -1,6 +1,47 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('reward tasks use native campaign editor and confirmed removal on mobile', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    const name = 'تابعنا على إنستجرام ' + Date.now();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/coin-earning-methods/create');
+    await page.getByLabel(/العنوان بالعربية/).fill(name);
+    await page.getByLabel(/العنوان بالإنجليزية/).fill('Follow our Instagram');
+    await page.getByLabel(/عدد العملات/).fill('10');
+    await page.getByLabel(/مفتاح الإجراء/).fill('follow_instagram_browser');
+    await page.getByLabel('رابط المهمة', { exact: true }).fill('https://instagram.com/rokn.app');
+    await page.getByLabel(/مفتاح الحملة/).fill('browser-' + Date.now());
+    await page.getByLabel(/بداية الحملة/).fill('2026-10-20T10:00');
+    await page.getByLabel(/نهاية الحملة/).fill('2026-11-20T10:00');
+    await page.getByRole('switch', { name: 'مفعّلة', exact: true }).check();
+    await page.getByRole('button', { name: 'إضافة', exact: true }).click();
+    await expect(page).toHaveURL(/\/operations\/coin-earning-methods$/);
+    await page.locator('.fi-ta-search-field input').fill(name);
+    const row = page.getByRole('row').filter({ hasText: name });
+    await row.getByRole('button', { name: 'إجراءات المهمة', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'تعديل', exact: true }).click();
+    await expect(page.getByLabel(/بداية الحملة/)).toHaveValue('2026-10-20T10:00');
+    await expect(page.getByRole('link', { name: 'https://instagram.com/rokn.app', exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('reward-task-editor-phone.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/operations/coin-earning-methods');
+    await page.locator('.fi-ta-search-field input').fill(name);
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'مهام العملات', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await expect(row).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('reward-task-list-desktop.png'), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await row.getByRole('button', { name: 'إجراءات المهمة', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'حذف', exact: true }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'تأكيد', exact: true }).click();
+    await expect(row).not.toBeVisible();
+    expect(errors).toEqual([]);
+});
+
 test('automatic rewards keep welcome and study rules in native mobile forms', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

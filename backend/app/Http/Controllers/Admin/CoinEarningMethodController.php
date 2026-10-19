@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\CoinEarningMethodResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CoinEarningMethodProfileRequest;
 use App\Http\Requests\Admin\EditorVersionRequest;
@@ -21,16 +22,12 @@ class CoinEarningMethodController extends Controller
     public function index(AdminEconomyReadService $economy)
     {
         $data = $economy->rewards();
-        $methods = $data['methods'];
         $setting = $data['setting'];
         $socialProviderLabels = $data['socialProviderLabels'];
         $settingsEditorVersion = RewardConfigurationVersion::settings($setting);
-        $methodEditorVersions = $methods->getCollection()->mapWithKeys(
-            fn (CoinEarningMethod $method): array => [$method->id => RewardConfigurationVersion::method($method)]
-        );
 
         return view('admin.coin_earning_methods.index', compact(
-            'methods', 'setting', 'socialProviderLabels', 'settingsEditorVersion', 'methodEditorVersions'
+            'setting', 'socialProviderLabels', 'settingsEditorVersion'
         ));
     }
 
@@ -48,7 +45,7 @@ class CoinEarningMethodController extends Controller
 
     public function create()
     {
-        return view('admin.coin_earning_methods.create');
+        return redirect(CoinEarningMethodResource::getUrl('create'));
     }
 
     public function store(CoinEarningMethodProfileRequest $request, AdminAuthoringCreateIntentService $createIntents)
@@ -70,9 +67,7 @@ class CoinEarningMethodController extends Controller
 
     public function edit(CoinEarningMethod $coinEarningMethod)
     {
-        $editorVersion = RewardConfigurationVersion::method($coinEarningMethod);
-
-        return view('admin.coin_earning_methods.edit', compact('coinEarningMethod', 'editorVersion'));
+        return redirect(CoinEarningMethodResource::getUrl('edit', ['record' => $coinEarningMethod->id]));
     }
 
     public function update(CoinEarningMethodProfileRequest $request, CoinEarningMethod $coinEarningMethod)

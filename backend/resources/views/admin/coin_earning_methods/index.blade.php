@@ -12,8 +12,8 @@
         'pageTitle' => 'المكافآت',
         'pageDescription' => 'مهام اكسب عملات والمكافآت التلقائية وحدود الخصم',
         'pageIcon' => 'fa-money',
-        'pageActionUrl' => route('admin.coin-earning-methods.create'),
-        'pageActionLabel' => 'إضافة طريقة جديدة',
+        'pageActionUrl' => \App\Filament\Resources\CoinEarningMethodResource::getUrl(),
+        'pageActionLabel' => 'مهام العملات',
         'pageActionIcon' => 'fa-plus',
     ])
 
@@ -123,91 +123,6 @@
 
     <a class="btn btn-outline-primary mb-4" href="{{ \App\Filament\Resources\RewardRuleResource::getUrl() }}">المكافآت التلقائية</a>
 
-    <h2 class="h5 mb-3">اكسب عملات</h2>
-    <div class="row">
-        @forelse($methods as $method)
-            <div class="col-md-6 col-lg-4">
-                <div class="method-card">
-                    <div class="method-card__head mb-3">
-                        <h5 class="method-card__title mb-0 font-weight-bold">{{ $method->learnerTitleAr() }}</h5>
-                        <div class="method-card__badges">
-                            @include('admin.partials.status-badge', [
-                                'badgeStatus' => $method->is_active ? 'active' : 'unknown',
-                                'badgeLabel' => $method->is_active ? 'نشط' : 'غير نشط',
-                                'badgeTone' => $method->is_active ? 'success' : 'danger',
-                            ])
-                            @include('admin.partials.status-badge', [
-                                'badgeStatus' => 'unknown',
-                                'badgeLabel' => 'مرة واحدة',
-                                'badgeTone' => 'muted',
-                            ])
-                        </div>
-                    </div>
-                    <p class="text-muted mb-2">{{ $method->title_en }}</p>
-                    <div class="d-flex justify-content-between align-items-center mt-4">
-                        <div class="h4 mb-0 method-card__amount">
-                            {{ $method->coins_amount }} <span class="small">عملة</span>
-                        </div>
-                        <div class="btn-group">
-                            <a href="{{ route('admin.coin-earning-methods.edit', $method->id) }}" class="btn btn-sm btn-outline-primary">
-                                <i class="fa fa-edit"></i>
-                            </a>
-                            <form action="{{ route('admin.coin-earning-methods.destroy', $method->id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من الحذف؟')">
-                                @csrf
-                                @method('DELETE')
-                                <input type="hidden" name="editor_version" value="{{ $methodEditorVersions->get($method->id) }}">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                    <i class="fa fa-trash"></i>
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                    @if($method->action_key)
-                        <div class="mt-2 small text-muted">
-                            <code class="bg-light px-2 py-1 rounded">{{ $method->action_key }}</code>
-                        </div>
-                    @endif
-                    <div class="mt-2 small text-muted">
-                        المطالبات: {{ number_format($method->user_earnings_count) }}
-                        من {{ $method->total_claim_limit ? number_format($method->total_claim_limit) : 'بلا سقف' }}
-                        @if($method->campaign_key)
-                            · الحملة <code>{{ $method->campaign_key }}</code>
-                        @endif
-                    </div>
-                    @if($method->starts_at || $method->ends_at)
-                        <div class="mt-1 small text-muted">
-                            {{ $method->starts_at ? \App\Support\BusinessClock::format($method->starts_at) : 'الآن' }}
-                            —
-                            {{ $method->ends_at ? \App\Support\BusinessClock::format($method->ends_at) : 'مفتوحة' }}
-                            · توقيت القاهرة
-                        </div>
-                    @endif
-                    <div class="mt-2 small text-muted">
-                        @if($method->requires_external_visit)
-                            <i class="fa fa-external-link ml-1"></i>
-                            خطوتان · عودة بعد {{ $method->verification_delay_seconds }} ثوانٍ
-                            @if($method->resolvedActionUrl())
-                                <a href="{{ $method->resolvedActionUrl() }}" target="_blank" rel="noopener noreferrer" class="mr-2">فحص الرابط</a>
-                            @endif
-                        @else
-                            <i class="fa fa-check-circle ml-1"></i> مطالبة مباشرة داخل التطبيق
-                        @endif
-                    </div>
-                </div>
-            </div>
-        @empty
-            <div class="col-12 text-center py-5">
-                <div class="text-muted">
-                    <i class="fa fa-info-circle fa-3x mb-3"></i>
-                    <h4>لا توجد طرق ربح مضافة حالياً</h4>
-                </div>
-            </div>
-        @endforelse
-    </div>
-
-    <div class="d-flex justify-content-center mt-4">
-        {{ $methods->links() }}
-    </div>
 </div>
 @endsection
 

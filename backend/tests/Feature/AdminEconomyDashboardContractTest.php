@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\CoinEarningMethodResource;
+use App\Filament\Resources\CoinEarningMethodResource\Pages\CreateCoinEarningMethod;
+use App\Filament\Resources\CoinEarningMethodResource\Pages\EditCoinEarningMethod;
+use App\Filament\Resources\CoinEarningMethodResource\Pages\ListCoinEarningMethods;
 use App\Filament\Resources\PackageResource;
 use App\Filament\Resources\PackageResource\Pages\CreatePackage;
 use App\Filament\Resources\PackageResource\Pages\EditPackage;
@@ -20,8 +24,6 @@ use App\Models\User;
 use App\Services\CoursePlanAuthoringService;
 use App\Services\PublicAppSettingsService;
 use App\Support\RewardConfigurationVersion;
-use DOMDocument;
-use DOMXPath;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -59,11 +61,10 @@ final class AdminEconomyDashboardContractTest extends TestCase
         self::assertSame(30, $packages->perPage());
         self::assertCount(30, $packages->items());
 
-        $page = $this->actingAs($this->admin, 'web')->get(route('admin.coin-earning-methods.index'))->assertOk();
-        $methods = $page->viewData('methods');
-        self::assertSame(12, $methods->perPage());
-        self::assertCount(12, $methods->items());
-        self::assertGreaterThan(12, $methods->total());
+        $methods = Livewire::test(ListCoinEarningMethods::class)->set('tableRecordsPerPage', 10)->instance()->getTableRecords();
+        self::assertSame(10, $methods->perPage());
+        self::assertCount(10, $methods->items());
+        self::assertGreaterThan(10, $methods->total());
         $rules = Livewire::test(ListRewardRules::class)->instance()->getTableRecords();
         self::assertLessThanOrEqual(count(RewardRule::EVENTS), $rules->total());
         self::assertSame([], $rules->pluck('event_key')->diff(array_keys(RewardRule::EVENTS))->values()->all());
@@ -82,13 +83,11 @@ final class AdminEconomyDashboardContractTest extends TestCase
             $edit->assertFormFieldExists($field);
         }
 
-        foreach ([
-            [route('admin.coin-earning-methods.create'), route('admin.coin-earning-methods.edit', $method)],
-        ] as [$create, $edit]) {
-            $createFields = $this->formFields($this->actingAs($this->admin, 'web')->get($create)->assertOk()->getContent());
-            $editFields = $this->formFields($this->actingAs($this->admin, 'web')->get($edit)->assertOk()->getContent());
-            self::assertNotEmpty($createFields, $create);
-            self::assertSame($createFields, $editFields, $create.' and '.$edit.' must render the same editor fields.');
+        $create = Livewire::test(CreateCoinEarningMethod::class);
+        $edit = Livewire::test(EditCoinEarningMethod::class, ['record' => $method->id]);
+        foreach (CoinEarningMethodResource::draftFields() as $field) {
+            $create->assertFormFieldExists($field);
+            $edit->assertFormFieldExists($field);
         }
     }
 
@@ -134,7 +133,7 @@ final class AdminEconomyDashboardContractTest extends TestCase
         // Moderators opening admin.courses.create is exercised in
         // AdminDailyPagesRuntimeTest::test_moderator_daily_course_pages_render_without_financial_data.
         $moderator = $this->dashboardUser('moderator');
-        foreach ([PackageResource::getUrl(), PackageResource::getUrl('create'), route('admin.coin-earning-methods.index'), route('admin.coin-earning-methods.create')] as $url) {
+        foreach ([PackageResource::getUrl(), PackageResource::getUrl('create'), route('admin.coin-earning-methods.index'), CoinEarningMethodResource::getUrl('create')] as $url) {
             // Each identity gets its own session; a pinned admin session
             // would otherwise log the moderator out instead of refusing.
             $this->flushSession();
@@ -205,15 +204,12 @@ final class AdminEconomyDashboardContractTest extends TestCase
         // the public app settings, with the learner-facing title.
         DesignSetting::getDefaultSettings()->forceFill(['instagram_url' => 'https://instagram.com/rokn.app'])->save();
         PublicAppSettingsService::invalidate();
-        $this->method([
+        $social = $this->method([
             'action_key' => 'follow_instagram', 'title_ar' => 'افتح حساب ركن على Instagram',
             'requires_external_visit' => true, 'action_url' => null, 'sort_order' => 0,
         ]);
-        $html = $this->actingAs($this->admin, 'web')->get(route('admin.coin-earning-methods.index'))->assertOk()->getContent();
-        $xpath = $this->xpath($html);
-        self::assertGreaterThan(0, $xpath->query('//*[contains(@class, "method-card__title") and normalize-space()="تابعنا على إنستجرام"]')->length);
-        self::assertSame(0, $xpath->query('//*[contains(@class, "method-card__title") and normalize-space()="افتح حساب ركن على Instagram"]')->length);
-        self::assertGreaterThan(0, $xpath->query('//a[@href="https://instagram.com/rokn.app"]')->length);
+        Livewire::test(ListCoinEarningMethods::class)->searchTable('follow_instagram')->assertSee('تابعنا على إنستجرام');
+        Livewire::test(EditCoinEarningMethod::class, ['record' => $social->id])->assertSee('https://instagram.com/rokn.app');
     }
 
     public function test_learner_tasks_have_one_valid_catalogue_and_dashboard_order(): void
@@ -244,39 +240,13 @@ final class AdminEconomyDashboardContractTest extends TestCase
             ]);
         }
         $legacy = $this->method(['action_key' => null, 'title_ar' => 'صف قديم بلا مفتاح']);
-        $listed = collect($this->actingAs($this->admin, 'web')
-            ->get(route('admin.coin-earning-methods.index'))->assertOk()->viewData('methods')->items());
+        $listed = collect(Livewire::test(ListCoinEarningMethods::class)->instance()->getTableRecords()->items());
         self::assertSame([], $listed->pluck('action_key')->intersect(CoinEarningMethod::AUTOMATIC_ACTION_KEYS)->values()->all());
         self::assertContains($legacy->id, $listed->pluck('id')->all());
     }
 
     // The one-time task receipt index is proven by inserting a duplicate in
     // EngagementExperienceTest::test_task_audit_receipt_is_unique_per_user_and_method.
-
-    /** @return list<string> */
-    private function formFields(string $html): array
-    {
-        $xpath = $this->xpath($html);
-        $fields = [];
-        foreach ($xpath->query('//form[@method="POST" or @method="post"]//*[@name]') as $control) {
-            $name = $control->getAttribute('name');
-            if (! in_array($name, ['_token', '_method', 'authoring_request_id', 'editor_version'], true)) {
-                $fields[$name] = true;
-            }
-        }
-        $names = array_keys($fields);
-        sort($names);
-
-        return $names;
-    }
-
-    private function xpath(string $html): DOMXPath
-    {
-        $document = new DOMDocument;
-        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$html);
-
-        return new DOMXPath($document);
-    }
 
     /** @param array<string, mixed> $overrides */
     private function package(array $overrides): Package
