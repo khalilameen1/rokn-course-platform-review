@@ -88,3 +88,22 @@ https://www.chartjs.org/docs/latest/general/options.html#scriptable-options .
 The browser check reads the actual painted label options and requires at least
 4.5:1 contrast in both themes at phone/desktop widths, including theme changes
 without a chart remount; screenshots remain part of visual review.
+
+## Recorded local closure — 2026-10-19
+
+The SQLite suite completed 3051 tests / 25988 assertions with zero errors or
+failures. Six MySQL-specific contracts are skipped locally, not waived; run the
+existing production-schema CI gate before deployment. Browser coverage closed
+72 unique cases: the full run passed 70, then all ten dark workspaces and the
+real authentication setup passed after fixing measurement timing around native
+sidebar fades. The original two-failure report remains archived, not relabeled.
+
+The eight Lighthouse runs finished at `2026-10-19T16:05:49.400Z` after the full
+PHP suite, without concurrent test load. Accessibility and best practices scored
+100 throughout; local performance was 57–59 mobile and 86–89 desktop. The report
+shows uncompressed development HTTP delivery and slow local document response
+(1817ms for the overview); neither these scores nor a package installation proves
+production speed. Do not patch vendor assets or tune the audit to mask this.
+Repeat against the actual deployed delivery configuration at activation.
+Reports are retained under `E:/RoknBuild/dashboard-closure-lighthouse-proof-20261019`.
+No provider account, production worker, deployment or store build was changed.
