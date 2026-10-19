@@ -3,6 +3,7 @@
 $recoveryEvidenceDisk = trim((string) env('RECOVERY_EVIDENCE_DISK', ''));
 
 return [
+    'horizon_enabled' => (bool) env('HORIZON_ENABLED', false),
     // Detailed launch-readiness checks name every configured provider. Like
     // spatie/laravel-health's results endpoint, details need this secret.
     'health_token' => (string) env('HEALTH_CHECK_TOKEN', ''),

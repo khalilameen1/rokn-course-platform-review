@@ -41,7 +41,7 @@ final class TeacherProfileRequest extends FormRequest
     public function managesCredentials(): bool
     {
         return app(AdminPermissionMatrix::class)->allowsCapability(
-            $this->user()?->role, AdminPermissionMatrix::ACCOUNT_CREDENTIALS
+            $this->user(), AdminPermissionMatrix::ACCOUNT_CREDENTIALS
         ) && $this->boolean('manage_credentials');
     }
 
@@ -74,7 +74,7 @@ final class TeacherProfileRequest extends FormRequest
     private function credentialRules(?int $teacherId): array
     {
         if (! app(AdminPermissionMatrix::class)->allowsCapability(
-            $this->user()?->role, AdminPermissionMatrix::ACCOUNT_CREDENTIALS
+            $this->user(), AdminPermissionMatrix::ACCOUNT_CREDENTIALS
         )) {
             return array_fill_keys(
                 ['manage_credentials', 'email', 'phone', 'password', 'password_confirmation'], ['prohibited']

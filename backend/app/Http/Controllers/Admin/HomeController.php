@@ -15,11 +15,14 @@ use Illuminate\View\View;
 
 class HomeController extends Controller
 {
-    public function index(Request $request, AdminPermissionMatrix $permissions): View
+    public function index(Request $request, AdminPermissionMatrix $permissions): View|\Illuminate\Http\RedirectResponse
     {
+        if (app(\App\Auth\StaffAccess::class)->allows($request->user(), 'content.read') !== null) {
+            return redirect('/operations');
+        }
         // Resolve only the authorized projection. In particular a moderator
         // request must not instantiate the financial report dependency graph.
-        if (! $permissions->isAdministrator($request->user()?->role)) {
+        if (! $permissions->isAdministrator($request->user())) {
             return view('admin.home.moderator', app(ModeratorHomeReadService::class)->read(
                 $request->query(),
                 max(1, (int) $request->query('page', 1))

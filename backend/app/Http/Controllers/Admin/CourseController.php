@@ -296,13 +296,13 @@ final class CourseController extends Controller
 
     private function isAdministrator(): bool
     {
-        return strtolower(trim((string) optional(auth()->user())->role)) === 'admin';
+        return app(AdminPermissionMatrix::class)->isAdministrator(auth()->user());
     }
 
     private function canCurateHome(): bool
     {
         return app(AdminPermissionMatrix::class)->allowsCapability(
-            auth()->user()?->role,
+            auth()->user(),
             AdminPermissionMatrix::CONTENT_CURATION
         );
     }

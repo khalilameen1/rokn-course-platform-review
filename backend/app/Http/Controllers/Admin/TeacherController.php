@@ -30,7 +30,7 @@ class TeacherController extends Controller
             (string) $request->validated('search', ''), $canManageCredentials, $request->query()
         );
         $canDeleteTeacher = $this->permissions->allows(
-            $request->user()?->role, 'admin.teachers.destroy', 'DELETE'
+            $request->user(), 'admin.teachers.destroy', 'DELETE'
         );
 
         return view('admin.teachers.index', compact('teachers', 'canManageCredentials', 'canDeleteTeacher'));
@@ -63,7 +63,7 @@ class TeacherController extends Controller
     public function show(Request $request, $id): View
     {
         $canManageCredentials = $this->canManageCredentials($request);
-        $canViewEnrollmentCounts = $this->permissions->isAdministrator($request->user()?->role);
+        $canViewEnrollmentCounts = $this->permissions->isAdministrator($request->user());
 
         return view('admin.teachers.show', [
             ...$this->teachers->detail((int) $id, $canManageCredentials, $canViewEnrollmentCounts),
@@ -113,7 +113,7 @@ class TeacherController extends Controller
     private function canManageCredentials(Request $request): bool
     {
         return $this->permissions->allowsCapability(
-            $request->user()?->role, AdminPermissionMatrix::ACCOUNT_CREDENTIALS
+            $request->user(), AdminPermissionMatrix::ACCOUNT_CREDENTIALS
         );
     }
 }

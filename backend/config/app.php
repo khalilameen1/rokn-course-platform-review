@@ -244,6 +244,8 @@ return [
         EventServiceProvider::class,
         RouteServiceProvider::class,
         SettingServiceProvider::class,
+        App\Providers\Filament\OperationsPanelProvider::class,
+        App\Providers\OperationsToolsServiceProvider::class,
     ],
 
     /*

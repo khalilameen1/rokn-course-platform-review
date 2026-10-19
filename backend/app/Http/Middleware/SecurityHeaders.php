@@ -39,6 +39,11 @@ final class SecurityHeaders
 
         $contentType = strtolower((string) $response->headers->get('Content-Type'));
         if (str_contains($contentType, 'text/html')) {
+            // Filament's Alpine expressions require eval. Keep that exception
+            // on the operations panel only; no CDN scripts run in this panel.
+            $scriptSources = $request->is('operations', 'operations/*')
+                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+                : "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://maps.googleapis.com https://maps.gstatic.com https://checkout.kashier.io https://*.kashier.io";
             // Existing dashboard templates still use inline handlers, scripts
             // and styles, so removing unsafe-inline requires a separate view
             // migration. External script/style/connect origins are nevertheless
@@ -52,7 +57,7 @@ final class SecurityHeaders
                 "img-src 'self' data: blob: https:",
                 "font-src 'self' data:",
                 "style-src 'self' 'unsafe-inline'",
-                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://maps.googleapis.com https://maps.gstatic.com https://checkout.kashier.io https://*.kashier.io",
+                $scriptSources,
                 "connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://*.bunny.net https://*.bunnycdn.com https://*.b-cdn.net https://*.kashier.io",
                 "media-src 'self' blob: https:",
                 // Portfolio video frames first enter a same-origin access-checked

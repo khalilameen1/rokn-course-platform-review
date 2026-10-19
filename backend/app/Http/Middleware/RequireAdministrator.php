@@ -14,7 +14,7 @@ final class RequireAdministrator
         abort_unless(
             $user
                 && (bool) $user->active
-                && hash_equals('admin', strtolower(trim((string) $user->role))),
+                && app(\App\Auth\AdminPermissionMatrix::class)->allows($user, $request->route()?->getName(), $request->method()),
             403
         );
 

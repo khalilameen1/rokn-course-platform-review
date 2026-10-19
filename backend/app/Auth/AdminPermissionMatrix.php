@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Auth;
 
+use App\Models\User;
+
 /**
  * The dashboard role matrix is deliberately an allow-list.
  *
@@ -91,8 +93,15 @@ final class AdminPermissionMatrix
         'admin.teachers.deactive' => ['PATCH'],
     ];
 
-    public function allows(?string $role, ?string $routeName, string $method): bool
+    public function allows(User|string|null $role, ?string $routeName, string $method): bool
     {
+        if ($role instanceof User) {
+            $granular = app(StaffAccess::class)->allowsRoute($role, $routeName, $method);
+            if ($granular !== null) {
+                return $granular;
+            }
+            $role = (string) $role->role;
+        }
         if ($this->isAdministrator($role)) {
             return true;
         }
@@ -116,8 +125,21 @@ final class AdminPermissionMatrix
      * A moderator may maintain an instructor's public profile without gaining
      * the ability to inspect or replace that instructor's login identity.
      */
-    public function allowsCapability(?string $role, string $capability): bool
+    public function allowsCapability(User|string|null $role, string $capability): bool
     {
+        if ($role instanceof User) {
+            $permission = match ($capability) {
+                self::ACCOUNT_CREDENTIALS => 'credentials.manage',
+                self::CONTENT_CURATION => 'content.manage',
+                default => '__unmapped_capability__',
+            };
+            $granular = app(StaffAccess::class)->allows($role, $permission);
+            if ($granular !== null) {
+                return $granular;
+            }
+            $role = (string) $role->role;
+        }
+
         return match ($capability) {
             self::ACCOUNT_CREDENTIALS => $this->isAdministrator($role),
             self::CONTENT_CURATION => in_array(
@@ -129,8 +151,22 @@ final class AdminPermissionMatrix
         };
     }
 
-    public function isAdministrator(?string $role): bool
+    public function isAdministrator(User|string|null $role): bool
     {
+        if ($role instanceof User) {
+            $access = app(StaffAccess::class);
+            if ($access->allows($role, 'team.manage') !== null) {
+                foreach (array_keys(StaffAccess::permissionLabels()) as $permission) {
+                    if (! $access->allows($role, $permission)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+            $role = (string) $role->role;
+        }
+
         return $this->normalizedRole($role) === 'admin';
     }
 
