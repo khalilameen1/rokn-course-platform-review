@@ -19,7 +19,6 @@ final class LegacyWorkspaces
             ['مراجعة البورتفوليو', 'المراجعة', 'admin.portfolio-reviews.index'],
             ['البلاغات والدعم', 'المراجعة', 'admin.feedback.index'],
             ['أكواد المنح', 'التجارة', 'admin.course-codes.index'],
-            ['الخصومات', 'التجارة', 'admin.coupons.index'],
             ['المصروفات', 'التجارة', 'admin.operating-costs.index'],
             ['المكافآت والمهام', 'التطبيق', 'admin.coin-earning-methods.index'],
             ['الإشعارات', 'التطبيق', 'admin.notifications.index'],

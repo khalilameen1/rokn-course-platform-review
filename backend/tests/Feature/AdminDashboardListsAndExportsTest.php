@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\CouponResource;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Contact;
 use App\Models\Course;
@@ -84,8 +85,9 @@ final class AdminDashboardListsAndExportsTest extends TestCase
     public function test_sidebar_links_live_pages_and_dead_pages_are_gone(): void
     {
         $this->actingAs($this->user('admin'))->get(route('admin.coupons.index'))
-            ->assertOk()
-            ->assertSee(route('admin.coupons.index'), false)
+            ->assertRedirect(CouponResource::getUrl());
+        $this->get(CouponResource::getUrl())->assertOk()
+            ->assertSee(CouponResource::getUrl(), false)
             ->assertSee(route('admin.audit-log.index'), false);
 
         foreach ([

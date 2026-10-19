@@ -1,6 +1,54 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('coupon native editor preserves its image and local start time through the actual browser', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    const name = 'حملة متصفح ' + Date.now();
+    const code = 'BROWSER' + Date.now();
+    const start = new Date(Date.now() + 86400000).toISOString().slice(0, 10) + 'T12:00';
+    const expiry = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/coupons/create');
+    await page.getByLabel(/الاسم بالعربية/).fill(name);
+    await page.getByRole('textbox', { name: /الكود/ }).fill(code);
+    await page.getByLabel(/نسبة الخصم/).fill('10');
+    await page.getByLabel('يبدأ بتوقيت القاهرة', { exact: true }).fill(start);
+    await page.getByLabel(/تاريخ الانتهاء/).fill(expiry);
+    await page.getByRole('switch', { name: 'مفعّل', exact: true }).check();
+    await page.getByRole('heading', { name: 'الصورة', exact: true }).click();
+    await page.locator('.fi-fo-file-upload').scrollIntoViewIfNeeded();
+    await expect(page.locator('.filepond--root')).toBeVisible();
+    await page.locator('.filepond--root input[type=file]').setInputFiles('public/images/logo.png');
+    await expect(page.locator('[data-filepond-item-state="processing-complete"]')).toBeVisible();
+    await page.getByRole('button', { name: 'إضافة', exact: true }).click();
+    await expect(page).toHaveURL(/\/operations\/coupons$/);
+    const row = page.getByRole('row').filter({ hasText: name });
+    await row.getByRole('button', { name: 'إجراءات الكود', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'تعديل', exact: true }).click();
+    await expect(page.getByLabel('يبدأ بتوقيت القاهرة', { exact: true })).toHaveValue(start);
+    await page.getByLabel(/نسبة الخصم/).fill('20');
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page.getByText('تم الحفظ', { exact: true })).toBeVisible();
+    await page.getByRole('heading', { name: 'الصورة', exact: true }).click();
+    const image = page.locator('img[src*="/storage/coupons/"]');
+    await image.scrollIntoViewIfNeeded();
+    await expect(image).toBeVisible();
+    await expect.poll(() => image.evaluate(element => element.naturalWidth)).toBeGreaterThan(0);
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('coupon-edit-phone.png'), fullPage: true });
+    await page.goto('/operations/coupons');
+    await expect(page.getByRole('row').filter({ hasText: name }).getByText('20٪', { exact: true })).toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: name }).getByText(name, { exact: true })).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('coupon-list-phone.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'الخصومات', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await page.screenshot({ path: testInfo.outputPath('coupon-list-desktop.png'), fullPage: true });
+    expect(errors).toEqual([]);
+});
+
 test('store packages use native channel forms and the shared payment history on mobile', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

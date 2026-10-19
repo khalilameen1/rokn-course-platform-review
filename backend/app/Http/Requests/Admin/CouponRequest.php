@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\Coupon;
-use App\Support\BusinessClock;
 use App\Support\UnicodeText;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -63,27 +62,6 @@ class CouponRequest extends FormRequest
             'authoring_request_id' => [$this->isMethod('post') ? 'required' : 'nullable', 'uuid'],
             'editor_version' => [$this->isMethod('put') || $this->isMethod('patch') ? 'required' : 'nullable', 'string', 'size:64'],
         ];
-    }
-
-    public function withValidator($validator): void
-    {
-        $validator->after(function ($validator): void {
-            if ($validator->errors()->has('expiry_date') || $validator->errors()->has('starts_at')) {
-                return;
-            }
-            try {
-                $expiryDay = BusinessClock::localDate((string) $this->input('expiry_date'));
-                if ($this->isMethod('post') && $expiryDay->isBefore(BusinessClock::now()->startOfDay())) {
-                    $validator->errors()->add('expiry_date', 'تاريخ الانتهاء يجب أن يكون اليوم أو بعده');
-                }
-                $startsAt = BusinessClock::localInputToUtc($this->input('starts_at'));
-                if ($startsAt && ! $startsAt->lessThan($expiryDay->addDay()->startOfDay()->utc())) {
-                    $validator->errors()->add('starts_at', 'وقت البداية يجب أن يسبق نهاية الكوبون');
-                }
-            } catch (\Throwable) {
-                // Date validation owns malformed input.
-            }
-        });
     }
 
     /**

@@ -11,6 +11,7 @@ use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminCouponAuthoringService;
+use App\Services\AdminCouponReadService;
 use App\Services\CourseStagedAuthoringService;
 use App\Support\BusinessClock;
 use App\Support\CouponEditorVersion;
@@ -52,11 +53,11 @@ final class AdminCouponAuthoringOwnershipTest extends TestCase
             CourseAuthoringRevision::query()->where('revision_course_id', $draft->id)
                 ->update(['status' => $status, 'active_slot' => $status === CourseAuthoringRevision::DRAFT
                     ? CourseAuthoringRevision::draftSlot((int) $course->id) : null]);
-            $controller = app(CouponController::class);
+            $read = app(AdminCouponReadService::class);
             self::assertEqualsCanonicalizing([$course->id, $unpublished->id, $other->id],
-                $controller->create()->getData()['courses']->modelKeys());
-            self::assertEqualsCanonicalizing([$course->id, $unpublished->id, $other->id],
-                $controller->edit($coupon)->getData()['courses']->modelKeys());
+                array_keys($read->courseOptions()));
+            self::assertSame($course->name_ar, $read->courseLabel($coupon->course_id));
+            self::assertSame('ارتباط قديم غير صالح', $read->courseLabel($draft->id));
         }
     }
 

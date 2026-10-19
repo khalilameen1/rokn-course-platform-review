@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\PackageResource;
 use App\Models\AdminNotification;
 use App\Models\Classification;
 use App\Models\CoinEarningMethod;
@@ -45,20 +46,28 @@ final class AdminInlineStyleContractTest extends TestCase
 
     private const RETIRED_PALETTE = '/#(?:667eea|764ba2|092783)\b/i';
 
+    public function test_native_assets_do_not_carry_into_a_separate_legacy_http_request(): void
+    {
+        $admin = $this->dashboardUser('admin');
+        $this->adminGet($admin, PackageResource::getUrl())->assertOk()->assertSee('wire:snapshot', false);
+        $html = (string) $this->adminGet($admin, route('admin.mfa.setup'))->assertOk()->getContent();
+        self::assertSame(0, $this->styleBlockCount($html));
+        self::assertStringNotContainsString('[wire\\:loading]', $html);
+    }
+
     public function test_rendered_admin_pages_have_no_inline_styles(): void
     {
-        $styleBlockPages = [];
+        $unexpectedStyles = [];
         foreach ($this->renderedPages() as $page => $html) {
             $this->assertNoInlineStyleAttributes($html, $page);
-            if ($this->styleBlockCount($html) > 0) {
-                $styleBlockPages[] = $page;
+            if ($this->styleBlockCount($html) > 0 && ! in_array($page, self::STYLE_BLOCK_PAGES, true)) {
+                $unexpectedStyles[$page] = mb_substr(trim((string) $this->dom($html)->evaluate('string(//style[1])')), 0, 200);
             }
         }
 
-        sort($styleBlockPages);
         self::assertSame(
             [],
-            array_values(array_diff($styleBlockPages, self::STYLE_BLOCK_PAGES)),
+            $unexpectedStyles,
             'Only the dynamic style partials may print a <style> block.'
         );
     }
@@ -233,7 +242,6 @@ final class AdminInlineStyleContractTest extends TestCase
             'admin.student-progress.show' => route('admin.student-progress.show', $student),
             'admin.orders.show' => route('admin.orders.show', $order),
             'admin.coin-earning-methods.edit' => route('admin.coin-earning-methods.edit', $method),
-            'admin.coupons.edit' => route('admin.coupons.edit', $coupon),
             'admin.course-codes.show' => route('admin.course-codes.show', $code),
             'admin.course-codes.edit' => route('admin.course-codes.edit', $code),
             'admin.contacts.show' => route('admin.contacts.show', $contact),
