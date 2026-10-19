@@ -249,41 +249,11 @@ parameters:
 			count: 2
 			path: app/Http/Controllers/API/PathController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/ProjectController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/ProjectController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$module\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/ProjectController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/ProjectController.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/ProjectController.php
 
-		-
-			message: '#^Parameter \#2 \$section of method App\\Services\\CourseSectionAccessService\:\:canAccessSection\(\) expects App\\Models\\CourseSection, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/ProjectController.php
 
 		-
 			message: '#^Match expression does not handle remaining value\: string$#'
@@ -3786,17 +3756,7 @@ parameters:
 			count: 1
 			path: app/Models/PortfolioMedia.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Project.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$module\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Project.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>coins_amount" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -5249,17 +5209,7 @@ parameters:
 			count: 1
 			path: app/Services/CourseSearchService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CourseSectionAccessService.php
 
-		-
-			message: '#^Parameter \#2 \$course of method App\\Services\\CourseModuleAccessService\:\:hasCourseAccess\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/CourseSectionAccessService.php
 
 		-
 			message: '#^Method App\\Services\\CourseSectionSequenceService\:\:learningByCourse\(\) should return Illuminate\\Support\\Collection\<int, Illuminate\\Support\\Collection\<int, mixed\>\> but returns Illuminate\\Support\\Collection\<\(int\|string\), Illuminate\\Support\\Collection\>\.$#'
@@ -6158,11 +6108,6 @@ parameters:
 			count: 1
 			path: app/Services/ProductionCapabilityService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ProjectAttachmentDownloadService.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>course_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -6230,11 +6175,6 @@ parameters:
 			count: 1
 			path: app/Services/ProjectSubmissionFileRetentionService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ProjectSubmissionOrchestrator.php
 
 		-
 			message: '#^Negated boolean expression is always false\.$#'
@@ -6242,11 +6182,6 @@ parameters:
 			count: 1
 			path: app/Services/ProjectSubmissionOrchestrator.php
 
-		-
-			message: '#^Parameter \#2 \$section of method App\\Services\\CourseSectionAccessService\:\:canAccessSection\(\) expects App\\Models\\CourseSection, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/ProjectSubmissionOrchestrator.php
 
 		-
 			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
@@ -6260,11 +6195,6 @@ parameters:
 			count: 1
 			path: app/Services/ProjectSubmissionReviewService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ProjectSubmissionService.php
 
 		-
 			message: '#^Strict comparison using \=\=\= between lowercase\-string&non\-falsy\-string and '''' will always evaluate to false\.$#'
@@ -6720,11 +6650,6 @@ parameters:
 			count: 1
 			path: app/Support/NotificationTemplateEditorVersion.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/ProjectSubmissionEvaluationSnapshot.php
 
 		-
 			message: '#^Comparison operation "\>\=" between 3\|4 and 2 is always true\.$#'

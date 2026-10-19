@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\StudentResource;
 use App\Http\Middleware\AppFrontNameSpace;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Http\Middleware\WebsiteVisitorCount;
@@ -117,16 +118,17 @@ final class StudentAvatarPresentationParityTest extends TestCase
         $this->actingAs($this->administrator, 'web');
         foreach ([
             'user-avatar' => route('admin.users.index', ['search' => 'UID: '.$student->id]),
-            'profile-avatar' => route('admin.users.show', $student->id),
+            'profile-avatar' => StudentResource::getUrl('view', ['record' => $student->id]),
         ] as $class => $url) {
             $response = $this->get($url)->assertOk();
             preg_match_all(
-                '#<img\\b(?=[^>]*\\bclass="[^"<>]*\\b'.$class.'\\b[^"<>]*")[^>]*>#',
+                $class === 'profile-avatar' ? '#<img\\b(?=[^>]*\\balt="الصورة")[^>]*>#' : '#<img\\b(?=[^>]*\\bclass="[^"<>]*\\b'.$class.'\\b[^"<>]*")[^>]*>#',
                 $response->getContent(),
                 $images
             );
             self::assertCount(1, $images[0], $url);
-            self::assertStringContainsString('src="'.e($expected).'"', $images[0][0]);
+            $imageUrl = $class === 'profile-avatar' && str_starts_with($expected, '/') ? asset($expected) : $expected;
+            self::assertStringContainsString('src="'.e($imageUrl).'"', $images[0][0]);
             $response->assertDontSee('legacy-featured-avatar.jpg', false);
             $response->assertDontSee('http://images.example.test/insecure.jpg', false);
         }

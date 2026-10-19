@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Auth\AdminPermissionMatrix;
+use App\Filament\Resources\StudentResource\Pages\ViewStudent;
+use App\Filament\Resources\StudentResource\RelationManagers\OrdersRelationManager;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Classification;
 use App\Models\Course;
@@ -21,6 +23,7 @@ use App\Services\CoursePublishingService;
 use App\Services\CourseStagedAuthoringService;
 use DOMDocument;
 use DOMXPath;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -29,6 +32,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class ModeratorCourseWorkspaceContractTest extends TestCase
@@ -237,15 +241,11 @@ final class ModeratorCourseWorkspaceContractTest extends TestCase
             'approved_at' => now(),
         ]);
 
-        $xpath = $this->dom($this->actingAs($this->user('admin'), 'web')
-            ->get(route('admin.users.show', $student))->assertOk());
-
-        self::assertSame(1, $xpath->query('//nav[contains(@class, "student-operations")]')->length);
-        self::assertStringContainsString('ما دفعه الطالب', $xpath->evaluate('string(//*[@id="studentPurchases"]//thead)'));
-        $paid = preg_replace('/\s+/u', ' ', $xpath->evaluate('string(//*[@id="studentPurchases"]//tbody/tr[1]/td[4])'));
-        self::assertStringContainsString('350 مدفوعة', $paid);
-        self::assertStringContainsString('150 مكافآت', $paid);
-        self::assertStringNotContainsString('غير مكتملة', $paid);
+        $this->actingAs($this->user('admin'), 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(OrdersRelationManager::class, [
+            'ownerRecord' => $student, 'pageClass' => ViewStudent::class,
+        ])->assertSee('350 مدفوعة')->assertSee('150 مكافآت')->assertDontSee('ربط الدفتر غير مكتمل');
     }
 
     public function test_course_commercial_report_presents_per_learner_ledger_evidence(): void

@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Filament\Resources\AuditLogResource;
 use App\Filament\Resources\ContactResource;
 use App\Filament\Resources\CouponResource;
+use App\Filament\Resources\StudentResource;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Contact;
 use App\Models\Course;
@@ -147,7 +148,7 @@ final class AdminDashboardListsAndExportsTest extends TestCase
             'progress list' => [route('admin.student-progress.index'), '201055550001'],
             'contacts' => [ContactResource::getUrl(), '201055550003'],
             'contact' => [ContactResource::getUrl('view', ['record' => $contact->id]), '201055550003'],
-            'student profile' => [route('admin.users.show', $student), '201055550001'],
+            'student profile' => [StudentResource::getUrl('view', ['record' => $student->id]), '201055550001'],
         ] as $page => [$url, $phone]) {
             $xpath = $this->page($url);
             self::assertGreaterThan(

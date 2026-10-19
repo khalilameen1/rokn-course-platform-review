@@ -55,6 +55,8 @@ final class OrderResource extends ReadResource
             TextColumn::make('product')->label('المنتج')->wrap()->visibleFrom('md')
                 ->state(fn (Order $record): string => $record->course->title ?? $record->package->name_ar ?? $record->package->name_en ?? 'بدون منتج مرتبط')
                 ->description(fn (Order $record): ?string => $record->courseCode?->code ? 'كود منحة '.$record->courseCode->code : null),
+            TextColumn::make('plan')->label('الاشتراك')->state(fn (Order $record): string => $record->access_plan_snapshot['name_ar'] ?? $record->access_plan_snapshot['name'] ?? $record->access_plan_snapshot['code'] ?? '—')
+                ->visibleFrom('md')->toggleable(),
             TextColumn::make('display_amount')->label('الإجمالي والصافي')->state(fn (Order $record): string => self::displayAmount($record))
                 ->description(fn (Order $record): ?string => self::amountDetail($record))->wrap(),
             TextColumn::make('payment_method')->label('قناة الدفع')->badge()->visibleFrom('md')
@@ -143,6 +145,10 @@ final class OrderResource extends ReadResource
     private static function amountDetail(Order $order): ?string
     {
         $notes = [];
+        if (in_array($order->payment_method, [Order::PAYMENT_METHOD_WALLET, Order::PAYMENT_METHOD_WALLET_COINS], true)) {
+            $notes[] = number_format((int) $order->getAttribute('ledger_paid_coins')).' مدفوعة';
+            $notes[] = number_format((int) $order->getAttribute('ledger_reward_coins')).' مكافآت';
+        }
         if (in_array($order->payment_method, [Order::PAYMENT_METHOD_KASHIER, Order::PAYMENT_METHOD_GOOGLE_PLAY, Order::PAYMENT_METHOD_APP_STORE], true)) {
             if ($order->gateway_gross_amount === null || $order->gateway_settlement_status === 'catalog_estimate') {
                 $notes[] = 'تقدير كتالوج';

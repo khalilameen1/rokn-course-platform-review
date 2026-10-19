@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\StudentResource;
 use App\Http\Controllers\Admin\UsersController;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\AdminNotification;
@@ -118,7 +119,7 @@ final class AdminNotificationAuthoringContractTest extends TestCase
 
         $student = $this->student();
         $html = $this->actingAs($this->admin, 'web')
-            ->get(route('admin.users.show', $student))
+            ->get(StudentResource::getUrl('view', ['record' => $student->id]))
             ->assertOk()
             ->getContent();
         $href = route('admin.notifications.create', ['user_id' => $student->id]);

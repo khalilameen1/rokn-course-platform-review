@@ -13,3 +13,7 @@
     font-display: swap;
 }
 html { font-synthesis: none; }
+
+/* Informational empty values must remain readable in both panel themes. */
+.fi-in-placeholder { color: var(--gray-600); }
+.dark .fi-in-placeholder { color: var(--gray-400); }

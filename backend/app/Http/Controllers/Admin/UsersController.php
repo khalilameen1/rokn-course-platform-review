@@ -102,20 +102,11 @@ class UsersController extends Controller
         return redirect()->route('admin.users.index')->with('success', 'تمت الإضافة بنجاح ');
     }
 
-    /**
-     * @return Factory|View
-     */
-    public function show(
-        User $user,
-        Request $request,
-        AdminStudentReadService $students
-    ) {
+    public function show(User $user): RedirectResponse
+    {
         $this->assertStudent($user);
 
-        return view('admin.users.show', array_merge(
-            $students->workspace($user, $request->query()),
-            ['designSettings' => $this->getDesignSettings()]
-        ));
+        return redirect()->to(StudentResource::getUrl('view', ['record' => $user->id]));
     }
 
     public function edit(User $user): RedirectResponse

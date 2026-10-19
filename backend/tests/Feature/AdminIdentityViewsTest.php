@@ -30,8 +30,8 @@ final class AdminIdentityViewsTest extends TestCase
         $student->forceFill(['name' => 'طالب الاختبار', 'email' => 'identity@example.test', 'role' => 'client', 'active' => true])->save();
         $this->get(route('admin.users.create'))->assertRedirect(StudentResource::getUrl('create'));
         $this->get(route('admin.users.edit', $student))->assertRedirect(StudentResource::getUrl('edit', ['record' => $student->id]));
-        $this->get(route('admin.users.show', $student))->assertOk()->assertSee('users-show.css', false)
-            ->assertSee('طالب الاختبار')->assertSee('admin-identity-theme.js', false);
+        $this->get(route('admin.users.show', $student))->assertRedirect(StudentResource::getUrl('view', ['record' => $student->id]));
+        $this->get(StudentResource::getUrl('view', ['record' => $student->id]))->assertOk()->assertSee('طالب الاختبار')->assertSee('identity@example.test');
     }
 
     public function test_design_workspace_renders_the_current_form_contract(): void

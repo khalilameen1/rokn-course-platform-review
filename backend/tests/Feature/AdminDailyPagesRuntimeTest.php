@@ -156,7 +156,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $this->assertStudioLessonRow($studio->getContent(), 'المقطع الأول', 'مقطع · 2 دقيقة · مجاني');
 
         foreach ([
-            route('admin.users.show', $student),
+            StudentResource::getUrl('view', ['record' => $student->id]),
             StudentResource::getUrl('edit', ['record' => $student->id]),
             route('admin.orders.show', $order),
             route('filament.operations.resources.orders.index'),

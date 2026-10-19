@@ -257,6 +257,12 @@ class User extends Authenticatable implements FilamentUser, HasName
         return $this->hasMany(UserNote::class);
     }
 
+    /** @return HasMany<ProjectSubmission, $this> */
+    public function projectSubmissions(): HasMany
+    {
+        return $this->hasMany(ProjectSubmission::class);
+    }
+
     /** @return HasOne<UserNote, $this> */
     public function latestNote(): HasOne
     {

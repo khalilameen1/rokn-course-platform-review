@@ -6,6 +6,9 @@ namespace App\Filament\Resources;
 
 use App\Auth\AdminPermissionMatrix;
 use App\Filament\Resources\StudentResource\Pages\CreateStudent;
+use App\Filament\Resources\StudentResource\Pages\ViewStudent;
+use App\Filament\Resources\StudentResource\RelationManagers;
+use App\Filament\Resources\StudentResource\StudentProfileSchema;
 use App\Models\User;
 use App\Support\UnicodeText;
 use Filament\Actions\Action;
@@ -42,6 +45,26 @@ final class StudentResource extends ReadResource
     protected static ?string $recordTitleAttribute = 'name_ar';
 
     protected static string $legacyListRoute = 'admin.users.index';
+
+    public static function allowsRoute(string $route, string $method): bool
+    {
+        return app(AdminPermissionMatrix::class)->allows(auth('web')->user(), $route, $method);
+    }
+
+    public static function allows(string $action, string $method = 'POST'): bool
+    {
+        return self::allowsRoute('admin.users.'.$action, $method);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return StudentProfileSchema::configure($schema);
+    }
+
+    public static function getRelations(): array
+    {
+        return [RelationManagers\NotesRelationManager::class, RelationManagers\OrdersRelationManager::class, RelationManagers\ProjectsRelationManager::class];
+    }
 
     public static function getAuthorizationResponse(string|UnitEnum $action, ?Model $record = null): Response
     {
@@ -115,13 +138,13 @@ final class StudentResource extends ReadResource
         return $table->columns([
             TextColumn::make('id')->label('رقم الطالب')->sortable()->searchable(),
             TextColumn::make('name_ar')->label('الاسم')->searchable(['name_ar', 'name_en', 'name'])->placeholder('بدون اسم')->wrap()
-                ->url(fn (User $record): string => route('admin.users.show', $record)),
+                ->url(fn (User $record): string => self::getUrl('view', ['record' => $record->id])),
             TextColumn::make('email')->label('البريد')->searchable()->copyable()->extraAttributes(['dir' => 'ltr']),
             TextColumn::make('phone')->label('الهاتف')->searchable()->extraAttributes(['dir' => 'ltr']),
             TextColumn::make('active')->label('الحالة')->badge()->formatStateUsing(fn (bool $state): string => $state ? 'نشط' : 'موقوف')->color(fn (bool $state): string => $state ? 'success' : 'danger'),
             TextColumn::make('created_at')->label('تاريخ التسجيل')->dateTime('Y-m-d H:i')->sortable()->toggleable(),
         ])->filters([TernaryFilter::make('active')->label('نشط')])
-            ->recordActions([Action::make('workspace')->label('ملف الطالب')->url(fn (User $record): string => route('admin.users.show', $record))])
+            ->recordActions([Action::make('workspace')->label('ملف الطالب')->url(fn (User $record): string => self::getUrl('view', ['record' => $record->id]))])
             ->recordUrl(null)
             ->defaultSort('id', 'desc')->poll('30s')->emptyStateHeading('لا يوجد طلبة')->emptyStateDescription('');
     }
@@ -133,7 +156,7 @@ final class StudentResource extends ReadResource
 
     public static function getGlobalSearchResultUrl(Model $record): string
     {
-        return route('admin.users.show', $record);
+        return self::getUrl('view', ['record' => $record->getKey()]);
     }
 
     public static function getGlobalSearchResultDetails(Model $record): array
@@ -145,6 +168,7 @@ final class StudentResource extends ReadResource
     {
         return ['index' => StudentResource\Pages\ListStudents::route('/'),
             'create' => CreateStudent::route('/create'),
+            'view' => ViewStudent::route('/{record}'),
             'edit' => StudentResource\Pages\EditStudent::route('/{record}/edit')];
     }
 }
