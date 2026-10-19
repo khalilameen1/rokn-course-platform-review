@@ -5,42 +5,24 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\CourseVideoClaimRequest;
+use App\Http\Requests\Admin\CourseVideoUploadRequest;
 use App\Models\Course;
 use App\Models\CourseSection;
 use App\Models\User;
 use App\Services\BunnyDirectUploadService;
-use App\Support\UnicodeText;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 final class CourseSectionVideoUploadController extends Controller
 {
     public function store(
-        Request $request,
+        CourseVideoUploadRequest $request,
         Course $course,
         BunnyDirectUploadService $uploads
     ): JsonResponse {
         try {
-            $request->merge([
-                'title' => UnicodeText::clean($request->input('title'), false),
-            ]);
-            $validated = $request->validate([
-                'title' => 'required|string|max:255',
-                'size' => 'required|integer|min:1|max:'.BunnyDirectUploadService::MAX_BYTES,
-                'mime' => ['required', 'string', Rule::in(BunnyDirectUploadService::MIMES)],
-                'original_name' => ['required', 'string', 'max:255'],
-                'idempotency_key' => ['required', 'uuid'],
-                'authoring_version' => ['required', 'integer', 'min:1'],
-                'section_id' => [
-                    'nullable',
-                    'integer',
-                    Rule::exists('course_sections', 'id')->where(
-                        fn ($query) => $query->where('course_id', $course->id)->whereNull('deleted_at')
-                    ),
-                ],
-            ]);
+            $validated = $request->validated();
             /** @var User $admin */
             $admin = $request->user();
             $section = ! empty($validated['section_id'])
@@ -82,12 +64,12 @@ final class CourseSectionVideoUploadController extends Controller
     }
 
     public function renew(
-        Request $request,
+        CourseVideoClaimRequest $request,
         Course $course,
         BunnyDirectUploadService $uploads
     ): JsonResponse {
         try {
-            $validated = $request->validate(['claim' => 'required|string|max:4096']);
+            $validated = $request->validated();
             /** @var User $admin */
             $admin = $request->user();
 
