@@ -139,7 +139,7 @@ final class ProjectSubmissionReviewService
                 $reviewFeedback,
                 $reviewer
             );
-        });
+        }, 3);
 
         $this->completeReportHandoff($reviewed);
 
