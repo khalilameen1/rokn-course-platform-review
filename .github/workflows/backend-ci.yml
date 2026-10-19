@@ -18,6 +18,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  credential-history:
+    name: Repository credential history
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out complete repository history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up PHP 8.4
+        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2.37.0
+        with:
+          php-version: "8.4"
+          coverage: none
+      - name: Reject committed credentials and private keys
+        run: php scripts/verify-repository-secrets.php --history
+
   certificate-artwork:
     name: Certificate artwork QA
     runs-on: ubuntu-24.04
@@ -189,9 +209,6 @@ jobs:
           test "$(php -r 'echo PHP_MAJOR_VERSION, ".", PHP_MINOR_VERSION;')" = "8.4"
           test "$(php -r 'echo PHP_VERSION_ID;')" -ge 80424
           composer --version --no-ansi | grep -F "Composer version 2.10.3 "
-
-      - name: Reject committed credentials and private keys
-        run: php scripts/verify-repository-secrets.php --history
 
       - name: Install locked frontend dependencies
         run: npm ci --no-audit --no-fund
