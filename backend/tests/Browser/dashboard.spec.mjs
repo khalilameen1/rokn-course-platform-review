@@ -592,6 +592,49 @@ test('payment report keeps currency separate and applies its native filters on m
     expect(errors).toEqual([]);
 });
 
+test('payment findings show evidence and document reversible review decisions on a phone', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/payment-findings');
+    await expect(page.getByRole('heading', { level: 1, name: 'مطابقة المدفوعات', exact: true })).toBeVisible();
+    const row = page.getByRole('row').filter({ hasText: 'BROWSER-STATEMENT' });
+    await row.getByRole('button', { name: 'إجراءات المطابقة', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'تفاصيل المطابقة', exact: true }).click();
+    const evidence = page.getByRole('dialog', { name: 'تفاصيل المطابقة', exact: true });
+    await expect(evidence.getByText('CAPTURED', { exact: true })).toBeVisible();
+    await expect(evidence.getByText(/<script>window\.paymentEvidenceExecuted=true<\/script>/)).toBeVisible();
+    expect(await page.evaluate(() => window.paymentEvidenceExecuted)).toBeUndefined();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('payment-finding-evidence-phone.png'), fullPage: true, animations: 'disabled' });
+    await evidence.getByRole('button', { name: 'إغلاق', exact: true }).last().click();
+    await expect(evidence).not.toBeVisible();
+    await row.getByRole('button', { name: 'إجراءات المطابقة', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'توثيق الحل', exact: true }).click();
+    const decision = page.getByRole('alertdialog', { name: 'توثيق الحل', exact: true });
+    await decision.getByRole('textbox', { name: /^سبب القرار/ }).fill('دليل المزود راجعناه في المتصفح');
+    await decision.getByRole('button', { name: 'حفظ القرار', exact: true }).click();
+    await expect(page.getByText('تم توثيق القرار', { exact: true })).toBeVisible();
+    await page.goto('/dashboard/payment-reconciliation/findings?state=resolved');
+    await expect(row.getByText('محلولة', { exact: true })).toBeVisible();
+    await row.getByRole('button', { name: 'إجراءات المطابقة', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'إعادة فتح المراجعة', exact: true }).click();
+    const reopen = page.getByRole('alertdialog', { name: 'إعادة فتح المراجعة', exact: true });
+    await reopen.getByRole('textbox', { name: /^سبب القرار/ }).fill('ظهر دليل جديد يحتاج إلى فحص');
+    await reopen.getByRole('button', { name: 'حفظ القرار', exact: true }).click();
+    await page.goto('/operations/payment-findings');
+    await expect(row.getByText('مفتوحة', { exact: true })).toBeVisible();
+    await expect(page.locator('.fi-wi-stats-overview-stat').filter({ hasText: 'إجمالي النتائج' }).locator('.fi-wi-stats-overview-stat-value')).toHaveText('1');
+    await expect(row.getByRole('link', { name: /BROWSER-STATEMENT/ })).toBeInViewport();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('payment-findings-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.screenshot({ path: testInfo.outputPath('payment-findings-desktop.png'), fullPage: true, animations: 'disabled' });
+    expect(errors).toEqual([]);
+});
+
 test('order detail records a statement in the native financial workspace on a phone', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

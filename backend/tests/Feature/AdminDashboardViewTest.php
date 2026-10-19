@@ -66,7 +66,6 @@ final class AdminDashboardViewTest extends TestCase
             'playback operations' => route('admin.playback-operations.index'),
             'project list' => route('admin.project-submissions.index'),
             'project review' => route('admin.project-submissions.show', $submission),
-            'payment reconciliation queue' => route('admin.payment-reconciliation-findings.index'),
             'settings dashboard' => route('admin.settings'),
             'home dashboard' => route('admin.dashboard'),
             'course codes list' => route('admin.course-codes.index'),
@@ -80,8 +79,6 @@ final class AdminDashboardViewTest extends TestCase
         foreach ($pages as $page => $url) {
             $this->assertAdminMarkupWithoutInlineStyles($this->adminGet($admin, $url)->assertOk()->getContent(), $page);
         }
-        $queue = $this->dom((string) $this->adminGet($admin, route('admin.payment-reconciliation-findings.index'))->getContent());
-        self::assertGreaterThan(0, $queue->query('//form[contains(@action, "payment-reconciliation")]//textarea | //form[contains(@action, "payment-reconciliation")]//input[@name="note"]')->length);
 
         $this->assertAdminMarkupWithoutInlineStyles(
             $this->adminGet($this->dashboardUser('moderator'), route('admin.dashboard'))->assertOk()->getContent(),

@@ -7,6 +7,7 @@ use App\Models\Contact;
 use App\Models\FeedbackReport;
 use App\Models\Order;
 use App\Models\Package;
+use App\Models\PaymentReconciliationFinding;
 use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Database\Eloquent\Model;
@@ -152,13 +153,20 @@ try {
         'amount' => '11.11', 'final_amount' => '11.11', 'gateway_gross_amount' => '11.11',
         'gateway_currency' => 'EGP', 'gateway_settlement_status' => 'test_purchase', 'total_coins' => 900,
     ]);
-    Order::query()->updateOrCreate(['order_ref' => 'BROWSER-STATEMENT'], [
+    $statement = Order::query()->create(['order_ref' => 'BROWSER-STATEMENT',
         'user_id' => $student->id, 'package_id' => $package->id, 'package_coins' => 900,
         'payment_method' => Order::PAYMENT_METHOD_KASHIER, 'status' => Order::STATUS_APPROVED,
         'financial_status' => Order::FINANCIAL_SETTLED, 'approved_at' => now(),
         'amount' => '100.00', 'final_amount' => '100.00', 'gateway_gross_amount' => '100.00',
         'gateway_currency' => 'EGP', 'gateway_settlement_status' => 'captured', 'total_coins' => 900,
         'gateway_fee_amount' => null, 'gateway_net_amount' => null, 'gateway_settled_at' => null,
+    ]);
+    PaymentReconciliationFinding::query()->create([
+        'order_id' => $statement->id, 'order_ref' => $statement->order_ref, 'provider' => 'kashier',
+        'fingerprint' => hash('sha256', 'browser-payment-finding'), 'kind' => 'provider_local_status_mismatch',
+        'state' => 'open', 'attempts' => 1, 'first_seen_at' => now(), 'last_seen_at' => now(),
+        'local_status' => 'pending', 'provider_status' => 'CAPTURED',
+        'evidence' => ['provider_status' => 'CAPTURED', 'detail' => '<script>window.paymentEvidenceExecuted=true</script>'],
     ]);
     echo "Disposable dashboard browser database prepared\n";
 } catch (Throwable $exception) {
