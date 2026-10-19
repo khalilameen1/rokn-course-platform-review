@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Controllers\Admin\OperatingCostPoolController;
+use App\Http\Requests\Admin\OperatingCostReportRequest;
 use App\Services\PlatformCommercialReportService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Schema\Blueprint;
@@ -12,10 +13,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\ValidatesFormRequests;
 use Tests\TestCase;
 
 final class PlatformOperatingCostPeriodTest extends TestCase
 {
+    use ValidatesFormRequests;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -124,7 +128,7 @@ final class PlatformOperatingCostPeriodTest extends TestCase
 
     public function test_controller_preserves_valid_period_in_pagination_and_exports_no_estimated_money(): void
     {
-        $request = Request::create('/dashboard/operating-costs/report', 'GET', ['period' => '7d', 'course_id' => 10]);
+        $request = $this->validatedFormRequest(OperatingCostReportRequest::class, Request::create('/dashboard/operating-costs/report', 'GET', ['period' => '7d', 'course_id' => 10]));
         $controller = app(OperatingCostPoolController::class);
         $service = app(PlatformCommercialReportService::class);
         $data = $controller->report($request, $service)->getData();
@@ -137,7 +141,7 @@ final class PlatformOperatingCostPeriodTest extends TestCase
         self::assertStringContainsString('تكلفة OpenRouter المؤكدة USD', $csv);
         self::assertStringNotContainsString('تقدير', $csv);
         $this->expectException(ValidationException::class);
-        $controller->report(Request::create('/report', 'GET', ['period' => 'future']), $service);
+        $controller->report($this->validatedFormRequest(OperatingCostReportRequest::class, Request::create('/report', 'GET', ['period' => 'future'])), $service);
     }
 
     public function test_course_rows_exclude_authoring_copies_and_empty_drafts_without_reading_a_third_window(): void

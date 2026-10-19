@@ -3,15 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\EditorVersionRequest;
+use App\Http\Requests\Admin\PackageProfileRequest;
 use App\Models\Package;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminEconomyReadService;
 use App\Services\AdminPackageAuthoringService;
 use App\Services\AdminPaymentOperationsReadService;
 use App\Support\PackageEditorVersion;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class PackageController extends Controller
@@ -48,9 +48,9 @@ class PackageController extends Controller
      *
      * @return Response
      */
-    public function store(Request $request, AdminAuthoringCreateIntentService $createIntents)
+    public function store(PackageProfileRequest $request, AdminAuthoringCreateIntentService $createIntents)
     {
-        $validated = $this->validated($request);
+        $validated = $request->authoringData();
 
         $this->authoring->create($validated, function (Package $package) use ($request, $createIntents): void {
             $createIntents->completeRedirect(
@@ -63,44 +63,6 @@ class PackageController extends Controller
         });
 
         return redirect()->route('admin.packages.index')->with('success', 'تم إضافة الباقة بنجاح');
-    }
-
-    /** @return array<string, mixed> */
-    private function validated(Request $request, ?Package $package = null): array
-    {
-        $request->merge([
-            'is_active' => $request->boolean('is_active'),
-            'direct_enabled' => $request->boolean('direct_enabled'),
-            'google_enabled' => $request->boolean('google_enabled'),
-            'apple_enabled' => $request->boolean('apple_enabled'),
-        ]);
-
-        $validated = $request->validate([
-            'name_ar' => 'required|string|max:255',
-            'name_en' => 'required|string|max:255',
-            'price' => 'required|numeric|min:0.01',
-            'coins' => 'required|integer|min:1',
-            'sort_order' => 'nullable|integer|min:0|max:10000',
-            'is_active' => 'required|boolean',
-            'direct_enabled' => 'required|boolean',
-            'google_product_id' => [
-                'nullable', 'required_if:google_enabled,1', 'string', 'max:191',
-                'regex:/^[a-z0-9._]+$/',
-                Rule::unique('packages', 'google_product_id')->ignore($package?->id),
-            ],
-            'apple_product_id' => [
-                'nullable', 'required_if:apple_enabled,1', 'string', 'max:191',
-                'regex:/^[A-Za-z0-9._-]+$/',
-                Rule::unique('packages', 'apple_product_id')->ignore($package?->id),
-            ],
-            'google_enabled' => 'required|boolean',
-            'apple_enabled' => 'required|boolean',
-            'authoring_request_id' => [$package ? 'nullable' : 'required', 'uuid'],
-        ]);
-        unset($validated['authoring_request_id']);
-        $validated['sort_order'] = (int) ($validated['sort_order'] ?? 100);
-
-        return $validated;
     }
 
     /**
@@ -134,11 +96,10 @@ class PackageController extends Controller
      *
      * @return Response
      */
-    public function update(Request $request, Package $package)
+    public function update(PackageProfileRequest $request, Package $package)
     {
-        $request->validate(['editor_version' => 'required|string|size:64']);
-        $editorVersion = (string) $request->input('editor_version');
-        $validated = $this->validated($request, $package);
+        $editorVersion = (string) $request->validated('editor_version');
+        $validated = $request->authoringData();
 
         try {
             $this->authoring->update((int) $package->id, $validated, $editorVersion);
@@ -156,9 +117,9 @@ class PackageController extends Controller
      *
      * @return Response
      */
-    public function destroy(Request $request, Package $package)
+    public function destroy(EditorVersionRequest $request, Package $package)
     {
-        $validated = $request->validate(['editor_version' => 'required|string|size:64']);
+        $validated = $request->validated();
         if (! $this->authoring->deleteIfUnused((int) $package->id, (string) $validated['editor_version'])) {
             return redirect()->back()->with(
                 'error',
