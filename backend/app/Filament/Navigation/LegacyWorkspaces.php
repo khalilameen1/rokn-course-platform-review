@@ -17,7 +17,6 @@ final class LegacyWorkspaces
             ['الكورسات', 'المحتوى', 'admin.courses.index'],
             ['مشاريع الطلاب', 'المراجعة', 'admin.project-submissions.index'],
             ['مراجعة البورتفوليو', 'المراجعة', 'admin.portfolio-reviews.index'],
-            ['البلاغات والدعم', 'المراجعة', 'admin.feedback.index'],
             ['أكواد المنح', 'التجارة', 'admin.course-codes.index'],
             ['الإشعارات', 'التطبيق', 'admin.notifications.index'],
             ['صور وهوية التطبيق', 'التطبيق', 'admin.design-settings.index'],

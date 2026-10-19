@@ -43,8 +43,8 @@ final class AdminSupportCaseReadServiceTest extends TestCase
     {
         DB::enableQueryLog();
         DB::flushQueryLog();
-        $page = app(AdminSupportCaseReadService::class)->index([]);
-        foreach ($page['reports'] as $report) {
+        $page = app(AdminSupportCaseReadService::class)->query([])->paginate(30);
+        foreach ($page as $report) {
             self::assertSame('طالب', $report->user->name);
             self::assertSame('طالب', $report->assignee->name);
             self::assertNull($report->course);

@@ -21,16 +21,10 @@ final readonly class AdminSupportCaseReadService
 {
     public function __construct(private SupportCaseCompensationService $compensation) {}
 
-    public function index(array $filters): array
-    {
-        return ['reports' => $this->query($filters)->latest('updated_at')->latest('id')->paginate(30)->withQueryString(),
-            'admins' => $this->assignees()];
-    }
-
     /** @return Collection<int, User> */
     public function assignees(): Collection
     {
-        return User::query()->where('role', 'admin')->orderBy('name')->get(['id', 'name']);
+        return User::query()->where('role', 'admin')->orderBy('name')->get(['id', 'name', 'name_ar', 'name_en', 'email']);
     }
 
     /** @return Builder<FeedbackReport> */

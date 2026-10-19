@@ -63,7 +63,6 @@ final class AdminDashboardViewTest extends TestCase
         $pages = [
             'product operations' => route('admin.product-operations.index'),
             'playback operations' => route('admin.playback-operations.index'),
-            'feedback list' => route('admin.feedback.index'),
             'feedback details' => route('admin.feedback.show', $feedback),
             'project list' => route('admin.project-submissions.index'),
             'project review' => route('admin.project-submissions.show', $submission),

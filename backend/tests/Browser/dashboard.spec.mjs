@@ -1,6 +1,36 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('support inbox uses native filters and exports exactly the applied search', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/feedback');
+    await page.getByRole('button', { name: 'تصفية', exact: true }).click();
+    const search = page.getByLabel('رقم الحالة أو الرسالة أو الطالب', { exact: true });
+    await search.fill('رسالة دعم المتصفح');
+    await page.getByRole('button', { name: 'تطبيق التصفيات', exact: true }).click();
+    await expect(search).not.toBeVisible();
+    await expect(page.locator('.fi-modal-window').filter({ has: search })).not.toBeVisible();
+    await expect(page.getByText('البحث: رسالة دعم المتصفح', { exact: true })).toBeVisible();
+    const row = page.getByRole('row').filter({ hasText: 'رسالة دعم المتصفح' });
+    await expect(row).toBeVisible();
+    const exportLink = page.getByRole('link', { name: 'تصدير CSV', exact: true });
+    expect(new URL(await exportLink.getAttribute('href')).searchParams.get('q')).toBe('رسالة دعم المتصفح');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('support-inbox-phone.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'رسائل الدعم', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await expect(row.getByText('عالية', { exact: true })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('support-inbox-desktop.png'), fullPage: true });
+    await row.getByRole('link', { name: 'عرض', exact: true }).click();
+    await expect(page).toHaveURL(/\/dashboard\/feedback\/\d+$/);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('حالة');
+    expect(errors).toEqual([]);
+});
+
 test('reward settings share one native form and keep old-client fields collapsed', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

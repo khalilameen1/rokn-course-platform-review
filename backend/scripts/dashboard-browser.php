@@ -4,12 +4,14 @@ declare(strict_types=1);
 use App\Models\AdminAuditLog;
 use App\Models\ApiToken;
 use App\Models\Contact;
+use App\Models\FeedbackReport;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 
 /** Disposable local HTTP harness. No auth bypass routes; tests use password + TOTP. */
@@ -98,6 +100,11 @@ foreach (['admin', 'moderator', 'client'] as $role) {
     ])->save();
 }
 $student = User::query()->where('email', 'client@dashboard.example.test')->firstOrFail();
+FeedbackReport::query()->firstOrCreate(['message' => 'رسالة دعم المتصفح'], [
+    'public_id' => (string) Str::ulid(), 'user_id' => $student->id, 'category' => 'playback',
+    'status' => 'new', 'priority' => 'high', 'version' => 1, 'app_version' => '1.0.68',
+    'first_response_due_at' => now()->addDay(),
+]);
 $deviceSession = ApiToken::query()->firstOrNew(['session_id' => 'f6a60374-3c52-4354-8e66-381e6333ceac']);
 $deviceSession->forceFill([
     'user_id' => $student->id, 'token' => hash('sha256', 'disposable-dashboard-session-fixture'),

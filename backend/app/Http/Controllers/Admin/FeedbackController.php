@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\FeedbackResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SupportCaseCompensationRequest;
 use App\Http\Requests\Admin\SupportCaseIndexRequest;
@@ -22,9 +23,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class FeedbackController extends Controller
 {
-    public function index(SupportCaseIndexRequest $request, AdminSupportCaseReadService $reads): View
+    public function index(SupportCaseIndexRequest $request): RedirectResponse
     {
-        return view('admin.feedback.index', [...$reads->index($request->validated()), 'filters' => $request->validated()]);
+        return redirect(FeedbackResource::getUrl('index', ['filters' => ['criteria' => $request->validated()]]));
     }
 
     public function show(FeedbackReport $feedback, AdminSupportCaseReadService $reads): View
