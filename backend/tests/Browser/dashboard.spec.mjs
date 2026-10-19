@@ -1,6 +1,32 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('portfolio queue filters selected work and opens the exact shared review preview', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/portfolio-reviews');
+    await expect(page.getByRole('heading', { level: 1, name: 'مراجعة البورتفوليو', exact: true })).toBeVisible();
+    const row = page.getByRole('row').filter({ hasText: 'حساب المتصفح client' });
+    await expect(row.getByRole('link', { name: 'معاينة ومراجعة', exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('portfolio-queue-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'مراجعة البورتفوليو', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await page.screenshot({ path: testInfo.outputPath('portfolio-queue-desktop.png'), fullPage: true, animations: 'disabled' });
+    const search = page.locator('.fi-ta-search-field input');
+    await search.fill('no-matching-owner');
+    await expect(row).not.toBeVisible();
+    await search.fill('حساب المتصفح');
+    await expect(row).toBeVisible();
+    // The queue links to the actual shared gallery; it never approves unseen work.
+    await row.getByRole('link', { name: 'معاينة ومراجعة', exact: true }).click();
+    await expect(page.getByText('اعتماد هذه النسخة للمشاركة', { exact: true })).toBeVisible();
+    await expect(page.getByText('عمل المتصفح المختار', { exact: true })).toBeVisible();
+    expect(errors).toEqual([]);
+});
+
 test('grouped native navigation reaches commerce and reward workspaces on desktop and phone', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

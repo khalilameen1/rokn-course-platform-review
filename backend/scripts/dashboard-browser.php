@@ -8,6 +8,7 @@ use App\Models\FeedbackReport;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\PaymentReconciliationFinding;
+use App\Models\PortfolioItem;
 use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Database\Eloquent\Model;
@@ -115,6 +116,9 @@ try {
         ])->save();
     }
     $student = User::query()->where('email', 'client@dashboard.example.test')->firstOrFail();
+    $student->forceFill(['portfolio_slug' => 'browser-selected-work'])->save();
+    $portfolioItem = PortfolioItem::query()->create(['user_id' => $student->id, 'title' => 'عمل المتصفح المختار', 'is_public' => true]);
+    $portfolioItem->mediaFiles()->create(['file_path' => 'portfolio/browser-fixture.jpg', 'file_type' => 'image', 'content_sha256' => str_repeat('a', 64)]);
     FeedbackReport::query()->firstOrCreate(['message' => 'رسالة دعم المتصفح'], [
         'public_id' => (string) Str::ulid(), 'user_id' => $student->id, 'category' => 'playback',
         'status' => 'new', 'priority' => 'high', 'version' => 1, 'app_version' => '1.0.68',

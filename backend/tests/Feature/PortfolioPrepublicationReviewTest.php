@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\PortfolioReviewResource;
+use App\Filament\Resources\PortfolioReviewResource\Pages\ListPortfolioReviews;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Certificate;
 use App\Models\PortfolioItem;
@@ -17,9 +19,11 @@ use App\Services\PortfolioReviewReadService;
 use App\Services\PublicPortfolioService;
 use App\Services\StaffRoleService;
 use App\Support\RoknPublicUrl;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Tests\TestCase;
 
@@ -31,6 +35,7 @@ final class PortfolioPrepublicationReviewTest extends TestCase
     {
         parent::setUp();
         $this->withoutMiddleware(RequireAdminMfa::class);
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
         $this->mock(BunnyDeliveryService::class)->shouldReceive('storageUrl')
             ->andReturnUsing(fn (string $path) => 'https://cdn.rokn.test/'.$path);
     }
@@ -62,10 +67,10 @@ final class PortfolioPrepublicationReviewTest extends TestCase
 
         $this->actingAs($this->owner('admin'), 'web')
             ->get(route('admin.portfolio-reviews.index'))
-            ->assertOk()
-            ->assertSee($submitted->name)
-            ->assertDontSee($empty->name)
-            ->assertDontSee($private->name);
+            ->assertRedirect(PortfolioReviewResource::listUrl());
+        Livewire::test(ListPortfolioReviews::class)
+            ->assertCanSeeTableRecords([$submitted])
+            ->assertCanNotSeeTableRecords([$empty, $private]);
     }
 
     public function test_only_admin_can_review_and_review_consumes_the_exact_preview_revision(): void
@@ -83,7 +88,7 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         }
         $this->flushSession();
         $admin = $this->owner('admin');
-        $this->actingAs($admin, 'web')->get(route('admin.portfolio-reviews.index'))->assertOk()->assertSee($owner->name);
+        $this->actingAs($admin, 'web')->get(PortfolioReviewResource::getUrl())->assertOk()->assertSee($owner->name);
         $this->get(route('admin.portfolio-preview.show', $owner))->assertOk()->assertSee('اعتماد هذه النسخة للمشاركة');
         $this->post($route, $decision)->assertRedirect()->assertSessionHas('success');
         $this->post($route, $decision + ['reason' => 'سبب متأخر'])->assertStatus(409);

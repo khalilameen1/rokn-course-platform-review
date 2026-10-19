@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Auth\AdminPermissionMatrix;
 use App\Filament\Resources\OrderResource;
+use App\Filament\Resources\PortfolioReviewResource;
 use App\Filament\Resources\StaffMemberResource;
 use App\Filament\Widgets\TodayStats;
 use App\Http\Middleware\RequireAdminMfa;
@@ -56,7 +57,8 @@ final class StaffPermissionsTest extends TestCase
         self::assertFalse($matrix->allowsCapability($reviewer, AdminPermissionMatrix::ACCOUNT_CREDENTIALS));
         $this->withoutMiddleware(RequireAdminMfa::class);
         $this->actingAs($reviewer, 'web')->get('/operations/shield/roles')->assertForbidden();
-        $this->get(route('admin.portfolio-reviews.index'))->assertOk();
+        $this->get(route('admin.portfolio-reviews.index'))->assertRedirect(PortfolioReviewResource::listUrl());
+        $this->get(PortfolioReviewResource::getUrl())->assertOk();
     }
 
     public function test_default_role_setup_is_repeatable_and_does_not_assign_or_expand_existing_accounts(): void
