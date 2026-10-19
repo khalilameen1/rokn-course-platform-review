@@ -1,6 +1,11 @@
 <?php
 
 declare(strict_types=1);
+use App\Models\User;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Hash;
+use PragmaRX\Google2FA\Google2FA;
 
 /** Disposable local HTTP harness. No auth bypass routes; tests use password + TOTP. */
 if (! in_array(PHP_SAPI, ['cli', 'cli-server'], true)) {
@@ -26,7 +31,8 @@ foreach ([
     'DB_CONNECTION' => 'sqlite', 'DB_DATABASE' => $storage.'/database.sqlite',
     'SESSION_DRIVER' => 'file', 'SESSION_COOKIE' => 'rokn_dashboard_browser',
     'SESSION_SECURE_COOKIE' => 'false', 'SESSION_DOMAIN' => '',
-    'CACHE_STORE' => 'array', 'CACHE_DRIVER' => 'array', 'QUEUE_CONNECTION' => 'sync',
+    // Filament's notification mailbox must survive its follow-up HTTP request.
+    'CACHE_STORE' => 'file', 'CACHE_DRIVER' => 'file', 'QUEUE_CONNECTION' => 'sync',
     'MAIL_MAILER' => 'array', 'NIGHTWATCH_ENABLED' => 'false', 'PULSE_ENABLED' => 'false',
     'SENTRY_LARAVEL_DSN' => '', 'SENTRY_DSN' => '',
 ] as $key => $value) {
@@ -47,7 +53,7 @@ if (PHP_SAPI === 'cli-server') {
 }
 require $root.'/vendor/autoload.php';
 if (($argv[1] ?? '') === '--otp') {
-    echo (new PragmaRX\Google2FA\Google2FA)->getCurrentOtp('JBSWY3DPEHPK3PXP');
+    echo (new Google2FA)->getCurrentOtp('JBSWY3DPEHPK3PXP');
     exit;
 }
 if (($argv[1] ?? '') !== '--prepare') {
@@ -58,14 +64,14 @@ if (! is_file($storage.'/database.sqlite')) {
     touch($storage.'/database.sqlite');
 }
 $app = require $root.'/bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+$app->make(Kernel::class)->bootstrap();
+Artisan::call('migrate', ['--force' => true]);
 foreach (['admin', 'moderator', 'client'] as $role) {
-    $user = App\Models\User::query()->firstOrNew(['email' => $role.'@dashboard.example.test']);
+    $user = User::query()->firstOrNew(['email' => $role.'@dashboard.example.test']);
     $user->forceFill([
         'name_ar' => 'حساب المتصفح '.$role, 'name' => 'Browser '.$role,
         'role' => $role, 'active' => true,
-        'password' => Illuminate\Support\Facades\Hash::make('Local-browser-fixture-2026'),
+        'password' => Hash::make('Local-browser-fixture-2026'),
         'admin_totp_secret' => 'JBSWY3DPEHPK3PXP', 'admin_totp_confirmed_at' => now(),
         'admin_totp_last_used_step' => null,
     ])->save();
