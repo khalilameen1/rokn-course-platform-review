@@ -2,23 +2,20 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\StudentProgressResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StudentProgressIndexRequest;
-use App\Services\AdminStudentProgressReadService;
+use Illuminate\Http\RedirectResponse;
 
 class StudentProgressController extends Controller
 {
-    public function __construct(private readonly AdminStudentProgressReadService $progress) {}
-
-    public function index(StudentProgressIndexRequest $request)
+    public function index(StudentProgressIndexRequest $request): RedirectResponse
     {
-        $filters = $request->validated();
-
-        return view('admin.student-progress.index', $this->progress->listing($filters, $request->query()));
+        return redirect()->to(StudentProgressResource::listUrl($request->validated()));
     }
 
-    public function show($userId)
+    public function show(int|string $userId): RedirectResponse
     {
-        return view('admin.student-progress.show', $this->progress->workspace((int) $userId));
+        return redirect()->to(StudentProgressResource::getUrl('view', ['record' => $userId]));
     }
 }

@@ -93,15 +93,15 @@ final class WatchOnlyStaffProgressTest extends TestCase
 
     public function test_staff_show_uses_each_purchased_path(): void
     {
-        $controller = app(StudentProgressController::class);
-        $watch = $controller->show($this->watcher->id)->getData()['coursesProgress']->first();
+        $read = app(AdminStudentProgressReadService::class);
+        $watch = $read->workspace((int) $this->watcher->id)['coursesProgress']->first();
         self::assertSame(2, $watch['progress']['total_sections']);
         self::assertSame(100, $watch['progress']['progress_percentage']);
         self::assertFalse($watch['progress']['projects_enabled']);
         self::assertSame(['lesson' => 2], $watch['progress']['sections_by_type']);
         self::assertCount(2, $watch['sections_detail']);
 
-        $legacy = $controller->show($this->legacy->id)->getData()['coursesProgress']->first();
+        $legacy = $read->workspace((int) $this->legacy->id)['coursesProgress']->first();
         self::assertSame(3, $legacy['progress']['total_sections']);
         self::assertSame(67, $legacy['progress']['progress_percentage']);
         self::assertTrue($legacy['progress']['projects_enabled']);
@@ -118,11 +118,11 @@ final class WatchOnlyStaffProgressTest extends TestCase
         DB::enableQueryLog();
         try {
             $detail = $read->workspace((int) $this->watcher->id)['coursesProgress']->first()['progress'];
-            $listing = $read->listing(['course_id' => $this->course->id], ['course_id' => $this->course->id]);
+            $listing = $read->query(['course_id' => $this->course->id])->paginate(25);
             $latest = app(StudentProgressSummaryService::class)->latestForUsers(collect([$this->watcher]))->get($this->watcher->id)['progress'];
             unset($detail['projects_enabled']);
             self::assertEquals($latest, $detail);
-            self::assertSame(3, $listing['users']->total());
+            self::assertSame(3, $listing->total());
             foreach (DB::getQueryLog() as $query) {
                 self::assertDoesNotMatchRegularExpression('/^\s*(insert|update|delete|replace|alter|create|drop)\b/i', $query['query']);
             }
@@ -136,9 +136,9 @@ final class WatchOnlyStaffProgressTest extends TestCase
         $outsider = $this->student('not-enrolled');
         $read = app(AdminStudentProgressReadService::class);
         self::assertSame(0, $read->workspace((int) $outsider->id)['totalEnrollments']);
-        $listing = $read->listing(['search' => 'not-enrolled'], []);
-        self::assertFalse($listing['usersWithProgress']->sole()['has_enrollment']);
-        self::assertNull($listing['usersWithProgress']->sole()['progress']);
+        $listing = app(StudentProgressSummaryService::class)->latestForUsers($read->query(['search' => 'not-enrolled'])->get());
+        self::assertFalse($listing->sole()['has_enrollment']);
+        self::assertNull($listing->sole()['progress']);
     }
 
     public function test_leaderboard_progress_preserves_legacy_projects_and_watch_only_completion(): void
@@ -165,8 +165,7 @@ final class WatchOnlyStaffProgressTest extends TestCase
             'access_plan_id' => $this->plus->id, 'access_plan_snapshot' => $receipt,
         ])->save();
 
-        $watch = app(StudentProgressController::class)->show($this->watcher->id)
-            ->getData()['coursesProgress']->first();
+        $watch = app(AdminStudentProgressReadService::class)->workspace((int) $this->watcher->id)['coursesProgress']->first();
         self::assertSame(3, $watch['progress']['total_sections']);
         self::assertSame(67, $watch['progress']['progress_percentage']);
         $ranked = collect(app(CourseLeaderboardService::class)->forCourse($this->course->id)['data']['best_students'])

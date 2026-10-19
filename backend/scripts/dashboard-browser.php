@@ -157,6 +157,8 @@ try {
         'client_upload_id' => (string) Str::uuid(), 'purpose' => 'project_submission', 'owner_type' => 'project_submission', 'owner_id' => $reportSubmission->id,
         'storage_disk' => 'local', 'storage_path' => 'dashboard-review-fixture/evidence.txt', 'original_file_name' => 'نتيجة المشروع.txt',
         'mime_type' => 'text/plain', 'size_bytes' => 32, 'sha256' => hash('sha256', 'Private project browser evidence'), 'status' => 'ready']);
+    DB::table('student_section_progress')->insert(['user_id' => $student->id, 'course_section_id' => $reportSection->id,
+        'is_completed' => true, 'completed_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
     FeedbackReport::query()->firstOrCreate(['message' => 'رسالة دعم المتصفح'], [
         'public_id' => (string) Str::ulid(), 'user_id' => $student->id, 'category' => 'playback',
         'status' => 'new', 'priority' => 'high', 'version' => 1, 'app_version' => '1.0.68',

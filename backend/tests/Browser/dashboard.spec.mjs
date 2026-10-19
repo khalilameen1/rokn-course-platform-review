@@ -58,6 +58,31 @@ test('project review records a reason and displays the report with private downl
     expect(errors).toEqual([]);
 });
 
+test('student progress uses the canonical completion projection on phone and desktop', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/student-progress');
+    await page.locator('.fi-ta-search-field input').fill('client@dashboard.example.test');
+    const row = page.getByRole('row').filter({ hasText: 'حساب المتصفح client' });
+    await expect(row.getByText('50%', { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('student-progress-list-phone.png'), fullPage: true, animations: 'disabled' });
+    await row.getByRole('link', { name: 'التفاصيل', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'تقدم حساب المتصفح client', exact: true })).toBeVisible();
+    await expect(page.getByText('مشروع التقرير', { exact: true })).toBeVisible();
+    await expect(page.getByText('مشروع المتصفح', { exact: true })).toBeVisible();
+    await expect(page.getByText('مكتمل', { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('student-progress-detail-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'تقدم الطلاب', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await page.screenshot({ path: testInfo.outputPath('student-progress-detail-desktop.png'), fullPage: true, animations: 'disabled' });
+    expect(errors).toEqual([]);
+});
+
 test('portfolio queue filters selected work and opens the exact shared review preview', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

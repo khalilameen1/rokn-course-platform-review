@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\CourseSection;
 use App\Models\User;
 use App\Support\AdminStudentSearch;
 use App\Support\SectionProgressSummary;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 /** Staff progress projections; never records completion or changes purchased entitlements. */
 final class AdminStudentProgressReadService
@@ -17,20 +20,24 @@ final class AdminStudentProgressReadService
         private readonly CourseSectionSequenceService $sectionSequence,
         private readonly CourseRevisionLearnerReadService $revisionReads,
         private readonly CourseAccessPlanService $plans,
-        private readonly StudentProgressSummaryService $summaries,
         private readonly AdminContentInventoryReadService $inventory
     ) {}
 
     /** @param array<string, mixed> $filters
-     * @param  array<string, mixed>  $queryParameters
-     * @return array<string, mixed>
+     * @return Builder<User>
      */
-    public function listing(array $filters, array $queryParameters): array
+    public function query(array $filters = []): Builder
     {
         $query = User::query()->students()
             ->orderByDesc('active')
             ->orderByDesc('id');
 
+        return $this->applyFilters($query, $filters);
+    }
+
+    /** @param Builder<User> $query @return Builder<User> */
+    public function applyFilters(Builder $query, array $filters): Builder
+    {
         AdminStudentSearch::apply($query, (string) ($filters['search'] ?? ''));
 
         // Filter by course enrollment
@@ -40,28 +47,19 @@ final class AdminStudentProgressReadService
             });
         }
 
-        $users = $query->paginate(15)->appends($queryParameters);
+        return $query;
+    }
 
-        $summaryByUser = $this->summaries->latestForUsers(
-            $users->getCollection(),
-            ! empty($filters['course_id']) ? (int) $filters['course_id'] : null
-        );
-        $usersWithProgress = $users->getCollection()
-            ->map(fn (User $user) => $summaryByUser->get($user->id));
-
+    /** @return Collection<int, Course> */
+    public function courses(): Collection
+    {
         // Draft working copies and archived revisions share the courses
         // table; list each authored course once, like the course inventory.
-        $courses = $this->inventory->courses()
+        return $this->inventory->courses()
             ->orderBy('name_ar')
             ->orderBy('id')
             ->get(['courses.id', 'courses.name_ar', 'courses.name_en']);
 
-        return [
-            'usersWithProgress' => $usersWithProgress,
-            'users' => $users,
-            'courses' => $courses,
-            'filters' => $filters,
-        ];
     }
 
     public function workspace(int $userId): array
@@ -113,7 +111,7 @@ final class AdminStudentProgressReadService
                         'order' => $section->order,
                         'type' => $section->getSectionType(),
                         'is_completed' => (bool) ($sectionProgress?->is_completed ?? false),
-                        'completed_at' => $sectionProgress?->completed_at ?? $sectionProgress?->updated_at,
+                        'completed_at' => $sectionProgress?->is_completed ? ($sectionProgress->completed_at ?? $sectionProgress->updated_at) : null,
                     ];
                 }),
             ];

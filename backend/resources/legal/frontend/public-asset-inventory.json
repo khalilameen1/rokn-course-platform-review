@@ -152,16 +152,6 @@
       "classification": "first_party"
     },
     {
-      "path": "public/admin/assets/css/student-progress-index.css",
-      "sha256": "e472d2f5fde8c4cd96c5d44326c033ab28e0b1597883ecb6a8e61e06e306b35d",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/student-progress-show.css",
-      "sha256": "244addc2a85fb48ada8b37183f9f882edc6e4401a0027fc6647bc6f31f2682b8",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/themify-icons.css",
       "sha256": "08a0af9f03516172bb3d8d31eebb64510f1e7ba84881c9d99f9809a28b94374f",
       "classification": "third_party",

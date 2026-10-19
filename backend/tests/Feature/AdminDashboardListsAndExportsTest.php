@@ -8,6 +8,7 @@ use App\Filament\Resources\AuditLogResource;
 use App\Filament\Resources\ContactResource;
 use App\Filament\Resources\CouponResource;
 use App\Filament\Resources\OrderResource;
+use App\Filament\Resources\StudentProgressResource;
 use App\Filament\Resources\StudentResource;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Contact;
@@ -113,7 +114,7 @@ final class AdminDashboardListsAndExportsTest extends TestCase
         $draft = app(CourseStagedAuthoringService::class)->draftFor($course);
         self::assertNotSame($course->id, $draft->id);
 
-        $courses = app(AdminStudentProgressReadService::class)->listing([], [])['courses'];
+        $courses = app(AdminStudentProgressReadService::class)->courses();
 
         self::assertContains($course->id, $courses->modelKeys());
         self::assertNotContains($draft->id, $courses->modelKeys());
@@ -124,10 +125,10 @@ final class AdminDashboardListsAndExportsTest extends TestCase
         $this->user('client', ['name' => 'Learner 50% off']);
         $this->user('client', ['name' => 'Learner plain']);
 
-        $listing = app(AdminStudentProgressReadService::class)->listing(['search' => '50%'], []);
-        self::assertSame(['Learner 50% off'], $listing['users']->getCollection()->pluck('name')->all());
-        $listing = app(AdminStudentProgressReadService::class)->listing(['search' => '%'], []);
-        self::assertSame(['Learner 50% off'], $listing['users']->getCollection()->pluck('name')->all());
+        $listing = app(AdminStudentProgressReadService::class)->query(['search' => '50%'])->get();
+        self::assertSame(['Learner 50% off'], $listing->pluck('name')->all());
+        $listing = app(AdminStudentProgressReadService::class)->query(['search' => '%'])->get();
+        self::assertSame(['Learner 50% off'], $listing->pluck('name')->all());
     }
 
     public function test_phone_numbers_are_isolated_left_to_right_in_rtl_screens(): void
@@ -145,8 +146,8 @@ final class AdminDashboardListsAndExportsTest extends TestCase
 
         foreach ([
             'order' => [OrderResource::getUrl('view', ['record' => $order->id]), '201055550001'],
-            'progress profile' => [route('admin.student-progress.show', $student), '201055550001'],
-            'progress list' => [route('admin.student-progress.index'), '201055550001'],
+            'progress profile' => [StudentProgressResource::getUrl('view', ['record' => $student]), '201055550001'],
+            'progress list' => [StudentProgressResource::getUrl(), '201055550001'],
             'contacts' => [ContactResource::getUrl(), '201055550003'],
             'contact' => [ContactResource::getUrl('view', ['record' => $contact->id]), '201055550003'],
             'student profile' => [StudentResource::getUrl('view', ['record' => $student->id]), '201055550001'],
