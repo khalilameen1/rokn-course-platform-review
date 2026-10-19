@@ -11,12 +11,9 @@ use Illuminate\Database\Eloquent\Builder;
 
 final readonly class AdminEconomyReadService
 {
-    public function __construct(private SocialAuthProviderRegistry $socialProviders) {}
-
-    /** @return array{setting:?Setting,socialProviderLabels:array<string,string>} */
-    public function rewards(): array
+    public function rewardSettings(): ?Setting
     {
-        return ['setting' => Setting::query()->first(), 'socialProviderLabels' => $this->socialProviders->labels()];
+        return Setting::query()->first();
     }
 
     /** @return Builder<CoinEarningMethod> */

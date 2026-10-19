@@ -134,7 +134,7 @@ final class AdminInlineStyleContractTest extends TestCase
     public function test_shared_shell_styles_load_after_page_styles(): void
     {
         $admin = $this->dashboardUser('admin');
-        $html = (string) $this->adminGet($admin, route('admin.coin-earning-methods.index'))->assertOk()->getContent();
+        $html = (string) $this->adminGet($admin, route('admin.privacy'))->assertOk()->getContent();
         $assets = $this->linkedLocalAssets($html);
 
         $pageStyles = array_search('admin/assets/css/admin-learning-views.css', $assets, true);
@@ -150,7 +150,7 @@ final class AdminInlineStyleContractTest extends TestCase
         self::assertSame(0, $xpath->query('//header//script')->length, 'The dashboard header carries no inline behaviour.');
 
         $alert = (string) $this->withSession(['success' => 'تم الحفظ'])
-            ->get(route('admin.coin-earning-methods.index'))->assertOk()->getContent();
+            ->get(route('admin.privacy'))->assertOk()->getContent();
         $alertXPath = $this->dom($alert);
         self::assertSame(1, $alertXPath->query('//*[@role="alert"]//*[@data-close-alert]')->length);
         self::assertSame(0, $alertXPath->query('//*[@role="alert"]//script')->length);

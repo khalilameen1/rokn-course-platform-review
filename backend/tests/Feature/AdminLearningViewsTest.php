@@ -64,7 +64,7 @@ final class AdminLearningViewsTest extends TestCase
     {
         [$admin, $method] = $this->records();
 
-        foreach ([route('admin.privacy'), route('admin.policy'), route('admin.coin-earning-methods.index')] as $url) {
+        foreach ([route('admin.privacy'), route('admin.policy')] as $url) {
             $xpath = $this->dom((string) $this->adminGet($admin, $url)->assertOk()->getContent());
             self::assertSame(1, $xpath->query('//*[@class="admin-page__header"]//h1[@class="admin-page__title"]')->length, $url);
         }
@@ -119,7 +119,6 @@ final class AdminLearningViewsTest extends TestCase
     public static function learningPages(): array
     {
         return [
-            'coin method list' => ['admin.coin-earning-methods.index', 'coins'],
             'privacy editor' => ['admin.privacy', 'legal'],
             'policy editor' => ['admin.policy', 'legal'],
         ];

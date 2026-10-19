@@ -1,6 +1,34 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('reward settings share one native form and keep old-client fields collapsed', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/reward-settings');
+    await page.getByLabel(/الشرح بالعربية/).fill('اكسب عملات من المهام واستخدمها عند شراء الكورس');
+    await expect(page.getByLabel(/نص المحفظة بالعربية/)).not.toBeVisible();
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page.getByText('تم الحفظ', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel(/الشرح بالعربية/)).toHaveValue('اكسب عملات من المهام واستخدمها عند شراء الكورس');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('reward-settings-phone.png'), fullPage: true });
+    await page.getByRole('region').filter({ has: page.getByRole('heading', { name: 'الإصدارات السابقة والموقع', exact: true }) })
+        .getByRole('button', { name: 'توسيع القسم', exact: true }).click();
+    await expect(page.getByLabel(/نص المحفظة بالعربية/)).toBeVisible();
+    await page.getByLabel(/نص المحفظة بالعربية/).fill('رصيدك يظهر عند الشراء');
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page.getByText('تم الحفظ', { exact: true })).toBeVisible();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.evaluate(() => scrollTo(0, 0));
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'إعدادات المكافآت', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await page.screenshot({ path: testInfo.outputPath('reward-settings-desktop.png'), fullPage: true });
+    expect(errors).toEqual([]);
+});
+
 test('reward tasks use native campaign editor and confirmed removal on mobile', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Pages\RewardSettings;
 use App\Filament\Resources\CoinEarningMethodResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CoinEarningMethodProfileRequest;
@@ -11,24 +12,15 @@ use App\Http\Requests\Admin\RewardSettingsRequest;
 use App\Models\CoinEarningMethod;
 use App\Models\RewardRule;
 use App\Services\AdminAuthoringCreateIntentService;
-use App\Services\AdminEconomyReadService;
 use App\Services\AdminRewardAuthoringService;
-use App\Support\RewardConfigurationVersion;
 
 class CoinEarningMethodController extends Controller
 {
     public function __construct(private readonly AdminRewardAuthoringService $authoring) {}
 
-    public function index(AdminEconomyReadService $economy)
+    public function index()
     {
-        $data = $economy->rewards();
-        $setting = $data['setting'];
-        $socialProviderLabels = $data['socialProviderLabels'];
-        $settingsEditorVersion = RewardConfigurationVersion::settings($setting);
-
-        return view('admin.coin_earning_methods.index', compact(
-            'setting', 'socialProviderLabels', 'settingsEditorVersion'
-        ));
+        return redirect(RewardSettings::getUrl());
     }
 
     public function updateSettings(RewardSettingsRequest $request)

@@ -39,6 +39,7 @@ parameters:
                 - app/Http/Controllers/Admin/CouponController.php
                 - app/Http/Controllers/Admin/ContactsController.php
                 - app/Http/Controllers/Admin/UserSessionController.php
+                - app/Http/Controllers/Admin/CoinEarningMethodController.php
         # Larastan resolves the DB facade to Illuminate\Database\Connection.
         -
             method:
@@ -72,6 +73,7 @@ parameters:
                 - app/Http/Controllers/Admin/CouponController.php
                 - app/Http/Controllers/Admin/ContactsController.php
                 - app/Http/Controllers/Admin/UserSessionController.php
+                - app/Http/Controllers/Admin/CoinEarningMethodController.php
         -
             method:
                 - 'Illuminate\Database\Eloquent\Builder::lockForUpdate()'
