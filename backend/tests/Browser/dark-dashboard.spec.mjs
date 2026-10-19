@@ -31,6 +31,13 @@ for (const [name, path] of workspaces) {
             await page.setViewportSize({ width, height: 900 });
             await expect(page.locator('main h1')).toBeVisible();
             await page.evaluate(() => document.fonts.ready);
+            if (width >= 1024) {
+                // Responsive Alpine x-show fades are not the final text color.
+                // Wait for the actual sidebar labels/buttons, not a fixed delay
+                // or an axe exclusion that would hide a real contrast defect.
+                await expect.poll(() => page.locator('.fi-sidebar-item-label:visible, .fi-sidebar-group-btn:visible')
+                    .evaluateAll(elements => elements.length > 0 && elements.every(element => getComputedStyle(element).opacity === '1'))).toBe(true);
+            }
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
             expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
             await page.evaluate(() => scrollTo(0, 0));
