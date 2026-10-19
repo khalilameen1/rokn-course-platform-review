@@ -19,6 +19,7 @@ use App\Models\OutboxEvent;
 use App\Models\Package;
 use App\Models\PaymentReconciliationFinding;
 use App\Models\PortfolioItem;
+use App\Models\ProductEvent;
 use App\Models\Project;
 use App\Models\ProjectFeedbackMessage;
 use App\Models\ProjectFeedbackThread;
@@ -145,6 +146,9 @@ try {
     $instructor = User::query()->forceCreate(['name_ar' => 'محاضر تجربة التصفح', 'name_en' => 'Browser instructor', 'job_title' => 'تصميم الإعلانات',
         'bio_ar' => 'تطبيق عملي على تصميم الإعلانات', 'role' => 'teacher', 'email' => 'instructor@dashboard.example.test', 'phone' => '201055550004', 'active' => true]);
     $course->teachers()->attach($instructor);
+    ProductEvent::query()->create(['event_id' => (string) Str::uuid(), 'actor_key' => hash('sha256', 'browser-analytics'),
+        'session_key' => hash('sha256', 'browser-analytics-session'), 'event_name' => 'course_opened', 'course_id' => $course->id,
+        'source' => 'app', 'occurred_at' => now()->subMinute(), 'received_at' => now()]);
     $project = Project::query()->create(['requirements_text' => 'نفذ تطبيقًا عمليًا', 'ai_prompt' => 'قيّم النتيجة', 'passing_score' => 50]);
     $module = CourseModule::query()->create(['course_id' => $course->id, 'title_ar' => 'الوحدة الأولى', 'order' => 1]);
     CourseSection::query()->create(['course_id' => $course->id, 'module_id' => $module->id, 'title' => 'مشروع المتصفح',

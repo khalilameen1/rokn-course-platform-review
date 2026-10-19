@@ -1,6 +1,35 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('native product analytics applies period and course scope without stale cash sections', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/product-analytics');
+    await expect(page.getByRole('heading', { name: 'تحليلات المنتج', level: 1, exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('analytics-learning-phone.png'), fullPage: true });
+    await page.getByRole('combobox', { name: /^الفترة/ }).selectOption('7d');
+    await page.getByRole('button', { name: /^الكورس/ }).click();
+    await page.getByRole('option', { name: 'كورس المتصفح', exact: true }).click();
+    await page.getByRole('button', { name: 'عرض التقرير', exact: true }).click();
+    await page.getByRole('tab', { name: 'التحصيل', exact: true }).click();
+    const courseCash = page.getByText('تحصيل باقات العملات على مستوى المنصة لا يُنسب إلى كورس بعينه', { exact: true });
+    await expect(courseCash).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole('combobox', { name: /^الفترة/ })).toHaveValue('7d');
+    await expect(courseCash).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.evaluate(() => scrollTo(0, 0));
+    await expect(page.getByRole('heading', { name: 'تحليلات المنتج', level: 1, exact: true })).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('analytics-course-phone.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/operations/product-analytics');
+    await page.getByRole('tab', { name: 'التكلفة', exact: true }).click();
+    await expect(page.getByText('لم تسجل فواتير لهذه الفترة بعد وهذا لا يعني أن التشغيل بلا تكلفة', { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('analytics-cost-desktop.png'), fullPage: true });
+});
+
 test('instructor native profile keeps course navigation usable on a phone', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/operations/teachers');
