@@ -4,14 +4,20 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources;
 
+use App\Auth\AdminPermissionMatrix;
+use App\Filament\Resources\FeedbackResource\Pages\ViewFeedback;
 use App\Models\FeedbackReport;
 use App\Services\AdminSupportCaseReadService;
 use App\Support\BusinessClock;
-use Filament\Actions\Action;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
@@ -29,6 +35,9 @@ final class FeedbackResource extends ReadResource
 
     public const PRIORITIES = ['low' => 'منخفضة', 'normal' => 'عادية', 'high' => 'عالية', 'urgent' => 'عاجلة'];
 
+    public const RESOLUTIONS = ['fixed' => 'تم الإصلاح', 'guidance' => 'تم الإرشاد', 'compensated' => 'تم التعويض',
+        'not_reproducible' => 'تعذر تكرار المشكلة', 'duplicate' => 'بلاغ مكرر'];
+
     protected static bool $isDiscovered = true;
 
     protected static string|\UnitEnum|null $navigationGroup = 'المراجعة';
@@ -44,6 +53,11 @@ final class FeedbackResource extends ReadResource
     protected static ?string $pluralModelLabel = 'رسائل الدعم';
 
     protected static string $legacyListRoute = 'admin.feedback.index';
+
+    public static function allows(string $action, string $method = 'POST'): bool
+    {
+        return app(AdminPermissionMatrix::class)->allows(auth('web')->user(), 'admin.feedback.'.$action, $method);
+    }
 
     public static function getEloquentQuery(): Builder
     {
@@ -84,8 +98,7 @@ final class FeedbackResource extends ReadResource
                 ->query(fn (Builder $query, array $data): Builder => $query->whereIn('feedback_reports.id', app(AdminSupportCaseReadService::class)->query($data)->select('feedback_reports.id'))),
         ], layout: FiltersLayout::Modal)->filtersFormColumns(2)->defaultSort(fn (Builder $query): Builder => $query->latest('updated_at')->latest('id'))->defaultPaginationPageOption(30)
             ->paginated([10, 30, 50, 100])->poll('30s')->emptyStateHeading('لا توجد حالات مطابقة')->emptyStateDescription('')
-            ->recordUrl(fn (FeedbackReport $record): string => route('admin.feedback.show', $record))
-            ->recordActions([Action::make('open')->label('عرض')->url(fn (FeedbackReport $record): string => route('admin.feedback.show', $record))]);
+            ->recordActions([ViewAction::make()]);
     }
 
     private static function indicators(array $data): array
@@ -100,6 +113,58 @@ final class FeedbackResource extends ReadResource
 
     public static function getPages(): array
     {
-        return ['index' => FeedbackResource\Pages\ListFeedback::route('/')];
+        return ['index' => FeedbackResource\Pages\ListFeedback::route('/'), 'view' => ViewFeedback::route('/{record}')];
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        $attachments = fn (string $name): RepeatableEntry => RepeatableEntry::make($name)->hiddenLabel()->schema([
+            TextEntry::make('url')->label('الصورة')->hiddenLabel()->placeholder('الصورة غير متاحة')
+                ->formatStateUsing(fn (): string => 'عرض الصورة')->url(fn (?string $state): ?string => $state)->openUrlInNewTab(),
+        ]);
+
+        return $schema->components([
+            Section::make('المحادثة')->schema([
+                RepeatableEntry::make('conversation')->hiddenLabel()->state(fn (ViewFeedback $livewire): array => $livewire->conversation())->columns(2)->schema([
+                    TextEntry::make('kind')->hiddenLabel()->badge(),
+                    TextEntry::make('sent_at')->hiddenLabel()->extraAttributes(['dir' => 'ltr']),
+                    TextEntry::make('body')->hiddenLabel()->columnSpanFull(),
+                    $attachments('attachments')->columnSpanFull()->visible(fn (RepeatableEntry $component): bool => filled($component->getState())),
+                ]),
+            ])->columnSpanFull(),
+            Section::make('الصور الأصلية')->visible(fn (ViewFeedback $livewire): bool => $livewire->originalAttachments() !== [])->schema([
+                $attachments('original_attachments')->state(fn (ViewFeedback $livewire): array => $livewire->originalAttachments()),
+            ])->columnSpanFull(),
+            Section::make('السياق')->columns(2)->schema([
+                TextEntry::make('status')->label('الحالة')->formatStateUsing(fn (string $state): string => self::STATUSES[$state] ?? $state)->badge(),
+                TextEntry::make('priority')->label('الأولوية')->formatStateUsing(fn (string $state): string => self::PRIORITIES[$state] ?? $state),
+                TextEntry::make('user.name')->label('الطالب')->placeholder('زائر'),
+                TextEntry::make('email')->label('البريد')->state(fn (FeedbackReport $record) => $record->user?->email ?: $record->getAttribute('requester_email'))
+                    ->placeholder('—')->extraAttributes(['dir' => 'ltr']),
+                TextEntry::make('course.name_ar')->label('الكورس')->placeholder('—'),
+                TextEntry::make('order_id')->label('رقم الطلب')->placeholder('—'),
+                TextEntry::make('assignee.name')->label('المسؤول')->placeholder('غير مسند'),
+                TextEntry::make('resolution_kind')->label('نتيجة المعالجة')->formatStateUsing(fn (string $state): string => self::RESOLUTIONS[$state] ?? $state)->placeholder('—'),
+                TextEntry::make('platform')->label('النظام')->placeholder('—'),
+                TextEntry::make('app_version')->label('إصدار التطبيق')->placeholder('—'),
+                TextEntry::make('build_number')->label('البناء')->placeholder('—'),
+                TextEntry::make('first_response_due_at')->label('موعد أول رد')->dateTime('Y-m-d H:i')->timezone(BusinessClock::timezoneName())->placeholder('—'),
+            ])->columnSpanFull(),
+            Section::make('تعويض عطل من طرفنا')->visible(fn (FeedbackReport $record): bool => $record->getAttribute('order_id') !== null)->schema([
+                TextEntry::make('compensation')->hiddenLabel()->state(fn (ViewFeedback $livewire): string => $livewire->compensableCoins() > 0
+                    ? 'الحد الأقصى المتاح للتعويض '.$livewire->compensableCoins().' عملة — تُضاف العملات إلى محفظة الطالب فور التأكيد'
+                    : 'لا يتوفر تعويض لهذا الطلب أو استُنفد الحد المتاح'),
+            ])->columnSpanFull(),
+            Section::make('بلاغ أعمال')->visible(fn (ViewFeedback $livewire): bool => $livewire->portfolioOwner() !== null)->schema([
+                TextEntry::make('portfolio_owner')->label('صاحب الأعمال')->state(fn (ViewFeedback $livewire): ?string => $livewire->portfolioOwner()?->name)
+                    ->url(fn (ViewFeedback $livewire): ?string => $livewire->portfolioOwner() ? route('admin.portfolio-preview.show', $livewire->portfolioOwner()) : null)->openUrlInNewTab(),
+            ])->columnSpanFull(),
+            Section::make('سجل الحالة')->collapsible()->collapsed()->schema([
+                RepeatableEntry::make('history')->hiddenLabel()->state(fn (ViewFeedback $livewire): array => $livewire->history())->columns(3)->schema([
+                    TextEntry::make('event')->label('الإجراء'), TextEntry::make('actor')->label('المنفّذ'),
+                    TextEntry::make('at')->label('بتوقيت القاهرة')->extraAttributes(['dir' => 'ltr']),
+                ])->placeholder('لا توجد إجراءات مسجلة'),
+            ])->columnSpanFull(),
+        ]);
     }
 }

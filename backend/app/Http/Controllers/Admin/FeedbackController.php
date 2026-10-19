@@ -17,7 +17,6 @@ use App\Services\SupportCaseAttachmentDeliveryService;
 use App\Services\SupportCaseCompensationService;
 use App\Services\SupportCaseService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -28,9 +27,9 @@ final class FeedbackController extends Controller
         return redirect(FeedbackResource::getUrl('index', ['filters' => ['criteria' => $request->validated()]]));
     }
 
-    public function show(FeedbackReport $feedback, AdminSupportCaseReadService $reads): View
+    public function show(FeedbackReport $feedback): RedirectResponse
     {
-        return view('admin.feedback.show', $reads->show($feedback));
+        return redirect(FeedbackResource::getUrl('view', ['record' => $feedback->id]));
     }
 
     public function export(SupportCaseIndexRequest $request, AdminSupportCaseReadService $reads): StreamedResponse

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\FeedbackResource;
+use App\Filament\Resources\FeedbackResource\Pages\ViewFeedback;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Course;
 use App\Models\FeedbackReport;
@@ -12,10 +14,14 @@ use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Services\SupportCaseCompensationService;
 use App\Services\WalletService;
+use Filament\Facades\Filament;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\TextInput;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class AdminSupportCaseCompensationFormTest extends TestCase
@@ -28,6 +34,7 @@ final class AdminSupportCaseCompensationFormTest extends TestCase
         Http::preventStrayRequests();
         Queue::fake();
         $this->withoutMiddleware(RequireAdminMfa::class);
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
     }
 
     public function test_case_page_states_the_immediate_wallet_credit_and_the_remaining_ceiling(): void
@@ -36,11 +43,12 @@ final class AdminSupportCaseCompensationFormTest extends TestCase
 
         $this->actingAs($this->user('admin'))
             ->get(route('admin.feedback.show', $report))
-            ->assertOk()
+            ->assertRedirect(FeedbackResource::getUrl('view', ['record' => $report->id]));
+        Livewire::test(ViewFeedback::class, ['record' => $report->id])->mountAction('compensate')
             ->assertSee('تُضاف العملات إلى محفظة الطالب فور التأكيد', false)
             ->assertSee('الحد الأقصى المتاح للتعويض', false)
-            ->assertSee('max="500"', false)
-            ->assertSee('return confirm(', false)
+            ->assertFormFieldExists('amount', fn (TextInput $field): bool => $field->getMaxValue() === 500)
+            ->assertFormFieldExists('confirm_credit', fn (Checkbox $field): bool => $field->getLabel() === 'أؤكد إضافة التعويض إلى محفظة الطالب')
             ->assertDontSee('ولا يُنفذ تلقائيًا', false);
     }
 
@@ -61,8 +69,8 @@ final class AdminSupportCaseCompensationFormTest extends TestCase
         ])->assertSessionHas('error');
         self::assertSame(200, (int) WalletTransaction::query()->where('category', 'course_service_compensation')->sum('amount'));
 
-        $this->actingAs($admin)->get(route('admin.feedback.show', $report))
-            ->assertOk()->assertSee('max="300"', false);
+        Livewire::test(ViewFeedback::class, ['record' => $report->id])->mountAction('compensate')
+            ->assertFormFieldExists('amount', fn (TextInput $field): bool => $field->getMaxValue() === 300);
     }
 
     public function test_ineligible_order_shows_no_compensation_form(): void
@@ -71,10 +79,9 @@ final class AdminSupportCaseCompensationFormTest extends TestCase
         $order->update(['financial_status' => Order::FINANCIAL_REVIEW_REQUIRED]);
 
         self::assertSame(0, app(SupportCaseCompensationService::class)->remainingCompensableCoins($order->fresh()));
-        $this->actingAs($this->user('admin'))
-            ->get(route('admin.feedback.show', $report))
-            ->assertOk()
-            ->assertDontSee('data-course-compensation', false)
+        $this->actingAs($this->user('admin'));
+        Livewire::test(ViewFeedback::class, ['record' => $report->id])
+            ->assertActionHidden('compensate')
             ->assertSee('لا يتوفر تعويض لهذا الطلب', false);
     }
 

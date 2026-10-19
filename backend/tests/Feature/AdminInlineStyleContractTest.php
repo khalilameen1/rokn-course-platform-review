@@ -243,7 +243,6 @@ final class AdminInlineStyleContractTest extends TestCase
             'admin.orders.show' => route('admin.orders.show', $order),
             'admin.course-codes.show' => route('admin.course-codes.show', $code),
             'admin.course-codes.edit' => route('admin.course-codes.edit', $code),
-            'admin.feedback.show' => route('admin.feedback.show', $feedback),
         ];
         $template = AdminNotification::query()->first();
         if ($template !== null) {

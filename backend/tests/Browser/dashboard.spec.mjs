@@ -49,8 +49,42 @@ test('support inbox uses native filters and exports exactly the applied search',
     await expect(row.getByText('عالية', { exact: true })).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('support-inbox-desktop.png'), fullPage: true });
     await row.getByRole('link', { name: 'عرض', exact: true }).click();
-    await expect(page).toHaveURL(/\/dashboard\/feedback\/\d+$/);
+    await expect(page).toHaveURL(/\/operations\/feedback\/\d+$/);
     await expect(page.getByRole('heading', { level: 1 })).toContainText('حالة');
+    expect(errors).toEqual([]);
+});
+
+test('native support case manages a note and state on phone and desktop', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/feedback');
+    await page.getByRole('row').filter({ hasText: 'رسالة دعم المتصفح' }).getByRole('link', { name: 'عرض', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('حالة');
+    await page.getByRole('button', { name: 'الرد أو إضافة ملاحظة', exact: true }).click();
+    const note = 'ملاحظة متصفح ' + Date.now();
+    const message = page.getByRole('textbox', { name: /^الرسالة/ });
+    await expect(message).toBeVisible();
+    await page.getByRole('combobox', { name: /^نوع الرسالة/ }).selectOption('internal');
+    await message.fill(note);
+    await page.getByRole('button', { name: 'حفظ الرسالة', exact: true }).click();
+    await expect(page.locator('.fi-modal-window').filter({ has: message })).not.toBeVisible();
+    await expect(page.getByText(note, { exact: true })).toBeVisible();
+    await expect(page.getByText('رسالة دعم المتصفح', { exact: true })).toBeVisible();
+    await expect(page.getByText('ملاحظة داخلية — Browser admin', { exact: true }).first()).toBeVisible();
+    await page.getByRole('button', { name: 'إدارة الحالة', exact: true }).click();
+    const status = page.getByRole('combobox', { name: /^الحالة/ });
+    await status.selectOption('waiting_for_user');
+    await page.getByRole('button', { name: 'حفظ الحالة', exact: true }).click();
+    await expect(page.locator('.fi-modal-window').filter({ has: status })).not.toBeVisible();
+    await page.reload();
+    await expect(page.getByText('بانتظار الطالب', { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('support-case-phone.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'رسائل الدعم', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await page.screenshot({ path: testInfo.outputPath('support-case-desktop.png'), fullPage: true });
     expect(errors).toEqual([]);
 });
 
