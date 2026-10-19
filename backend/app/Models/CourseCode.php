@@ -173,6 +173,8 @@ class CourseCode extends Model
 
     /**
      * Get all usages of this code
+     *
+     * @return HasMany<CourseCodeUsage, $this>
      */
     public function usages(): HasMany
     {
@@ -181,6 +183,8 @@ class CourseCode extends Model
 
     /**
      * Orders that preserve this code as part of their financial provenance.
+     *
+     * @return HasMany<Order, $this>
      */
     public function orders(): HasMany
     {

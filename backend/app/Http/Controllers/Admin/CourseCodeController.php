@@ -9,12 +9,10 @@ use App\Http\Requests\Admin\CourseCodeIndexRequest;
 use App\Http\Requests\Admin\CourseCodeRequest;
 use App\Http\Requests\Admin\EditorVersionRequest;
 use App\Models\CourseCode;
-use App\Models\DesignSetting;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminCourseCodeAuthoringService;
 use App\Services\AdminCourseCodeReadService;
 use App\Support\BusinessClock;
-use App\Support\CourseCodeEditorVersion;
 use App\Support\CourseCodeFormData;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -29,14 +27,6 @@ class CourseCodeController extends Controller
         private readonly AdminCourseCodeAuthoringService $authoring,
         private readonly AdminCourseCodeReadService $reader
     ) {}
-
-    /**
-     * Get design settings for the views
-     */
-    private function getDesignSettings()
-    {
-        return DesignSetting::getDefaultSettings();
-    }
 
     /**
      * Display a listing of the resource.
@@ -96,26 +86,9 @@ class CourseCodeController extends Controller
         }
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @return Response
-     */
-    public function show(CourseCode $courseCode)
+    public function show(CourseCode $courseCode): RedirectResponse
     {
-        $courseCode->load(['course', 'lesson']);
-        $usageHistory = $courseCode->usages()
-            ->with('user:id,name,email')
-            ->orderByDesc('used_at')
-            ->orderByDesc('id')
-            ->paginate(50)
-            ->withQueryString();
-        $designSettings = $this->getDesignSettings();
-        $editorVersion = CourseCodeEditorVersion::for($courseCode);
-
-        return view('admin.course-codes.show', compact(
-            'courseCode', 'usageHistory', 'designSettings', 'editorVersion'
-        ));
+        return redirect()->to(CourseCodeResource::getUrl('view', ['record' => $courseCode->id]));
     }
 
     /**
@@ -278,7 +251,7 @@ class CourseCodeController extends Controller
                 );
             }
 
-            $designSettings = $this->getDesignSettings();
+            $designSettings = $this->reader->designSettings();
 
             $data = [
                 'course_codes' => $courseCodes,

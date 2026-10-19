@@ -167,6 +167,9 @@ try {
         'type' => 'course', 'max_uses' => 10, 'used_count' => 0, 'is_active' => true, 'is_grant' => true]);
     CourseCode::query()->forceCreate(['code' => 'BROWSER-INACTIVE', 'name' => 'منحة المتصفح', 'course_id' => $course->id,
         'type' => 'course', 'max_uses' => 10, 'used_count' => 0, 'is_active' => false, 'is_grant' => true]);
+    $historyCode = CourseCode::query()->create(['code' => 'BROWSER-HISTORY', 'name' => 'سجل المنحة', 'course_id' => $course->id,
+        'type' => 'course', 'max_uses' => 10, 'used_count' => 1, 'is_active' => true, 'is_grant' => true]);
+    $historyCode->usages()->create(['user_id' => $student->id, 'used_at' => now(), 'ip_address' => '127.0.0.1', 'user_agent' => 'Browser fixture']);
     FeedbackReport::query()->firstOrCreate(['message' => 'رسالة دعم المتصفح'], [
         'public_id' => (string) Str::ulid(), 'user_id' => $student->id, 'category' => 'playback',
         'status' => 'new', 'priority' => 'high', 'version' => 1, 'app_version' => '1.0.68',

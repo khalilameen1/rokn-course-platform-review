@@ -24,6 +24,8 @@ class CourseCodeUsage extends Model
 
     /**
      * Get the course code that was used
+     *
+     * @return BelongsTo<CourseCode, $this>
      */
     public function courseCode(): BelongsTo
     {
@@ -32,6 +34,8 @@ class CourseCodeUsage extends Model
 
     /**
      * Get the user who used the code
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {

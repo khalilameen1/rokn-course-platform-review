@@ -20,6 +20,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -100,6 +101,52 @@ final class CourseCodeResource extends DomainResource
         ]);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return $schema->components([
+            Section::make('الكود والإتاحة')->columns(2)->schema([
+                TextEntry::make('code')->label('الكود')->copyable()->formatStateUsing(fn (string $state): HtmlString => self::leftToRight($state)),
+                TextEntry::make('name')->label('الدفعة')->placeholder('بدون اسم'),
+                TextEntry::make('target')->label('المحتوى')->state(fn (CourseCodeResource\Pages\ViewCourseCode $livewire): string => $livewire->targetName())->columnSpanFull(),
+                TextEntry::make('type')->label('النوع')->formatStateUsing(fn (string $state): string => ['course' => 'كورس', 'lesson' => 'مقطع قديم', 'multiple_lessons' => 'مقاطع متعددة قديمة'][$state]),
+                TextEntry::make('is_active')->label('الحالة')->formatStateUsing(fn (CourseCode $record): string => self::STATES[self::state($record)])->badge(),
+                TextEntry::make('used_count')->label('استخدامات مسجلة')->numeric(),
+                TextEntry::make('max_uses')->label('الحد الكلي للمستخدمين')->numeric(),
+                TextEntry::make('institutional')->label('منحة جهة')->state(fn (CourseCode $record): string => $record->isInstitutionalGrant() ? 'نعم' : 'لا'),
+                TextEntry::make('allowed_email_domains')->label('نطاقات البريد')->listWithLineBreaks()->placeholder('كل النطاقات')
+                    ->formatStateUsing(fn (string $state): HtmlString => self::leftToRight($state)),
+            ])->columnSpanFull(),
+            Section::make('التوقيت والملاحظات')->columns(2)->schema([
+                self::dateEntry('start_date', 'البداية بتوقيت القاهرة', 'فور التفعيل'),
+                self::dateEntry('expiry_date', 'الانتهاء بتوقيت القاهرة', 'بلا نهاية'),
+                self::dateEntry('created_at', 'أُنشئ بتوقيت القاهرة'),
+                self::dateEntry('updated_at', 'آخر تعديل بتوقيت القاهرة'),
+                TextEntry::make('description')->label('ملاحظات داخلية')->placeholder('لا توجد ملاحظات')->columnSpanFull(),
+            ])->columnSpanFull(),
+        ]);
+    }
+
+    public static function state(CourseCode $record): string
+    {
+        return ! $record->is_active ? 'inactive' : ($record->is_expired ? 'expired' : ($record->is_not_yet_active ? 'not_yet_active' : 'active'));
+    }
+
+    private static function dateEntry(string $field, string $label, string $placeholder = 'غير مسجل'): TextEntry
+    {
+        return TextEntry::make($field)->label($label)->placeholder($placeholder)
+            ->formatStateUsing(fn ($state): HtmlString => self::leftToRight(BusinessClock::format($state, 'Y-m-d H:i')));
+    }
+
+    private static function leftToRight(string $text): HtmlString
+    {
+        return new HtmlString('<bdi dir="ltr">'.e($text).'</bdi>');
+    }
+
+    public static function getRelations(): array
+    {
+        return [CourseCodeResource\RelationManagers\UsagesRelationManager::class];
+    }
+
     public static function table(Table $table): Table
     {
         return $table->columns([
@@ -110,7 +157,7 @@ final class CourseCodeResource extends DomainResource
                 'course' => $record->course?->title ?: 'كورس غير متاح', 'lesson' => $record->lesson?->title ?: 'مقطع غير متاح', 'multiple_lessons' => 'مقاطع متعددة قديمة',
             })->wrap(),
             TextColumn::make('used_count')->label('الاستخدام')->numeric()->description(fn (CourseCode $record): string => 'من '.$record->max_uses),
-            TextColumn::make('state')->label('الحالة')->state(fn (CourseCode $record): string => ! $record->is_active ? 'inactive' : ($record->is_expired ? 'expired' : ($record->is_not_yet_active ? 'not_yet_active' : 'active')))
+            TextColumn::make('state')->label('الحالة')->state(fn (CourseCode $record): string => self::state($record))
                 ->formatStateUsing(fn (string $state): string => self::STATES[$state])->badge()->visibleFrom('md'),
             TextColumn::make('expiry_date')->label('الانتهاء بتوقيت القاهرة')->dateTime('Y-m-d H:i')->timezone(BusinessClock::timezoneName())->placeholder('بلا نهاية')->visibleFrom('lg'),
         ])->searchable(false)->filters([Filter::make('criteria')->schema([
@@ -127,7 +174,7 @@ final class CourseCodeResource extends DomainResource
             ->filtersFormColumns(2)->filtersTriggerAction(fn (Action $action): Action => $action->stickyModalHeader()->stickyModalFooter())
             ->defaultSort('id', 'desc')->defaultPaginationPageOption(25)->poll('30s')->emptyStateHeading('لا توجد أكواد بهذه التصفيات')->emptyStateDescription('')
             ->recordUrl(null)->recordActions([ActionGroup::make([
-                Action::make('view')->label('التفاصيل')->url(fn (CourseCode $record): string => route('admin.course-codes.show', $record)),
+                Action::make('view')->label('التفاصيل')->url(fn (CourseCode $record): string => self::getUrl('view', ['record' => $record->id])),
                 Action::make('edit')->label('تعديل')->authorize(fn (CourseCode $record): bool => $record->type === 'course' && self::canEdit($record))->url(fn (CourseCode $record): string => self::getUrl('edit', ['record' => $record->id])),
                 Action::make('remove')->label('حذف')->color('danger')->requiresConfirmation()->authorize(fn (CourseCode $record): bool => self::canDelete($record))
                     ->modalDescription('الكود المستخدم يُوقَف مع الاحتفاظ بسجله')
@@ -157,6 +204,7 @@ final class CourseCodeResource extends DomainResource
     {
         return ['index' => ListCourseCodes::route('/'),
             'create' => CourseCodeResource\Pages\CreateCourseCode::route('/create'),
+            'view' => CourseCodeResource\Pages\ViewCourseCode::route('/{record}'),
             'edit' => CourseCodeResource\Pages\EditCourseCode::route('/{record}/edit')];
     }
 }

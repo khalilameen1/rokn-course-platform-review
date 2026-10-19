@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\Course;
 use App\Models\CourseCode;
+use App\Models\DesignSetting;
 use App\Models\Lesson;
 use App\Support\AdminStudentSearch;
 use App\Support\BusinessClock;
@@ -26,6 +27,24 @@ final class AdminCourseCodeReadService
     public function courseOptions(): Collection
     {
         return $this->inventory->courses()->orderBy('name_ar')->orderBy('id')->get();
+    }
+
+    public function designSettings(): DesignSetting
+    {
+        return DesignSetting::getDefaultSettings();
+    }
+
+    /** Historical partial codes are readable, never treated as new course grants. */
+    public function targetName(CourseCode $code): string
+    {
+        $code->loadMissing(['course', 'lesson']);
+
+        return match ($code->type) {
+            'course' => $code->course?->title ?: 'كورس غير متاح',
+            'lesson' => $code->lesson?->title ?: 'مقطع غير متاح',
+            'multiple_lessons' => Lesson::query()->whereIn('id', $code->lesson_ids ?? [])->orderBy('id')
+                ->get(['id', 'title', 'title_ar', 'title_en'])->pluck('title')->filter()->implode(' — ') ?: 'مقاطع غير متاحة',
+        };
     }
 
     /**

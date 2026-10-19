@@ -151,11 +151,6 @@ parameters:
 
 
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$used_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/CourseCodeController.php
 
 
 		-
@@ -347,11 +342,6 @@ parameters:
 			path: app/Http/Controllers/Admin/CourseCodeController.php
 
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\CourseCodeController\:\:show\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/CourseCodeController.php
 
 		-
 			message: '#^Method App\\Http\\Controllers\\Admin\\CourseCodeController\:\:store\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
@@ -4563,11 +4553,6 @@ parameters:
 			count: 1
 			path: app/Services/CourseCheckoutQuoteService.php
 
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CourseCodeRedemptionService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$access_plan_snapshot\.$#'

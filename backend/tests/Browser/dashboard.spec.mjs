@@ -1,6 +1,35 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('grant code detail shows retained usage history on phone and desktop', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/course-codes');
+    await page.getByRole('row').filter({ hasText: 'BROWSER-HISTORY' }).getByRole('button', { name: 'إجراءات الكود', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'التفاصيل', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'تفاصيل كود المنحة', exact: true })).toBeVisible();
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    await expect(page.getByRole('row').filter({ hasText: 'client@dashboard.example.test' })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('grant-code-detail-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.reload();
+    await expect(page.getByRole('heading', { level: 1, name: 'تفاصيل كود المنحة', exact: true })).toBeInViewport();
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    await expect(page.getByRole('row').filter({ hasText: 'client@dashboard.example.test' })).toBeVisible();
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('grant-code-detail-desktop.png'), fullPage: true, animations: 'disabled' });
+    await page.getByRole('button', { name: 'حذف', exact: true }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'تأكيد', exact: true }).click();
+    await page.waitForURL('**/operations/course-codes');
+    const row = page.getByRole('row').filter({ hasText: 'BROWSER-HISTORY' });
+    await expect(row.getByText('موقوف', { exact: true })).toBeVisible();
+    expect(errors).toEqual([]);
+});
+
 test('grant code native editor creates a batch and persists a phone edit', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
