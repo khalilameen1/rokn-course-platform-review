@@ -215,6 +215,7 @@ test('operational recovery confirms a documented action on the selected phone ro
     await page.getByRole('menuitem', { name: 'تجاوز الحدث', exact: true }).click();
     const modal = page.getByRole('alertdialog');
     await modal.getByRole('textbox', { name: /^سبب الإجراء/ }).fill('Reviewed obsolete isolated browser fixture');
+    await expect(page.locator('.fi-modal-window').filter({ has: modal.getByRole('textbox', { name: /^سبب الإجراء/ }) })).toHaveCSS('opacity', '1');
     expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath('operational-recovery-modal-phone.png'), fullPage: true });
     await modal.getByRole('button', { name: 'تجاوز الحدث', exact: true }).click();
@@ -509,9 +510,10 @@ test('notification campaign native drafts isolate an individual from a broadcast
     await expect(page.locator('[data-authoring-draft]')).toHaveAttribute('data-draft-ready', 'true');
     await expect(page.getByText('حساب المتصفح client — client@dashboard.example.test', { exact: true })).toBeVisible();
     const title = page.getByRole('textbox', { name: /^العنوان بالعربية/ });
+    await expect(page.getByRole('textbox', { name: /^النص بالعربية/ })).toHaveAttribute('data-has-alpine-state', 'true');
     await title.fill('مسودة خاصة بالطالب');
     await page.getByRole('textbox', { name: /^النص بالعربية/ }).fill('تفاصيل الطالب فقط');
-    await expect.poll(() => page.evaluate(() => Object.values(localStorage).some(value => value.includes('مسودة خاصة بالطالب')))).toBe(true);
+    await expect.poll(() => page.evaluate(() => Object.values(localStorage).some(value => value.includes('مسودة خاصة بالطالب') && value.includes('تفاصيل الطالب فقط')))).toBe(true);
     await page.goto('/operations/notifications/create');
     await expect(page.locator('[data-authoring-draft]')).toHaveAttribute('data-draft-ready', 'true');
     await expect(title).toHaveValue('');

@@ -13,15 +13,27 @@ use App\Http\Middleware\RequireAdminMfa;
 use App\Http\Middleware\VerifyDashboardSession;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\FontProviders\LocalFontProvider;
+use Filament\Forms\Components\FileUpload;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Livewire\Component;
 
 final class OperationsPanelProvider extends PanelProvider
 {
+    public function boot(): void
+    {
+        // FilePond's async initial reads must start after draft restoration.
+        // Otherwise their older Livewire snapshots can replace restored values.
+        FileUpload::configureUsing(static function (FileUpload $field): void {
+            $field->visibleJs(static fn (Component $livewire): ?string => method_exists($livewire, 'authoringDraftConfig')
+                ? '$wire.authoringDraftReady' : null);
+        });
+    }
+
     public function panel(Panel $panel): Panel
     {
         return $panel

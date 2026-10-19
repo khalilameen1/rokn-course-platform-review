@@ -89,7 +89,7 @@ test('the native adapter adopts the next singleton save receipt only after ackno
     const nextReceipt = randomUUID();
     const component = authoringDraft(settings);
     component.$el = { closest: () => ({ addEventListener() {}, removeEventListener() {} }), dataset: {} };
-    component.$wire = { $id: 'singleton-editor', data: { name_ar: 'قبل الحفظ' }, $watch: () => () => {} };
+    component.$wire = { $id: 'singleton-editor', data: { name_ar: 'قبل الحفظ' }, $watch: () => () => {}, $set: () => {} };
     try {
         await component.init();
         component.snapshot();
@@ -102,6 +102,44 @@ test('the native adapter adopts the next singleton save receipt only after ackno
         assert.equal(saved.receipt, nextReceipt);
         assert.equal(saved.values.name_ar, 'بعد الحفظ');
         assert.equal(settings.version, 'saved');
+    } finally {
+        component.destroy();
+        if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow;
+        if (previousLocation === undefined) delete globalThis.location; else globalThis.location = previousLocation;
+    }
+});
+
+test('native file readers remain hidden until the draft restore request settles', async () => {
+    const previousWindow = globalThis.window;
+    const previousLocation = globalThis.location;
+    const env = environment(undefined, undefined, 'reload');
+    env.removeEventListener = () => {};
+    env.FilamentNotification = class {
+        title() { return this; }
+        success() { return this; }
+        send() {}
+    };
+    globalThis.window = env;
+    globalThis.location = { pathname: '/operations/app-artwork' };
+    const settings = { ...config(), path: location.pathname, version: 'same', fields: ['name_ar'], fileFields: [] };
+    createDraftStore(settings, env).snapshot({ name_ar: 'المسودة' });
+    const component = authoringDraft(settings);
+    component.$el = { closest: () => ({ addEventListener() {}, removeEventListener() {} }), dataset: {} };
+    const updates = [];
+    let finishRestore;
+    component.$wire = {
+        data: {}, $watch: () => () => {},
+        $set: (...args) => updates.push(args),
+        restoreAuthoringDraft: () => new Promise(resolve => { finishRestore = resolve; }),
+    };
+    try {
+        const initializing = component.init();
+        assert.deepEqual(updates, []);
+        assert.equal(component.$el.dataset.draftReady, undefined);
+        finishRestore({ state: 'restored' });
+        await initializing;
+        assert.deepEqual(updates, [['authoringDraftReady', true, false]]);
+        assert.equal(component.$el.dataset.draftReady, 'true');
     } finally {
         component.destroy();
         if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow;

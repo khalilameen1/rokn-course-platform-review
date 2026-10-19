@@ -115,6 +115,9 @@ export default function authoringDraft(config) {
             };
             window.addEventListener('authoring-draft-saved', onSaved);
             ready = true;
+            // Filament owns deferred upload initialization through visibleJs.
+            // Keep it local/deferred: this flag is not an authorization decision.
+            this.$wire.$set('authoringDraftReady', true, false);
             this.$el.dataset.draftReady = 'true';
         },
         snapshot() {

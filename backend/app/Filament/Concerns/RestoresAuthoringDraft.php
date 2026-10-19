@@ -14,6 +14,9 @@ use Illuminate\Validation\ValidationException;
 /** Restores public form fields only; the owning schema/service still validates every save. */
 trait RestoresAuthoringDraft
 {
+    // Presentation only. Authorization and revision checks remain server-side.
+    public bool $authoringDraftReady = false;
+
     public function authoringDraftConfig(): array
     {
         $context = $this->authoringDraftContext();
