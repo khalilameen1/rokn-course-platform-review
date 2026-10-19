@@ -98,12 +98,9 @@ final class AdminNotificationAuthoringContractTest extends TestCase
 
     public function test_template_authoring_cannot_create_unwired_event_keys(): void
     {
-        $html = $this->actingAs($this->admin, 'web')
+        $this->actingAs($this->admin, 'web')
             ->get(route('admin.admin_notifications.create'))
-            ->assertOk()
-            ->getContent();
-        $xpath = $this->xpath($html);
-        self::assertSame(1, $xpath->query('//input[@name="system_key" and @type="hidden" and @value=""]')->length);
+            ->assertRedirect(NotificationTemplateResource::getUrl('create'));
 
         foreach (['made_up_event', 'new_quiz'] as $key) {
             $this->postTemplate(['system_key' => $key, 'surface' => 'transactional'])
@@ -190,9 +187,8 @@ final class AdminNotificationAuthoringContractTest extends TestCase
 
     public function test_manual_messages_cannot_be_saved_to_an_unread_surface_or_with_a_dead_action(): void
     {
-        $xpath = $this->xpath($this->actingAs($this->admin, 'web')
-            ->get(route('admin.admin_notifications.create'))->assertOk()->getContent());
-        self::assertSame(1, $xpath->query('//input[@name="surface" and @type="hidden" and @value="announcement"]')->length);
+        $this->actingAs($this->admin, 'web')->get(route('admin.admin_notifications.create'))
+            ->assertRedirect(NotificationTemplateResource::getUrl('create'));
 
         $this->postTemplate(['surface' => 'transactional'])->assertSessionHasErrors('surface');
         $this->flushSession();

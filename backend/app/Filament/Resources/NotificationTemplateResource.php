@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\NotificationTemplateResource\NotificationTemplateSchema;
 use App\Filament\Resources\NotificationTemplateResource\Pages\ListNotificationTemplates;
 use App\Models\AdminNotification;
 use App\Services\AdminNotificationTemplateReadService;
 use App\Support\AdminStudentSearch;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -53,6 +55,11 @@ final class NotificationTemplateResource extends DomainResource
         return app(AdminNotificationTemplateReadService::class)->query();
     }
 
+    public static function form(Schema $schema): Schema
+    {
+        return $schema->components([self::draftRecovery(), ...NotificationTemplateSchema::components()]);
+    }
+
     public static function table(Table $table): Table
     {
         return $table->columns([
@@ -74,7 +81,7 @@ final class NotificationTemplateResource extends DomainResource
             ->defaultPaginationPageOption(30)->paginated([10, 30, 50, 100])->poll('30s')->recordUrl(null)
             ->recordActions([ActionGroup::make([
                 Action::make('edit')->label('تعديل')->authorize(fn (AdminNotification $record): bool => self::canEdit($record))
-                    ->url(fn (AdminNotification $record): string => route('admin.admin_notifications.edit', $record)),
+                    ->url(fn (AdminNotification $record): string => self::getUrl('edit', ['record' => $record->id])),
                 Action::make('remove')->label(fn (AdminNotification $record): string => $record->isSystemTemplate() ? 'إيقاف' : 'حذف')->color('danger')
                     ->authorize(fn (AdminNotification $record): bool => self::canDelete($record))->requiresConfirmation()
                     ->modalDescription(fn (AdminNotification $record): string => $record->isSystemTemplate() ? 'يتوقف القالب مع الاحتفاظ بربطه بالحدث' : 'يُحذف الإعلان اليدوي')
@@ -85,6 +92,8 @@ final class NotificationTemplateResource extends DomainResource
 
     public static function getPages(): array
     {
-        return ['index' => ListNotificationTemplates::route('/')];
+        return ['index' => ListNotificationTemplates::route('/'),
+            'create' => NotificationTemplateResource\Pages\CreateNotificationTemplate::route('/create'),
+            'edit' => NotificationTemplateResource\Pages\EditNotificationTemplate::route('/{record}/edit')];
     }
 }

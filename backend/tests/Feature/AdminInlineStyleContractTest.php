@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Filament\Resources\PackageResource;
-use App\Models\AdminNotification;
 use App\Models\Classification;
 use App\Models\CoinEarningMethod;
 use App\Models\Contact;
@@ -232,10 +231,6 @@ final class AdminInlineStyleContractTest extends TestCase
             'admin.teachers.show' => route('admin.teachers.show', $teacher),
             'admin.moderators.edit' => route('admin.moderators.edit', $moderator),
         ];
-        $template = AdminNotification::query()->first();
-        if ($template !== null) {
-            $pages['admin.admin_notifications.edit'] = route('admin.admin_notifications.edit', $template);
-        }
 
         return $pages;
     }

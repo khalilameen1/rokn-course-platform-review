@@ -1,6 +1,70 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('notification template native editor persists copy artwork and welcome policy', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/notification-templates/create');
+    await page.getByRole('textbox', { name: /^العنوان بالعربية/ }).fill('إعلان النموذج الجديد');
+    await page.getByRole('textbox', { name: /^النص بالعربية/ }).fill('نص الإعلان عن الكورس الجديد');
+    await page.getByRole('textbox', { name: /^نص الزر بالعربية/ }).fill('ابدأ الكورس');
+    await page.getByRole('textbox', { name: /^الوجهة داخل التطبيق/ }).fill('/wallet');
+    await page.locator('.fi-fo-file-upload').scrollIntoViewIfNeeded();
+    await expect(page.locator('.filepond--root')).toBeVisible();
+    await page.locator('.filepond--root input[type=file]').setInputFiles('public/assets/app-artwork/v1/coin-stack.png');
+    await expect(page.locator('[data-filepond-item-state="processing-complete"]')).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('notification-template-create-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.getByRole('button', { name: 'إضافة', exact: true }).click();
+    await page.waitForURL('**/operations/notification-templates');
+    await page.locator('.fi-ta-search-field input').fill('إعلان النموذج الجديد');
+    await expect(page.locator('tbody tr')).toHaveCount(1);
+    await page.getByRole('row').filter({ hasText: 'إعلان النموذج الجديد' }).getByRole('button', { name: 'إجراءات القالب', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'تعديل', exact: true }).click();
+    await page.getByRole('textbox', { name: /^العنوان بالعربية/ }).fill('الإعلان المعتمد');
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page.getByText('تم الحفظ', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole('textbox', { name: /^العنوان بالعربية/ })).toHaveValue('الإعلان المعتمد');
+    const image = page.locator('main img').first();
+    await expect.poll(() => image.evaluate(element => element.naturalWidth)).toBeGreaterThan(0);
+    await page.locator('.fi-fo-file-upload').scrollIntoViewIfNeeded();
+    await expect(page.locator('.filepond--root')).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('notification-template-edit-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.reload();
+    await expect(page.getByRole('heading', { level: 1, name: 'تعديل قالب إشعار', exact: true })).toBeInViewport();
+    await page.locator('.fi-fo-file-upload').scrollIntoViewIfNeeded();
+    await expect(page.locator('.filepond--root')).toBeVisible();
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('notification-template-edit-desktop.png'), fullPage: true, animations: 'disabled' });
+    expect(errors).toEqual([]);
+});
+
+test('notification template native editor welcome controls reflect the fixed journey', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/notification-templates');
+    await page.locator('.fi-ta-search-field input').fill('guest_registration_prompt');
+    await expect(page.locator('tbody tr')).toHaveCount(1);
+    await page.getByRole('row').filter({ hasText: 'guest_registration_prompt' }).getByRole('button', { name: 'إجراءات القالب', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'تعديل', exact: true }).click();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.reload();
+    await expect(page.getByRole('spinbutton', { name: /^الأولوية/ })).toBeDisabled();
+    await expect(page.getByRole('textbox', { name: /^الوجهة داخل التطبيق/ })).toHaveCount(0);
+    await page.locator('.fi-fo-file-upload').scrollIntoViewIfNeeded();
+    await expect(page.locator('.filepond--root')).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('notification-template-welcome-phone.png'), fullPage: true, animations: 'disabled' });
+});
+
 test('notification template native list previews artwork and confirms removal on phone', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

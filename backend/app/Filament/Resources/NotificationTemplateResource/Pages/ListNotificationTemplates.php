@@ -47,7 +47,7 @@ final class ListNotificationTemplates extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [Action::make('create')->label('إعلان جديد')->visible(fn (): bool => NotificationTemplateResource::canCreate())->url(route('admin.admin_notifications.create')),
+        return [Action::make('create')->label('إعلان جديد')->visible(fn (): bool => NotificationTemplateResource::canCreate())->url(NotificationTemplateResource::getUrl('create')),
             Action::make('campaigns')->label('سجل الإرسال')->visible(fn (): bool => NotificationCampaignResource::canViewAny())->url(NotificationCampaignResource::getUrl())];
     }
 }

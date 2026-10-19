@@ -12,7 +12,6 @@ use App\Support\NotificationTemplateEditorVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\ViewErrorBag;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -143,34 +142,6 @@ final class WelcomePromptPresentationPolicyTest extends TestCase
         } catch (ValidationException $exception) {
             self::assertArrayHasKey('link', $exception->errors());
         }
-    }
-
-    public function test_welcome_editor_has_only_honest_fixed_presentation_controls(): void
-    {
-        $welcome = $this->welcome();
-        $html = view('admin.admin_notifications._form', [
-            'admin_notification' => $welcome,
-            'editorVersion' => NotificationTemplateEditorVersion::for($welcome),
-            'errors' => new ViewErrorBag,
-        ])->render();
-        self::assertStringContainsString('مرة واحدة عند أول زيارة على الجهاز', $html);
-        self::assertStringContainsString('يمكن للزائر إغلاقها دائمًا', $html);
-        self::assertStringContainsString('تسجيل الدخول لاستلام الهدية', $html);
-        foreach (['id="cooldown_hours"', 'id="priority"', 'id="link"', '<select'] as $unusedControl) {
-            self::assertStringNotContainsString($unusedControl, $html);
-        }
-        self::assertStringContainsString('name="is_dismissible" type="hidden" value="1"', $html);
-        self::assertStringContainsString('name="image"', $html);
-        self::assertStringContainsString('name="starts_at"', $html);
-        self::assertStringContainsString('name="is_active"', $html);
-
-        $other = AdminNotification::query()->where('system_key', 'coin_offer')->firstOrFail();
-        $otherHtml = view('admin.admin_notifications._form', [
-            'admin_notification' => $other, 'editorVersion' => NotificationTemplateEditorVersion::for($other),
-            'errors' => new ViewErrorBag,
-        ])->render();
-        self::assertStringContainsString('id="cooldown_hours"', $otherHtml);
-        self::assertStringContainsString('id="link"', $otherHtml);
     }
 
     private function welcome(): AdminNotification

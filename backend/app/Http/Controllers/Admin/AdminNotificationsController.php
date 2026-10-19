@@ -9,7 +9,6 @@ use App\Http\Requests\Admin\EditorVersionRequest;
 use App\Models\AdminNotification;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminNotificationTemplateAuthoringService;
-use App\Support\NotificationTemplateEditorVersion;
 use Illuminate\Http\RedirectResponse;
 
 class AdminNotificationsController extends Controller
@@ -21,9 +20,9 @@ class AdminNotificationsController extends Controller
         return redirect()->to(NotificationTemplateResource::getUrl());
     }
 
-    public function create()
+    public function create(): RedirectResponse
     {
-        return view('admin.admin_notifications.create');
+        return redirect()->to(NotificationTemplateResource::getUrl('create'));
     }
 
     public function store(AdminNotificationRequest $request, AdminAuthoringCreateIntentService $createIntents)
@@ -40,11 +39,9 @@ class AdminNotificationsController extends Controller
         return redirect()->route('admin.admin_notifications.index')->with('success', 'تمت الإضافة بنجاح ');
     }
 
-    public function edit(AdminNotification $admin_notification)
+    public function edit(AdminNotification $admin_notification): RedirectResponse
     {
-        $editorVersion = NotificationTemplateEditorVersion::for($admin_notification);
-
-        return view('admin.admin_notifications.edit', compact('admin_notification', 'editorVersion'));
+        return redirect()->to(NotificationTemplateResource::getUrl('edit', ['record' => $admin_notification->id]));
     }
 
     public function update(AdminNotificationRequest $request, AdminNotification $admin_notification)
