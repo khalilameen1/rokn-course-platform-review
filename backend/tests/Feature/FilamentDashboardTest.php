@@ -55,7 +55,7 @@ final class FilamentDashboardTest extends TestCase
             ->assertCanNotSeeTableRecords([$admin])->searchTable($student->email)
             ->assertCanSeeTableRecords([$student])->searchTable('not-found@example.test')
             ->assertCanNotSeeTableRecords([$student]);
-        self::assertFalse(StudentResource::canCreate());
+        self::assertTrue(StudentResource::canCreate());
         self::assertFalse(StudentResource::canDelete($student));
         self::assertFalse(OrderResource::canCreate());
         self::assertFalse(OrderResource::canDeleteAny());

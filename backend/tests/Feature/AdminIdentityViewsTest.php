@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\StudentResource;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -27,12 +28,8 @@ final class AdminIdentityViewsTest extends TestCase
     {
         $student = new User;
         $student->forceFill(['name' => 'طالب الاختبار', 'email' => 'identity@example.test', 'role' => 'client', 'active' => true])->save();
-        $this->get(route('admin.users.create'))->assertOk()->assertSee('users-form.css', false)
-            ->assertSee('admin-identity-theme.js', false)->assertSee('name="email"', false)
-            ->assertSee(route('admin.users.store'), false);
-        $this->get(route('admin.users.edit', $student))->assertOk()->assertSee('users-editor.css', false)
-            ->assertSee('identity@example.test')->assertSee('name="editor_version"', false)
-            ->assertSee(route('admin.users.update', $student), false);
+        $this->get(route('admin.users.create'))->assertRedirect(StudentResource::getUrl('create'));
+        $this->get(route('admin.users.edit', $student))->assertRedirect(StudentResource::getUrl('edit', ['record' => $student->id]));
         $this->get(route('admin.users.show', $student))->assertOk()->assertSee('users-show.css', false)
             ->assertSee('طالب الاختبار')->assertSee('admin-identity-theme.js', false);
     }

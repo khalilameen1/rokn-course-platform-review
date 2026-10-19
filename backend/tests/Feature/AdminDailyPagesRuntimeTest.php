@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Filament\Resources\OrderResource;
+use App\Filament\Resources\StudentResource;
 use App\Filament\Resources\TeacherResource\Pages\EditTeacher;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Classification;
@@ -156,7 +157,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
 
         foreach ([
             route('admin.users.show', $student),
-            route('admin.users.edit', $student),
+            StudentResource::getUrl('edit', ['record' => $student->id]),
             route('admin.orders.show', $order),
             route('filament.operations.resources.orders.index'),
             route('filament.operations.resources.orders.report'),

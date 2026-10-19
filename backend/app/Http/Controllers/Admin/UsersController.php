@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\StudentResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StudentDeviceResetRequest;
 use App\Http\Requests\Admin\StudentIndexRequest;
@@ -17,7 +18,6 @@ use App\Services\AdminStudentNoteService;
 use App\Services\AdminStudentReadService;
 use App\Services\StudentAccountStateService;
 use App\Support\CsvCell;
-use App\Support\StudentEditorVersion;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -76,14 +76,9 @@ class UsersController extends Controller
         }, 'students-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    /**
-     * @return Factory|View
-     */
-    public function create()
+    public function create(): RedirectResponse
     {
-        $designSettings = $this->getDesignSettings();
-
-        return view('admin.users.create', compact('designSettings'));
+        return redirect()->to(StudentResource::getUrl('create'));
     }
 
     /**
@@ -123,16 +118,11 @@ class UsersController extends Controller
         ));
     }
 
-    /**
-     * @return Factory|View
-     */
-    public function edit(User $user)
+    public function edit(User $user): RedirectResponse
     {
         $this->assertStudent($user);
-        $designSettings = $this->getDesignSettings();
-        $editorVersion = StudentEditorVersion::for($user);
 
-        return view('admin.users.edit', compact('user', 'designSettings', 'editorVersion'));
+        return redirect()->to(StudentResource::getUrl('edit', ['record' => $user->id]));
     }
 
     /**

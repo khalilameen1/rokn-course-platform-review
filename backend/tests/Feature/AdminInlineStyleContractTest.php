@@ -238,7 +238,6 @@ final class AdminInlineStyleContractTest extends TestCase
             'admin.teachers.show' => route('admin.teachers.show', $teacher),
             'admin.moderators.edit' => route('admin.moderators.edit', $moderator),
             'admin.users.show' => route('admin.users.show', $student),
-            'admin.users.edit' => route('admin.users.edit', $student),
             'admin.student-progress.show' => route('admin.student-progress.show', $student),
             'admin.orders.show' => route('admin.orders.show', $order),
             'admin.course-codes.show' => route('admin.course-codes.show', $code),

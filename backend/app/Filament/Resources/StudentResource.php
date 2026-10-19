@@ -4,13 +4,23 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources;
 
+use App\Auth\AdminPermissionMatrix;
+use App\Filament\Resources\StudentResource\Pages\CreateStudent;
 use App\Models\User;
+use App\Support\UnicodeText;
 use Filament\Actions\Action;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\Rule;
+use Livewire\Component;
+use UnitEnum;
 
 /** @extends ReadResource<User> */
 final class StudentResource extends ReadResource
@@ -32,6 +42,68 @@ final class StudentResource extends ReadResource
     protected static ?string $recordTitleAttribute = 'name_ar';
 
     protected static string $legacyListRoute = 'admin.users.index';
+
+    public static function getAuthorizationResponse(string|UnitEnum $action, ?Model $record = null): Response
+    {
+        if (in_array($action, ['create', 'update'], true)) {
+            $allowed = auth('web')->user()?->active && app(AdminPermissionMatrix::class)->allows(auth('web')->user(),
+                'admin.users.'.($action === 'create' ? 'store' : 'update'), $action === 'create' ? 'POST' : 'PATCH');
+
+            return $allowed && ($record === null || $record->getAttribute('role') === 'client') ? Response::allow() : Response::deny();
+        }
+
+        return parent::getAuthorizationResponse($action, $record);
+    }
+
+    // Student identity/contact fields are not persisted as browser drafts.
+    public static function draftFields(): array
+    {
+        return [];
+    }
+
+    public static function draftFileFields(): array
+    {
+        return [];
+    }
+
+    public static function draftOperation(): string
+    {
+        return 'filament.users.store';
+    }
+
+    public static function validationFieldMap(): array
+    {
+        return [];
+    }
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema->columns(2)->components([
+            TextInput::make('name')->label('الاسم')->required()->minLength(2)->maxLength(255)
+                ->mutateStateForValidationUsing(fn ($state): string => UnicodeText::clean($state, false))
+                ->dehydrateStateUsing(fn ($state): string => UnicodeText::clean($state, false))->columnSpanFull(),
+            TextInput::make('email')->label('البريد')->required()->email()->maxLength(255)->extraInputAttributes(['dir' => 'ltr'])
+                ->mutateStateForValidationUsing(fn (string $state): string => strtolower(trim($state)))
+                ->rules(fn (?User $record, Component $livewire): array => [Rule::unique('users', 'email')->ignore(self::profileIdentity($record, $livewire))])
+                ->dehydrateStateUsing(fn (string $state): string => strtolower(trim($state))),
+            TextInput::make('phone')->label('الهاتف')->required()->maxLength(30)->extraInputAttributes(['dir' => 'ltr'])
+                ->mutateStateForValidationUsing(fn ($state): string => UnicodeText::identifier($state))
+                ->dehydrateStateUsing(fn ($state): string => UnicodeText::identifier($state))
+                ->rules(fn (?User $record, Component $livewire): array => [Rule::unique('users', 'phone')->ignore(self::profileIdentity($record, $livewire))]),
+            FileUpload::make('image')->label('الصورة')->image()->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                ->maxSize(4096)->storeFiles(false)->visibleOn('create')->columnSpanFull(),
+        ]);
+    }
+
+    private static function profileIdentity(?User $record, Component $livewire): ?int
+    {
+        if ($record !== null) {
+            return $record->id;
+        }
+
+        return $livewire instanceof CreateStudent
+            ? User::withTrashed()->where('authoring_request_id', $livewire->creationIntent)->value('id') : null;
+    }
 
     public static function getEloquentQuery(): Builder
     {
@@ -71,6 +143,8 @@ final class StudentResource extends ReadResource
 
     public static function getPages(): array
     {
-        return ['index' => StudentResource\Pages\ListStudents::route('/')];
+        return ['index' => StudentResource\Pages\ListStudents::route('/'),
+            'create' => CreateStudent::route('/create'),
+            'edit' => StudentResource\Pages\EditStudent::route('/{record}/edit')];
     }
 }

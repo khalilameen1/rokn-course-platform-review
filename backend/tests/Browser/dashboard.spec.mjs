@@ -24,6 +24,38 @@ test('grouped native navigation reaches commerce and reward workspaces on deskto
     expect(errors).toEqual([]);
 });
 
+test('student profile creates and edits through native forms without a password field', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    const identity = String(Date.now());
+    const email = `learner-${identity}@browser.test`;
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/students/create');
+    await page.getByRole('textbox', { name: /^الاسم/ }).fill('طالب متصفح ' + identity);
+    await page.getByRole('textbox', { name: /^البريد/ }).fill(email);
+    await page.getByRole('textbox', { name: /^الهاتف/ }).fill(identity);
+    await expect(page.locator('.filepond--root')).toBeVisible();
+    expect(await page.locator('input[type=password]').count()).toBe(0);
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('student-create-phone.png'), fullPage: true });
+    await page.getByRole('button', { name: 'إضافة', exact: true }).click();
+    await expect(page).toHaveURL(/\/dashboard\/users\/\d+$/);
+    await page.getByRole('link', { name: /تعديل البيانات/ }).click();
+    await expect(page).toHaveURL(/\/operations\/students\/\d+\/edit$/);
+    const name = page.getByRole('textbox', { name: /^الاسم/ });
+    await expect(name).toBeVisible();
+    await name.fill('طالب متصفح معدل ' + identity);
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page).toHaveURL(/\/dashboard\/users\/\d+$/);
+    await expect(page.getByRole('heading', { name: 'طالب متصفح معدل ' + identity, exact: true })).toBeVisible();
+    await page.getByRole('link', { name: /تعديل البيانات/ }).click();
+    await expect(name).toHaveValue('طالب متصفح معدل ' + identity);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'الطلبة', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await page.screenshot({ path: testInfo.outputPath('student-edit-desktop.png'), fullPage: true });
+    expect(errors).toEqual([]);
+});
+
 test('support inbox uses native filters and exports exactly the applied search', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

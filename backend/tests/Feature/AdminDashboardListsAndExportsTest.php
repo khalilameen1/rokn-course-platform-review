@@ -159,7 +159,6 @@ final class AdminDashboardListsAndExportsTest extends TestCase
 
         foreach ([
             'moderator form' => route('admin.moderators.create'),
-            'student form' => route('admin.users.edit', $student),
             'settings' => route('admin.settings'),
         ] as $page => $url) {
             self::assertSame(1, $this->page($url)->query('//input[@name="phone" and @dir="ltr"]')->length, $page);
