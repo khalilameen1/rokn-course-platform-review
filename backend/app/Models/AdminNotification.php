@@ -6,6 +6,14 @@ use App\Traits\HasPhoto;
 use App\Traits\HasTranslate;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Columns added through the engagement migration's addColumn helper.
+ *
+ * @property bool $is_active
+ * @property string $surface
+ * @property string|null $system_key
+ * @property int $cooldown_hours
+ */
 class AdminNotification extends Model
 {
     use HasPhoto, HasTranslate;

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 use App\Models\AdminAuditLog;
+use App\Models\AdminNotification;
 use App\Models\AiInputAttachment;
 use App\Models\ApiToken;
 use App\Models\Contact;
@@ -176,6 +177,10 @@ try {
         'action_label_ar' => 'ابدأ الكورس', 'link' => 'rokn://course/'.$course->id, 'course_id' => $course->id,
         'image_url' => 'http://127.0.0.1:8793/assets/app-artwork/v1/coin-stack.png',
         'status' => NotificationCampaign::STATUS_SCHEDULED, 'scheduled_at' => now()->addDay(), 'user_ids' => [], 'exclude_user_ids' => []]);
+    $template = AdminNotification::query()->create(['surface' => 'announcement', 'title_ar' => 'إعلان المتصفح المصور', 'description_ar' => 'نص الإعلان المحلي',
+        'is_active' => true, 'priority' => 15, 'cooldown_hours' => 24]);
+    Storage::disk('public')->put('notification-fixture/coins.png', file_get_contents($root.'/public/assets/app-artwork/v1/coin-stack.png'));
+    $template->allPhotos()->create(['type' => 'featured', 'path' => 'notification-fixture/coins.png']);
     FeedbackReport::query()->firstOrCreate(['message' => 'رسالة دعم المتصفح'], [
         'public_id' => (string) Str::ulid(), 'user_id' => $student->id, 'category' => 'playback',
         'status' => 'new', 'priority' => 'high', 'version' => 1, 'app_version' => '1.0.68',

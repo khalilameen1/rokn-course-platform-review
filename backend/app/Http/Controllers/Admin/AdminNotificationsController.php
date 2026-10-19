@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\NotificationTemplateResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AdminNotificationRequest;
 use App\Http\Requests\Admin\EditorVersionRequest;
@@ -9,23 +10,15 @@ use App\Models\AdminNotification;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminNotificationTemplateAuthoringService;
 use App\Support\NotificationTemplateEditorVersion;
+use Illuminate\Http\RedirectResponse;
 
 class AdminNotificationsController extends Controller
 {
     public function __construct(private readonly AdminNotificationTemplateAuthoringService $authoring) {}
 
-    public function index()
+    public function index(): RedirectResponse
     {
-        $admin_notifications = AdminNotification::query()
-            ->with('photo')->orderBy('priority')->orderByDesc('updated_at')->orderByDesc('id')
-            ->paginate(30);
-        $editorVersions = $admin_notifications->getCollection()->mapWithKeys(
-            fn (AdminNotification $notification): array => [
-                $notification->id => NotificationTemplateEditorVersion::for($notification),
-            ]
-        );
-
-        return view('admin.admin_notifications.index', compact('admin_notifications', 'editorVersions'));
+        return redirect()->to(NotificationTemplateResource::getUrl());
     }
 
     public function create()

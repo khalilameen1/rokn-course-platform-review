@@ -1,6 +1,41 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('notification template native list previews artwork and confirms removal on phone', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/notification-templates');
+    await page.locator('.fi-ta-search-field input').fill('إعلان المتصفح');
+    const row = page.getByRole('row').filter({ hasText: 'إعلان المتصفح المصور' });
+    await expect(row).toBeVisible();
+    await expect(page.locator('tbody tr')).toHaveCount(1);
+    await expect.poll(() => row.locator('img').evaluate(element => element.naturalWidth)).toBeGreaterThan(0);
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('notification-template-list-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.reload();
+    await expect(page.getByRole('heading', { level: 1, name: 'قوالب الإشعارات', exact: true })).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('notification-template-list-desktop.png'), fullPage: true, animations: 'disabled' });
+    await row.getByRole('button', { name: 'إجراءات القالب', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'حذف', exact: true }).click();
+    const dialog = page.getByRole('alertdialog');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await dialog.getByRole('button', { name: 'تأكيد', exact: true }).click();
+    await expect(dialog).not.toBeVisible();
+    await expect(row).not.toBeVisible();
+    await expect(page.getByText('تم حذف القالب', { exact: true })).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator('.fi-ta-search-field input').fill('أكمل من مكانك');
+    await expect(page.locator('tbody tr')).toHaveCount(2);
+    await expect(page.getByText('learning_nudge', { exact: true })).toBeVisible();
+    await expect(page.getByText('continue_course', { exact: true })).toBeVisible();
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('notification-template-identical-titles-phone.png'), fullPage: true, animations: 'disabled' });
+    expect(errors).toEqual([]);
+});
+
 test('notification campaign native workspace previews and cancels without sending', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

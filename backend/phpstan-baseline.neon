@@ -3125,11 +3125,6 @@ parameters:
 			count: 1
 			path: app/Models/AdminNotification.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$system_key\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/AdminNotification.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Bank\:\:\$content_ar\.$#'
@@ -4110,11 +4105,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminNotificationTemplateAuthoringService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$cooldown_hours\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminNotificationTemplateAuthoringService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$ends_at\.$#'
@@ -4122,11 +4112,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminNotificationTemplateAuthoringService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$is_active\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminNotificationTemplateAuthoringService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$is_dismissible\.$#'
@@ -4146,11 +4131,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminNotificationTemplateAuthoringService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$system_key\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminNotificationTemplateAuthoringService.php
 
 		-
 			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, stdClass\|null given\.$#'
@@ -5089,11 +5069,6 @@ parameters:
 			count: 1
 			path: app/Services/EngagementMessageService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$system_key\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/EngagementMessageService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\FinancialAnomaly\:\:\$expected_total\.$#'
@@ -6357,11 +6332,6 @@ parameters:
 			count: 1
 			path: app/Support/NotificationTemplateEditorVersion.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$cooldown_hours\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/NotificationTemplateEditorVersion.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$ends_at\.$#'
@@ -6369,11 +6339,6 @@ parameters:
 			count: 1
 			path: app/Support/NotificationTemplateEditorVersion.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$is_active\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/NotificationTemplateEditorVersion.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$is_dismissible\.$#'
@@ -6405,17 +6370,7 @@ parameters:
 			count: 1
 			path: app/Support/NotificationTemplateEditorVersion.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$surface\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/NotificationTemplateEditorVersion.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$system_key\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/NotificationTemplateEditorVersion.php
 
 
 		-

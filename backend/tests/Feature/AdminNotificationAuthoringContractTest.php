@@ -6,6 +6,8 @@ namespace Tests\Feature;
 
 use App\Filament\Resources\NotificationCampaignResource;
 use App\Filament\Resources\NotificationCampaignResource\Pages\ListNotificationCampaigns;
+use App\Filament\Resources\NotificationTemplateResource;
+use App\Filament\Resources\NotificationTemplateResource\Pages\ListNotificationTemplates;
 use App\Filament\Resources\StudentResource;
 use App\Http\Controllers\Admin\UsersController;
 use App\Http\Middleware\RequireAdminMfa;
@@ -148,8 +150,8 @@ final class AdminNotificationAuthoringContractTest extends TestCase
         self::assertSame(30, $campaigns->perPage());
         self::assertCount(30, $campaigns->items());
 
-        $templates = $this->actingAs($this->admin, 'web')
-            ->get(route('admin.admin_notifications.index'))->assertOk()->viewData('admin_notifications');
+        $this->get(route('admin.admin_notifications.index'))->assertRedirect(NotificationTemplateResource::getUrl());
+        $templates = Livewire::test(ListNotificationTemplates::class)->instance()->getTableRecords();
         self::assertSame(30, $templates->perPage());
         self::assertCount(30, $templates->items());
     }
@@ -204,10 +206,10 @@ final class AdminNotificationAuthoringContractTest extends TestCase
             [...$this->templatePayload(), 'title_ar' => 'إعلان مصور'], (string) Str::uuid(),
             UploadedFile::fake()->image('announcement.png', 24, 24), static function (): void {}
         );
-        $imageUrl = $template->fresh()->public_image_url;
+        $imageUrl = $template->fresh()->photo?->assetPath();
         self::assertNotNull($imageUrl);
         $listing = $this->xpath($this->actingAs($this->admin, 'web')
-            ->get(route('admin.admin_notifications.index'))->assertOk()->getContent());
+            ->get(NotificationTemplateResource::getUrl())->assertOk()->getContent());
         self::assertSame(1, $listing->query('//img[@src="'.$imageUrl.'"]')->length);
     }
 
