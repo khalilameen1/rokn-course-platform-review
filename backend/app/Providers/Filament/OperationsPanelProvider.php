@@ -31,7 +31,10 @@ final class OperationsPanelProvider extends PanelProvider
             ->plugin(FilamentShieldPlugin::make()->navigationGroup('الإدارة')->navigationLabel('الأدوار')->navigationSort(40))
             ->login(fn () => redirect()->route('login'))
             ->brandName('رُكن')
-            ->colors(['primary' => Color::Blue])
+            // Filament uses shade 500 for light-mode filled-button hover.
+            // Blue 500 with white 14px text is only 3.76:1; retain the normal
+            // approved blue (600) for that state rather than weakening contrast.
+            ->colors(['primary' => array_replace(Color::Blue, [500 => Color::Blue[600]])])
             ->font('Cairo', url: asset('css/operations-font.css'), provider: LocalFontProvider::class)
             ->sidebarCollapsibleOnDesktop()
             ->navigationItems(LegacyWorkspaces::items())
