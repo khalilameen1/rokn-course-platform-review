@@ -208,9 +208,13 @@ try {
         'status' => 'new', 'priority' => 'high', 'version' => 1, 'app_version' => '1.0.68',
         'first_response_due_at' => now()->addDay(),
     ]);
+    // Account-management tests disable the main learner, revoking its devices.
+    // Give the independent device-monitor scenario its own learner fixture.
+    $deviceOwner = User::query()->forceCreate(['name_ar' => 'طالب جلسات الأجهزة',
+        'email' => 'device@dashboard.example.test', 'role' => 'client', 'active' => true]);
     $deviceSession = ApiToken::query()->firstOrNew(['session_id' => 'f6a60374-3c52-4354-8e66-381e6333ceac']);
     $deviceSession->forceFill([
-        'user_id' => $student->id, 'token' => hash('sha256', 'disposable-dashboard-session-fixture'),
+        'user_id' => $deviceOwner->id, 'token' => hash('sha256', 'disposable-dashboard-session-fixture'),
         'device_id' => 'c757c164-c739-43df-9585-b5be35dd6999', 'platform' => 'android', 'device_class' => 'phone',
         'app_version' => '1.0.68', 'app_build' => '68', 'auth_provider' => 'google',
         'issued_at' => now(), 'last_used_at' => now(), 'expired_at' => now()->addDay(), 'revoked_at' => null,
