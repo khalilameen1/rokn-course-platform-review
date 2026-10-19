@@ -129,6 +129,28 @@ final class AdminAppSettingsAuthoringOwnershipTest extends TestCase
         self::assertSame('https://example.test/not-a-youtube-account', $old['youtube_url']);
     }
 
+    public function test_http_validation_errors_remove_secrets_from_both_request_copies(): void
+    {
+        Http::preventStrayRequests();
+        $admin = User::query()->forceCreate([
+            'name' => 'Admin', 'email' => 'invalid-settings-owner@rokn.test', 'role' => 'admin', 'active' => true,
+        ]);
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $secrets = ['bunny_api_key' => 'test-key', 'bunny_storage_password' => 'test-password', 'bunny_security_key' => 'test-security', 'api_key' => 'test-connection-key'];
+        foreach ([
+            ['admin.settings.update', ['editor_version' => $this->version(), 'direct_checkout_discount_percent' => -1], 'direct_checkout_discount_percent'],
+            ['admin.settings.test-bunny', ['library_id' => 'invalid-library'], 'library_id'],
+        ] as [$route, $input, $error]) {
+            $this->flushSession();
+            $response = $this->actingAs($admin)->from(route('admin.settings'))->post(route($route), $input + $secrets)
+                ->assertRedirect(route('admin.settings'))->assertSessionHasErrors($error);
+            foreach (array_keys($secrets) as $field) {
+                self::assertArrayNotHasKey($field, $response->getSession()->getOldInput());
+            }
+        }
+        Http::assertNothingSent();
+    }
+
     private function version(): string
     {
         return AppSettingsEditorVersion::for(Setting::query()->first() ?? new Setting, DesignSetting::getDefaultSettings());

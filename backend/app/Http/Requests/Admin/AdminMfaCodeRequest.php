@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Admin;
 
-use Illuminate\Contracts\Validation\Validator;
+use App\Http\Requests\Admin\Concerns\DoesNotFlashSecrets;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class AdminMfaCodeRequest extends FormRequest
 {
+    use DoesNotFlashSecrets;
+
     public function authorize(): bool
     {
         return true;
@@ -21,22 +23,8 @@ final class AdminMfaCodeRequest extends FormRequest
             : ['required', 'string', 'min:6', 'max:32']];
     }
 
-    protected function failedValidation(Validator $validator): void
+    protected function sensitiveInputFields(): array
     {
-        $this->forgetSubmittedCode();
-        parent::failedValidation($validator);
-    }
-
-    protected function passedValidation(): void
-    {
-        // The validator retains the validated value for this action only.
-        $this->forgetSubmittedCode();
-    }
-
-    private function forgetSubmittedCode(): void
-    {
-        $this->request->remove('code');
-        // FormRequest is a copy. Laravel flashes input from the original request.
-        $this->container->make('request')->request->remove('code');
+        return ['code'];
     }
 }
