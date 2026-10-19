@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\CoinEarningMethodResource;
+use App\Filament\Resources\CoinEarningMethodResource\Pages\ListCoinEarningMethods;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Jobs\SendUserPushNotification;
 use App\Jobs\SendWhatsAppMessage;
 use App\Models\CoinEarningMethod;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\TestResponse;
+use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -197,11 +201,12 @@ final class WhatsAppTaskRetirementTest extends TestCase
             'role' => 'admin', 'active' => true,
         ]);
         $this->withoutMiddleware(RequireAdminMfa::class);
-        $edit = $this->actingAs($admin, 'web')
-            ->get(route('admin.coin-earning-methods.edit', $method))->assertOk();
-        $this->delete(route('admin.coin-earning-methods.destroy', $method), [
-            'editor_version' => $edit->viewData('editorVersion'),
-        ])->assertRedirect(route('admin.coin-earning-methods.index'));
+        $this->actingAs($admin, 'web')
+            ->get(route('admin.coin-earning-methods.edit', $method))
+            ->assertRedirect(CoinEarningMethodResource::getUrl('edit', ['record' => $method->id]));
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(ListCoinEarningMethods::class)->callTableAction('remove', $method)
+            ->assertNotified('تم الحذف');
         $this->assertSoftDeleted('coin_earning_methods', ['id' => $method->id]);
     }
 
