@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Filament\Widgets;
 
 use App\Auth\AdminPermissionMatrix;
+use App\Filament\Concerns\HasThemeAwareChartAxes;
 use Filament\Widgets\ChartWidget;
 use Livewire\Attributes\Locked;
 
 final class OverviewCourseCoinsChart extends ChartWidget
 {
+    use HasThemeAwareChartAxes;
+
     protected static bool $isDiscovered = false;
 
     protected static bool $isLazy = false;

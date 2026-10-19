@@ -5,6 +5,7 @@ This change is local only. Installing a package is not evidence that its product
 ## Proven implementation sources
 
 - Filament 5 panels, schemas, actions and tables are reused directly (MIT). Lunar's published Filament-based commerce admin is adoption evidence, not source code we claim to own or have copied.
+  Primary adoption source: https://github.com/lunarphp/lunar#admin-panel ; implementation: https://filamentphp.com/docs/5.x/panels .
 - Spatie Permission 8 owns role/permission storage and Shield 4 owns role forms. The separate `StaffMember` authorization subject avoids the documented `users.role` conflict and avoids a second login guard. `StaffRole::users()` points to that subject, not the learner identity.
 - Laravel Horizon 5 and Pulse 1 are the actual packages, not custom look-alike dashboards. Published configuration/migration adaptations retain their package semantics. Laravel packages and Spatie are MIT licensed; upstream sources and versions are pinned in Composer.
 - Playwright authentication setup and storageState use the official dependency-project pattern. axe-core audits the rendered authenticated application.
@@ -77,3 +78,13 @@ is single-threaded and its static delivery has neither production compression no
 cache headers. Do not disguise that by changing the scores or treating local response
 time as measured Laravel Cloud latency. CI preserves the reports for comparison;
 there is no arbitrary performance-score threshold claimed as a product guarantee.
+
+Chart labels need a separate rendered check: axe cannot inspect canvas pixels.
+`HasThemeAwareChartAxes` uses Filament's supported `RawJs` chart options and
+Chart.js scriptable tick colors to inherit the native chart text color on every
+theme update. No vendor file or second theme observer is maintained.
+Sources: https://filamentphp.com/docs/5.x/widgets/charts and
+https://www.chartjs.org/docs/latest/general/options.html#scriptable-options .
+The browser check reads the actual painted label options and requires at least
+4.5:1 contrast in both themes at phone/desktop widths, including theme changes
+without a chart remount; screenshots remain part of visual review.
