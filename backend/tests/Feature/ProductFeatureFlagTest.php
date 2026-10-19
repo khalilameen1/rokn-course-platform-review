@@ -82,7 +82,43 @@ final class ProductFeatureFlagTest extends TestCase
 
         self::assertFalse($service->enabled('checkout', 45));
         self::assertFalse($recovery['flags']['checkout']);
+        self::assertFalse($service->operationalSnapshot()['checkout']['enabled']);
         self::assertNotSame($normal['version'], $recovery['version']);
+    }
+
+    public function test_expired_playback_decision_uses_the_same_fallback_in_all_consumers(): void
+    {
+        ProductFeatureFlag::query()->create([
+            'key' => 'playback', 'enabled' => false, 'rollout_percentage' => 0,
+            'owner' => 'operations', 'reason' => 'Temporary incident decision', 'expires_at' => now()->subMinute(),
+        ]);
+        $service = app(ProductFeatureFlagService::class);
+        self::assertTrue($service->enabled('playback'));
+        self::assertTrue($service->clientSnapshot(99)['flags']['playback']);
+        $operations = $service->operationalSnapshot()['playback'];
+        self::assertTrue($operations['enabled']);
+        self::assertSame(100, $operations['rollout_percentage']);
+        self::assertSame('Temporary incident decision', $operations['reason']);
+    }
+
+    public function test_active_partial_rollout_is_preserved_and_server_matches_the_client_for_real_subjects(): void
+    {
+        ProductFeatureFlag::query()->create([
+            'key' => 'playback', 'enabled' => true, 'rollout_percentage' => 35,
+            'owner' => 'operations', 'reason' => 'Staged decision', 'expires_at' => now()->addHour(),
+        ]);
+        $service = app(ProductFeatureFlagService::class);
+        self::assertTrue($service->operationalSnapshot()['playback']['enabled']);
+        self::assertSame(35, $service->operationalSnapshot()['playback']['rollout_percentage']);
+        self::assertFalse($service->enabled('playback'));
+        $outcomes = [];
+        foreach (range(1, 100) as $index) {
+            $subject = 'user:'.$index;
+            $outcomes[] = $service->enabled('playback', $subject);
+            self::assertSame($service->enabled('playback', $subject), $service->clientSnapshot($subject)['flags']['playback']);
+        }
+        self::assertContains(true, $outcomes);
+        self::assertContains(false, $outcomes);
     }
 
     public function test_versioned_public_endpoint_exposes_only_the_closed_client_snapshot(): void
