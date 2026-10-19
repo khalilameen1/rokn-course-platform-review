@@ -26,6 +26,8 @@ parameters:
             disallowIn:
                 - app/Http/Controllers/Admin/TeacherController.php
                 - app/Http/Controllers/Admin/PathController.php
+                - app/Http/Controllers/Admin/ClassificationController.php
+                - app/Http/Controllers/Admin/LevelController.php
         # Larastan resolves the DB facade to Illuminate\Database\Connection.
         -
             method:
@@ -45,6 +47,8 @@ parameters:
             disallowIn:
                 - app/Http/Controllers/Admin/TeacherController.php
                 - app/Http/Controllers/Admin/PathController.php
+                - app/Http/Controllers/Admin/ClassificationController.php
+                - app/Http/Controllers/Admin/LevelController.php
         -
             method:
                 - 'Illuminate\Database\Eloquent\Builder::lockForUpdate()'

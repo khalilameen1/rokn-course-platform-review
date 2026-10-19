@@ -149,6 +149,9 @@ removed and their saved GET URLs redirect to the native Filament editors.
 Paths follow the same boundary with `AdminPathReadService`,
 `AdminPathAuthoringService`, `PathIndexRequest` and `PathProfileRequest`.
 Home rows follow `AdminClassificationReadService` / `AdminClassificationAuthoringService`.
+Badges follow `AdminLevelReadService` / `AdminLevelAuthoringService` and retain
+the approved artwork. Current-badge preview and replacement upload are distinct;
+a form cannot turn an arbitrary submitted storage path into a badge reference.
 `UsesAuthoringCreateReceipt` adapts the existing durable creation ledger for native
 Record pages; it does not introduce a second receipt store or own domain writes.
 `FormValidation` maps domain field names to Filament's `data.*` state so a rejected
@@ -180,7 +183,7 @@ Counts of code that still follows a second way. Each may only go down.
 | B2 | Controllers with their own `error()` helper | 6 | 0 |
 | B2 | Controllers hand-building a 500 | 5 | 0 |
 | B6 | GET endpoints that write | 7 | 2 (public portfolio page and admin preview call `PortfolioModerationService::reconcile`) |
-| B8 | Larastan baseline entries | 1550 | 1181 |
+| B8 | Larastan baseline entries | 1550 | 1175 |
 | B8 | Eloquent relations without a return type | 205 | 0 |
 | M1 | Read domains outside TanStack Query | 8 | 0 |
 | M2 | Feature-owned offline queues outside `durableOutbox` | 5 | 0 |
@@ -191,7 +194,7 @@ Counts of code that still follows a second way. Each may only go down.
 | B9 | Hand-written implementations of a protocol or algorithm a proven library provides (TUS upload in the app, TOTP/Base32, OOXML text extraction) | 3 | 0 |
 | B9 | EGP arithmetic outside `App\Support\Money` (float round/compare sites) | 31 | 0 |
 | B9 | Libraries past end of life (Intervention Image 2) | 1 | 0 |
-| D2 | Dashboard controllers with inline request validation | 33 | 30 |
+| D2 | Dashboard controllers with inline request validation | 33 | 29 |
 
 Dashboard JSON endpoints (course studio, uploads) answer `public/admin/assets/js/request.js`'s
 own contract and are outside B2's learner-API scope.

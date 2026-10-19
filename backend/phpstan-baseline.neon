@@ -578,41 +578,11 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/Admin/FeedbackController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\LevelController\:\:create\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/LevelController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\LevelController\:\:destroy\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 2
-			path: app/Http/Controllers/Admin/LevelController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\LevelController\:\:edit\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/LevelController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\LevelController\:\:index\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/LevelController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\LevelController\:\:store\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/LevelController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\LevelController\:\:update\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/LevelController.php
 
 		-
 			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\User\|null given\.$#'

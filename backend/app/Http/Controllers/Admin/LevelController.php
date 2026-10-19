@@ -2,68 +2,46 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\LevelResource;
 use App\Http\Controllers\Controller;
-use App\Models\DesignSetting;
+use App\Http\Requests\Admin\LevelProfileRequest;
 use App\Models\Level;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminLevelAuthoringService;
-use App\Support\LevelEditorVersion;
-use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Illuminate\Http\RedirectResponse;
 
 class LevelController extends Controller
 {
     public function __construct(private readonly AdminLevelAuthoringService $authoring) {}
 
     /**
-     * Get design settings for the views
-     */
-    private function getDesignSettings()
-    {
-        return DesignSetting::getDefaultSettings();
-    }
-
-    /**
      * Display a listing of the resource.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function index()
     {
-        $levels = Level::ordered()->get();
-        $designSettings = $this->getDesignSettings();
-
-        return view('admin.levels.index', compact('levels', 'designSettings'));
+        return redirect(LevelResource::getUrl());
     }
 
     /**
      * Show the form for creating a new resource.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function create()
     {
-        $designSettings = $this->getDesignSettings();
-
-        return view('admin.levels.create', compact('designSettings'));
+        return redirect(LevelResource::getUrl('create'));
     }
 
     /**
      * Store a newly created resource in storage.
      *
-     * @return Response
+     * @return RedirectResponse
      */
-    public function store(Request $request, AdminAuthoringCreateIntentService $createIntents)
+    public function store(LevelProfileRequest $request, AdminAuthoringCreateIntentService $createIntents)
     {
-        $validated = $request->validate([
-            'name_ar' => 'required|string|max:255',
-            'name_en' => 'required|string|max:255',
-            'description_ar' => 'nullable|string|max:1000',
-            'description_en' => 'nullable|string|max:1000',
-            'badge_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
-            'order' => 'nullable|integer|min:1|max:1000',
-            'authoring_request_id' => 'required|uuid',
-        ]);
+        $validated = $request->validated();
 
         $this->authoring->create(
             $validated,
@@ -83,32 +61,21 @@ class LevelController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function edit(Level $level)
     {
-        $designSettings = $this->getDesignSettings();
-        $editorVersion = LevelEditorVersion::for($level);
-
-        return view('admin.levels.edit', compact('level', 'designSettings', 'editorVersion'));
+        return redirect(LevelResource::getUrl('edit', ['record' => $level->id]));
     }
 
     /**
      * Update the specified resource in storage.
      *
-     * @return Response
+     * @return RedirectResponse
      */
-    public function update(Request $request, Level $level)
+    public function update(LevelProfileRequest $request, Level $level)
     {
-        $validated = $request->validate([
-            'name_ar' => 'required|string|max:255',
-            'name_en' => 'required|string|max:255',
-            'description_ar' => 'nullable|string|max:1000',
-            'description_en' => 'nullable|string|max:1000',
-            'badge_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
-            'order' => 'nullable|integer|min:1|max:1000',
-            'editor_version' => 'required|string|size:64',
-        ]);
+        $validated = $request->validated();
 
         $this->authoring->update(
             (int) $level->id, $validated, (string) $validated['editor_version'], $request->file('badge_image')
@@ -121,7 +88,7 @@ class LevelController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function destroy(Level $level)
     {

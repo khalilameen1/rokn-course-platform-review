@@ -114,3 +114,36 @@ test('home row is authored through the native schema on a phone', async ({ page 
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({ path: testInfo.outputPath('classification-edit-phone.png'), fullPage: true });
 });
+
+test('badge image is uploaded and preserved in the editor', async ({ page }, testInfo) => {
+    const name = `شارة المتصفح ${Date.now()}`;
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/levels/create');
+    await page.getByLabel(/الاسم بالعربية/).fill(name);
+    await page.getByLabel(/الاسم بالإنجليزية/).fill('Junior');
+    await page.locator('.fi-fo-file-upload').scrollIntoViewIfNeeded();
+    await expect(page.locator('.filepond--root')).toBeVisible();
+    await page.locator('.filepond--root input[type=file]').setInputFiles('public/assets/app-artwork/v1/junior.png');
+    await expect(page.locator('[data-filepond-item-state="processing-complete"]')).toBeVisible();
+    await page.getByRole('button', { name: 'إضافة', exact: true }).click();
+    await page.waitForURL('**/operations/levels');
+    await page.getByRole('row').filter({ hasText: name }).getByRole('link', { name: 'تعديل', exact: true }).click();
+    const preview = page.locator('main img').first();
+    await expect(preview).toBeVisible();
+    await expect.poll(() => preview.evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
+    await page.getByLabel(/الوصف بالعربية/).fill('الوصف المعتمد');
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page.getByText('تم الحفظ', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel(/الوصف بالعربية/)).toHaveValue('الوصف المعتمد');
+    await page.locator('.fi-fo-file-upload').scrollIntoViewIfNeeded();
+    await expect(page.locator('.filepond--root')).toBeVisible();
+    const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+    expect(audit.violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('badge-edit-phone.png'), fullPage: true });
+    expect(errors).toEqual([]);
+});

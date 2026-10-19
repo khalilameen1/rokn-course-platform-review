@@ -35,9 +35,6 @@ final class AdminCourseOperationsViewTest extends TestCase
             'teacher details' => route('admin.teachers.show', $teacher),
             'notifications list' => route('admin.notifications.index'),
             'notifications create' => route('admin.notifications.create'),
-            'levels list' => route('admin.levels.index'),
-            'levels create' => route('admin.levels.create'),
-            'levels edit' => route('admin.levels.edit', $level),
         ] as $page => $url) {
             $html = (string) $this->adminGet($admin, $url)->assertOk()->getContent();
             self::assertGreaterThan(

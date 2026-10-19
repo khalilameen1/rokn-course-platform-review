@@ -15,9 +15,6 @@ final class LegacyWorkspaces
     {
         $links = [
             ['الكورسات', 'المحتوى', 'admin.courses.index'],
-            ['المحاضرون', 'المحتوى', 'admin.teachers.index'],
-            ['صفوف الرئيسية', 'المحتوى', 'admin.classifications.index'],
-            ['الشارات', 'المحتوى', 'admin.levels.index'],
             ['مشاريع الطلاب', 'المراجعة', 'admin.project-submissions.index'],
             ['مراجعة البورتفوليو', 'المراجعة', 'admin.portfolio-reviews.index'],
             ['البلاغات والدعم', 'المراجعة', 'admin.feedback.index'],
