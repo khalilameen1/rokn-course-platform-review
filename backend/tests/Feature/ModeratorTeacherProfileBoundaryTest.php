@@ -9,6 +9,8 @@ use App\Filament\Resources\TeacherResource;
 use App\Filament\Resources\TeacherResource\Pages\CreateTeacher;
 use App\Filament\Resources\TeacherResource\Pages\EditTeacher;
 use App\Filament\Resources\TeacherResource\Pages\ListTeachers;
+use App\Filament\Resources\TeacherResource\Pages\ViewTeacher;
+use App\Filament\Resources\TeacherResource\RelationManagers\CoursesRelationManager;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
@@ -66,7 +68,7 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
             ->assertDontSee($teacher->phone);
 
         $this->actingAs($moderator)
-            ->get(route('admin.teachers.show', $teacher))
+            ->get(TeacherResource::getUrl('view', ['record' => $teacher->id]))
             ->assertOk()
             ->assertSee($teacher->name_ar)
             ->assertDontSee($teacher->email)
@@ -271,12 +273,9 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
         Livewire::test(ListTeachers::class)
             ->assertTableColumnStateSet('teaching_courses_count', 1, $teacher);
 
-        $show = $this->actingAs($administrator)
-            ->get(route('admin.teachers.show', $teacher))
-            ->assertOk();
-        $courses = $show->original->getData()['courses'];
-        self::assertSame([$canonical->id], $courses->getCollection()->modelKeys());
-        $show->assertSee('الكورس المنشور')->assertDontSee('نسخة التحرير الداخلية');
+        $this->get(route('admin.teachers.show', $teacher))->assertRedirect(TeacherResource::getUrl('view', ['record' => $teacher->id]));
+        Livewire::test(CoursesRelationManager::class, ['ownerRecord' => $teacher, 'pageClass' => ViewTeacher::class])
+            ->assertCanSeeTableRecords([$canonical])->assertCanNotSeeTableRecords([$draft]);
     }
 
     public function test_teacher_search_obeys_credential_visibility_and_rejects_non_scalar_filters(): void

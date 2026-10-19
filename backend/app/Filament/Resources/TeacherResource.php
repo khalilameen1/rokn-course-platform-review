@@ -15,6 +15,8 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\ImageEntry;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -55,6 +57,32 @@ final class TeacherResource extends DomainResource
     public static function draftFileFields(): array
     {
         return ['image'];
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return $schema->components([
+            Section::make('ملف المحاضر')->columns(2)->schema([
+                ImageEntry::make('profile_image_url')->label('الصورة')->circular()->hiddenLabel()
+                    ->state(fn (User $record): ?string => $record->profile_image_url ? url($record->profile_image_url) : null)
+                    ->visible(fn (User $record): bool => filled($record->profile_image_url)),
+                TextEntry::make('name_ar')->label('الاسم بالعربية'),
+                TextEntry::make('name_en')->label('الاسم بالإنجليزية')->visible(fn (User $record): bool => filled($record->name_en)),
+                TextEntry::make('job_title')->label('المسمى الوظيفي')->visible(fn (User $record): bool => filled($record->job_title)),
+                TextEntry::make('bio_ar')->label('نبذة بالعربية')->columnSpanFull()->visible(fn (User $record): bool => filled($record->bio_ar)),
+                TextEntry::make('bio_en')->label('نبذة بالإنجليزية')->columnSpanFull()->extraAttributes(['dir' => 'ltr'])->visible(fn (User $record): bool => filled($record->bio_en)),
+            ])->columnSpanFull(),
+            Section::make('بيانات التواصل')->visible(fn (): bool => self::canManageCredentials())->columns(2)->schema([
+                TextEntry::make('email')->label('البريد الإلكتروني')->copyable()->extraAttributes(['dir' => 'ltr'])->visible(fn (User $record): bool => filled($record->email)),
+                TextEntry::make('phone')->label('الهاتف')->copyable()->extraAttributes(['dir' => 'ltr'])->visible(fn (User $record): bool => filled($record->phone)),
+                TextEntry::make('created_at')->label('تاريخ الانضمام')->date('Y-m-d')->visible(fn (User $record): bool => $record->created_at !== null),
+            ])->columnSpanFull(),
+        ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [TeacherResource\RelationManagers\CoursesRelationManager::class];
     }
 
     public static function canManageCredentials(): bool
@@ -133,7 +161,7 @@ final class TeacherResource extends DomainResource
                 ->extraAttributes(['dir' => 'ltr'])->visible(fn (): bool => self::canManageCredentials()),
         ])->defaultSort('id', 'desc')->poll('30s')->filters([TernaryFilter::make('active')->label('الحالة')])
             ->emptyStateHeading('لا يوجد محاضرون')->emptyStateDescription('')->recordActions([
-                Action::make('profile')->label('ملف المحاضر')->url(fn (User $record): string => route('admin.teachers.show', $record)),
+                Action::make('profile')->label('ملف المحاضر')->url(fn (User $record): string => self::getUrl('view', ['record' => $record->id])),
                 EditAction::make(),
                 Action::make('remove')->label('حذف')->color('danger')->requiresConfirmation()
                     ->authorize(fn (User $record): bool => self::canDelete($record))->action(fn (User $record) => self::removeTeachers(collect([$record]))),
@@ -158,6 +186,7 @@ final class TeacherResource extends DomainResource
         return [
             'index' => TeacherResource\Pages\ListTeachers::route('/'),
             'create' => TeacherResource\Pages\CreateTeacher::route('/create'),
+            'view' => TeacherResource\Pages\ViewTeacher::route('/{record}'),
             'edit' => TeacherResource\Pages\EditTeacher::route('/{record}/edit'),
         ];
     }

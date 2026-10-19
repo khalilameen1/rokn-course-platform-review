@@ -8,6 +8,8 @@ use App\Filament\Resources\TeacherResource;
 use App\Filament\Resources\TeacherResource\Pages\CreateTeacher;
 use App\Filament\Resources\TeacherResource\Pages\EditTeacher;
 use App\Filament\Resources\TeacherResource\Pages\ListTeachers;
+use App\Filament\Resources\TeacherResource\Pages\ViewTeacher;
+use App\Filament\Resources\TeacherResource\RelationManagers\CoursesRelationManager;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Course;
 use App\Models\User;
@@ -124,6 +126,25 @@ final class FilamentTeacherWorkflowTest extends TestCase
         $user = new User;
         $user->forceFill(['role' => $role, 'active' => true])->save();
         $this->actingAs($user, 'web');
+    }
+
+    public function test_native_profile_courses_are_paginated_searchable_and_scoped_to_the_selected_teacher(): void
+    {
+        $teacher = $this->teacher();
+        $courses = [];
+        foreach (range(1, 12) as $index) {
+            $course = Course::query()->forceCreate(['tenant_id' => 1, 'name_ar' => 'كورس '.$index, 'is_coming_soon' => true]);
+            $course->teachers()->attach($teacher);
+            $courses[] = $course;
+        }
+        $other = Course::query()->forceCreate(['tenant_id' => 1, 'name_ar' => 'كورس آخر', 'is_coming_soon' => true]);
+        $page = Livewire::test(CoursesRelationManager::class, ['ownerRecord' => $teacher, 'pageClass' => ViewTeacher::class]);
+        $page->assertCountTableRecords(12)->assertCanSeeTableRecords([$courses[11]])->assertCanNotSeeTableRecords([$courses[0], $other]);
+        $page->searchTable('كورس 1')->assertCanSeeTableRecords([$courses[0]])->assertCanNotSeeTableRecords([$courses[1], $other]);
+        $this->operator('moderator');
+        Livewire::test(CoursesRelationManager::class, ['ownerRecord' => $teacher, 'pageClass' => ViewTeacher::class])
+            ->assertTableColumnHidden('active_enrollments_count');
+        Livewire::test(ViewTeacher::class, ['record' => $teacher->id])->assertDontSee('private@example.test');
     }
 
     private function teacher(): User

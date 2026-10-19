@@ -142,6 +142,9 @@ try {
     $portfolioItem = PortfolioItem::query()->create(['user_id' => $student->id, 'title' => 'عمل المتصفح المختار', 'is_public' => true]);
     $portfolioItem->mediaFiles()->create(['file_path' => 'portfolio/browser-fixture.jpg', 'file_type' => 'image', 'content_sha256' => str_repeat('a', 64)]);
     $course = Course::query()->forceCreate(['tenant_id' => 1, 'name_ar' => 'كورس المتصفح', 'is_coming_soon' => false, 'is_catalog_visible' => true, 'authoring_version' => 1]);
+    $instructor = User::query()->forceCreate(['name_ar' => 'محاضر تجربة التصفح', 'name_en' => 'Browser instructor', 'job_title' => 'تصميم الإعلانات',
+        'bio_ar' => 'تطبيق عملي على تصميم الإعلانات', 'role' => 'teacher', 'email' => 'instructor@dashboard.example.test', 'phone' => '201055550004', 'active' => true]);
+    $course->teachers()->attach($instructor);
     $project = Project::query()->create(['requirements_text' => 'نفذ تطبيقًا عمليًا', 'ai_prompt' => 'قيّم النتيجة', 'passing_score' => 50]);
     $module = CourseModule::query()->create(['course_id' => $course->id, 'title_ar' => 'الوحدة الأولى', 'order' => 1]);
     CourseSection::query()->create(['course_id' => $course->id, 'module_id' => $module->id, 'title' => 'مشروع المتصفح',

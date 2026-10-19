@@ -45,14 +45,20 @@ final class AdminTeacherReadService
     public function detail(int $id, bool $includeCredentials, bool $includeEnrollmentCounts): array
     {
         $teacher = $this->profiles($includeCredentials)->findOrFail($id);
-        $courses = $teacher->teachingCourses()->whereNotIn(
-            'courses.id', CourseAuthoringRevision::query()->select('revision_course_id')
-        )->orderByDesc('courses.id');
+        $courses = $this->profileCourses($teacher->teachingCourses()->getQuery(), $includeEnrollmentCounts);
+
+        return ['teacher' => $teacher, 'courses' => $courses->orderByDesc('courses.id')->paginate(10)];
+    }
+
+    /** @param Builder<Course> $courses @return Builder<Course> */
+    public function profileCourses(Builder $courses, bool $includeEnrollmentCounts): Builder
+    {
+        $this->onlyCanonicalCourses($courses);
         if ($includeEnrollmentCounts) {
             $courses->withCount('activeEnrollments');
         }
 
-        return ['teacher' => $teacher, 'courses' => $courses->paginate(10)];
+        return $courses;
     }
 
     /** @return array{teacher:User,editorVersion:string} */

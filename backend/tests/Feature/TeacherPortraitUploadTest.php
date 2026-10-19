@@ -65,7 +65,7 @@ final class TeacherPortraitUploadTest extends TestCase
             ->assertOk()
             ->assertSee($firstUrl, false);
         $this->actingAs($moderator)
-            ->get(route('admin.teachers.show', $teacher))
+            ->get(TeacherResource::getUrl('view', ['record' => $teacher->id]))
             ->assertOk()
             ->assertSee($firstUrl, false);
         $this->actingAs($moderator)

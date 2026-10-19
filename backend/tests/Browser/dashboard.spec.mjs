@@ -1,6 +1,28 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('instructor native profile keeps course navigation usable on a phone', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/teachers');
+    await page.getByRole('row').filter({ hasText: 'محاضر تجربة التصفح' }).getByRole('link', { name: 'ملف المحاضر', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'محاضر تجربة التصفح', level: 1, exact: true })).toBeVisible();
+    await page.evaluate(() => scrollTo(0, document.body.scrollHeight));
+    const course = page.getByRole('row').filter({ hasText: 'كورس المتصفح' });
+    await course.scrollIntoViewIfNeeded();
+    await expect(course.getByRole('link', { name: 'عرض', exact: true })).toBeInViewport({ ratio: 1 });
+    await expect(page.getByText('instructor@dashboard.example.test', { exact: true })).toBeVisible();
+    await page.evaluate(() => scrollTo(0, 0));
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('teacher-profile-phone.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.reload();
+    await page.evaluate(() => scrollTo(0, document.body.scrollHeight));
+    await expect(course).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('teacher-profile-desktop.png'), fullPage: true });
+});
+
 test('operational recovery confirms a documented action on the selected phone row', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/operations/operational-recovery');

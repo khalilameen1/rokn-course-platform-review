@@ -226,7 +226,6 @@ final class AdminInlineStyleContractTest extends TestCase
         ]);
         $pages = [
             'admin.courses.show' => route('admin.courses.show', $course),
-            'admin.teachers.show' => route('admin.teachers.show', $teacher),
         ];
 
         return $pages;

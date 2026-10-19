@@ -3929,11 +3929,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminCourseOutlinePresenter.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$active_enrollments_count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AdminCoursePageService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$ratings_avg_rating\.$#'
@@ -3959,11 +3954,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminCoursePageService.php
 
-		-
-			message: '#^Relation ''activeEnrollments'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminCoursePageService.php
 
 
 
@@ -4187,11 +4177,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminProductOperationsReadService.php
 
-		-
-			message: '#^Relation ''activeEnrollments'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminProductOperationsReadService.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>recommended_provider_bonus_coins" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -4776,11 +4761,6 @@ parameters:
 			count: 1
 			path: app/Services/CoursePlanUpgradeEligibilityService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$active_enrollments_count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/CoursePresentationService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$preview_reels_count\.$#'
@@ -4800,11 +4780,6 @@ parameters:
 			count: 1
 			path: app/Services/CoursePresentationService.php
 
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:map\(\) expects callable\(mixed, int\|string\)\: array\{course_id\: int\<0, max\>, title\: string, image\: non\-falsy\-string\|null, teacher_name\: string\|null, badge\: string\|null, badge_tone\: non\-falsy\-string, is_coming_soon\: bool, preview_count\: int, duration_minutes\: int\<0, max\>, ratings_count\: int, rating_average\: float, average_rating\: float\|null, students_count\: int\}, Closure\(App\\Models\\Course\)\: array\{course_id\: int\<0, max\>, title\: string, image\: non\-falsy\-string\|null, teacher_name\: string\|null, badge\: string\|null, badge_tone\: non\-falsy\-string, is_coming_soon\: bool, preview_count\: int, duration_minutes\: int\<0, max\>, ratings_count\: int, rating_average\: float, average_rating\: float\|null, students_count\: int\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/CoursePresentationService.php
 
 
 		-

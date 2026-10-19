@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Filament\Resources\NotificationCampaignResource;
+use App\Filament\Resources\TeacherResource;
 use App\Filament\Resources\TeacherResource\Pages\CreateTeacher;
 use App\Filament\Resources\TeacherResource\Pages\EditTeacher;
 use App\Models\Classification;
@@ -32,16 +33,8 @@ final class AdminCourseOperationsViewTest extends TestCase
         $classification = Classification::query()->create(['name_ar' => 'تصنيف', 'name_en' => 'Row']);
         $level = Level::query()->create(['name_ar' => 'مستوى', 'name_en' => 'Level', 'order' => 1]);
 
-        foreach ([
-            'teacher details' => route('admin.teachers.show', $teacher),
-        ] as $page => $url) {
-            $html = (string) $this->adminGet($admin, $url)->assertOk()->getContent();
-            self::assertGreaterThan(
-                0,
-                $this->dom($html)->query('//*[contains(concat(" ", normalize-space(@class), " "), " admin-page ")]')->length,
-                $page
-            );
-        }
+        $this->adminGet($admin, route('admin.teachers.show', $teacher))->assertRedirect(TeacherResource::getUrl('view', ['record' => $teacher->id]));
+        $this->adminGet($admin, TeacherResource::getUrl('view', ['record' => $teacher->id]))->assertOk()->assertSee('ملف المحاضر');
         $this->adminGet($admin, route('admin.notifications.index'))->assertRedirect(NotificationCampaignResource::getUrl());
         $this->adminGet($admin, route('admin.notifications.create'))->assertRedirect(NotificationCampaignResource::getUrl('create'));
     }

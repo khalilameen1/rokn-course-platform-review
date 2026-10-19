@@ -479,6 +479,8 @@ class User extends Authenticatable implements FilamentUser, HasName
 
     /**
      * Get the courses that the user teaches.
+     *
+     * @return BelongsToMany<Course, $this>
      */
     public function teachingCourses(): BelongsToMany
     {

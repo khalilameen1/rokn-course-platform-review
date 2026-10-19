@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Auth\AdminPermissionMatrix;
 use App\Filament\Resources\TeacherResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\TeacherIndexRequest;
@@ -14,12 +13,10 @@ use App\Services\AdminTeacherAuthoringService;
 use App\Services\AdminTeacherReadService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 
 class TeacherController extends Controller
 {
     public function __construct(
-        private readonly AdminPermissionMatrix $permissions,
         private readonly AdminTeacherAuthoringService $authoring,
         private readonly AdminTeacherReadService $teachers
     ) {}
@@ -51,16 +48,9 @@ class TeacherController extends Controller
         return redirect()->route('admin.teachers.index')->with('success', 'تم إضافة المعلم بنجاح');
     }
 
-    public function show(Request $request, $id): View
+    public function show(Request $request, $id): RedirectResponse
     {
-        $canManageCredentials = $this->canManageCredentials($request);
-        $canViewEnrollmentCounts = $this->permissions->isAdministrator($request->user());
-
-        return view('admin.teachers.show', [
-            ...$this->teachers->detail((int) $id, $canManageCredentials, $canViewEnrollmentCounts),
-            'canManageCredentials' => $canManageCredentials,
-            'canViewEnrollmentCounts' => $canViewEnrollmentCounts,
-        ]);
+        return redirect(TeacherResource::getUrl('view', ['record' => $this->teachers->existingTeacherId((int) $id)]));
     }
 
     public function edit(Request $request, $id): RedirectResponse
@@ -96,12 +86,5 @@ class TeacherController extends Controller
         $teacher = $this->authoring->toggleActive((int) $id, (bool) $request->validated('expected_active'));
 
         return redirect()->back()->with('success', $teacher->active ? 'تم التفعيل بنجاح' : 'تم التعطيل بنجاح');
-    }
-
-    private function canManageCredentials(Request $request): bool
-    {
-        return $this->permissions->allowsCapability(
-            $request->user(), AdminPermissionMatrix::ACCOUNT_CREDENTIALS
-        );
     }
 }
