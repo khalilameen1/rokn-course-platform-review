@@ -2,19 +2,18 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\PathResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PathIndexRequest;
 use App\Http\Requests\Admin\PathProfileRequest;
 use App\Models\Path;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminPathAuthoringService;
-use App\Services\AdminPathReadService;
 use Illuminate\Http\Response;
 
 class PathController extends Controller
 {
     public function __construct(
-        private readonly AdminPathReadService $read,
         private readonly AdminPathAuthoringService $authoring
     ) {}
 
@@ -25,9 +24,7 @@ class PathController extends Controller
      */
     public function index(PathIndexRequest $request)
     {
-        $paths = $this->read->listing((string) $request->validated('search', ''), $request->query());
-
-        return view('admin.paths.index', compact('paths'));
+        return redirect(PathResource::getUrl('index', ['search' => $request->validated('search', '')]));
     }
 
     /**
@@ -37,7 +34,7 @@ class PathController extends Controller
      */
     public function create()
     {
-        return view('admin.paths.create', $this->read->form());
+        return redirect(PathResource::getUrl('create'));
     }
 
     /**
@@ -64,7 +61,7 @@ class PathController extends Controller
      */
     public function edit($id)
     {
-        return view('admin.paths.edit', $this->read->form((int) $id));
+        return redirect(PathResource::getUrl('edit', ['record' => $id]));
     }
 
     /**

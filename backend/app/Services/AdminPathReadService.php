@@ -19,11 +19,7 @@ final readonly class AdminPathReadService
     /** @param array<string, mixed> $queryParameters */
     public function listing(string $search, array $queryParameters): LengthAwarePaginator
     {
-        $paths = Path::query()->with('interests')->withCount([
-            'courses' => fn (Builder $courses) => $courses->whereNotIn(
-                'courses.id', CourseAuthoringRevision::query()->select('revision_course_id')
-            ),
-        ]);
+        $paths = $this->listQuery();
         if ($search !== '') {
             $paths->where(function (Builder $query) use ($search): void {
                 $query->where('title_ar', 'LIKE', "%{$search}%")
@@ -32,6 +28,31 @@ final readonly class AdminPathReadService
         }
 
         return $paths->latest()->latest('id')->paginate(10)->appends($queryParameters);
+    }
+
+    /** @return Builder<Path> */
+    public function listQuery(): Builder
+    {
+        return Path::query()->with('interests')->withCount([
+            'courses' => fn (Builder $courses) => $courses->whereNotIn(
+                'courses.id', CourseAuthoringRevision::query()->select('revision_course_id')
+            ),
+        ]);
+    }
+
+    public function interestOptions(): array
+    {
+        return Classification::query()->orderBy('name_ar')->pluck('name_ar', 'id')->all();
+    }
+
+    public function courseOptions(): array
+    {
+        return $this->courses()->orderBy('name_ar')->orderBy('id')->pluck('name_ar', 'id')->all();
+    }
+
+    public function selectedCourseIds(int $pathId): array
+    {
+        return $this->courses()->where('path_id', $pathId)->pluck('id')->all();
     }
 
     /** @return Builder<Course> */

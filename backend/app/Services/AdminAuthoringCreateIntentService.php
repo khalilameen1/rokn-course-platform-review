@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use Closure;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 final class AdminAuthoringCreateIntentService
@@ -17,6 +20,81 @@ final class AdminAuthoringCreateIntentService
     private const TABLE = 'admin_authoring_create_intents';
 
     public const CLAIM_ATTRIBUTE = 'rokn.authoring.claimed_create_intent';
+
+    private const COMMAND_ATTRIBUTE = 'rokn.authoring.create_command';
+
+    /**
+     * Livewire adapter for the SAME create-receipt ledger and lease rules.
+     * The owning aggregate calls $complete inside its transaction, exactly as
+     * classic controllers do. No synthetic HTTP request or second ledger.
+     *
+     * @template T of Model
+     *
+     * @param  class-string<T>  $resourceClass
+     * @param  array<string,mixed>  $data
+     * @param  Closure(Closure(Model):void):T  $create
+     * @return T
+     */
+    public function createResource(string $operation, string $intentId, string $resourceClass, array $data, Closure $create): Model
+    {
+        $request = request();
+        abort_unless($request->user() && Str::isUuid($intentId) && str_ends_with($operation, '.store'), 422);
+        $attributes = $request->attributes;
+        $previousCommand = $attributes->get(self::COMMAND_ATTRIBUTE);
+        $previousClaim = $attributes->get(self::CLAIM_ATTRIBUTE);
+        $attributes->set(self::COMMAND_ATTRIBUTE, [
+            'identity' => ['actor_id' => $request->user()->id, 'route_name' => $operation,
+                'parent_scope' => $this->parentScope([]), 'intent_id' => $intentId],
+            'fingerprint' => hash('sha256', json_encode($this->commandPayload($data), JSON_THROW_ON_ERROR)),
+        ]);
+        $claim = null;
+        try {
+            $claim = $this->claim($request);
+            if ($claim instanceof Response) {
+                if ($claim->getStatusCode() >= 400) {
+                    $body = json_decode((string) $claim->getContent(), true);
+                    throw ValidationException::withMessages(['authoring_request_id' => $body['message'] ?? 'تعذر حفظ العنصر الآن']);
+                }
+                $receipt = $this->resourceReceipt($request, $intentId, $operation, [], $resourceClass);
+                if ($receipt['state'] !== 'completed') {
+                    throw ValidationException::withMessages(['authoring_request_id' => 'تعذر استعادة نتيجة الحفظ أعد تحميل الصفحة']);
+                }
+
+                return $resourceClass::query()->findOrFail($receipt['resource_id']);
+            }
+            if (! is_array($claim)) {
+                throw ValidationException::withMessages(['authoring_request_id' => 'سجل الحفظ غير متاح الآن']);
+            }
+            $attributes->set(self::CLAIM_ATTRIBUTE, $claim);
+
+            return $create(function (Model $resource) use ($request, $resourceClass): void {
+                $this->completeJson($request, ['resource_id' => $resource->getKey()], 200, $resourceClass, $resource->getKey());
+            });
+        } catch (\Throwable $exception) {
+            if (is_array($claim)) {
+                $this->fail($request, $claim);
+            }
+            throw $exception;
+        } finally {
+            $attributes->set(self::COMMAND_ATTRIBUTE, $previousCommand);
+            $attributes->set(self::CLAIM_ATTRIBUTE, $previousClaim);
+        }
+    }
+
+    private function commandPayload(mixed $value): mixed
+    {
+        if ($value instanceof UploadedFile) {
+            return $this->fileFingerprint($value);
+        }
+        if (! is_array($value)) {
+            return $value;
+        }
+        if (! array_is_list($value)) {
+            ksort($value);
+        }
+
+        return array_map($this->commandPayload(...), $value);
+    }
 
     /**
      * Read a create receipt without repeating the original multipart request.
@@ -410,6 +488,9 @@ final class AdminAuthoringCreateIntentService
     /** @return array<string, mixed>|null */
     private function identity(Request $request): ?array
     {
+        if (is_array($command = $request->attributes->get(self::COMMAND_ATTRIBUTE))) {
+            return $command['identity'];
+        }
         if (strtoupper($request->method()) !== 'POST' || ! $request->user()) {
             return null;
         }
@@ -447,6 +528,9 @@ final class AdminAuthoringCreateIntentService
 
     private function fingerprint(Request $request): string
     {
+        if (is_array($command = $request->attributes->get(self::COMMAND_ATTRIBUTE))) {
+            return $command['fingerprint'];
+        }
         $payload = $this->canonicalize(
             $request->except(['_token', 'authoring_draft_receipt', 'authoring_request_id'])
         );
@@ -532,7 +616,7 @@ final class AdminAuthoringCreateIntentService
         string $code,
         int $status
     ): Response {
-        if ($request->expectsJson()) {
+        if ($request->expectsJson() || $request->attributes->get(self::COMMAND_ATTRIBUTE) !== null) {
             return response()->json([
                 'success' => false,
                 'code' => $code,

@@ -17,7 +17,6 @@ final class LegacyWorkspaces
             ['الكورسات', 'المحتوى', 'admin.courses.index'],
             ['المحاضرون', 'المحتوى', 'admin.teachers.index'],
             ['صفوف الرئيسية', 'المحتوى', 'admin.classifications.index'],
-            ['المسارات', 'المحتوى', 'admin.paths.index'],
             ['الشارات', 'المحتوى', 'admin.levels.index'],
             ['مشاريع الطلاب', 'المراجعة', 'admin.project-submissions.index'],
             ['مراجعة البورتفوليو', 'المراجعة', 'admin.portfolio-reviews.index'],

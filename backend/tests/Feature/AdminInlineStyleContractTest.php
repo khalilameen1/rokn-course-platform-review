@@ -233,7 +233,6 @@ final class AdminInlineStyleContractTest extends TestCase
             'admin.packages.edit' => route('admin.packages.edit', $package),
             'admin.classifications.edit' => route('admin.classifications.edit', $classification),
             'admin.levels.edit' => route('admin.levels.edit', $level),
-            'admin.paths.edit' => route('admin.paths.edit', $path),
             'admin.coin-earning-methods.edit' => route('admin.coin-earning-methods.edit', $method),
             'admin.coupons.edit' => route('admin.coupons.edit', $coupon),
             'admin.course-codes.show' => route('admin.course-codes.show', $code),
