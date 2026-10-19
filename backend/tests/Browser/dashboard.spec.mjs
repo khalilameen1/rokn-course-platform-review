@@ -1,6 +1,31 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('public content native tabs preserve blank translations and published preview', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/public-content?tab=privacy');
+    const arabic = page.getByRole('textbox', { name: 'سياسة الخصوصية بالعربية', exact: true });
+    await expect(arabic).toBeVisible();
+    await arabic.fill('سياسة خصوصية تجربة المتصفح');
+    await page.getByRole('textbox', { name: 'سياسة الخصوصية بالإنجليزية', exact: true }).fill('');
+    await page.getByRole('button', { name: 'حفظ النص المنشور', exact: true }).click();
+    await expect(page.getByText('تم حفظ النص المنشور', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(arabic).toHaveValue('سياسة خصوصية تجربة المتصفح');
+    await expect(page.getByRole('textbox', { name: 'سياسة الخصوصية بالإنجليزية', exact: true })).toHaveValue('');
+    expect(await (await page.request.get('/privacy-policy')).text()).toContain('سياسة خصوصية تجربة المتصفح');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('public-content-phone.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.reload();
+    await expect(arabic).toHaveValue('سياسة خصوصية تجربة المتصفح');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('public-content-desktop.png'), fullPage: true });
+    await page.getByRole('tab', { name: 'شروط الاستخدام', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: 'شروط الاستخدام بالعربية', exact: true })).toBeVisible();
+});
+
 test('staff profile native form keeps the signed-in session after changing login details', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/operations/profile');

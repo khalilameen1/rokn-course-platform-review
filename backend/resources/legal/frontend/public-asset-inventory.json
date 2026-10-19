@@ -8,11 +8,6 @@
       "classification": "deployment"
     },
     {
-      "path": "public/admin/assets/css/admin-learning-views.css",
-      "sha256": "69f0007c9cb74581411be45586738abdff9596ce5e4120aa2826aca534aea634",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/admin-reports.css",
       "sha256": "be360712db83f79e53ac782d0e6e2d679a9aa63684f69e54dec3547807758519",
       "classification": "first_party"

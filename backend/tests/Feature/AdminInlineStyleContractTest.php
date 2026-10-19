@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Auth\EditStaffProfile;
 use App\Filament\Resources\PackageResource;
 use App\Models\Classification;
 use App\Models\CoinEarningMethod;
@@ -16,9 +17,11 @@ use App\Models\Level;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\Path;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\Support\RendersAdminPages;
 use Tests\TestCase;
 
@@ -93,9 +96,9 @@ final class AdminInlineStyleContractTest extends TestCase
     public function test_account_settings_uses_the_native_profile_form(): void
     {
         $admin = $this->dashboardUser('admin');
-        $this->adminGet($admin, route('admin.admin_data'))->assertRedirect(\App\Filament\Auth\EditStaffProfile::getUrl());
-        \Filament\Facades\Filament::setCurrentPanel(\Filament\Facades\Filament::getPanel('operations'));
-        \Livewire\Livewire::test(\App\Filament\Auth\EditStaffProfile::class)->assertFormFieldExists('email')
+        $this->adminGet($admin, route('admin.admin_data'))->assertRedirect(EditStaffProfile::getUrl());
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(EditStaffProfile::class)->assertFormFieldExists('email')
             ->assertFormFieldExists('password')->assertFormFieldExists('current_password');
     }
 
@@ -123,10 +126,10 @@ final class AdminInlineStyleContractTest extends TestCase
     public function test_shared_shell_styles_load_after_page_styles(): void
     {
         $admin = $this->dashboardUser('admin');
-        $html = (string) $this->adminGet($admin, route('admin.privacy'))->assertOk()->getContent();
+        $html = (string) $this->adminGet($admin, route('admin.courses.index'))->assertOk()->getContent();
         $assets = $this->linkedLocalAssets($html);
 
-        $pageStyles = array_search('admin/assets/css/admin-learning-views.css', $assets, true);
+        $pageStyles = array_search('admin/assets/css/courses-index.css', $assets, true);
         $shellStyles = array_search('admin/assets/css/admin-shell.css', $assets, true);
         self::assertNotFalse($pageStyles);
         self::assertNotFalse($shellStyles);
@@ -139,7 +142,7 @@ final class AdminInlineStyleContractTest extends TestCase
         self::assertSame(0, $xpath->query('//header//script')->length, 'The dashboard header carries no inline behaviour.');
 
         $alert = (string) $this->withSession(['success' => 'تم الحفظ'])
-            ->get(route('admin.privacy'))->assertOk()->getContent();
+            ->get(route('admin.courses.index'))->assertOk()->getContent();
         $alertXPath = $this->dom($alert);
         self::assertSame(1, $alertXPath->query('//*[@role="alert"]//*[@data-close-alert]')->length);
         self::assertSame(0, $alertXPath->query('//*[@role="alert"]//script')->length);

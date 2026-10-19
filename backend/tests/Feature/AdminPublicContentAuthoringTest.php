@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\PublicContent;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\About;
 use App\Models\User;
@@ -29,7 +30,7 @@ final class AdminPublicContentAuthoringTest extends TestCase
         $admin = $this->admin();
         $version = app(AdminPublicContentAuthoringService::class)->editorState()['editorVersion'];
 
-        $this->actingAs($admin, 'web')->get(route('admin.about'))->assertOk();
+        $this->actingAs($admin, 'web')->get(route('admin.about'))->assertRedirect(PublicContent::getUrl(['tab' => 'about']));
         $this->patch(route('admin.abouts.update'), [
             'about_ar' => 'ركن منصة تعلم',
             'editor_version' => $version,

@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\AppSettings;
 use App\Filament\Pages\ArtworkSettings;
+use App\Filament\Pages\PublicContent;
 use App\Mail\AdminContact;
 use App\Models\CoinEarningMethod;
 use App\Models\Contact;
 use App\Models\User;
 use App\Services\PublicAppSettingsService;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use PHPUnit\Framework\Attributes\DataProvider;
+use Livewire\Livewire;
 use Tests\Support\RendersAdminPages;
 use Tests\TestCase;
 
@@ -19,33 +22,6 @@ final class AdminLearningViewsTest extends TestCase
 {
     use RefreshDatabase;
     use RendersAdminPages;
-
-    private const STYLESHEET = 'admin-learning-views.css';
-
-    #[DataProvider('learningPages')]
-    public function test_learning_pages_load_the_scoped_learning_stylesheet(string $page, string $scope): void
-    {
-        [$admin, $method, $contact] = $this->records();
-        $url = match ($page) {
-            'admin.coin-earning-methods.edit' => route($page, $method),
-            'admin.contacts.show' => route($page, $contact),
-            default => route($page),
-        };
-        $html = (string) $this->adminGet($admin, $url)->assertOk()->getContent();
-
-        $this->assertNoInlineStyleAttributes($html, $page);
-        self::assertSame(0, $this->styleBlockCount($html), $page);
-        $this->assertLinksStylesheet($html, self::STYLESHEET, $page);
-        self::assertGreaterThan(0, $this->dom($html)->query(
-            '//*[contains(concat(" ", normalize-space(@class), " "), " admin-learning ")'
-            .' and contains(concat(" ", normalize-space(@class), " "), " admin-learning--'.$scope.' ")]'
-        )->length, $page);
-        // The served stylesheet styles the scope this page renders.
-        self::assertStringContainsString(
-            '.admin-learning--'.$scope,
-            (string) file_get_contents(public_path('admin/assets/css/'.self::STYLESHEET))
-        );
-    }
 
     public function test_contact_notification_email_has_no_embedded_styles(): void
     {
@@ -61,37 +37,26 @@ final class AdminLearningViewsTest extends TestCase
         self::assertSame(0, $this->styleBlockCount($html));
     }
 
-    public function test_shared_admin_partials_are_used_by_learning_screens(): void
-    {
-        [$admin, $method] = $this->records();
-
-        foreach ([route('admin.privacy'), route('admin.policy')] as $url) {
-            $xpath = $this->dom((string) $this->adminGet($admin, $url)->assertOk()->getContent());
-            self::assertSame(1, $xpath->query('//*[@class="admin-page__header"]//h1[@class="admin-page__title"]')->length, $url);
-        }
-
-    }
-
     public function test_legal_editor_contracts_are_preserved(): void
     {
         [$admin] = $this->records();
-
         foreach (['admin.privacy' => 'privacy', 'admin.policy' => 'policy'] as $page => $field) {
-            $xpath = $this->dom((string) $this->adminGet($admin, route($page))->assertOk()->getContent());
-            $form = '//form[starts-with(@action, "'.route('admin.abouts.update').'")]';
-            self::assertSame(1, $xpath->query($form)->length, $page);
-            foreach ([$field.'_ar', $field.'_en', 'editor_version'] as $name) {
-                self::assertSame(1, $xpath->query($form.'//*[@name="'.$name.'"]')->length, $page.' '.$name);
-            }
+            $this->adminGet($admin, route($page))->assertRedirect(PublicContent::getUrl(['tab' => $field]));
         }
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $editor = Livewire::test(PublicContent::class);
+        foreach (['privacy_ar', 'privacy_en', 'policy_ar', 'policy_en'] as $field) {
+            $editor->assertFormFieldExists($field);
+        }
+        self::assertSame(64, strlen($editor->get('editorVersion')));
     }
 
     public function test_public_links_and_legal_copy_have_one_dashboard_editor(): void
     {
         [$admin] = $this->records();
-        $this->adminGet($admin, route('admin.settings'))->assertRedirect(\App\Filament\Pages\AppSettings::getUrl());
-        \Filament\Facades\Filament::setCurrentPanel(\Filament\Facades\Filament::getPanel('operations'));
-        $settings = \Livewire\Livewire::test(\App\Filament\Pages\AppSettings::class);
+        $this->adminGet($admin, route('admin.settings'))->assertRedirect(AppSettings::getUrl());
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $settings = Livewire::test(AppSettings::class);
         foreach (['facebook_url', 'instagram_url', 'tiktok_url', 'whatsapp_url', 'support_whatsapp_url'] as $field) {
             $settings->assertFormFieldExists($field);
         }
@@ -116,15 +81,6 @@ final class AdminLearningViewsTest extends TestCase
         ] as $view) {
             self::assertFileDoesNotExist(resource_path('views/admin/'.$view), $view.' is an unreferenced prototype.');
         }
-    }
-
-    /** @return array<string, array{string, string}> */
-    public static function learningPages(): array
-    {
-        return [
-            'privacy editor' => ['admin.privacy', 'legal'],
-            'policy editor' => ['admin.policy', 'legal'],
-        ];
     }
 
     /** @return array{User, CoinEarningMethod, Contact} */

@@ -24,7 +24,7 @@ final class AdminShellNavigationContractTest extends TestCase
     public function test_each_daily_task_has_one_legacy_shell_entry(): void
     {
         $admin = $this->dashboardUser('admin');
-        $html = $this->adminGet($admin, route('admin.privacy'))->assertOk()->getContent();
+        $html = $this->adminGet($admin, route('admin.courses.index'))->assertOk()->getContent();
         $dom = $this->dom($html);
         self::assertSame(1, $dom->query('//aside//a[@href="'.route('admin.settings').'"]')->length);
         self::assertSame(0, $dom->query('//header//a[@href="'.route('admin.settings').'"]')->length);

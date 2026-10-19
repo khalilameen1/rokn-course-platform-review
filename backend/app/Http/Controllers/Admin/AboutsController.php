@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Pages\PublicContent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PublicContentRequest;
 use App\Services\AdminPublicContentAuthoringService;
-use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 
 class AboutsController extends Controller
@@ -15,19 +15,19 @@ class AboutsController extends Controller
         $this->middleware('auth');
     }
 
-    public function privacy(): View
+    public function privacy(): RedirectResponse
     {
-        return view('admin.abouts.privacy', $this->content->editorState());
+        return redirect(PublicContent::getUrl(['tab' => 'privacy']));
     }
 
-    public function policy(): View
+    public function policy(): RedirectResponse
     {
-        return view('admin.abouts.policy', $this->content->editorState());
+        return redirect(PublicContent::getUrl(['tab' => 'policy']));
     }
 
-    public function about(): View
+    public function about(): RedirectResponse
     {
-        return view('admin.abouts.about', $this->content->editorState());
+        return redirect(PublicContent::getUrl(['tab' => 'about']));
     }
 
     public function update(PublicContentRequest $request): RedirectResponse

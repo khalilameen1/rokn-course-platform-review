@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\About;
 use App\Support\AdminEditorVersion;
 use App\Support\AdminSingletonLock;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -17,7 +18,7 @@ use Illuminate\Validation\ValidationException;
  */
 final readonly class AdminPublicContentAuthoringService
 {
-    private const FIELDS = ['about_ar', 'about_en', 'privacy_ar', 'privacy_en', 'policy_ar', 'policy_en'];
+    public const FIELDS = ['about_ar', 'about_en', 'privacy_ar', 'privacy_en', 'policy_ar', 'policy_en'];
 
     /** @return array{about: About, editorVersion: string} */
     public function editorState(): array
@@ -34,6 +35,10 @@ final readonly class AdminPublicContentAuthoringService
      */
     public function save(array $validated, string $editorVersion): About
     {
+        // The schema stores text in non-nullable columns. Both transports
+        // accept an intentionally empty translation, represented as null.
+        $validated = array_map(fn (?string $value): string => $value ?? '', Arr::only($validated, self::FIELDS));
+
         return DB::transaction(function () use ($validated, $editorVersion): About {
             AdminSingletonLock::acquire('abouts');
             $about = About::query()->lockForUpdate()->first();
