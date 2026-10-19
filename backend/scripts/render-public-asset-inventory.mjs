@@ -37,7 +37,7 @@ function classification(path) {
     if (approvedAppArtwork.has(path)) return { classification: 'first_party' };
     if (generated.has(path)) return { classification: 'generated' };
     if (deployment.has(path)) return { classification: 'deployment' };
-    if (['public/css/web-wallet.css', 'public/js/web-wallet.js', 'public/js/landing.js'].includes(path)) {
+    if (['public/css/operations-font.css', 'public/css/web-wallet.css', 'public/js/web-wallet.js', 'public/js/landing.js'].includes(path)) {
         return { classification: 'first_party' };
     }
     if (/^public\/(?:admin\/assets\/css\/|admin\/assets\/js\/(?:main|admin-identity-theme|request|reward-rule-form|users-index|course-studio(?:-[a-z-]+)?)\.js$|assets\/img\/badges\/|css\/landing\.css$|favicon\.ico$|images\/)/.test(path)) {

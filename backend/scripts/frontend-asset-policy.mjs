@@ -1,4 +1,7 @@
+import { filamentAssetFamily } from './filament-asset-policy.mjs';
+
 export const thirdPartyFamilies = [
+    filamentAssetFamily,
     {
         id: 'uppy-control-lock', name: 'Uppy control-lock adaptation in Rokn upload form',
         version: 'Source commit 3f1aca3d26157785030e2be20aa5d411b6a5ed66', license: 'MIT (adapted fragment)',
