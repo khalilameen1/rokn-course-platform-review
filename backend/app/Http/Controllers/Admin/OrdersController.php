@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Filament\Resources\OrderResource;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\OrderCompensationRequest;
+use App\Http\Requests\Admin\OrderFinancialReviewRequest;
 use App\Http\Requests\Admin\OrderIndexRequest;
+use App\Http\Requests\Admin\OrderSettlementRequest;
 use App\Models\DesignSetting;
 use App\Models\Order;
 use App\Services\AdminOrderSettlementService;
@@ -14,7 +17,6 @@ use App\Services\SupportCaseCompensationService;
 use App\Support\CsvCell;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -93,14 +95,11 @@ class OrdersController extends Controller
     }
 
     public function resolveFinancialReview(
-        Request $request,
+        OrderFinancialReviewRequest $request,
         Order $order,
         OrderLifecycleService $lifecycle
     ) {
-        $validated = $request->validate([
-            'resolution' => 'required|in:repaid,waived',
-            'note' => 'required|string|min:5|max:1000',
-        ]);
+        $validated = $request->validated();
         $eventKey = sprintf(
             'admin-resolution:%d:%s:%s',
             $order->id,
@@ -129,14 +128,11 @@ class OrdersController extends Controller
     }
 
     public function compensateCourse(
-        Request $request,
+        OrderCompensationRequest $request,
         Order $order,
         OrderLifecycleService $lifecycle
     ) {
-        $validated = $request->validate([
-            'amount' => ['required', 'integer', 'min:1', 'max:100000000'],
-            'note' => ['required', 'string', 'min:8', 'max:1000'],
-        ]);
+        $validated = $request->validated();
         $eventKey = sprintf(
             'admin-course-compensation:%d:%s',
             $order->id,
@@ -159,18 +155,11 @@ class OrdersController extends Controller
     }
 
     public function recordSettlement(
-        Request $request,
+        OrderSettlementRequest $request,
         Order $order,
         AdminOrderSettlementService $settlements
     ) {
-        $validated = $request->validate([
-            'gross_amount' => ['required', 'numeric', 'min:0.01', 'max:9999999999.99'],
-            'fee_amount' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
-            'net_amount' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
-            'currency' => ['required', 'string', 'size:3', 'regex:/^[A-Za-z]{3}$/'],
-            'settled_at' => ['required', 'date'],
-            'provider_reference' => ['required', 'string', 'min:3', 'max:191'],
-        ]);
+        $validated = $request->validated();
         try {
             $settlements->record($order, $validated, (int) auth()->id());
         } catch (\DomainException $exception) {

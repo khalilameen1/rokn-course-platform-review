@@ -194,7 +194,7 @@ Counts of code that still follows a second way. Each may only go down.
 | B9 | Hand-written implementations of a protocol or algorithm a proven library provides (TUS upload in the app, TOTP/Base32, OOXML text extraction) | 3 | 0 |
 | B9 | EGP arithmetic outside `App\Support\Money` (float round/compare sites) | 31 | 0 |
 | B9 | Libraries past end of life (Intervention Image 2) | 1 | 0 |
-| D2 | Dashboard controllers with inline request validation | 33 | 29 |
+| D2 | Dashboard controllers with inline request validation | 33 | 27 |
 
 Dashboard JSON endpoints (course studio, uploads) answer `public/admin/assets/js/request.js`'s
 own contract and are outside B2's learner-API scope.
