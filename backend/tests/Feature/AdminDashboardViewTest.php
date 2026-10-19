@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Filament\Resources\OrderResource;
 use App\Filament\Resources\OrderResource\Pages\ListOrders;
+use App\Filament\Resources\OrderResource\Pages\ViewOrder;
 use App\Models\Course;
 use App\Models\CourseCode;
 use App\Models\CourseModule;
@@ -72,7 +73,6 @@ final class AdminDashboardViewTest extends TestCase
             'course code details' => route('admin.course-codes.show', $code),
             'course code create' => route('admin.course-codes.create'),
             'course code edit' => route('admin.course-codes.edit', $code),
-            'order details' => route('admin.orders.show', $order),
             'courses list' => route('admin.courses.index'),
             'course details' => route('admin.courses.show', $course),
             'course create' => route('admin.courses.create'),
@@ -185,12 +185,9 @@ final class AdminDashboardViewTest extends TestCase
         Livewire::test(ListOrders::class)
             ->callTableAction('receipt', $order)->assertSee('إيصال الدفع');
 
-        $show = $this->dom((string) $this->adminGet($admin, route('admin.orders.show', $order))->assertOk()->getContent());
-        $resolve = '//form[@action="'.route('admin.orders.resolve-financial-review', $order).'"]';
-        self::assertSame(1, $show->query($resolve.'//select[@name="resolution"]')->length);
-        self::assertSame(1, $show->query($resolve.'//textarea[@name="note"]')->length);
-        self::assertGreaterThan(0, $show->query('//img[starts-with(@onclick, "showFullScreenshot(")]')->length);
-        self::assertStringContainsString('function showFullScreenshot(', (string) $show->evaluate('string(//body)'));
+        $this->adminGet($admin, route('admin.orders.show', $order))->assertRedirect(OrderResource::getUrl('view', ['record' => $order->id]));
+        Livewire::test(ViewOrder::class, ['record' => $order->id])->mountAction('resolve')
+            ->assertFormFieldExists('resolution')->assertFormFieldExists('note')->assertSee('إيصال الدفع');
     }
 
     public function test_course_create_is_a_thin_shell_that_enters_the_studio(): void

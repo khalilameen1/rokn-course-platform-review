@@ -9,7 +9,9 @@ use App\Models\Order;
 use App\Models\Package;
 use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
@@ -32,7 +34,9 @@ foreach (['', '/framework/views', '/framework/sessions', '/framework/cache/data'
 foreach ([
     // This is real HTTP, not PHPUnit: Livewire's unit-test fake disk is not
     // persistent between separate HTTP requests. Keep isolation explicit below.
-    'APP_ENV' => 'local', 'APP_DEBUG' => 'false',
+    // Schema assembly uses the test runner's mutable-schema policy. Real HTTP
+    // still runs as local so FilePond uses persistent, not fake test uploads.
+    'APP_ENV' => PHP_SAPI === 'cli' ? 'testing' : 'local', 'APP_DEBUG' => 'false',
     'APP_KEY' => 'base64:'.base64_encode(str_repeat('browser-fixture-', 2)),
     'APP_URL' => 'http://127.0.0.1:8793', 'APP_DOMAIN' => '127.0.0.1',
     'APP_CONFIG_CACHE' => $storage.'/unused-config.php',
@@ -86,56 +90,79 @@ if (($argv[1] ?? '') !== '--prepare') {
 if (! is_file($storage.'/database.sqlite')) {
     touch($storage.'/database.sqlite');
 }
-$app = require $root.'/bootstrap/app.php';
-$app->make(Kernel::class)->bootstrap();
-Artisan::call('migrate', ['--force' => true]);
-foreach (['admin', 'moderator', 'client'] as $role) {
-    $user = User::query()->firstOrNew(['email' => $role.'@dashboard.example.test']);
-    $user->forceFill([
-        'name_ar' => 'حساب المتصفح '.$role, 'name' => 'Browser '.$role,
-        'role' => $role, 'active' => true,
-        'password' => Hash::make('Local-browser-fixture-2026'),
-        'admin_totp_secret' => 'JBSWY3DPEHPK3PXP', 'admin_totp_confirmed_at' => now(),
-        'admin_totp_last_used_step' => null,
+try {
+    $app = require $root.'/bootstrap/app.php';
+    $app->make(Kernel::class)->bootstrap();
+    // Every run owns a fresh disposable database. Never reset a financial receipt
+    // through a model update: live settlement facts deliberately remain write-once.
+    $connection = DB::connection();
+    if ($connection->getDriverName() !== 'sqlite'
+        || realpath($connection->getDatabaseName()) !== realpath($storage.'/database.sqlite')) {
+        throw new RuntimeException('Dashboard browser preparation requires its own isolated SQLite database.');
+    }
+    Model::clearBootedModels();
+    Artisan::call('migrate:fresh', ['--force' => true]);
+    Model::clearBootedModels();
+    foreach (['admin', 'moderator', 'client'] as $role) {
+        $user = User::query()->firstOrNew(['email' => $role.'@dashboard.example.test']);
+        $user->forceFill([
+            'name_ar' => 'حساب المتصفح '.$role, 'name' => 'Browser '.$role,
+            'role' => $role, 'active' => true,
+            'password' => Hash::make('Local-browser-fixture-2026'),
+            'admin_totp_secret' => 'JBSWY3DPEHPK3PXP', 'admin_totp_confirmed_at' => now(),
+            'admin_totp_last_used_step' => null,
+        ])->save();
+    }
+    $student = User::query()->where('email', 'client@dashboard.example.test')->firstOrFail();
+    FeedbackReport::query()->firstOrCreate(['message' => 'رسالة دعم المتصفح'], [
+        'public_id' => (string) Str::ulid(), 'user_id' => $student->id, 'category' => 'playback',
+        'status' => 'new', 'priority' => 'high', 'version' => 1, 'app_version' => '1.0.68',
+        'first_response_due_at' => now()->addDay(),
+    ]);
+    $deviceSession = ApiToken::query()->firstOrNew(['session_id' => 'f6a60374-3c52-4354-8e66-381e6333ceac']);
+    $deviceSession->forceFill([
+        'user_id' => $student->id, 'token' => hash('sha256', 'disposable-dashboard-session-fixture'),
+        'device_id' => 'c757c164-c739-43df-9585-b5be35dd6999', 'platform' => 'android', 'device_class' => 'phone',
+        'app_version' => '1.0.68', 'app_build' => '68', 'auth_provider' => 'google',
+        'issued_at' => now(), 'last_used_at' => now(), 'expired_at' => now()->addDay(), 'revoked_at' => null,
     ])->save();
+    AdminAuditLog::query()->firstOrCreate(['route_name' => 'admin.browser.audit'], [
+        'request_id' => 'be70a508-12ea-4cde-bbbf-b394f429019a',
+        'actor_id' => User::query()->where('email', 'admin@dashboard.example.test')->value('id'),
+        'actor_role' => 'admin', 'http_method' => 'PATCH', 'path' => 'dashboard/browser-audit',
+        'route_parameters' => ['user' => $student->id], 'request_fields' => ['active'],
+        'response_status' => 302, 'occurred_at' => now(),
+        'changes' => [['subject' => 'User', 'id' => (string) $student->id, 'event' => 'updated', 'old' => ['active' => true], 'attributes' => ['active' => false]]],
+    ]);
+    foreach ([false, true] as $deletion) {
+        $message = Contact::query()->firstOrNew(['email' => $deletion ? 'deletion@dashboard.example.test' : 'contact@dashboard.example.test']);
+        $message->forceFill([
+            'name' => $deletion ? 'طلب حذف متصفح' : 'رسالة متصفح',
+            'phone' => '201055550003', 'message' => $deletion ? '[ACCOUNT_DELETION_REQUEST] أريد حذف حسابي' : 'أريد الاستفسار عن الكورسات',
+            'read' => false, 'request_type' => $deletion ? Contact::TYPE_ACCOUNT_DELETION : null,
+            'resolution_status' => $deletion ? Contact::RESOLUTION_PENDING : null,
+            'resolved_at' => null, 'resolved_by' => null, 'resolved_user_id' => null, 'resolution_metadata' => null,
+        ])->save();
+    }
+    $package = Package::query()->firstOrCreate(['name_en' => 'Browser fixture coins'], ['name_ar' => 'حزمة المتصفح', 'price' => '11.11', 'coins' => 900]);
+    Order::query()->firstOrCreate(['order_ref' => 'BROWSER-PAID-900'], [
+        'user_id' => $student->id, 'package_id' => $package->id, 'package_coins' => 900,
+        'payment_method' => Order::PAYMENT_METHOD_GOOGLE_PLAY, 'status' => Order::STATUS_APPROVED,
+        'financial_status' => Order::FINANCIAL_SETTLED, 'approved_at' => now(),
+        'amount' => '11.11', 'final_amount' => '11.11', 'gateway_gross_amount' => '11.11',
+        'gateway_currency' => 'EGP', 'gateway_settlement_status' => 'test_purchase', 'total_coins' => 900,
+    ]);
+    Order::query()->updateOrCreate(['order_ref' => 'BROWSER-STATEMENT'], [
+        'user_id' => $student->id, 'package_id' => $package->id, 'package_coins' => 900,
+        'payment_method' => Order::PAYMENT_METHOD_KASHIER, 'status' => Order::STATUS_APPROVED,
+        'financial_status' => Order::FINANCIAL_SETTLED, 'approved_at' => now(),
+        'amount' => '100.00', 'final_amount' => '100.00', 'gateway_gross_amount' => '100.00',
+        'gateway_currency' => 'EGP', 'gateway_settlement_status' => 'captured', 'total_coins' => 900,
+        'gateway_fee_amount' => null, 'gateway_net_amount' => null, 'gateway_settled_at' => null,
+    ]);
+    echo "Disposable dashboard browser database prepared\n";
+} catch (Throwable $exception) {
+    report($exception);
+    fwrite(STDERR, 'Dashboard browser preparation failed: '.$exception::class.PHP_EOL);
+    exit(1);
 }
-$student = User::query()->where('email', 'client@dashboard.example.test')->firstOrFail();
-FeedbackReport::query()->firstOrCreate(['message' => 'رسالة دعم المتصفح'], [
-    'public_id' => (string) Str::ulid(), 'user_id' => $student->id, 'category' => 'playback',
-    'status' => 'new', 'priority' => 'high', 'version' => 1, 'app_version' => '1.0.68',
-    'first_response_due_at' => now()->addDay(),
-]);
-$deviceSession = ApiToken::query()->firstOrNew(['session_id' => 'f6a60374-3c52-4354-8e66-381e6333ceac']);
-$deviceSession->forceFill([
-    'user_id' => $student->id, 'token' => hash('sha256', 'disposable-dashboard-session-fixture'),
-    'device_id' => 'c757c164-c739-43df-9585-b5be35dd6999', 'platform' => 'android', 'device_class' => 'phone',
-    'app_version' => '1.0.68', 'app_build' => '68', 'auth_provider' => 'google',
-    'issued_at' => now(), 'last_used_at' => now(), 'expired_at' => now()->addDay(), 'revoked_at' => null,
-])->save();
-AdminAuditLog::query()->firstOrCreate(['route_name' => 'admin.browser.audit'], [
-    'request_id' => 'be70a508-12ea-4cde-bbbf-b394f429019a',
-    'actor_id' => User::query()->where('email', 'admin@dashboard.example.test')->value('id'),
-    'actor_role' => 'admin', 'http_method' => 'PATCH', 'path' => 'dashboard/browser-audit',
-    'route_parameters' => ['user' => $student->id], 'request_fields' => ['active'],
-    'response_status' => 302, 'occurred_at' => now(),
-    'changes' => [['subject' => 'User', 'id' => (string) $student->id, 'event' => 'updated', 'old' => ['active' => true], 'attributes' => ['active' => false]]],
-]);
-foreach ([false, true] as $deletion) {
-    $message = Contact::query()->firstOrNew(['email' => $deletion ? 'deletion@dashboard.example.test' : 'contact@dashboard.example.test']);
-    $message->forceFill([
-        'name' => $deletion ? 'طلب حذف متصفح' : 'رسالة متصفح',
-        'phone' => '201055550003', 'message' => $deletion ? '[ACCOUNT_DELETION_REQUEST] أريد حذف حسابي' : 'أريد الاستفسار عن الكورسات',
-        'read' => false, 'request_type' => $deletion ? Contact::TYPE_ACCOUNT_DELETION : null,
-        'resolution_status' => $deletion ? Contact::RESOLUTION_PENDING : null,
-        'resolved_at' => null, 'resolved_by' => null, 'resolved_user_id' => null, 'resolution_metadata' => null,
-    ])->save();
-}
-$package = Package::query()->firstOrCreate(['name_en' => 'Browser fixture coins'], ['name_ar' => 'حزمة المتصفح', 'price' => '11.11', 'coins' => 900]);
-Order::query()->firstOrCreate(['order_ref' => 'BROWSER-PAID-900'], [
-    'user_id' => $student->id, 'package_id' => $package->id, 'package_coins' => 900,
-    'payment_method' => Order::PAYMENT_METHOD_GOOGLE_PLAY, 'status' => Order::STATUS_APPROVED,
-    'financial_status' => Order::FINANCIAL_SETTLED, 'approved_at' => now(),
-    'amount' => '11.11', 'final_amount' => '11.11', 'gateway_gross_amount' => '11.11',
-    'gateway_currency' => 'EGP', 'gateway_settlement_status' => 'test_purchase', 'total_coins' => 900,
-]);
-echo "Disposable dashboard browser database prepared\n";

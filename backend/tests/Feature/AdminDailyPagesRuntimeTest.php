@@ -158,7 +158,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         foreach ([
             StudentResource::getUrl('view', ['record' => $student->id]),
             StudentResource::getUrl('edit', ['record' => $student->id]),
-            route('admin.orders.show', $order),
+            OrderResource::getUrl('view', ['record' => $order->id]),
             route('filament.operations.resources.orders.index'),
             route('filament.operations.resources.orders.report'),
             route('admin.dashboard'),

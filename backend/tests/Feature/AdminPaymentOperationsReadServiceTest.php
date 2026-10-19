@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\OrderResource;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Order;
 use App\Models\Package;
@@ -71,7 +72,7 @@ final class AdminPaymentOperationsReadServiceTest extends TestCase
         ]);
         $this->withoutMiddleware(RequireAdminMfa::class);
         $this->actingAs($admin, 'web')
-            ->get(route('admin.orders.show', $refunded))
+            ->get(OrderResource::getUrl('view', ['record' => $refunded->id]))
             ->assertOk()
             ->assertSee('مسترد')
             ->assertDontSee('توثيق التسوية');

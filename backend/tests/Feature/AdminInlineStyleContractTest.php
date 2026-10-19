@@ -41,7 +41,6 @@ final class AdminInlineStyleContractTest extends TestCase
         'admin.course-codes.show',
         'admin.courses.index',
         'admin.courses.show',
-        'admin.orders.show',
     ];
 
     private const RETIRED_PALETTE = '/#(?:667eea|764ba2|092783)\b/i';
@@ -190,7 +189,6 @@ final class AdminInlineStyleContractTest extends TestCase
         // their own browser/axe gates; their growing number must not force us
         // to retain obsolete views just to satisfy a historical page count.
         self::assertArrayHasKey('admin.courses.show', $pages);
-        self::assertArrayHasKey('admin.orders.show', $pages);
         self::assertArrayHasKey('admin.dashboard (moderator)', $pages);
 
         return $pages;
@@ -238,7 +236,6 @@ final class AdminInlineStyleContractTest extends TestCase
             'admin.teachers.show' => route('admin.teachers.show', $teacher),
             'admin.moderators.edit' => route('admin.moderators.edit', $moderator),
             'admin.student-progress.show' => route('admin.student-progress.show', $student),
-            'admin.orders.show' => route('admin.orders.show', $order),
             'admin.course-codes.show' => route('admin.course-codes.show', $code),
             'admin.course-codes.edit' => route('admin.course-codes.edit', $code),
         ];

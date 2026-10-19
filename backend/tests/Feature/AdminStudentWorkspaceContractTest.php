@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\OrderResource;
 use App\Filament\Resources\StudentResource;
 use App\Filament\Resources\StudentResource\Pages\ListStudents;
 use App\Filament\Resources\StudentResource\Pages\ViewStudent;
@@ -99,7 +100,7 @@ final class AdminStudentWorkspaceContractTest extends TestCase
         ])->assertSee(route('admin.project-submissions.show', $submission), false);
         Livewire::test(OrdersRelationManager::class, [
             'ownerRecord' => $student, 'pageClass' => ViewStudent::class,
-        ])->assertSee(route('admin.orders.show', $order), false);
+        ])->assertSee(OrderResource::getUrl('view', ['record' => $order->id]), false);
         self::assertFalse(Route::has('admin.bills.show'));
     }
 

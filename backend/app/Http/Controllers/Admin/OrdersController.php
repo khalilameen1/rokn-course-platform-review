@@ -8,28 +8,16 @@ use App\Http\Requests\Admin\OrderCompensationRequest;
 use App\Http\Requests\Admin\OrderFinancialReviewRequest;
 use App\Http\Requests\Admin\OrderIndexRequest;
 use App\Http\Requests\Admin\OrderSettlementRequest;
-use App\Models\DesignSetting;
 use App\Models\Order;
 use App\Services\AdminOrderSettlementService;
 use App\Services\AdminPaymentOperationsReadService;
 use App\Services\OrderLifecycleService;
-use App\Services\SupportCaseCompensationService;
 use App\Support\CsvCell;
-use Illuminate\Contracts\View\Factory;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OrdersController extends Controller
 {
-    /**
-     * Get design settings for the views
-     */
-    private function getDesignSettings()
-    {
-        return DesignSetting::getDefaultSettings();
-    }
-
     /** Preserve old bookmarks; the native resource owns the only list UI. */
     public function index(OrderIndexRequest $request): RedirectResponse
     {
@@ -78,20 +66,10 @@ class OrdersController extends Controller
         }, 'orders-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    /**
-     * Display the specified order.
-     *
-     * @return Factory|View
-     */
-    public function show(
-        Order $order,
-        AdminPaymentOperationsReadService $payments,
-        SupportCaseCompensationService $compensation
-    ) {
-        return view('admin.orders.show', $payments->show($order) + [
-            'designSettings' => $this->getDesignSettings(),
-            'compensableCoins' => $compensation->remainingCompensableCoins($order),
-        ]);
+    /** Keep saved detail links, not a second financial interface. */
+    public function show(Order $order): RedirectResponse
+    {
+        return redirect()->to(OrderResource::getUrl('view', ['record' => $order->id]));
     }
 
     public function resolveFinancialReview(

@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Filament\Resources\AuditLogResource;
 use App\Filament\Resources\ContactResource;
 use App\Filament\Resources\CouponResource;
+use App\Filament\Resources\OrderResource;
 use App\Filament\Resources\StudentResource;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Contact;
@@ -143,7 +144,7 @@ final class AdminDashboardListsAndExportsTest extends TestCase
         $this->actingAs($admin);
 
         foreach ([
-            'order' => [route('admin.orders.show', $order), '201055550001'],
+            'order' => [OrderResource::getUrl('view', ['record' => $order->id]), '201055550001'],
             'progress profile' => [route('admin.student-progress.show', $student), '201055550001'],
             'progress list' => [route('admin.student-progress.index'), '201055550001'],
             'contacts' => [ContactResource::getUrl(), '201055550003'],

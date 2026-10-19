@@ -592,6 +592,38 @@ test('payment report keeps currency separate and applies its native filters on m
     expect(errors).toEqual([]);
 });
 
+test('order detail records a statement in the native financial workspace on a phone', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/orders');
+    await page.locator('.fi-ta-search-field input').fill('BROWSER-STATEMENT');
+    await expect(page.getByRole('link', { name: 'تصدير CSV', exact: true })).toHaveAttribute('href', /search=BROWSER-STATEMENT/);
+    const row = page.getByRole('row').filter({ hasText: '100.00 EGP' });
+    await row.getByRole('button').click();
+    await page.getByRole('menuitem', { name: 'تفاصيل الطلب', exact: true }).click();
+    await expect(page).toHaveURL(/\/operations\/orders\/\d+$/);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('الطلب #');
+    await page.getByRole('button', { name: 'توثيق التسوية', exact: true }).click();
+    const modal = page.getByRole('alertdialog', { name: 'توثيق التسوية', exact: true });
+    await modal.getByRole('spinbutton', { name: /^كل الرسوم/ }).fill('3.00');
+    await modal.getByRole('spinbutton', { name: /^الصافي/ }).fill('97.00');
+    await modal.getByRole('textbox', { name: /^مرجع كشف المزود/ }).fill('browser-statement');
+    await page.screenshot({ path: testInfo.outputPath('order-settlement-phone.png'), fullPage: true, animations: 'disabled' });
+    await modal.getByRole('button', { name: 'توثيق التسوية', exact: true }).click();
+    await expect(page.locator('.fi-modal-window').filter({ has: page.getByRole('textbox', { name: /^مرجع كشف المزود/ }) })).not.toBeVisible();
+    await expect(page.getByText('97.00 EGP', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'توثيق التسوية', exact: true })).not.toBeVisible();
+    await page.reload();
+    await expect(page.getByText('97.00 EGP', { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('order-details-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.screenshot({ path: testInfo.outputPath('order-details-desktop.png'), fullPage: true, animations: 'disabled' });
+    expect(errors).toEqual([]);
+});
+
 test('financial table shows actual states and keeps search scope in CSV on a phone', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

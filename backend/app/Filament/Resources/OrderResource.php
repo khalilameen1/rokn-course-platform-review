@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources;
 
+use App\Auth\AdminPermissionMatrix;
+use App\Filament\Resources\OrderResource\OrderDetailsSchema;
 use App\Models\Order;
 use App\Services\AdminPaymentOperationsReadService;
 use App\Support\BusinessClock;
@@ -13,6 +15,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
@@ -38,6 +41,16 @@ final class OrderResource extends ReadResource
     protected static ?string $recordTitleAttribute = 'order_ref';
 
     protected static string $legacyListRoute = 'admin.orders.index';
+
+    public static function allows(string $action): bool
+    {
+        return app(AdminPermissionMatrix::class)->allows(auth('web')->user(), 'admin.orders.'.$action, 'POST');
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return OrderDetailsSchema::configure($schema);
+    }
 
     public static function getEloquentQuery(): Builder
     {
@@ -79,7 +92,7 @@ final class OrderResource extends ReadResource
                 Action::make('receipt')->label('إيصال الدفع')->visible(fn (Order $record): bool => filled($record->payment_screenshot_url))
                     ->modalContent(fn (Order $record) => view('filament.orders.receipt', ['url' => $record->payment_screenshot_url]))
                     ->modalSubmitAction(false)->modalCancelActionLabel('إغلاق'),
-                Action::make('details')->label('تفاصيل الطلب')->url(fn (Order $record): string => route('admin.orders.show', $record)),
+                Action::make('details')->label('تفاصيل الطلب')->url(fn (Order $record): string => self::getUrl('view', ['record' => $record->id])),
             ])])->headerActions([
                 Action::make('export')->label('تصدير CSV')->url(fn (OrderResource\Pages\ListOrders $livewire): string => $livewire->exportUrl()),
                 Action::make('reports')->label('تقارير التحصيل')->url(fn (OrderResource\Pages\ListOrders $livewire): string => $livewire->reportsUrl()),
@@ -172,11 +185,12 @@ final class OrderResource extends ReadResource
 
     public static function getGlobalSearchResultUrl(Model $record): string
     {
-        return route('admin.orders.show', $record);
+        return self::getUrl('view', ['record' => $record->getKey()]);
     }
 
     public static function getPages(): array
     {
-        return ['index' => OrderResource\Pages\ListOrders::route('/'), 'report' => OrderResource\Pages\PaymentReport::route('/report')];
+        return ['index' => OrderResource\Pages\ListOrders::route('/'), 'report' => OrderResource\Pages\PaymentReport::route('/report'),
+            'view' => OrderResource\Pages\ViewOrder::route('/{record}')];
     }
 }
