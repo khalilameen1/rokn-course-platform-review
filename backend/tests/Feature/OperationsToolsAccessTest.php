@@ -47,6 +47,20 @@ final class OperationsToolsAccessTest extends TestCase
         self::assertLessThan(config('queue.connections.redis.retry_after'), $supervisor['timeout']);
     }
 
+    public function test_status_distinguishes_recording_configuration_from_running_worker_evidence(): void
+    {
+        $owner = User::query()->forceCreate(['role' => 'admin', 'active' => true]);
+        $this->withoutMiddleware(RequireAdminMfa::class)->actingAs($owner, 'web');
+        foreach ([false, true] as $enabled) {
+            config(['operations.horizon_enabled' => $enabled, 'pulse.enabled' => $enabled]);
+            $this->get('/operations/system-status')->assertOk()
+                ->assertSee($enabled ? 'حفظ مؤشرات الطوابير مفعّل' : 'حفظ مؤشرات الطوابير غير مفعّل')
+                ->assertSee('حالة العامل الفعلية والمهام الجارية والفاشلة تظهر داخل Horizon')
+                ->assertSee($enabled ? 'التسجيل مفعّل' : 'التسجيل غير مفعّل')
+                ->assertSee(url('/operations/queues'), false)->assertSee(url('/operations/health'), false);
+        }
+    }
+
     public function test_operations_reader_can_open_pulse_but_cannot_manage_finance(): void
     {
         $owner = new User;

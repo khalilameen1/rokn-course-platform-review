@@ -7,7 +7,12 @@
         </x-slot>
         <x-filament::button tag="a" :href="url('/operations/health')">فتح Laravel Pulse</x-filament::button>
     </x-filament::section>
-    <x-filament::section heading="الطوابير والمهام" description="المهام الجارية والفاشلة ووقت الانتظار">
+    <x-filament::section heading="الطوابير والمهام" description="حالة العامل الفعلية والمهام الجارية والفاشلة تظهر داخل Horizon">
+        <x-slot name="afterHeader">
+            <x-filament::badge :color="config('operations.horizon_enabled') ? 'success' : 'gray'">
+                {{ config('operations.horizon_enabled') ? 'حفظ مؤشرات الطوابير مفعّل' : 'حفظ مؤشرات الطوابير غير مفعّل' }}
+            </x-filament::badge>
+        </x-slot>
         <x-filament::button tag="a" :href="url('/operations/queues')">فتح Laravel Horizon</x-filament::button>
         <x-filament::button tag="a" color="gray" :href="route('admin.product-operations.index')">حالة المنتج ومفاتيح الإيقاف</x-filament::button>
     </x-filament::section>
