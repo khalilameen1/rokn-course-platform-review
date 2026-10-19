@@ -1,6 +1,45 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('contact messages and account requests use explicit native workflows on a phone', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/contacts');
+    await page.locator('.fi-ta-search-field input').fill('contact@dashboard.example.test');
+    await page.getByRole('row').filter({ hasText: 'رسالة متصفح' }).getByRole('link', { name: 'عرض', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'رسالة تواصل', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'تحديد كمقروءة', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'تحديد كمقروءة', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'تحديد كمقروءة', exact: true })).not.toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('contact-message-phone.png'), fullPage: true });
+    await page.goto('/operations/contacts');
+    await page.locator('.fi-ta-search-field input').fill('deletion@dashboard.example.test');
+    await page.getByRole('row').filter({ hasText: 'طلب حذف متصفح' }).getByRole('link', { name: 'عرض', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'طلب حذف حساب', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'بدء المعالجة', exact: true }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'تأكيد', exact: true }).click();
+    await page.getByRole('button', { name: 'إغلاق الطلب', exact: true }).click();
+    await page.getByLabel(/نتيجة المعالجة/).selectOption('no_account_found');
+    await page.getByLabel(/ملاحظة داخلية/).fill('لا يوجد حساب مطابق بعد المراجعة');
+    await page.getByRole('checkbox', { name: 'راجعت الطلب واخترت النتيجة الصحيحة', exact: true }).check();
+    await page.getByRole('button', { name: 'حفظ النتيجة وإغلاق الطلب', exact: true }).click();
+    await expect(page.getByText('لا يوجد حساب مطابق بعد التحقق', { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('contact-request-phone.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/operations/contacts');
+    await page.locator('.fi-ta-search-field input').fill('');
+    await expect(page.getByRole('row').filter({ hasText: 'طلب حذف متصفح' }).getByText('مغلق', { exact: true })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'رسائل التواصل', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await page.screenshot({ path: testInfo.outputPath('contact-list-desktop.png'), fullPage: true });
+    expect(errors).toEqual([]);
+});
+
 test('operating invoices use native forms with exact invoice currency and filtered totals', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

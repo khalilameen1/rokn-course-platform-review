@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use App\Models\Contact;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\User;
@@ -95,6 +96,16 @@ foreach (['admin', 'moderator', 'client'] as $role) {
     ])->save();
 }
 $student = User::query()->where('email', 'client@dashboard.example.test')->firstOrFail();
+foreach ([false, true] as $deletion) {
+    $message = Contact::query()->firstOrNew(['email' => $deletion ? 'deletion@dashboard.example.test' : 'contact@dashboard.example.test']);
+    $message->forceFill([
+        'name' => $deletion ? 'طلب حذف متصفح' : 'رسالة متصفح',
+        'phone' => '201055550003', 'message' => $deletion ? '[ACCOUNT_DELETION_REQUEST] أريد حذف حسابي' : 'أريد الاستفسار عن الكورسات',
+        'read' => false, 'request_type' => $deletion ? Contact::TYPE_ACCOUNT_DELETION : null,
+        'resolution_status' => $deletion ? Contact::RESOLUTION_PENDING : null,
+        'resolved_at' => null, 'resolved_by' => null, 'resolved_user_id' => null, 'resolution_metadata' => null,
+    ])->save();
+}
 $package = Package::query()->firstOrCreate(['name_en' => 'Browser fixture coins'], ['name_ar' => 'حزمة المتصفح', 'price' => '11.11', 'coins' => 900]);
 Order::query()->firstOrCreate(['order_ref' => 'BROWSER-PAID-900'], [
     'user_id' => $student->id, 'package_id' => $package->id, 'package_coins' => 900,

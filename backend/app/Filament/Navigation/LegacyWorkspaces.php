@@ -28,7 +28,6 @@ final class LegacyWorkspaces
             ['جلسات الدخول', 'التشغيل', 'admin.user-sessions.index'],
             ['الإعدادات', 'الإدارة', 'admin.settings'],
             ['فريق العمل', 'الإدارة', 'admin.moderators.index'],
-            ['رسائل التواصل', 'الإدارة', 'admin.contacts.index'],
             ['بيانات حسابي', 'الإدارة', 'admin.admin_data'],
         ];
 

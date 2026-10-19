@@ -115,7 +115,6 @@ final class AdminAlertFeedbackTest extends TestCase
             'notification templates' => ['admin.admin_notifications.index'],
             'support inbox' => ['admin.feedback.index'],
             'support case' => ['admin.feedback.show'],
-            'contact message' => ['admin.contacts.show'],
             'payment reconciliation' => ['admin.payment-reconciliation-findings.index'],
             'notification create' => ['admin.notifications.create'],
             'students' => ['admin.users.index'],

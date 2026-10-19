@@ -4,47 +4,29 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\ContactResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ContactAccountDeletionRequest;
 use App\Http\Requests\Admin\ContactCloseRequest;
 use App\Http\Requests\Admin\EditorVersionRequest;
 use App\Models\Contact;
 use App\Services\AdminContactWorkflowService;
-use App\Services\ContactAccountLookupService;
-use App\Support\ContactEditorVersion;
 use Illuminate\Http\RedirectResponse;
 
 class ContactsController extends Controller
 {
     public function __construct(
-        private readonly AdminContactWorkflowService $workflow,
-        private readonly ContactAccountLookupService $accountsByEmail
+        private readonly AdminContactWorkflowService $workflow
     ) {}
 
     public function index()
     {
-        $contacts = Contact::query()
-            ->orderBy('read')
-            ->latest()
-            ->latest('id')
-            ->paginate(30)
-            ->withQueryString();
-        $editorVersions = $contacts->getCollection()->mapWithKeys(
-            fn (Contact $contact): array => [$contact->id => ContactEditorVersion::for($contact)]
-        );
-
-        return view('admin.contacts.index', compact('contacts', 'editorVersions'));
+        return redirect(ContactResource::getUrl());
     }
 
     public function show(Contact $contact)
     {
-        $contact->load(['resolver', 'resolvedUser']);
-        $deletionUser = $contact->isAccountDeletionRequest() && ! $contact->isResolved()
-            ? $this->accountsByEmail->forEmail($contact->email)
-            : null;
-        $editorVersion = ContactEditorVersion::for($contact);
-
-        return view('admin.contacts.show', compact('contact', 'deletionUser', 'editorVersion'));
+        return redirect(ContactResource::getUrl('view', ['record' => $contact->id]));
     }
 
     public function markRead(EditorVersionRequest $request, Contact $contact): RedirectResponse

@@ -9,7 +9,6 @@ use App\Models\CoinEarningMethod;
 use App\Models\Contact;
 use App\Models\User;
 use App\Services\PublicAppSettingsService;
-use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\RendersAdminPages;
@@ -109,42 +108,6 @@ final class AdminLearningViewsTest extends TestCase
         self::assertGreaterThan(0, $edit->query('//a[@href="'.route('admin.coin-earning-methods.index').'"]')->length);
     }
 
-    public function test_contact_routes_workflow_fields_and_delete_guard_are_preserved(): void
-    {
-        [$admin, , $contact] = $this->records();
-        $student = $this->dashboardUser('client', 'deleting-learner@rokn.test');
-        $deletion = Contact::query()->create([
-            'name' => 'Deleting learner', 'email' => 'deleting-learner@rokn.test', 'phone' => '-',
-            'message' => '[ACCOUNT_DELETION_REQUEST] احذف حسابي', 'read' => false,
-        ]);
-
-        $index = $this->dom((string) $this->adminGet($admin, route('admin.contacts.index'))->assertOk()->getContent());
-        foreach ([$contact, $deletion] as $row) {
-            // "View details" marks the message read on its way to the details page.
-            self::assertSame(1, $index->query('//form[@action="'.route('admin.contacts.read', $row->id).'"]//input[@name="editor_version"]')->length);
-        }
-        // Account-deletion requests are closed through the workflow, never deleted from the list.
-        self::assertSame(1, $this->deleteForms($index, $contact));
-        self::assertSame(0, $this->deleteForms($index, $deletion));
-
-        $message = $this->dom((string) $this->adminGet($admin, route('admin.contacts.show', $contact))->assertOk()->getContent());
-        $destroy = '//form[@action="'.route('admin.contacts.destroy', $contact).'"]';
-        self::assertSame('DELETE', $message->evaluate('string('.$destroy.'//input[@name="_method"]/@value)'));
-        self::assertStringStartsWith('return confirm(', $message->evaluate('string('.$destroy.'/@onsubmit)'));
-        self::assertGreaterThan(0, $message->query('//a[@href="'.route('admin.contacts.index').'"]')->length);
-
-        $request = $this->dom((string) $this->adminGet($admin, route('admin.contacts.show', $deletion))->assertOk()->getContent());
-        $close = '//form[@action="'.route('admin.contacts.close-deletion-request', $deletion).'"]';
-        foreach (['outcome', 'resolution_note', 'confirm_close'] as $field) {
-            self::assertSame(1, $request->query($close.'//*[@name="'.$field.'"]')->length, $field);
-        }
-        foreach (['admin.contacts.read', 'admin.contacts.processing'] as $action) {
-            self::assertGreaterThan(0, $request->query('//form[@action="'.route($action, $deletion).'"]')->length, $action);
-        }
-        self::assertGreaterThan(0, $request->query('//a[@href="'.route('admin.users.show', $student).'"]')->length);
-        self::assertSame(0, $request->query('//form[@action="'.route('admin.contacts.destroy', $deletion).'"]')->length);
-    }
-
     public function test_legal_editor_contracts_are_preserved(): void
     {
         [$admin] = $this->records();
@@ -196,8 +159,6 @@ final class AdminLearningViewsTest extends TestCase
             'coin method list' => ['admin.coin-earning-methods.index', 'coins'],
             'coin method create' => ['admin.coin-earning-methods.create', 'coins'],
             'coin method edit' => ['admin.coin-earning-methods.edit', 'coins'],
-            'contact list' => ['admin.contacts.index', 'contacts'],
-            'contact details' => ['admin.contacts.show', 'contacts'],
             'privacy editor' => ['admin.privacy', 'legal'],
             'policy editor' => ['admin.policy', 'legal'],
         ];
@@ -218,12 +179,5 @@ final class AdminLearningViewsTest extends TestCase
         ]);
 
         return [$admin, $method, $contact];
-    }
-
-    private function deleteForms(DOMXPath $index, Contact $contact): int
-    {
-        return $index->query(
-            '//form[@action="'.route('admin.contacts.destroy', $contact).'"]//input[@name="_method" and @value="DELETE"]'
-        )->length;
     }
 }

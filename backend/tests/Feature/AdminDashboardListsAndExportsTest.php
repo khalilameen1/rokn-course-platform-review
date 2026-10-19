@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\ContactResource;
 use App\Filament\Resources\CouponResource;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Contact;
@@ -143,14 +144,14 @@ final class AdminDashboardListsAndExportsTest extends TestCase
             'order' => [route('admin.orders.show', $order), '201055550001'],
             'progress profile' => [route('admin.student-progress.show', $student), '201055550001'],
             'progress list' => [route('admin.student-progress.index'), '201055550001'],
-            'contacts' => [route('admin.contacts.index'), '201055550003'],
-            'contact' => [route('admin.contacts.show', $contact), '201055550003'],
+            'contacts' => [ContactResource::getUrl(), '201055550003'],
+            'contact' => [ContactResource::getUrl('view', ['record' => $contact->id]), '201055550003'],
             'student profile' => [route('admin.users.show', $student), '201055550001'],
         ] as $page => [$url, $phone]) {
             $xpath = $this->page($url);
             self::assertGreaterThan(
                 0,
-                $xpath->query('//bdi[@dir="ltr" and normalize-space()="'.$phone.'"]')->length,
+                $xpath->query('//*[normalize-space()="'.$phone.'" and ancestor-or-self::*[@dir="ltr"]]')->length,
                 $page
             );
         }
