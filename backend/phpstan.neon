@@ -44,6 +44,7 @@ parameters:
                 - app/Http/Controllers/Admin/UsersController.php
                 - app/Http/Controllers/Admin/PaymentReconciliationFindingController.php
                 - app/Http/Controllers/Admin/PortfolioPreviewController.php
+                - app/Http/Controllers/Admin/ProjectSubmissionController.php
         # Larastan resolves the DB facade to Illuminate\Database\Connection.
         -
             method:
@@ -82,6 +83,7 @@ parameters:
                 - app/Http/Controllers/Admin/UsersController.php
                 - app/Http/Controllers/Admin/PaymentReconciliationFindingController.php
                 - app/Http/Controllers/Admin/PortfolioPreviewController.php
+                - app/Http/Controllers/Admin/ProjectSubmissionController.php
         -
             method:
                 - 'Illuminate\Database\Eloquent\Builder::lockForUpdate()'

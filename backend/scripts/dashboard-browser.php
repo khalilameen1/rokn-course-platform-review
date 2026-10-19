@@ -4,11 +4,16 @@ declare(strict_types=1);
 use App\Models\AdminAuditLog;
 use App\Models\ApiToken;
 use App\Models\Contact;
+use App\Models\Course;
+use App\Models\CourseModule;
+use App\Models\CourseSection;
 use App\Models\FeedbackReport;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\PaymentReconciliationFinding;
 use App\Models\PortfolioItem;
+use App\Models\Project;
+use App\Models\ProjectSubmission;
 use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Database\Eloquent\Model;
@@ -119,6 +124,13 @@ try {
     $student->forceFill(['portfolio_slug' => 'browser-selected-work'])->save();
     $portfolioItem = PortfolioItem::query()->create(['user_id' => $student->id, 'title' => 'عمل المتصفح المختار', 'is_public' => true]);
     $portfolioItem->mediaFiles()->create(['file_path' => 'portfolio/browser-fixture.jpg', 'file_type' => 'image', 'content_sha256' => str_repeat('a', 64)]);
+    $course = Course::query()->forceCreate(['tenant_id' => 1, 'name_ar' => 'كورس المتصفح', 'is_coming_soon' => false, 'is_catalog_visible' => true, 'authoring_version' => 1]);
+    $project = Project::query()->create(['requirements_text' => 'نفذ تطبيقًا عمليًا', 'ai_prompt' => 'قيّم النتيجة', 'passing_score' => 50]);
+    $module = CourseModule::query()->create(['course_id' => $course->id, 'title_ar' => 'الوحدة الأولى', 'order' => 1]);
+    CourseSection::query()->create(['course_id' => $course->id, 'module_id' => $module->id, 'title' => 'مشروع المتصفح',
+        'section_type' => 'project', 'sectionable_type' => Project::class, 'sectionable_id' => $project->id, 'order' => 1]);
+    ProjectSubmission::query()->create(['public_id' => (string) Str::uuid(), 'user_id' => $student->id, 'project_id' => $project->id,
+        'idempotency_key' => 'browser-project', 'submission_text' => 'ناتج المشروع من المتصفح', 'effort_status' => 'valid', 'review_status' => 'pending', 'submitted_at' => now()]);
     FeedbackReport::query()->firstOrCreate(['message' => 'رسالة دعم المتصفح'], [
         'public_id' => (string) Str::ulid(), 'user_id' => $student->id, 'category' => 'playback',
         'status' => 'new', 'priority' => 'high', 'version' => 1, 'app_version' => '1.0.68',

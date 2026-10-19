@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Auth\AdminPermissionMatrix;
+use App\Filament\Resources\ProjectSubmissionResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ProjectReviewIndexRequest;
 use App\Http\Requests\Admin\ProjectReviewRequest;
@@ -27,21 +28,9 @@ final class ProjectSubmissionController extends Controller
         private readonly AdminProjectSubmissionReviewReadService $reviewReads
     ) {}
 
-    public function index(ProjectReviewIndexRequest $request): View
+    public function index(ProjectReviewIndexRequest $request): RedirectResponse
     {
-        $isAdministrator = $this->isAdministrator($request);
-        $filters = $request->validated();
-
-        $page = $this->reviewReads->index($filters, $isAdministrator);
-        $submissions = $page['submissions'];
-        $statusCounts = $page['statusCounts'];
-
-        return view('admin.project-submissions.index', compact(
-            'submissions',
-            'statusCounts',
-            'filters',
-            'isAdministrator'
-        ));
+        return redirect()->to(ProjectSubmissionResource::listUrl($request->validated()));
     }
 
     public function show(Request $request, ProjectSubmission $projectSubmission): View

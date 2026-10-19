@@ -7,19 +7,21 @@ namespace App\Services;
 use App\Models\AiInputAttachment;
 use App\Models\ProjectFeedbackMessage;
 use App\Models\ProjectSubmission;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use App\Support\AdminStudentSearch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 final readonly class AdminProjectSubmissionReviewReadService
 {
+    public const STATUSES = ['pending' => 'بانتظار المراجعة', 'passed' => 'مقبولة', 'needs_resubmission' => 'تحتاج إعادة إرسال'];
+
     public function __construct(private ProjectSubmissionPresenter $presenter) {}
 
     /**
      * @param  array{status?:string|null,search?:string|null}  $filters
-     * @return array{submissions:LengthAwarePaginator,statusCounts:Collection}
+     * @return Builder<ProjectSubmission>
      */
-    public function index(array $filters, bool $administrator): array
+    public function query(array $filters, bool $administrator): Builder
     {
         $query = ProjectSubmission::query()
             ->with([
@@ -33,6 +35,12 @@ final readonly class AdminProjectSubmissionReviewReadService
             ->latest('submitted_at')
             ->latest('id');
 
+        return $this->applyFilters($query, $filters, $administrator);
+    }
+
+    /** @param Builder<ProjectSubmission> $query @return Builder<ProjectSubmission> */
+    public function applyFilters(Builder $query, array $filters, bool $administrator): Builder
+    {
         $status = trim((string) ($filters['status'] ?? ''));
         if ($status !== '') {
             $query->where('review_status', $status);
@@ -41,43 +49,45 @@ final readonly class AdminProjectSubmissionReviewReadService
         $search = trim((string) ($filters['search'] ?? ''));
         if ($search !== '') {
             $query->where(function (Builder $submissionQuery) use ($search, $administrator): void {
-                $like = '%'.addcslashes($search, '%_\\').'%';
+                $like = '%'.AdminStudentSearch::escape($search).'%';
                 $submissionQuery
-                    ->where('public_id', 'like', $like)
+                    ->whereRaw("public_id LIKE ? ESCAPE '!'", [$like])
                     ->orWhereHas('project.section', function (Builder $sectionQuery) use ($like): void {
                         $sectionQuery->where(function (Builder $titles) use ($like): void {
-                            $titles->where('title', 'like', $like)
-                                ->orWhere('title_ar', 'like', $like)
-                                ->orWhere('title_en', 'like', $like);
+                            $titles->whereRaw("title LIKE ? ESCAPE '!'", [$like])
+                                ->orWhereRaw("title_ar LIKE ? ESCAPE '!'", [$like])
+                                ->orWhereRaw("title_en LIKE ? ESCAPE '!'", [$like]);
                         });
                     })
                     ->orWhereHas('project.section.course', function (Builder $courseQuery) use ($like): void {
                         $courseQuery->where(function (Builder $names) use ($like): void {
-                            $names->where('name_ar', 'like', $like)
-                                ->orWhere('name_en', 'like', $like);
+                            $names->whereRaw("name_ar LIKE ? ESCAPE '!'", [$like])
+                                ->orWhereRaw("name_en LIKE ? ESCAPE '!'", [$like]);
                         });
                     });
 
                 if ($administrator) {
                     $submissionQuery->orWhereHas('user', function (Builder $userQuery) use ($like): void {
                         $userQuery->where(function (Builder $identity) use ($like): void {
-                            $identity->where('name_ar', 'like', $like)
-                                ->orWhere('name_en', 'like', $like)
-                                ->orWhere('email', 'like', $like)
-                                ->orWhere('phone', 'like', $like);
+                            $identity->whereRaw("name_ar LIKE ? ESCAPE '!'", [$like])
+                                ->orWhereRaw("name_en LIKE ? ESCAPE '!'", [$like])
+                                ->orWhereRaw("email LIKE ? ESCAPE '!'", [$like])
+                                ->orWhereRaw("phone LIKE ? ESCAPE '!'", [$like]);
                         });
                     });
                 }
             });
         }
 
-        return [
-            'submissions' => $query->paginate(25)->withQueryString(),
-            'statusCounts' => ProjectSubmission::query()
-                ->selectRaw('review_status, COUNT(*) as aggregate')
-                ->groupBy('review_status')
-                ->pluck('aggregate', 'review_status'),
-        ];
+        return $query;
+    }
+
+    public function statusCounts(): Collection
+    {
+        return ProjectSubmission::query()
+            ->selectRaw('review_status, COUNT(*) as aggregate')
+            ->groupBy('review_status')
+            ->pluck('aggregate', 'review_status');
     }
 
     /**

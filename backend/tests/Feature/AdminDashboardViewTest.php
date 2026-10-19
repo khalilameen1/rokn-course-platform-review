@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Filament\Resources\OrderResource;
 use App\Filament\Resources\OrderResource\Pages\ListOrders;
 use App\Filament\Resources\OrderResource\Pages\ViewOrder;
+use App\Filament\Resources\ProjectSubmissionResource;
 use App\Models\Course;
 use App\Models\CourseCode;
 use App\Models\CourseModule;
@@ -64,7 +65,6 @@ final class AdminDashboardViewTest extends TestCase
         $pages = [
             'product operations' => route('admin.product-operations.index'),
             'playback operations' => route('admin.playback-operations.index'),
-            'project list' => route('admin.project-submissions.index'),
             'project review' => route('admin.project-submissions.show', $submission),
             'settings dashboard' => route('admin.settings'),
             'home dashboard' => route('admin.dashboard'),
@@ -79,6 +79,8 @@ final class AdminDashboardViewTest extends TestCase
         foreach ($pages as $page => $url) {
             $this->assertAdminMarkupWithoutInlineStyles($this->adminGet($admin, $url)->assertOk()->getContent(), $page);
         }
+        $this->adminGet($admin, route('admin.project-submissions.index'))->assertRedirect(ProjectSubmissionResource::listUrl());
+        $this->adminGet($admin, ProjectSubmissionResource::getUrl())->assertOk()->assertSee($submission->public_id);
 
         $this->assertAdminMarkupWithoutInlineStyles(
             $this->adminGet($this->dashboardUser('moderator'), route('admin.dashboard'))->assertOk()->getContent(),

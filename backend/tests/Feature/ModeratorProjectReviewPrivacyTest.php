@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\ProjectSubmissionResource;
+use App\Filament\Resources\ProjectSubmissionResource\Pages\ListProjectSubmissions;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Course;
 use App\Models\CourseModule;
@@ -12,11 +14,15 @@ use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\StaffRole;
 use App\Models\User;
+use App\Services\AdminProjectSubmissionReviewReadService;
 use App\Services\ProjectSubmissionReviewService;
 use App\Services\StaffRoleService;
+use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class ModeratorProjectReviewPrivacyTest extends TestCase
@@ -30,7 +36,8 @@ final class ModeratorProjectReviewPrivacyTest extends TestCase
 
         $this->actingAs($moderator)
             ->get(route('admin.project-submissions.index'))
-            ->assertOk()
+            ->assertRedirect(ProjectSubmissionResource::listUrl());
+        $this->get(ProjectSubmissionResource::getUrl())->assertOk()
             ->assertSee($submission->public_id)
             ->assertDontSee($student->name_ar)
             ->assertDontSee($student->email);
@@ -43,10 +50,8 @@ final class ModeratorProjectReviewPrivacyTest extends TestCase
             ->assertDontSee($student->name_ar)
             ->assertDontSee($student->email);
 
-        $this->actingAs($moderator)
-            ->get(route('admin.project-submissions.index', ['search' => $student->email]))
-            ->assertOk()
-            ->assertDontSee($submission->public_id);
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(ListProjectSubmissions::class)->searchTable($student->email)->assertCanNotSeeTableRecords([$submission]);
     }
 
     public function test_administrator_direct_request_keeps_identity_search_and_display(): void
@@ -57,7 +62,8 @@ final class ModeratorProjectReviewPrivacyTest extends TestCase
 
         $this->actingAs($administrator)
             ->get(route('admin.project-submissions.index', ['search' => $student->email]))
-            ->assertOk()
+            ->assertRedirect(ProjectSubmissionResource::listUrl(['search' => $student->email]));
+        $this->get(ProjectSubmissionResource::listUrl(['search' => $student->email]))->assertOk()
             ->assertSee($submission->public_id)
             ->assertSee($student->name_ar)
             ->assertSee($student->email);
@@ -114,11 +120,45 @@ final class ModeratorProjectReviewPrivacyTest extends TestCase
         $roles->seedDefaults();
         $roles->assign($owner, $editor->id, [(int) StaffRole::findByName('content_editor', 'web')->id]);
         $this->withoutMiddleware(RequireAdminMfa::class);
-        $this->actingAs($editor, 'web')->get(route('admin.project-submissions.index'))->assertOk()
+        $this->actingAs($editor, 'web')->get(ProjectSubmissionResource::getUrl())->assertOk()
             ->assertSee($submission->public_id)->assertDontSee($student->email)->assertDontSee($student->name_ar);
         $this->get(route('admin.project-submissions.show', $submission))->assertOk()
             ->assertSee('هوية مخفية')->assertDontSee($student->email)->assertDontSee($student->name_ar);
-        $this->get(route('admin.project-submissions.index', ['search' => $student->email]))->assertOk()->assertDontSee($submission->public_id);
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(ListProjectSubmissions::class)->searchTable($student->email)->assertCanNotSeeTableRecords([$submission]);
+    }
+
+    public function test_native_queue_filters_literal_course_search_and_has_only_review_links(): void
+    {
+        [$reviewer, $student, $pending] = $this->records();
+        $pending->project->section->course->forceFill(['name_ar' => 'Design_100%'])->save();
+        $passed = ProjectSubmission::query()->create(['public_id' => (string) Str::uuid(), 'user_id' => $student->id,
+            'project_id' => $pending->project_id, 'idempotency_key' => 'passed-fixture', 'review_status' => 'passed', 'effort_status' => 'valid', 'submitted_at' => now()]);
+        $rejected = ProjectSubmission::query()->create(['public_id' => (string) Str::uuid(), 'user_id' => $student->id,
+            'project_id' => $pending->project_id, 'idempotency_key' => 'rejected-fixture', 'review_status' => 'needs_resubmission', 'effort_status' => 'valid', 'submitted_at' => now()]);
+        $this->actingAs($reviewer, 'web');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $page = Livewire::test(ListProjectSubmissions::class)->assertCanSeeTableRecords([$pending, $passed, $rejected]);
+        $page->filterTable('review_status', 'pending')->assertCanSeeTableRecords([$pending])->assertCanNotSeeTableRecords([$passed, $rejected]);
+        $page->filterTable('review_status', 'passed')->assertCanSeeTableRecords([$passed])->assertCountTableRecords(1);
+        $page->filterTable('review_status', 'needs_resubmission')->assertCanSeeTableRecords([$rejected])->assertCountTableRecords(1);
+        $page->filterTable('review_status', null)->searchTable('_100%')->assertCountTableRecords(3)
+            ->assertTableActionHasUrl('review', route('admin.project-submissions.show', $pending), $pending);
+        $page->searchTable('_1000')->assertCountTableRecords(0);
+        self::assertFalse(ProjectSubmissionResource::canCreate());
+        self::assertFalse(ProjectSubmissionResource::canEdit($pending));
+        self::assertFalse(ProjectSubmissionResource::canDelete($pending));
+
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $rows = app(AdminProjectSubmissionReviewReadService::class)->query([], false)->get();
+        foreach ($rows as $row) {
+            self::assertSame('Design_100%', $row->project->section->course->title);
+            self::assertNull($row->user->email);
+            self::assertTrue($row->relationLoaded('reviewer'));
+        }
+        self::assertLessThanOrEqual(6, count(DB::getQueryLog()));
+        DB::disableQueryLog();
     }
 
     /** @return array{User, User, ProjectSubmission} */

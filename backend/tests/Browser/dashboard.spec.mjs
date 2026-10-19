@@ -1,6 +1,30 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('project queue filters pending attempts and opens the existing full review', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/project-submissions');
+    const row = page.getByRole('row').filter({ hasText: 'كورس المتصفح' });
+    await expect(row.getByText(/مشروع المتصفح — حساب المتصفح client/)).toBeVisible();
+    await expect(row.getByRole('link', { name: 'مراجعة', exact: true })).toBeVisible();
+    await expect(page.locator('.fi-wi-stats-overview-stat-value').first()).toHaveText('1');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('project-queue-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'مشاريع الطلاب', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await page.screenshot({ path: testInfo.outputPath('project-queue-desktop.png'), fullPage: true, animations: 'disabled' });
+    await page.locator('.fi-ta-search-field input').fill('no-matching-project');
+    await expect(row).not.toBeVisible();
+    await page.locator('.fi-ta-search-field input').fill('كورس المتصفح');
+    await expect(row).toBeVisible();
+    await row.getByRole('link', { name: 'مراجعة', exact: true }).click();
+    await expect(page.getByText('ناتج المشروع من المتصفح', { exact: true })).toBeVisible();
+    expect(errors).toEqual([]);
+});
+
 test('portfolio queue filters selected work and opens the exact shared review preview', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
