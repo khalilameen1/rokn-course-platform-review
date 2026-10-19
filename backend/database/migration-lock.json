@@ -399,8 +399,8 @@
         "2026_10_17_210000_add_changes_to_admin_audit_logs.php": "cc3b93e51d57f3f757f10c3cb15b263062b04d1854ea95a25a45d0a8ec96addf",
         "2026_10_18_100000_backfill_portfolio_share_slugs.php": "9f1b4cf6cde285092a3a7d35cd847a6d02cfa4232ad2e8a6963271904ee476ef",
         "2026_10_18_100100_queue_watch_history_canonicalization.php": "9cce116b0dc50a376210de670172a9f0b9a2a93a259ae294294df9fd48c4a62c",
-        "2026_10_19_080000_create_pulse_tables.php": "4a7fd7f08b61135440904b6aefdbe910640adb500014614b855e671f5b1393d9",
-        "2026_10_19_081000_create_permission_tables.php": "bd097ba10f37a131a9a8885ed4723387521a2f222f636b37b911e7b9ed34eec2",
-        "2026_10_19_082000_create_staff_members_table.php": "da583927a708b2d428261cc08e7cfbc31602e5669fcfdf50d9270548b357a5bc"
+        "2026_10_19_080000_create_pulse_tables.php": "eed4301287db5eceaa68a21b9648c60c5524f3d9b538f33d3ec3ee72b24bb4e5",
+        "2026_10_19_081000_create_permission_tables.php": "cc2b868dc445849566a4ec2df5ca33434ab4beeec63559e610ddfba3d1569bc9",
+        "2026_10_19_082000_create_staff_members_table.php": "f0d3a5ad9df00c5b0424b8daa6cc6b2acbea139d7211d08a421a2bd86b0ebbaf"
     }
 }
