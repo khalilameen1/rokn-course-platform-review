@@ -6,10 +6,13 @@ namespace App\Filament\Resources;
 
 use App\Auth\AdminPermissionMatrix;
 use App\Filament\Resources\ProjectSubmissionResource\Pages\ListProjectSubmissions;
+use App\Filament\Resources\ProjectSubmissionResource\Pages\ViewProjectSubmission;
+use App\Filament\Resources\ProjectSubmissionResource\ProjectSubmissionDetailsSchema;
 use App\Models\ProjectSubmission;
 use App\Services\AdminProjectSubmissionReviewReadService;
 use App\Support\BusinessClock;
 use Filament\Actions\Action;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -64,7 +67,7 @@ final class ProjectSubmissionResource extends ReadResource
         ])->searchable()->searchPlaceholder(fn (): string => self::administrator() ? 'الطالب أو الكورس أو المحاولة' : 'الكورس أو المشروع أو المحاولة')
             ->searchUsing(fn (Builder $query, string $search): Builder => app(AdminProjectSubmissionReviewReadService::class)->applyFilters($query, ['search' => $search], self::administrator()))
             ->filters([SelectFilter::make('review_status')->label('حالة المراجعة')->options(AdminProjectSubmissionReviewReadService::STATUSES)])
-            ->recordActions([Action::make('review')->label('مراجعة')->url(fn (ProjectSubmission $record): string => route('admin.project-submissions.show', $record))])
+            ->recordActions([Action::make('review')->label('مراجعة')->url(fn (ProjectSubmission $record): string => self::getUrl('view', ['record' => $record]))])
             ->recordUrl(null)->poll('30s')->defaultPaginationPageOption(25)->emptyStateHeading('لا توجد محاولات مطابقة')->emptyStateDescription('');
     }
 
@@ -75,6 +78,16 @@ final class ProjectSubmissionResource extends ReadResource
 
     public static function getPages(): array
     {
-        return ['index' => ListProjectSubmissions::route('/')];
+        return ['index' => ListProjectSubmissions::route('/'), 'view' => ViewProjectSubmission::route('/{record}')];
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return ProjectSubmissionDetailsSchema::configure($schema);
+    }
+
+    public static function allows(string $action): bool
+    {
+        return app(AdminPermissionMatrix::class)->allows(auth('web')->user(), 'admin.project-submissions.'.$action, 'POST');
     }
 }

@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 use App\Models\AdminAuditLog;
+use App\Models\AiInputAttachment;
 use App\Models\ApiToken;
 use App\Models\Contact;
 use App\Models\Course;
+use App\Models\CourseEnrollment;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
 use App\Models\FeedbackReport;
@@ -13,13 +15,17 @@ use App\Models\Package;
 use App\Models\PaymentReconciliationFinding;
 use App\Models\PortfolioItem;
 use App\Models\Project;
+use App\Models\ProjectFeedbackMessage;
+use App\Models\ProjectFeedbackThread;
 use App\Models\ProjectSubmission;
 use App\Models\User;
+use App\Support\ProjectSubmissionEvaluationSnapshot;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -131,6 +137,26 @@ try {
         'section_type' => 'project', 'sectionable_type' => Project::class, 'sectionable_id' => $project->id, 'order' => 1]);
     ProjectSubmission::query()->create(['public_id' => (string) Str::uuid(), 'user_id' => $student->id, 'project_id' => $project->id,
         'idempotency_key' => 'browser-project', 'submission_text' => 'ناتج المشروع من المتصفح', 'effort_status' => 'valid', 'review_status' => 'pending', 'submitted_at' => now()]);
+    $reportProject = Project::query()->create(['requirements_text' => 'نفذ حملة إعلانية', 'passing_score' => 50]);
+    $reportSection = CourseSection::query()->create(['course_id' => $course->id, 'module_id' => $module->id, 'title' => 'مشروع التقرير',
+        'section_type' => 'project', 'sectionable_type' => Project::class, 'sectionable_id' => $reportProject->id, 'order' => 2]);
+    $enrollment = CourseEnrollment::query()->forceCreate(['tenant_id' => 1, 'user_id' => $student->id, 'course_id' => $course->id, 'is_active' => true, 'enrolled_at' => now()]);
+    $terms = ['project_feedback_level' => 'report', 'project_feedback_token_budget' => 4000,
+        'project_feedback_budget_usd' => '.2', 'project_feedback_reserve_usd' => '.02', 'max_output_tokens' => 320];
+    $reportSubmission = ProjectSubmission::query()->create(['public_id' => (string) Str::uuid(), 'user_id' => $student->id, 'project_id' => $reportProject->id,
+        'idempotency_key' => 'browser-report', 'submission_text' => 'تطبيق الحملة الإعلانية', 'effort_status' => 'valid', 'review_status' => 'passed',
+        'review_source' => 'ai', 'score' => 85, 'submitted_at' => now(), 'reviewed_at' => now(),
+        'evaluation_snapshot' => ProjectSubmissionEvaluationSnapshot::capture($reportProject, $reportSection, $enrollment, $terms)]);
+    $reportThread = ProjectFeedbackThread::query()->create(['public_id' => (string) Str::uuid(), 'submission_id' => $reportSubmission->id,
+        'user_id' => $student->id, 'course_id' => $course->id, 'project_id' => $reportProject->id, 'enrollment_id' => $enrollment->id,
+        'feedback_level' => 'report', 'can_reply' => false, 'status' => 'ready']);
+    ProjectFeedbackMessage::query()->create(['public_id' => (string) Str::uuid(), 'thread_id' => $reportThread->id, 'role' => 'assistant', 'status' => 'completed',
+        'client_request_id' => 'report:'.$reportSubmission->public_id, 'body' => "تقرير المتصفح عن المشروع\n".str_repeat('التكوين واضح ويمكن تحسين تباين العنوان وترتيب المعلومات. ', 8)]);
+    Storage::disk('local')->put('dashboard-review-fixture/evidence.txt', 'Private project browser evidence');
+    AiInputAttachment::query()->create(['public_id' => (string) Str::uuid(), 'user_id' => $student->id, 'course_id' => $course->id,
+        'client_upload_id' => (string) Str::uuid(), 'purpose' => 'project_submission', 'owner_type' => 'project_submission', 'owner_id' => $reportSubmission->id,
+        'storage_disk' => 'local', 'storage_path' => 'dashboard-review-fixture/evidence.txt', 'original_file_name' => 'نتيجة المشروع.txt',
+        'mime_type' => 'text/plain', 'size_bytes' => 32, 'sha256' => hash('sha256', 'Private project browser evidence'), 'status' => 'ready']);
     FeedbackReport::query()->firstOrCreate(['message' => 'رسالة دعم المتصفح'], [
         'public_id' => (string) Str::ulid(), 'user_id' => $student->id, 'category' => 'playback',
         'status' => 'new', 'priority' => 'high', 'version' => 1, 'app_version' => '1.0.68',

@@ -65,7 +65,6 @@ final class AdminDashboardViewTest extends TestCase
         $pages = [
             'product operations' => route('admin.product-operations.index'),
             'playback operations' => route('admin.playback-operations.index'),
-            'project review' => route('admin.project-submissions.show', $submission),
             'settings dashboard' => route('admin.settings'),
             'home dashboard' => route('admin.dashboard'),
             'course codes list' => route('admin.course-codes.index'),
@@ -81,6 +80,9 @@ final class AdminDashboardViewTest extends TestCase
         }
         $this->adminGet($admin, route('admin.project-submissions.index'))->assertRedirect(ProjectSubmissionResource::listUrl());
         $this->adminGet($admin, ProjectSubmissionResource::getUrl())->assertOk()->assertSee($submission->public_id);
+        $this->adminGet($admin, route('admin.project-submissions.show', $submission))
+            ->assertRedirect(ProjectSubmissionResource::getUrl('view', ['record' => $submission]));
+        $this->adminGet($admin, ProjectSubmissionResource::getUrl('view', ['record' => $submission]))->assertOk()->assertSee($submission->public_id);
 
         $this->assertAdminMarkupWithoutInlineStyles(
             $this->adminGet($this->dashboardUser('moderator'), route('admin.dashboard'))->assertOk()->getContent(),

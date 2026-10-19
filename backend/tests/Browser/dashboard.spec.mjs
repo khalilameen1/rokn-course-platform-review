@@ -6,7 +6,7 @@ test('project queue filters pending attempts and opens the existing full review'
     page.on('pageerror', error => errors.push(error.message));
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/operations/project-submissions');
-    const row = page.getByRole('row').filter({ hasText: 'كورس المتصفح' });
+    const row = page.getByRole('row').filter({ hasText: 'مشروع المتصفح' });
     await expect(row.getByText(/مشروع المتصفح — حساب المتصفح client/)).toBeVisible();
     await expect(row.getByRole('link', { name: 'مراجعة', exact: true })).toBeVisible();
     await expect(page.locator('.fi-wi-stats-overview-stat-value').first()).toHaveText('1');
@@ -18,10 +18,43 @@ test('project queue filters pending attempts and opens the existing full review'
     await page.screenshot({ path: testInfo.outputPath('project-queue-desktop.png'), fullPage: true, animations: 'disabled' });
     await page.locator('.fi-ta-search-field input').fill('no-matching-project');
     await expect(row).not.toBeVisible();
-    await page.locator('.fi-ta-search-field input').fill('كورس المتصفح');
+    await page.locator('.fi-ta-search-field input').fill('مشروع المتصفح');
     await expect(row).toBeVisible();
     await row.getByRole('link', { name: 'مراجعة', exact: true }).click();
     await expect(page.getByText('ناتج المشروع من المتصفح', { exact: true })).toBeVisible();
+    expect(errors).toEqual([]);
+});
+
+test('project review records a reason and displays the report with private downloads', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/project-submissions');
+    await page.getByRole('row').filter({ hasText: 'مشروع المتصفح' }).getByRole('link', { name: 'مراجعة', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'مشروع المتصفح', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'طلب إعادة الإرسال', exact: true }).click();
+    const dialog = page.getByRole('alertdialog');
+    await dialog.getByRole('textbox', { name: /سبب طلب إعادة الإرسال/ }).fill('أعد رفع صورة أوضح للنتيجة');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('project-review-decision-phone.png'), fullPage: true, animations: 'disabled' });
+    await dialog.getByRole('button', { name: 'طلب إعادة الإرسال', exact: true }).click();
+    await expect(dialog).not.toBeVisible();
+    await expect(page.getByText('تم تسجيل قرار المراجعة', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByText('أعد رفع صورة أوضح للنتيجة', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'قبول المحاولة', exact: true })).toHaveCount(0);
+    await page.goto('/operations/project-submissions');
+    await page.getByRole('row').filter({ hasText: 'مشروع التقرير' }).getByRole('link', { name: 'مراجعة', exact: true }).click();
+    await expect(page.getByText(/تقرير المتصفح عن المشروع/)).toBeVisible();
+    const download = page.getByRole('link', { name: 'نتيجة المشروع.txt', exact: true });
+    const file = await page.request.get(await download.getAttribute('href'));
+    expect(file.ok()).toBe(true);
+    expect(await file.text()).toBe('Private project browser evidence');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('project-review-report-phone.png'), fullPage: true, animations: 'disabled' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.screenshot({ path: testInfo.outputPath('project-review-report-desktop.png'), fullPage: true, animations: 'disabled' });
     expect(errors).toEqual([]);
 });
 

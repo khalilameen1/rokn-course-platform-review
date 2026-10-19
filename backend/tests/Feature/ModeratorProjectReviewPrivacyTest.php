@@ -43,7 +43,7 @@ final class ModeratorProjectReviewPrivacyTest extends TestCase
             ->assertDontSee($student->email);
 
         $this->actingAs($moderator)
-            ->get(route('admin.project-submissions.show', $submission))
+            ->get(ProjectSubmissionResource::getUrl('view', ['record' => $submission]))
             ->assertOk()
             ->assertSee($submission->public_id)
             ->assertSee('هوية مخفية')
@@ -122,7 +122,7 @@ final class ModeratorProjectReviewPrivacyTest extends TestCase
         $this->withoutMiddleware(RequireAdminMfa::class);
         $this->actingAs($editor, 'web')->get(ProjectSubmissionResource::getUrl())->assertOk()
             ->assertSee($submission->public_id)->assertDontSee($student->email)->assertDontSee($student->name_ar);
-        $this->get(route('admin.project-submissions.show', $submission))->assertOk()
+        $this->get(ProjectSubmissionResource::getUrl('view', ['record' => $submission]))->assertOk()
             ->assertSee('هوية مخفية')->assertDontSee($student->email)->assertDontSee($student->name_ar);
         Filament::setCurrentPanel(Filament::getPanel('operations'));
         Livewire::test(ListProjectSubmissions::class)->searchTable($student->email)->assertCanNotSeeTableRecords([$submission]);
@@ -143,7 +143,7 @@ final class ModeratorProjectReviewPrivacyTest extends TestCase
         $page->filterTable('review_status', 'passed')->assertCanSeeTableRecords([$passed])->assertCountTableRecords(1);
         $page->filterTable('review_status', 'needs_resubmission')->assertCanSeeTableRecords([$rejected])->assertCountTableRecords(1);
         $page->filterTable('review_status', null)->searchTable('_100%')->assertCountTableRecords(3)
-            ->assertTableActionHasUrl('review', route('admin.project-submissions.show', $pending), $pending);
+            ->assertTableActionHasUrl('review', ProjectSubmissionResource::getUrl('view', ['record' => $pending]), $pending);
         $page->searchTable('_1000')->assertCountTableRecords(0);
         self::assertFalse(ProjectSubmissionResource::canCreate());
         self::assertFalse(ProjectSubmissionResource::canEdit($pending));
