@@ -23,20 +23,14 @@ class CoinEarningMethodController extends Controller
         $data = $economy->rewards();
         $methods = $data['methods'];
         $setting = $data['setting'];
-        $rewardRules = $data['rewardRules'];
-        $rewardEvents = $data['rewardEvents'];
         $socialProviderLabels = $data['socialProviderLabels'];
         $settingsEditorVersion = RewardConfigurationVersion::settings($setting);
-        $rewardRuleEditorVersions = $rewardRules->mapWithKeys(
-            fn (RewardRule $rule): array => [$rule->id => RewardConfigurationVersion::rule($rule)]
-        );
         $methodEditorVersions = $methods->getCollection()->mapWithKeys(
             fn (CoinEarningMethod $method): array => [$method->id => RewardConfigurationVersion::method($method)]
         );
 
         return view('admin.coin_earning_methods.index', compact(
-            'methods', 'setting', 'rewardRules', 'rewardEvents', 'socialProviderLabels',
-            'settingsEditorVersion', 'rewardRuleEditorVersions', 'methodEditorVersions'
+            'methods', 'setting', 'socialProviderLabels', 'settingsEditorVersion', 'methodEditorVersions'
         ));
     }
 

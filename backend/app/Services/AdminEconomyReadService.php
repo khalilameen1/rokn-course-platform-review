@@ -6,17 +6,15 @@ namespace App\Services;
 
 use App\Models\CoinEarningMethod;
 use App\Models\Package;
-use App\Models\RewardRule;
 use App\Models\Setting;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
 
 final readonly class AdminEconomyReadService
 {
     public function __construct(private SocialAuthProviderRegistry $socialProviders) {}
 
-    /** @return array{methods:LengthAwarePaginator,setting:?Setting,rewardRules:Collection,rewardEvents:array<string,string>,socialProviderLabels:array<string,string>} */
+    /** @return array{methods:LengthAwarePaginator,setting:?Setting,socialProviderLabels:array<string,string>} */
     public function rewards(): array
     {
         $methods = CoinEarningMethod::query()
@@ -31,21 +29,10 @@ final readonly class AdminEconomyReadService
             ->orderBy('id')
             ->paginate(12)
             ->withQueryString();
-        $rewardEvents = RewardRule::EVENTS;
-        // event_key is unique and restricted to EVENTS, so this result is
-        // structurally bounded rather than an ever-growing dashboard list.
-        $rewardRules = RewardRule::query()
-            ->whereIn('event_key', array_keys($rewardEvents))
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->limit(count($rewardEvents))
-            ->get();
 
         return [
             'methods' => $methods,
             'setting' => Setting::query()->first(),
-            'rewardRules' => $rewardRules,
-            'rewardEvents' => $rewardEvents,
             'socialProviderLabels' => $this->socialProviders->labels(),
         ];
     }

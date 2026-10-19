@@ -8,6 +8,7 @@ use App\Filament\Resources\PackageResource;
 use App\Filament\Resources\PackageResource\Pages\CreatePackage;
 use App\Filament\Resources\PackageResource\Pages\EditPackage;
 use App\Filament\Resources\PackageResource\Pages\ListPackages;
+use App\Filament\Resources\RewardRuleResource\Pages\ListRewardRules;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\CoinEarningMethod;
 use App\Models\Course;
@@ -63,8 +64,9 @@ final class AdminEconomyDashboardContractTest extends TestCase
         self::assertSame(12, $methods->perPage());
         self::assertCount(12, $methods->items());
         self::assertGreaterThan(12, $methods->total());
-        self::assertLessThanOrEqual(count(RewardRule::EVENTS), $page->viewData('rewardRules')->count());
-        self::assertSame([], $page->viewData('rewardRules')->pluck('event_key')->diff(array_keys(RewardRule::EVENTS))->values()->all());
+        $rules = Livewire::test(ListRewardRules::class)->instance()->getTableRecords();
+        self::assertLessThanOrEqual(count(RewardRule::EVENTS), $rules->total());
+        self::assertSame([], $rules->pluck('event_key')->diff(array_keys(RewardRule::EVENTS))->values()->all());
     }
 
     public function test_create_and_edit_screens_share_one_form_contract(): void

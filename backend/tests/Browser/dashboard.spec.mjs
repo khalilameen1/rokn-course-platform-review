@@ -1,6 +1,39 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('automatic rewards keep welcome and study rules in native mobile forms', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/reward-rules');
+    const welcome = page.getByRole('row').filter({ hasText: 'أول تسجيل موثّق' });
+    await welcome.getByRole('button', { name: 'إجراءات المكافأة', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'تعديل', exact: true }).click();
+    await page.getByLabel(/عدد العملات/).fill('60');
+    await expect(page.getByLabel(/حد العملات خلال 30 يومًا/)).not.toBeVisible();
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page.getByText('تم الحفظ', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel(/عدد العملات/)).toHaveValue('60');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('reward-welcome-phone.png'), fullPage: true });
+    await page.goto('/operations/reward-rules');
+    await page.getByRole('row').filter({ hasText: 'إكمال مدة دراسة مؤهلة' }).getByRole('button', { name: 'إجراءات المكافأة', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'تعديل', exact: true }).click();
+    await expect(page.getByLabel(/مدة الدراسة بالدقائق/)).toBeVisible();
+    await expect(page.getByLabel(/حد عملات الدراسة يوميًا/)).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('reward-study-phone.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/operations/reward-rules');
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'المكافآت التلقائية', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await page.screenshot({ path: testInfo.outputPath('reward-list-desktop.png'), fullPage: true });
+    expect(errors).toEqual([]);
+});
+
 test('device sessions use public record identifiers and native revoke confirmation on mobile', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
