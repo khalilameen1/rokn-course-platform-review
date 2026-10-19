@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Support\AdminStudentSearch;
 use App\Support\BusinessClock;
 use App\Support\DatabaseCapabilities;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -20,8 +20,8 @@ use Illuminate\Support\Collection;
  */
 final class AdminAuditLogReadService
 {
-    /** @param array{actor_id?:int|string|null,action?:?string,from?:?string,to?:?string} $filters */
-    public function paginate(array $filters): LengthAwarePaginator
+    /** @return Builder<AdminAuditLog> */
+    public function query(array $filters = []): Builder
     {
         $from = ! empty($filters['from']) ? BusinessClock::localDayRangeUtc($filters['from'])[0] : null;
         $toExclusive = ! empty($filters['to']) ? BusinessClock::localDayRangeUtc($filters['to'])[1] : null;
@@ -40,9 +40,7 @@ final class AdminAuditLogReadService
             ->when($from, fn ($query, $value) => $query->where('occurred_at', '>=', $value))
             ->when($toExclusive, fn ($query, $value) => $query->where('occurred_at', '<', $value))
             ->orderByDesc('occurred_at')
-            ->orderByDesc('id')
-            ->paginate(50)
-            ->withQueryString();
+            ->orderByDesc('id');
     }
 
     /** @return Collection<int, User> */

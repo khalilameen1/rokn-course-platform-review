@@ -1,6 +1,37 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('audit trail keeps native date filters and read-only before-after detail on mobile', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/audit-log');
+    await page.getByRole('button', { name: 'تصفية', exact: true }).click();
+    await page.getByLabel('الإجراء أو المسار', { exact: true }).fill('admin.browser.audit');
+    await page.getByRole('button', { name: 'تطبيق التصفيات', exact: true }).click();
+    await expect(page.getByLabel('الإجراء أو المسار', { exact: true })).not.toBeVisible();
+    await expect(page.getByText('الإجراء: admin.browser.audit', { exact: true })).toBeVisible();
+    const row = page.getByRole('row').filter({ hasText: 'admin.browser.audit' });
+    await expect(row).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('audit-list-phone.png'), fullPage: true });
+    await row.getByRole('link', { name: 'عرض', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'تفاصيل سجل التغييرات', exact: true })).toBeVisible();
+    await expect(page.getByText('active', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('نعم', { exact: true })).toBeVisible();
+    await expect(page.getByText('لا', { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('audit-detail-phone.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'سجل التغييرات', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('audit-detail-desktop.png'), fullPage: true });
+    expect(errors).toEqual([]);
+});
+
 test('contact messages and account requests use explicit native workflows on a phone', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

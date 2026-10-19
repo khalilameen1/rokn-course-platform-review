@@ -24,7 +24,6 @@ final class LegacyWorkspaces
             ['صور وهوية التطبيق', 'التطبيق', 'admin.design-settings.index'],
             ['تشغيل المنتج', 'التشغيل', 'admin.product-operations.index'],
             ['تحليلات المنتج', 'التشغيل', 'admin.product-analytics.index'],
-            ['سجل التغييرات', 'التشغيل', 'admin.audit-log.index'],
             ['جلسات الدخول', 'التشغيل', 'admin.user-sessions.index'],
             ['الإعدادات', 'الإدارة', 'admin.settings'],
             ['فريق العمل', 'الإدارة', 'admin.moderators.index'],

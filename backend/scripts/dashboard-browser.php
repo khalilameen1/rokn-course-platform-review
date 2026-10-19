@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use App\Models\AdminAuditLog;
 use App\Models\Contact;
 use App\Models\Order;
 use App\Models\Package;
@@ -96,6 +97,14 @@ foreach (['admin', 'moderator', 'client'] as $role) {
     ])->save();
 }
 $student = User::query()->where('email', 'client@dashboard.example.test')->firstOrFail();
+AdminAuditLog::query()->firstOrCreate(['route_name' => 'admin.browser.audit'], [
+    'request_id' => 'be70a508-12ea-4cde-bbbf-b394f429019a',
+    'actor_id' => User::query()->where('email', 'admin@dashboard.example.test')->value('id'),
+    'actor_role' => 'admin', 'http_method' => 'PATCH', 'path' => 'dashboard/browser-audit',
+    'route_parameters' => ['user' => $student->id], 'request_fields' => ['active'],
+    'response_status' => 302, 'occurred_at' => now(),
+    'changes' => [['subject' => 'User', 'id' => (string) $student->id, 'event' => 'updated', 'old' => ['active' => true], 'attributes' => ['active' => false]]],
+]);
 foreach ([false, true] as $deletion) {
     $message = Contact::query()->firstOrNew(['email' => $deletion ? 'deletion@dashboard.example.test' : 'contact@dashboard.example.test']);
     $message->forceFill([

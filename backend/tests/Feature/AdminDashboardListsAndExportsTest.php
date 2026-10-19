@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\AuditLogResource;
 use App\Filament\Resources\ContactResource;
 use App\Filament\Resources\CouponResource;
 use App\Http\Middleware\RequireAdminMfa;
@@ -89,7 +90,7 @@ final class AdminDashboardListsAndExportsTest extends TestCase
             ->assertRedirect(CouponResource::getUrl());
         $this->get(CouponResource::getUrl())->assertOk()
             ->assertSee(CouponResource::getUrl(), false)
-            ->assertSee(route('admin.audit-log.index'), false);
+            ->assertSee(AuditLogResource::getUrl(), false);
 
         foreach ([
             'admin.urgent-tasks.index', 'admin.urgent-tasks.approve-order', 'admin.urgent-tasks.reject-order',

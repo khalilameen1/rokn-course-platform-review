@@ -4,22 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\AuditLogResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AuditLogIndexRequest;
-use App\Services\AdminAuditLogReadService;
-use Illuminate\View\View;
+use Illuminate\Http\RedirectResponse;
 
 final class AuditLogController extends Controller
 {
-    public function index(AuditLogIndexRequest $request, AdminAuditLogReadService $audit): View
+    public function index(AuditLogIndexRequest $request): RedirectResponse
     {
         $filters = $request->validated();
 
-        return view('admin.audit-log.index', [
-            'entries' => $audit->paginate($filters),
-            'actors' => $audit->actors(),
-            'filters' => $filters,
-            'recordsChanges' => $audit->recordsChanges(),
-        ]);
+        return redirect(AuditLogResource::getUrl('index', ['filters' => ['criteria' => $filters]]));
     }
 }
