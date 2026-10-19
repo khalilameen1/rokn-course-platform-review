@@ -6,16 +6,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Data\NotificationAuthoringInput;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\NotificationAudienceRequest;
+use App\Http\Requests\Admin\NotificationCampaignRequest;
+use App\Http\Requests\Admin\NotificationCreateContextRequest;
 use App\Models\NotificationCampaign;
 use App\Models\User;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminNotificationCampaignAuthoringService;
 use App\Services\AdminNotificationCampaignReadService;
 use App\Services\NotificationCampaignService;
-use App\Support\RoknAppLink;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -29,12 +30,9 @@ final class NotificationsController extends Controller
         ]);
     }
 
-    public function create(Request $request, AdminNotificationCampaignReadService $notifications): View
+    public function create(NotificationCreateContextRequest $request, AdminNotificationCampaignReadService $notifications): View
     {
-        $validated = $request->validate([
-            'user_id' => ['nullable', 'integer', 'min:1'],
-            'course_search' => ['nullable', 'string', 'max:100'],
-        ]);
+        $validated = $request->validated();
 
         return view(
             'admin.notifications.create',
@@ -46,19 +44,11 @@ final class NotificationsController extends Controller
     }
 
     public function store(
-        Request $request,
+        NotificationCampaignRequest $request,
         AdminNotificationCampaignAuthoringService $notifications,
         AdminAuthoringCreateIntentService $createIntents
     ): RedirectResponse {
-        $validated = $request->validate($this->campaignRules() + [
-            'user_id' => ['nullable', 'integer', 'exists:users,id'],
-            'authoring_request_id' => ['required', 'uuid'],
-            // Broadcasts are released only after staff saw the recipient
-            // count and confirmed it (Mailchimp/Klaviyo pre-send review).
-            'confirm_send' => ['exclude_with:user_id', 'accepted'],
-        ], [
-            'confirm_send.accepted' => 'راجع عدد المستلمين وأكّد الإرسال',
-        ]);
+        $validated = $request->validated();
         unset($validated['confirm_send']);
 
         $campaign = $notifications->author(
@@ -88,14 +78,10 @@ final class NotificationsController extends Controller
      * selector as delivery, evaluated now.
      */
     public function audiencePreview(
-        Request $request,
+        NotificationAudienceRequest $request,
         AdminNotificationCampaignAuthoringService $notifications
     ): JsonResponse {
-        $validated = $request->validate([
-            'audience' => ['required', 'string', 'in:all,not_enrolled,enrolled'],
-            'course_id' => ['nullable', 'required_unless:audience,all', 'integer', 'exists:courses,id'],
-            'notification_kind' => ['nullable', 'string', 'in:marketing,service'],
-        ]);
+        $validated = $request->validated();
         $courseId = ! empty($validated['course_id']) ? (int) $validated['course_id'] : null;
 
         return response()->json([
@@ -114,14 +100,10 @@ final class NotificationsController extends Controller
      * and is listed in the campaign log like any individual message.
      */
     public function test(
-        Request $request,
+        NotificationCampaignRequest $request,
         AdminNotificationCampaignAuthoringService $notifications
     ): JsonResponse|RedirectResponse {
-        $validated = $request->validate($this->campaignRules() + [
-            'test_email' => ['required', 'email:rfc', 'max:255'],
-        ], [
-            'test_email.required' => 'اكتب بريد حساب الطالب الذي سيستلم التجربة',
-        ]);
+        $validated = $request->validated();
         $student = User::query()->students()
             ->where('email', strtolower(trim($validated['test_email'])))
             ->first();
@@ -183,32 +165,5 @@ final class NotificationsController extends Controller
         return redirect()
             ->route('admin.notifications.index')
             ->with('success', 'أُعيدت الحملة إلى قائمة الإرسال');
-    }
-
-    /** @return array<string, mixed> */
-    private function campaignRules(): array
-    {
-        return [
-            'title_ar' => ['required', 'string', 'max:80'],
-            'message_ar' => ['required', 'string', 'max:240'],
-            'title_en' => ['nullable', 'string', 'max:80'],
-            'message_en' => ['nullable', 'string', 'max:240'],
-            'course_id' => ['nullable', 'required_unless:audience,all', 'integer', 'exists:courses,id'],
-            'audience' => ['required', 'string', 'in:all,not_enrolled,enrolled'],
-            'notification_kind' => ['nullable', 'string', 'in:marketing,service'],
-            'image' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:4096'],
-            'action_label' => ['nullable', 'string', 'max:40'],
-            'action_link' => [
-                'nullable',
-                'string',
-                'max:2000',
-                static function (string $attribute, mixed $value, \Closure $fail): void {
-                    if (trim((string) $value) !== '' && RoknAppLink::normalize($value) === null) {
-                        $fail('اختر وجهة صحيحة داخل ركن');
-                    }
-                },
-            ],
-            'send_at' => ['nullable', 'date_format:Y-m-d\\TH:i'],
-        ];
     }
 }

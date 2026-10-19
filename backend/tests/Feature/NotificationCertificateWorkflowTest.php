@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Controllers\Admin\NotificationsController;
+use App\Http\Requests\Admin\NotificationCampaignRequest;
 use App\Jobs\DeliverStudentNotificationChunk;
 use App\Jobs\RecoverPendingCertificate;
 use App\Jobs\SendStudentNotification;
@@ -38,10 +39,13 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Kreait\Firebase\Contract\Messaging;
 use Mockery;
+use Tests\Support\ValidatesFormRequests;
 use Tests\TestCase;
 
 final class NotificationCertificateWorkflowTest extends TestCase
 {
+    use ValidatesFormRequests;
+
     /** @var list<string> */
     private array $tables = [
         'classification_course', 'course_teacher',
@@ -174,7 +178,7 @@ final class NotificationCertificateWorkflowTest extends TestCase
         ]);
         $request->setUserResolver(static fn () => $admin);
 
-        app()->call([app(NotificationsController::class), 'store'], ['request' => $request]);
+        app()->call([app(NotificationsController::class), 'store'], ['request' => $this->validatedFormRequest(NotificationCampaignRequest::class, $request)]);
 
         $campaign = NotificationCampaign::query()
             ->where('course_id', $course->id)

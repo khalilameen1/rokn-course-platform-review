@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Controllers\Admin\NotificationsController;
+use App\Http\Requests\Admin\NotificationCampaignRequest;
 use App\Jobs\SendStudentNotification;
 use App\Models\NotificationCampaign;
 use App\Services\NotificationCampaignService;
@@ -20,9 +21,12 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Tests\Feature\API\ApiTestCase;
+use Tests\Support\ValidatesFormRequests;
 
 final class AdminNotificationParityTest extends ApiTestCase
 {
+    use ValidatesFormRequests;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -127,7 +131,7 @@ final class AdminNotificationParityTest extends ApiTestCase
         ]);
         $request->setUserResolver(fn () => $this->user);
 
-        $response = app()->call([app(NotificationsController::class), 'store'], ['request' => $request]);
+        $response = app()->call([app(NotificationsController::class), 'store'], ['request' => $this->validatedFormRequest(NotificationCampaignRequest::class, $request)]);
 
         self::assertSame(302, $response->getStatusCode());
         self::assertTrue(session()->has('success'));
@@ -160,7 +164,7 @@ final class AdminNotificationParityTest extends ApiTestCase
         ]);
         $request->setUserResolver(fn () => $this->user);
 
-        app()->call([app(NotificationsController::class), 'store'], ['request' => $request]);
+        app()->call([app(NotificationsController::class), 'store'], ['request' => $this->validatedFormRequest(NotificationCampaignRequest::class, $request)]);
 
         $this->assertDatabaseHas('notification_campaigns', [
             'title_ar' => 'عنوان عربي',
@@ -188,7 +192,7 @@ final class AdminNotificationParityTest extends ApiTestCase
         $request->setUserResolver(fn () => $this->user);
 
         $this->expectException(ValidationException::class);
-        app()->call([app(NotificationsController::class), 'store'], ['request' => $request]);
+        app()->call([app(NotificationsController::class), 'store'], ['request' => $this->validatedFormRequest(NotificationCampaignRequest::class, $request)]);
     }
 
     public function test_failed_campaign_can_be_retried_once_without_changing_its_delivery_key(): void

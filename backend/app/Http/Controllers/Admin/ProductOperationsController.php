@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\OperationalRecoveryRequest;
+use App\Http\Requests\Admin\ProductFeatureUpdateRequest;
 use App\Models\OutboxEvent;
 use App\Services\AdminOperationalRecoveryService;
 use App\Services\AdminProductFeatureAuthoringService;
 use App\Services\AdminProductOperationsReadService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -22,13 +23,11 @@ class ProductOperationsController extends Controller
     }
 
     public function retryOutbox(
-        Request $request,
+        OperationalRecoveryRequest $request,
         OutboxEvent $outboxEvent,
         AdminOperationalRecoveryService $recovery
     ): RedirectResponse {
-        $validated = $request->validate([
-            'reason' => ['required', 'string', 'min:8', 'max:190'],
-        ]);
+        $validated = $request->validated();
         $recovery->retryOutbox(
             (int) $outboxEvent->id,
             $request->user()?->getAuthIdentifier(),
@@ -39,13 +38,11 @@ class ProductOperationsController extends Controller
     }
 
     public function skipOutbox(
-        Request $request,
+        OperationalRecoveryRequest $request,
         OutboxEvent $outboxEvent,
         AdminOperationalRecoveryService $recovery
     ): RedirectResponse {
-        $validated = $request->validate([
-            'reason' => ['required', 'string', 'min:8', 'max:190'],
-        ]);
+        $validated = $request->validated();
         $recovery->skipOutbox(
             (int) $outboxEvent->id,
             $request->user()?->getAuthIdentifier(),
@@ -56,13 +53,11 @@ class ProductOperationsController extends Controller
     }
 
     public function acknowledgeFailedJob(
-        Request $request,
+        OperationalRecoveryRequest $request,
         int $failedJob,
         AdminOperationalRecoveryService $recovery
     ): RedirectResponse {
-        $validated = $request->validate([
-            'reason' => ['required', 'string', 'min:8', 'max:190'],
-        ]);
+        $validated = $request->validated();
         $recovery->acknowledgeFailedJob(
             $failedJob,
             $request->user()?->getAuthIdentifier(),
@@ -73,18 +68,12 @@ class ProductOperationsController extends Controller
     }
 
     public function updateFeature(
-        Request $request,
+        ProductFeatureUpdateRequest $request,
         string $feature,
         AdminProductFeatureAuthoringService $features
     ): RedirectResponse {
         abort_unless(array_key_exists($feature, config('product_features.definitions', [])), 404);
-        $validated = $request->validate([
-            'enabled' => ['required', 'boolean'],
-            'rollout_percentage' => ['required', 'integer', 'min:0', 'max:100'],
-            'reason' => ['required', 'string', 'min:8', 'max:255'],
-            'expires_at' => ['nullable', 'date'],
-            'editor_version' => ['required', 'string', 'size:64'],
-        ]);
+        $validated = $request->validated();
         $administrator = $request->user();
         $owner = $administrator?->email
             ?: 'admin:'.(string) ($administrator?->getAuthIdentifier() ?? 'unknown');
