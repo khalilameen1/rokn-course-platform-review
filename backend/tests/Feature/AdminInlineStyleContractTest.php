@@ -177,7 +177,12 @@ final class AdminInlineStyleContractTest extends TestCase
             route('admin.dashboard')
         )->assertOk()->getContent();
 
-        self::assertGreaterThan(60, count($pages));
+        // This crawl covers remaining Blade workspaces only. Native pages have
+        // their own browser/axe gates; their growing number must not force us
+        // to retain obsolete views just to satisfy a historical page count.
+        self::assertArrayHasKey('admin.courses.show', $pages);
+        self::assertArrayHasKey('admin.orders.show', $pages);
+        self::assertArrayHasKey('admin.dashboard (moderator)', $pages);
 
         return $pages;
     }
@@ -227,8 +232,6 @@ final class AdminInlineStyleContractTest extends TestCase
             'admin.users.edit' => route('admin.users.edit', $student),
             'admin.student-progress.show' => route('admin.student-progress.show', $student),
             'admin.orders.show' => route('admin.orders.show', $order),
-            'admin.packages.show' => route('admin.packages.show', $package),
-            'admin.packages.edit' => route('admin.packages.edit', $package),
             'admin.coin-earning-methods.edit' => route('admin.coin-earning-methods.edit', $method),
             'admin.coupons.edit' => route('admin.coupons.edit', $coupon),
             'admin.course-codes.show' => route('admin.course-codes.show', $code),

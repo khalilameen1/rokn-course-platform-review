@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\PackageResource;
+use App\Filament\Resources\PackageResource\Pages\CreatePackage;
+use App\Filament\Resources\PackageResource\Pages\EditPackage;
+use App\Filament\Resources\PackageResource\Pages\ListPackages;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\CoinEarningMethod;
 use App\Models\Course;
@@ -17,11 +21,13 @@ use App\Services\PublicAppSettingsService;
 use App\Support\RewardConfigurationVersion;
 use DOMDocument;
 use DOMXPath;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class AdminEconomyDashboardContractTest extends TestCase
@@ -35,6 +41,7 @@ final class AdminEconomyDashboardContractTest extends TestCase
         parent::setUp();
         $this->withoutMiddleware(RequireAdminMfa::class);
         $this->admin = $this->dashboardUser('admin');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
     }
 
     public function test_package_and_reward_lists_have_explicit_bounds(): void
@@ -46,8 +53,8 @@ final class AdminEconomyDashboardContractTest extends TestCase
             $this->method(['action_key' => 'bounded_task_'.$i, 'title_ar' => 'مهمة '.$i]);
         }
 
-        $packages = $this->actingAs($this->admin, 'web')
-            ->get(route('admin.packages.index'))->assertOk()->viewData('packages');
+        $this->actingAs($this->admin, 'web')->get(route('admin.packages.index'))->assertRedirect(PackageResource::getUrl());
+        $packages = Livewire::test(ListPackages::class)->instance()->getTableRecords();
         self::assertSame(30, $packages->perPage());
         self::assertCount(30, $packages->items());
 
@@ -65,8 +72,15 @@ final class AdminEconomyDashboardContractTest extends TestCase
         $package = $this->package([]);
         $method = $this->method(['action_key' => 'shared_form_task']);
 
+        $this->actingAs($this->admin, 'web');
+        $create = Livewire::test(CreatePackage::class);
+        $edit = Livewire::test(EditPackage::class, ['record' => $package->id]);
+        foreach (PackageResource::draftFields() as $field) {
+            $create->assertFormFieldExists($field);
+            $edit->assertFormFieldExists($field);
+        }
+
         foreach ([
-            [route('admin.packages.create'), route('admin.packages.edit', $package)],
             [route('admin.coin-earning-methods.create'), route('admin.coin-earning-methods.edit', $method)],
         ] as [$create, $edit]) {
             $createFields = $this->formFields($this->actingAs($this->admin, 'web')->get($create)->assertOk()->getContent());
@@ -118,13 +132,13 @@ final class AdminEconomyDashboardContractTest extends TestCase
         // Moderators opening admin.courses.create is exercised in
         // AdminDailyPagesRuntimeTest::test_moderator_daily_course_pages_render_without_financial_data.
         $moderator = $this->dashboardUser('moderator');
-        foreach (['admin.packages.index', 'admin.packages.create', 'admin.coin-earning-methods.index', 'admin.coin-earning-methods.create'] as $page) {
+        foreach ([PackageResource::getUrl(), PackageResource::getUrl('create'), route('admin.coin-earning-methods.index'), route('admin.coin-earning-methods.create')] as $url) {
             // Each identity gets its own session; a pinned admin session
             // would otherwise log the moderator out instead of refusing.
             $this->flushSession();
-            $this->actingAs($this->admin, 'web')->get(route($page))->assertOk();
+            $this->actingAs($this->admin, 'web')->get($url)->assertOk();
             $this->flushSession();
-            $this->actingAs($moderator, 'web')->get(route($page))->assertForbidden();
+            $this->actingAs($moderator, 'web')->get($url)->assertForbidden();
         }
         foreach (['admin.packages.store', 'admin.coin-earning-methods.store'] as $write) {
             self::assertContains('admin.only', Route::getRoutes()->getByName($write)->gatherMiddleware(), $write);

@@ -1,6 +1,46 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('store packages use native channel forms and the shared payment history on mobile', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    const name = 'حزمة متصفح ' + Date.now();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/packages/create');
+    await page.getByLabel('الاسم بالعربية', { exact: false }).fill(name);
+    await page.getByLabel('الاسم بالإنجليزية', { exact: false }).fill('Native browser package');
+    await page.getByLabel('سعر كاشير بالجنيه', { exact: false }).fill('120');
+    await page.getByLabel('عدد عملات رُكن', { exact: false }).fill('900');
+    await page.getByRole('switch', { name: 'كاشير', exact: true }).check();
+    await page.getByRole('switch', { name: 'ظاهرة للشراء', exact: true }).check();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('package-create-phone.png'), fullPage: true });
+    await page.getByRole('button', { name: 'إضافة', exact: true }).click();
+    await expect(page).toHaveURL(/\/operations\/packages$/);
+    const row = page.getByRole('row').filter({ hasText: name });
+    await row.getByRole('link', { name: 'تعديل', exact: true }).click();
+    await page.getByLabel('سعر كاشير بالجنيه', { exact: false }).fill('130');
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page.getByText('تم الحفظ', { exact: true })).toBeVisible();
+    await page.goto('/operations/packages');
+    await page.getByRole('row').filter({ hasText: 'حزمة المتصفح' }).getByRole('link', { name: 'عرض', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'عرض حزمة المتصفح', exact: true })).toBeVisible();
+    // Filament's relation table mounts lazily when the operator scrolls to the history.
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    await expect(page.getByRole('table').getByText('11.11 EGP', { exact: true })).toBeVisible();
+    await expect(page.getByRole('table').getByText('اختبار خارج الإيراد', { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('package-view-phone.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/operations/packages');
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'حزم المتاجر', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await page.screenshot({ path: testInfo.outputPath('package-list-desktop.png'), fullPage: true });
+    expect(errors).toEqual([]);
+});
+
 test('release editor reuses native forms and keeps platform builds separate on phone and desktop', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

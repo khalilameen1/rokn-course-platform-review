@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Order;
-use App\Models\Package;
 use App\Models\PaymentReconciliationFinding;
 use App\Support\BusinessClock;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -154,19 +152,6 @@ final readonly class AdminPaymentOperationsReadService
         ];
     }
 
-    public function packageOrders(Package $package): LengthAwarePaginator
-    {
-        $orders = $this->ordersQuery()
-            ->where('package_id', $package->getKey())
-            ->latest('created_at')
-            ->latest('id')
-            ->paginate(30, ['*'], 'orders_page')
-            ->withQueryString();
-        $this->decorate($orders->getCollection());
-
-        return $orders;
-    }
-
     /** Provider checkout attempts that still need operational follow-up. */
     public function openProviderCheckouts(): Builder
     {
@@ -206,6 +191,7 @@ final readonly class AdminPaymentOperationsReadService
         }
     }
 
+    /** @return Builder<Order> */
     public function ordersQuery(): Builder
     {
         return Order::query()->with([

@@ -568,54 +568,6 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/Admin/OrdersController.php
 
-		-
-			message: '#^Call to an undefined method Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\:\:getCollection\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/PackageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PackageController\:\:create\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PackageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PackageController\:\:destroy\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 2
-			path: app/Http/Controllers/Admin/PackageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PackageController\:\:edit\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PackageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PackageController\:\:index\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PackageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PackageController\:\:show\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PackageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PackageController\:\:store\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PackageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\PackageController\:\:update\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/PackageController.php
-
 
 
 
@@ -4429,18 +4381,6 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:financiallyEffective\(\)\.$#'
 			identifier: method.notFound
-			count: 1
-			path: app/Services/AdminPaymentOperationsReadService.php
-
-		-
-			message: '#^Parameter \#1 \$orders of method App\\Services\\AdminPaymentOperationsReadService\:\:decorate\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\Order\>, Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Model\> given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Services/AdminPaymentOperationsReadService.php
-
-		-
-			message: '#^Parameter \#1 of callable callable\(App\\Models\\Order\)\: void expects App\\Models\\Order, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Services/AdminPaymentOperationsReadService.php
 

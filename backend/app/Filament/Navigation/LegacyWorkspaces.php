@@ -20,7 +20,6 @@ final class LegacyWorkspaces
             ['البلاغات والدعم', 'المراجعة', 'admin.feedback.index'],
             ['أكواد المنح', 'التجارة', 'admin.course-codes.index'],
             ['الخصومات', 'التجارة', 'admin.coupons.index'],
-            ['حزم المتاجر', 'التجارة', 'admin.packages.index'],
             ['المصروفات', 'التجارة', 'admin.operating-costs.index'],
             ['المكافآت والمهام', 'التطبيق', 'admin.coin-earning-methods.index'],
             ['الإشعارات', 'التطبيق', 'admin.notifications.index'],

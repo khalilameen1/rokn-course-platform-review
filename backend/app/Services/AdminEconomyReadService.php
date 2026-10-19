@@ -9,6 +9,7 @@ use App\Models\Package;
 use App\Models\RewardRule;
 use App\Models\Setting;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 final readonly class AdminEconomyReadService
@@ -49,17 +50,12 @@ final readonly class AdminEconomyReadService
         ];
     }
 
-    public function packages(): LengthAwarePaginator
+    /** @return Builder<Package> */
+    public function packagesQuery(): Builder
     {
         return Package::query()
             ->withCount('orders')
-            ->withSum(
-                ['orders as confirmed_net_amount' => static fn ($orders) => $orders->financiallyEffective()],
-                'gateway_net_amount'
-            )
             ->orderBy('sort_order')
-            ->orderBy('id')
-            ->paginate(30)
-            ->withQueryString();
+            ->orderBy('id');
     }
 }

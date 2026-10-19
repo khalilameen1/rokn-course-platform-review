@@ -28,6 +28,12 @@ abstract class DomainResource extends Resource
     /** Public, non-sensitive fields that may be recovered on this device. */
     abstract public static function draftFields(): array;
 
+    /** Map aggregate-level refusals to an actual field in this resource's schema. */
+    public static function validationFieldMap(): array
+    {
+        return [];
+    }
+
     public static function draftFileFields(): array
     {
         return [];

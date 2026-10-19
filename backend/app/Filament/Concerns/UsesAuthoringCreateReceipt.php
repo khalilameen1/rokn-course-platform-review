@@ -41,7 +41,7 @@ trait UsesAuthoringCreateReceipt
             return app(AdminAuthoringCreateIntentService::class)->createResource($operation, $this->creationIntent, $model, $data, $create);
         } catch (ValidationException $exception) {
             if (! isset($exception->errors()['authoring_request_id'])) {
-                throw FormValidation::forRecord($exception);
+                throw FormValidation::forRecord($exception, static::getResource()::validationFieldMap());
             }
             Notification::make()->title($exception->errors()['authoring_request_id'][0])->danger()->send();
             throw new Halt;

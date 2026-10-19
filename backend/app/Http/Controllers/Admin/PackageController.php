@@ -2,16 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\PackageResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\EditorVersionRequest;
 use App\Http\Requests\Admin\PackageProfileRequest;
 use App\Models\Package;
 use App\Services\AdminAuthoringCreateIntentService;
-use App\Services\AdminEconomyReadService;
 use App\Services\AdminPackageAuthoringService;
-use App\Services\AdminPaymentOperationsReadService;
-use App\Support\PackageEditorVersion;
-use Illuminate\Http\Response;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
 
 class PackageController extends Controller
@@ -21,32 +19,27 @@ class PackageController extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @return Response
+     * @return RedirectResponse
      */
-    public function index(AdminEconomyReadService $economy)
+    public function index()
     {
-        $packages = $economy->packages();
-        $editorVersions = $packages->getCollection()->mapWithKeys(fn (Package $package): array => [
-            $package->id => PackageEditorVersion::for($package),
-        ]);
-
-        return view('admin.packages.index', compact('packages', 'editorVersions'));
+        return redirect(PackageResource::getUrl());
     }
 
     /**
      * Show the form for creating a new resource.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function create()
     {
-        return view('admin.packages.create');
+        return redirect(PackageResource::getUrl('create'));
     }
 
     /**
      * Store a newly created resource in storage.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function store(PackageProfileRequest $request, AdminAuthoringCreateIntentService $createIntents)
     {
@@ -68,33 +61,27 @@ class PackageController extends Controller
     /**
      * Display the specified resource.
      *
-     * @return Response
+     * @return RedirectResponse
      */
-    public function show(Package $package, AdminPaymentOperationsReadService $payments)
+    public function show(Package $package)
     {
-        return view('admin.packages.show', [
-            'package' => $package,
-            'orders' => $payments->packageOrders($package),
-            'paymentMethodLabels' => $payments->channelLabels(),
-        ]);
+        return redirect(PackageResource::getUrl('view', ['record' => $package->id]));
     }
 
     /**
      * Show the form for editing the specified resource.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function edit(Package $package)
     {
-        $editorVersion = PackageEditorVersion::for($package);
-
-        return view('admin.packages.edit', compact('package', 'editorVersion'));
+        return redirect(PackageResource::getUrl('edit', ['record' => $package->id]));
     }
 
     /**
      * Update the specified resource in storage.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function update(PackageProfileRequest $request, Package $package)
     {
@@ -115,7 +102,7 @@ class PackageController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function destroy(EditorVersionRequest $request, Package $package)
     {

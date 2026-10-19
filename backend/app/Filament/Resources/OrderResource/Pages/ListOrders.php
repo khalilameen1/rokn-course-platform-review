@@ -2,28 +2,15 @@
 
 namespace App\Filament\Resources\OrderResource\Pages;
 
+use App\Filament\Concerns\DecoratesOrderTable;
 use App\Filament\Resources\OrderResource;
-use App\Services\AdminPaymentOperationsReadService;
 use Filament\Resources\Pages\ListRecords;
-use Illuminate\Contracts\Pagination\CursorPaginator;
-use Illuminate\Contracts\Pagination\Paginator;
-use Illuminate\Support\Collection;
 
 final class ListOrders extends ListRecords
 {
+    use DecoratesOrderTable;
+
     protected static string $resource = OrderResource::class;
-
-    public function getTableRecords(): Collection|Paginator|CursorPaginator
-    {
-        $records = parent::getTableRecords();
-        $orders = $records instanceof Collection ? $records : collect($records->items());
-        // Filament caches the page collection. Decorate it once, never per cell.
-        if ($orders->isNotEmpty() && $orders->first()->getAttribute('payment_operation_state') === null) {
-            app(AdminPaymentOperationsReadService::class)->decorate($orders);
-        }
-
-        return $records;
-    }
 
     public function exportUrl(): string
     {

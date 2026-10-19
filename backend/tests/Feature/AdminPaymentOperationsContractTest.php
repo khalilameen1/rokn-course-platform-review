@@ -6,13 +6,14 @@ namespace Tests\Feature;
 
 use App\Filament\Resources\OrderResource;
 use App\Filament\Resources\OrderResource\Pages\ListOrders;
+use App\Filament\Resources\PackageResource;
+use App\Filament\Resources\PackageResource\Pages\ViewPackage;
+use App\Filament\Resources\PackageResource\RelationManagers\OrdersRelationManager;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\User;
 use App\Services\OrderLifecycleService;
-use DOMDocument;
-use DOMXPath;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Route as RoutingRoute;
@@ -157,35 +158,13 @@ final class AdminPaymentOperationsContractTest extends TestCase
         [, $otherPackage] = $this->fixtures();
         $foreign = $this->order($user, $otherPackage, []);
 
-        $response = $this->actingAs($admin, 'web')
+        $this->actingAs($admin, 'web')
             ->get(route('admin.packages.show', $package))
-            ->assertOk();
-        $orders = $response->viewData('orders');
-        self::assertSame('orders_page', $orders->getPageName());
-        self::assertEqualsCanonicalizing([$settled->id, $awaiting->id], $orders->getCollection()->modelKeys());
-
-        $xpath = $this->xpath($response->getContent());
-        $settledRow = $this->rowFor($xpath, $settled);
-        self::assertStringContainsString('Kashier — أندرويد مباشر/الويب', $settledRow);
-        self::assertStringContainsString('95.50 EGP', $settledRow);
-        self::assertStringContainsString('بانتظار التسوية', $this->rowFor($xpath, $awaiting));
-        self::assertSame(0, $xpath->query('//a[@href="'.route('admin.orders.show', $foreign).'"]')->length);
-    }
-
-    private function rowFor(DOMXPath $xpath, Order $order): string
-    {
-        $rows = $xpath->query('//tr[.//a[@href="'.route('admin.orders.show', $order).'"]]');
-        self::assertSame(1, $rows->length, 'Order #'.$order->id.' must have one history row.');
-
-        return preg_replace('/\s+/u', ' ', (string) $rows->item(0)->textContent);
-    }
-
-    private function xpath(string $html): DOMXPath
-    {
-        $document = new DOMDocument;
-        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$html);
-
-        return new DOMXPath($document);
+            ->assertRedirect(PackageResource::getUrl('view', ['record' => $package->id]));
+        $page = Livewire::test(OrdersRelationManager::class, ['ownerRecord' => $package, 'pageClass' => ViewPackage::class])
+            ->assertCanSeeTableRecords([$settled, $awaiting])->assertCanNotSeeTableRecords([$foreign])
+            ->assertSee('95.50 EGP')->assertSee('بانتظار التسوية');
+        self::assertEqualsCanonicalizing([$settled->id, $awaiting->id], $page->instance()->getTableRecords()->getCollection()->modelKeys());
     }
 
     private function admin(): User
