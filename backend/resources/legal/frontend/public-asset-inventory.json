@@ -75,11 +75,6 @@
       "classification": "first_party"
     },
     {
-      "path": "public/admin/assets/css/design-settings.css",
-      "sha256": "41f15d96effb86fc47bffdcd8a7b684de5748558479a7e567d8539859494de0b",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/font-awesome.min.css",
       "sha256": "799aeb25cc0373fdee0e1b1db7ad6c2f6a0e058dfadaa3379689f583213190bd",
       "classification": "third_party",
@@ -518,7 +513,7 @@
     },
     {
       "path": "public/js/authoring-draft.js",
-      "sha256": "1d139300a51a3e91e26bb20f21aae9988d2a179f757f681de42b7dbaabc5eabf",
+      "sha256": "a25aace936683b7d99a679b4cd86e15f99e1aa2ceda3fbf075403205da9453eb",
       "classification": "first_party"
     },
     {

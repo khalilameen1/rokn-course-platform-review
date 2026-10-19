@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { createDraftStore } from '../../resources/js/admin/authoring-draft.mjs';
+import authoringDraft, { createDraftStore } from '../../resources/js/admin/authoring-draft.mjs';
 
 function storage() {
     const values = new Map();
@@ -74,4 +74,37 @@ test('the saved revision changes only after a successful acknowledgement', () =>
     store.forget();
     store.snapshot({ name_ar: 'بعد' });
     assert.equal(store.current().version, 'second');
+});
+
+test('the native adapter adopts the next singleton save receipt only after acknowledgement', async () => {
+    const previousWindow = globalThis.window;
+    const previousLocation = globalThis.location;
+    const env = environment();
+    const listeners = new Map();
+    env.addEventListener = (name, listener) => listeners.set(name, listener);
+    env.removeEventListener = name => listeners.delete(name);
+    globalThis.window = env;
+    globalThis.location = { pathname: '/operations/app-artwork' };
+    const settings = { ...config(), version: 'initial', fields: ['name_ar'], fileFields: [] };
+    const nextReceipt = randomUUID();
+    const component = authoringDraft(settings);
+    component.$el = { closest: () => ({ addEventListener() {}, removeEventListener() {} }), dataset: {} };
+    component.$wire = { $id: 'singleton-editor', data: { name_ar: 'قبل الحفظ' }, $watch: () => () => {} };
+    try {
+        await component.init();
+        component.snapshot();
+        listeners.get('authoring-draft-saved')({ detail: { editorId: 'singleton-editor', version: 'saved', receipt: nextReceipt } });
+        component.$wire.data.name_ar = 'بعد الحفظ';
+        component.snapshot();
+        const [entry] = JSON.parse(env.localStorage.getItem('rokn:course-authoring-draft-index:12'));
+        const saved = JSON.parse(env.localStorage.getItem(entry.key));
+        assert.equal(saved.version, 'saved');
+        assert.equal(saved.receipt, nextReceipt);
+        assert.equal(saved.values.name_ar, 'بعد الحفظ');
+        assert.equal(settings.version, 'saved');
+    } finally {
+        component.destroy();
+        if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow;
+        if (previousLocation === undefined) delete globalThis.location; else globalThis.location = previousLocation;
+    }
 });

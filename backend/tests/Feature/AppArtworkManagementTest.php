@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\ArtworkSettings;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\DesignSetting;
 use App\Models\Level;
@@ -11,6 +12,7 @@ use App\Models\User;
 use App\Services\AppArtworkService;
 use App\Services\PublicAppSettingsService;
 use App\Services\StoredFileReferenceService;
+use App\Support\DesignSettingsEditorVersion;
 use App\Support\PublicDiskUrl;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -42,7 +44,7 @@ final class AppArtworkManagementTest extends TestCase
 
     public function test_approved_defaults_exist_and_are_visible_without_seeding(): void
     {
-        $editor = $this->get(route('admin.design-settings.index'))->assertOk();
+        $editor = $this->get(ArtworkSettings::getUrl())->assertOk();
         $snapshot = app(PublicAppSettingsService::class)->snapshot();
         foreach (AppArtworkService::ASSETS as $key => $asset) {
             self::assertFileExists(public_path('assets/app-artwork/v1/'.$asset['file']));
@@ -155,12 +157,10 @@ final class AppArtworkManagementTest extends TestCase
 
     private function payload(): array
     {
-        $editor = $this->get(route('admin.design-settings.index'))->assertOk();
-
         return [
             'name_ar' => 'رُكن', 'name_en' => 'Rokn',
             'color_1' => '#005EFF', 'color_2' => '#FFFFFF', 'color_3' => '#101318', 'color_4' => '#818896',
-            'editor_version' => $editor->viewData('editorVersion'),
+            'editor_version' => DesignSettingsEditorVersion::for(DesignSetting::getDefaultSettings()),
             'authoring_request_id' => (string) Str::uuid(),
         ];
     }

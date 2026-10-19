@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\ArtworkSettings;
 use App\Mail\AdminContact;
 use App\Models\CoinEarningMethod;
 use App\Models\Contact;
@@ -93,7 +94,7 @@ final class AdminLearningViewsTest extends TestCase
             self::assertGreaterThan(0, $settings->query('//form//input[@name="'.$field.'"]')->length, $field);
         }
 
-        $design = $this->dom((string) $this->adminGet($admin, route('admin.design-settings.index'))->assertOk()->getContent());
+        $design = $this->dom((string) $this->adminGet($admin, ArtworkSettings::getUrl())->assertOk()->getContent());
         foreach (['technical_contact', 'policy_content_ar', 'policy_content_en'] as $retiredField) {
             self::assertSame(0, $design->query('//*[@name="'.$retiredField.'"]')->length, $retiredField);
         }

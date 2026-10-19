@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\ArtworkSettings;
 use App\Filament\Resources\ContactResource;
 use App\Filament\Resources\ContactResource\Pages\ListContacts;
 use App\Filament\Resources\FeedbackResource;
@@ -56,7 +57,7 @@ final class AdminShellNavigationContractTest extends TestCase
 
     public function test_identity_editor_does_not_expose_unused_powered_by_fields(): void
     {
-        $html = $this->adminGet($this->dashboardUser('admin'), route('admin.design-settings.index'))->assertOk()->getContent();
+        $html = $this->adminGet($this->dashboardUser('admin'), ArtworkSettings::getUrl())->assertOk()->getContent();
         self::assertSame(0, $this->dom($html)->query('//*[@name="powered_by_titles" or @name="powered_by_urls"]')->length);
     }
 }

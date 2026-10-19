@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\ArtworkSettings;
 use App\Filament\Resources\StudentResource;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 /** Remaining legacy identity workspaces are checked as rendered HTTP responses, not source substrings. */
@@ -36,9 +39,9 @@ final class AdminIdentityViewsTest extends TestCase
 
     public function test_design_workspace_renders_the_current_form_contract(): void
     {
-        $this->get(route('admin.design-settings.index'))->assertOk()->assertSee('design-settings.css', false)
-            ->assertSee(route('admin.design-settings.store'), false)
-            ->assertSee('name="color_1"', false)->assertSee('name="color_4"', false)
-            ->assertSee('name="editor_version"', false);
+        $this->get(route('admin.design-settings.index'))->assertRedirect(ArtworkSettings::getUrl());
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $editor = Livewire::test(ArtworkSettings::class)->assertFormFieldExists('color_1')->assertFormFieldExists('color_4');
+        self::assertSame(64, strlen($editor->get('editorVersion')));
     }
 }

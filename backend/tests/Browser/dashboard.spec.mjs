@@ -1,6 +1,63 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+const artworkLabels = ['رمز العملة', 'صورة رصيد العملات', 'شارة Junior الافتراضية', 'شارة Mid-level الافتراضية', 'شارة Senior الافتراضية'];
+const artworkPanel = (page, label) => page.getByRole('region').filter({ has: page.getByRole('heading', { name: label, exact: true }) });
+async function hydrateArtworkPanels(page) {
+    for (const label of artworkLabels) {
+        const panel = artworkPanel(page, label);
+        await panel.scrollIntoViewIfNeeded();
+        await expect.poll(() => panel.locator('img').first().evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
+        await expect(panel.locator('.filepond--root')).toBeVisible();
+    }
+}
+
+test('artwork settings native phone editor saves artwork twice and restores its next draft', async ({ page }, testInfo) => {
+    page.on('dialog', dialog => dialog.accept());
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/app-artwork');
+    await expect(page.locator('[data-authoring-draft]')).toHaveAttribute('data-draft-ready', 'true');
+    await hydrateArtworkPanels(page);
+    const stack = artworkPanel(page, 'صورة رصيد العملات');
+    await stack.scrollIntoViewIfNeeded();
+    await stack.locator('.filepond--root input[type=file]').setInputFiles('public/assets/app-artwork/v1/coin-stack.png');
+    await expect(stack.locator('[data-filepond-item-state="processing-complete"]')).toBeVisible();
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page.getByText('تم الحفظ', { exact: true })).toBeVisible();
+    await expect(stack.locator('img').first()).toHaveAttribute('src', /\/storage\/design-settings\/artwork\//);
+    await expect.poll(() => stack.locator('img').first().evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
+    await page.getByRole('heading', { name: 'اسم ونصوص المنصة', exact: true }).click();
+    await page.getByRole('textbox', { name: /^الشعار النصي 1 بالعربية/ }).fill('كورسات هتكملها');
+    await Promise.all([
+        page.evaluate(() => new Promise(resolve => window.addEventListener('authoring-draft-saved', () => resolve(true), { once: true }))),
+        page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click(),
+    ]);
+    await page.getByRole('textbox', { name: /^الشعار النصي 1 بالعربية/ }).fill('مسودة الهوية المحفوظة');
+    await expect.poll(() => page.evaluate(() => Object.values(localStorage).some(value => value.includes('مسودة الهوية المحفوظة')))).toBe(true);
+    await page.reload();
+    await expect(page.locator('[data-authoring-draft]')).toHaveAttribute('data-draft-ready', 'true');
+    await page.getByRole('heading', { name: 'اسم ونصوص المنصة', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: /^الشعار النصي 1 بالعربية/ })).toHaveValue('مسودة الهوية المحفوظة');
+    await hydrateArtworkPanels(page);
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('artwork-settings-phone.png'), fullPage: true, animations: 'disabled' });
+    expect(errors).toEqual([]);
+});
+
+test('artwork settings native desktop page shows the approved defaults and current upload', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/operations/app-artwork');
+    await hydrateArtworkPanels(page);
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('artwork-settings-desktop.png'), fullPage: true, animations: 'disabled' });
+});
+
 test('notification campaign native editor schedules reviewed artwork without delivering it', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

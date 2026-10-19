@@ -108,6 +108,8 @@ export default function authoringDraft(config) {
                 clearTimeout(timer);
                 dirty = false;
                 this.recoverable = [];
+                config.version = event.detail.version;
+                config.receipt = event.detail.receipt || config.receipt;
                 store.setIdentity(event.detail.version, config.receipt);
                 store.forget();
             };

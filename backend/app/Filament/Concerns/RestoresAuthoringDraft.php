@@ -16,24 +16,23 @@ trait RestoresAuthoringDraft
 {
     public function authoringDraftConfig(): array
     {
-        $resource = static::getResource();
+        $context = $this->authoringDraftContext();
 
         return [
             'actor' => (string) auth('web')->id(),
             'formId' => 'native-authoring',
-            'fields' => $resource::draftFields(),
-            'fileFields' => $resource::draftFileFields(),
-            'version' => $this instanceof CreateRecord ? '' : $this->editorVersion,
-            'receipt' => $this instanceof CreateRecord ? $this->creationIntent : (string) Str::uuid(),
+            'fields' => $context['fields'],
+            'fileFields' => $context['fileFields'],
+            'version' => $context['version'],
+            'receipt' => $context['receipt'],
         ];
     }
 
     public function restoreAuthoringDraft(array $draft): array
     {
-        $resource = static::getResource();
-        $creating = $this instanceof CreateRecord;
-        abort_unless($creating ? $resource::canCreate() : $resource::canEdit($this->getRecord()), 403);
-        $version = $creating ? '' : $this->editorVersion;
+        $context = $this->authoringDraftContext();
+        abort_unless($context['canRestore'], 403);
+        $version = $context['version'];
         // ConvertEmptyStringsToNull runs on the real HTTP endpoint, unlike direct component tests.
         if ((string) ($draft['version'] ?? '') !== $version) {
             return ['state' => 'conflict'];
@@ -42,7 +41,7 @@ trait RestoresAuthoringDraft
         if (strlen(json_encode($draft, JSON_THROW_ON_ERROR)) > 65536) {
             throw ValidationException::withMessages(['draft' => 'تعذر قراءة المسودة']);
         }
-        $values = Arr::only($draft['values'], $resource::draftFields());
+        $values = Arr::only($draft['values'], $context['fields']);
         // Drafts contain scalars and ID lists, never serialized uploads or nested credentials.
         foreach ($values as $value) {
             $validList = is_array($value) && array_is_list($value) && count($value) <= 500
@@ -51,14 +50,14 @@ trait RestoresAuthoringDraft
                 throw ValidationException::withMessages(['draft' => 'تعذر قراءة المسودة']);
             }
         }
-        if ($creating) {
+        if ($context['tracksReceipt']) {
             $receipt = app(AdminAuthoringCreateIntentService::class)->resourceReceipt(
-                request(), $draft['receipt'], $resource::draftOperation(), [], $resource::getModel()
+                request(), $draft['receipt'], $context['operation'], [], $context['model']
             );
             if ($receipt['state'] === 'completed') {
                 return ['state' => 'completed', 'url' => $this->completedAuthoringDraftUrl($receipt['resource_id'])];
             }
-            $this->creationIntent = $draft['receipt'];
+            $this->adoptAuthoringDraftReceipt($draft['receipt']);
         }
         $this->form->fill(array_replace($this->data ?? [], $values));
 
@@ -68,6 +67,26 @@ trait RestoresAuthoringDraft
     protected function afterCreate(): void
     {
         $this->acknowledgeAuthoringDraft('');
+    }
+
+    protected function adoptAuthoringDraftReceipt(string $receipt): void
+    {
+        if ($this instanceof CreateRecord) {
+            $this->creationIntent = $receipt;
+        }
+    }
+
+    /** Record and singleton pages adapt to the same draft store and receipt ledger. */
+    protected function authoringDraftContext(): array
+    {
+        $resource = static::getResource();
+        $creating = $this instanceof CreateRecord;
+
+        return ['fields' => $resource::draftFields(), 'fileFields' => $resource::draftFileFields(),
+            'version' => $creating ? '' : $this->editorVersion,
+            'receipt' => $creating ? $this->creationIntent : (string) Str::uuid(),
+            'canRestore' => $creating ? $resource::canCreate() : $resource::canEdit($this->getRecord()),
+            'tracksReceipt' => $creating, 'operation' => $resource::draftOperation(), 'model' => $resource::getModel()];
     }
 
     protected function completedAuthoringDraftUrl(string $recordId): string
@@ -80,8 +99,8 @@ trait RestoresAuthoringDraft
         $this->acknowledgeAuthoringDraft($this instanceof CreateRecord ? '' : $this->editorVersion);
     }
 
-    private function acknowledgeAuthoringDraft(string $version): void
+    protected function acknowledgeAuthoringDraft(string $version, ?string $receipt = null): void
     {
-        $this->dispatch('authoring-draft-saved', editorId: $this->getId(), version: $version);
+        $this->dispatch('authoring-draft-saved', editorId: $this->getId(), version: $version, receipt: $receipt);
     }
 }
