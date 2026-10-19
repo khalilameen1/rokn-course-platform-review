@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StudentDeviceResetRequest;
+use App\Http\Requests\Admin\StudentIndexRequest;
+use App\Http\Requests\Admin\StudentNoteRequest;
+use App\Http\Requests\Admin\StudentStateRequest;
 use App\Http\Requests\Admin\UserRequest;
 use App\Models\DesignSetting;
 use App\Models\User;
@@ -38,12 +42,9 @@ class UsersController extends Controller
     /**
      * @return Factory|View
      */
-    public function index(Request $request, AdminStudentReadService $students)
+    public function index(StudentIndexRequest $request, AdminStudentReadService $students)
     {
-        $filters = $request->validate([
-            'search' => ['nullable', 'string', 'max:120'],
-            'active' => ['nullable', 'in:0,1'],
-        ]);
+        $filters = $request->validated();
 
         return view('admin.users.index', array_merge(
             $students->listing($filters, $request->query()),
@@ -52,12 +53,9 @@ class UsersController extends Controller
     }
 
     /** Streamed CSV of the current list filters (UTF-8 BOM so Excel reads Arabic). */
-    public function export(Request $request, AdminStudentReadService $students): StreamedResponse
+    public function export(StudentIndexRequest $request, AdminStudentReadService $students): StreamedResponse
     {
-        $filters = $request->validate([
-            'search' => ['nullable', 'string', 'max:120'],
-            'active' => ['nullable', 'in:0,1'],
-        ]);
+        $filters = $request->validated();
 
         return response()->streamDownload(function () use ($students, $filters): void {
             $file = fopen('php://output', 'wb');
@@ -156,15 +154,12 @@ class UsersController extends Controller
      * @return RedirectResponse
      */
     public function deactive(
-        Request $request,
+        StudentStateRequest $request,
         User $user,
         StudentAccountStateService $accounts
     ) {
         abort_if(in_array(strtolower((string) $user->role), ['admin', 'moderator', 'teacher'], true), 403);
-        $validated = $request->validate([
-            'expected_active' => ['required', 'boolean'],
-            'state_version' => ['required', 'string', 'size:64'],
-        ]);
+        $validated = $request->validated();
         $user = $accounts->setActive(
             $user,
             (bool) $validated['expected_active'],
@@ -179,14 +174,11 @@ class UsersController extends Controller
      * Store a new note for the user.
      */
     public function storeNote(
-        Request $request,
+        StudentNoteRequest $request,
         User $user,
         AdminAuthoringCreateIntentService $createIntents
     ) {
-        $validated = $request->validate([
-            'note' => 'required|string|max:1000',
-            'authoring_request_id' => 'required|uuid',
-        ]);
+        $validated = $request->validated();
 
         $this->notes->create(
             (int) $user->id, $validated['note'], (int) $request->user()->id,
@@ -218,14 +210,11 @@ class UsersController extends Controller
      * Reset the locked device for a user (single_device_permanent policy).
      */
     public function resetDevice(
-        Request $request,
+        StudentDeviceResetRequest $request,
         User $user,
         StudentAccountStateService $accounts
     ) {
-        $validated = $request->validate([
-            'state_version' => ['required', 'string', 'size:64'],
-            'expected_policy' => ['required', 'string'],
-        ]);
+        $validated = $request->validated();
         $accounts->resetDevice(
             $user, (string) $validated['expected_policy'], (string) $validated['state_version']
         );

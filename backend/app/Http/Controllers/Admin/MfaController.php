@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Auth\TwoFactorAuthenticationProvider;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\AdminMfaCodeRequest;
 use App\Models\User;
 use App\Services\AdminMfaService;
 use Illuminate\Http\RedirectResponse;
@@ -13,7 +14,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Validation\ValidationException;
 
 class MfaController extends Controller
 {
@@ -56,18 +56,10 @@ class MfaController extends Controller
         ]);
     }
 
-    public function confirmSetup(Request $request): RedirectResponse
+    public function confirmSetup(AdminMfaCodeRequest $request): RedirectResponse
     {
-        try {
-            $validated = $request->validate([
-                'code' => ['required', 'string', 'regex:/^[0-9]{6}$/D'],
-            ]);
-        } catch (ValidationException $exception) {
-            $request->request->remove('code');
-            throw $exception;
-        }
+        $validated = $request->validated();
         $submittedCode = $validated['code'];
-        $request->request->remove('code');
         $user = $request->user();
         abort_unless($user, 403);
 
@@ -113,21 +105,13 @@ class MfaController extends Controller
         return $this->noStoreView('admin.auth.mfa-challenge');
     }
 
-    public function verifyChallenge(Request $request): RedirectResponse
+    public function verifyChallenge(AdminMfaCodeRequest $request): RedirectResponse
     {
-        try {
-            $validated = $request->validate([
-                'code' => ['required', 'string', 'min:6', 'max:32'],
-            ]);
-        } catch (ValidationException $exception) {
-            $request->request->remove('code');
-            throw $exception;
-        }
+        $validated = $request->validated();
         $user = $request->user();
         abort_unless($user, 403);
 
         $code = trim($validated['code']);
-        $request->request->remove('code');
         if (! $this->mfa->verifyChallenge($user, $code)) {
             return $this->invalidCodeResponse();
         }

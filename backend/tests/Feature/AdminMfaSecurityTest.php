@@ -47,6 +47,13 @@ final class AdminMfaSecurityTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_malformed_setup_input_is_not_flashed_back_to_the_session(): void
+    {
+        $response = $this->actingAs($this->admin())->post(route('admin.mfa.setup.confirm'), ['code' => 'invalid-mfa-setup-code'])
+            ->assertRedirect()->assertSessionHasErrors('code');
+        self::assertArrayNotHasKey('code', $response->getSession()->getOldInput());
+    }
+
     public function test_admin_is_forced_through_setup_and_secret_is_encrypted_at_rest(): void
     {
         Carbon::setTestNow('2026-08-12 12:00:00');
