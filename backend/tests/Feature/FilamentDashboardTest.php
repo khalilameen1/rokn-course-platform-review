@@ -37,7 +37,7 @@ final class FilamentDashboardTest extends TestCase
         $this->withoutMiddleware(RequireAdminMfa::class);
         $this->actingAs($this->user('admin'), 'web');
         foreach (['/operations', '/operations/students', '/operations/orders'] as $url) {
-            $this->get($url)->assertOk();
+            $this->get($url)->assertOk()->assertDontSee('filament-panels::global-search.field.instructions');
         }
         session()->forget(AdminSessionIdentity::SESSION_KEY);
         $this->actingAs($this->user('moderator'), 'web')->get('/operations')->assertOk();

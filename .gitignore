@@ -16,6 +16,7 @@
 !backend/public/vendor/
 backend/public/vendor/*
 !backend/public/vendor/filament/
+!backend/resources/lang/vendor/
 !backend/resources/vendor/
 !backend/resources/vendor/sufee/
 !backend/resources/vendor/sufee/**
