@@ -279,75 +279,8 @@
     @include('admin.partials.playback-operations-summary')
 
     <div class="card admin-card mb-4">
-        <div class="card-header">
-            <h2 class="h5 mb-1">بوابات تشغيل المنتج</h2>
-            <small class="text-muted">إيقاف آمن أو طرح تدريجي دون إصدار نسخة تطبيق جديدة. كل تغيير يتطلب سببًا ويُسجّل باسم المسؤول.</small>
-        </div>
-        <div class="table-responsive">
-            <table class="table admin-table mb-0 text-right">
-                <thead class="thead-light"><tr><th>الميزة</th><th>الحالة الحالية</th><th>آخر قرار</th><th class="admin-table__wide-action">تغيير مضبوط</th></tr></thead>
-                <tbody>
-                @foreach($featureFlags as $key => $feature)
-                    @php
-                        $labels = [
-                            'checkout' => 'شحن العملات والدفع',
-                            'playback' => 'تشغيل الفيديو المحمي',
-                            'project_uploads' => 'رفع المشاريع',
-                            'ai_chat' => 'Rokn AI',
-                        ];
-                    @endphp
-                    <tr>
-                        <td>
-                            <strong>{{ $labels[$key] ?? $key }}</strong><br>
-                            <small class="text-muted">{{ $feature['description'] }}</small>
-                        </td>
-                        <td>
-                            <span class="badge {{ $feature['enabled'] ? 'badge-success' : 'badge-danger' }}">
-                                {{ $feature['enabled'] ? 'مفعّلة' : 'متوقفة' }}
-                            </span>
-                            <div class="small mt-1">{{ $feature['rollout_percentage'] }}٪ من المستخدمين</div>
-                            @if($feature['expires_at'])
-                                <small class="text-muted">تنتهي: {{ $feature['expires_at'] }}</small>
-                            @endif
-                        </td>
-                        <td>
-                            <small class="d-block"><strong>{{ $feature['owner'] ?: 'إعداد النشر الافتراضي' }}</strong></small>
-                            <small class="text-muted">{{ $feature['reason'] ?: 'لا يوجد تجاوز تشغيلي محفوظ' }}</small>
-                        </td>
-                        <td>
-                            <form method="POST" action="{{ route('admin.product-operations.features.update', $key) }}" onsubmit="return confirm('تطبيق هذا التغيير على المستخدمين؟')">
-                                @csrf
-                                <input type="hidden" name="editor_version" value="{{ $feature['editor_version'] }}">
-                                <div class="form-row align-items-end">
-                                    <div class="col-md-3 mb-2">
-                                        <label class="small">الحالة</label>
-                                        <select class="form-control form-control-sm" name="enabled" required>
-                                            <option value="1" {{ $feature['enabled'] ? 'selected' : '' }}>تشغيل</option>
-                                            <option value="0" {{ !$feature['enabled'] ? 'selected' : '' }}>إيقاف</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3 mb-2">
-                                        <label class="small">نسبة الطرح</label>
-                                        <input class="form-control form-control-sm" name="rollout_percentage" type="number" min="0" max="100" value="{{ $feature['rollout_percentage'] }}" required>
-                                    </div>
-                                    <div class="col-md-6 mb-2">
-                                        <label class="small">ينتهي تلقائيًا (اختياري)</label>
-                                        <input class="form-control form-control-sm" name="expires_at" type="datetime-local">
-                                    </div>
-                                    <div class="col-md-9 mb-2">
-                                        <label class="small">سبب تشغيلي واضح</label>
-                                        <input class="form-control form-control-sm" name="reason" minlength="8" maxlength="255" placeholder="مثال: عطل مزود الدفع INC-204" required>
-                                    </div>
-                                    <div class="col-md-3 mb-2">
-                                        <button class="btn btn-sm btn-primary btn-block" type="submit">تطبيق موثّق</button>
-                                    </div>
-                                </div>
-                            </form>
-                        </td>
-                    </tr>
-                @endforeach
-                </tbody>
-            </table>
+        <div class="card-body">
+            <a class="btn btn-primary" href="{{ \App\Filament\Pages\ProductFeatureSwitches::getUrl() }}">مفاتيح تشغيل المنتج</a>
         </div>
     </div>
 

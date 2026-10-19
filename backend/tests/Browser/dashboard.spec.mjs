@@ -1,6 +1,31 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('product feature switches use a compact phone table and documented native decision', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/product-feature-switches');
+    const row = page.getByRole('row').filter({ hasText: 'شات ركن' });
+    await expect(row.getByRole('button', { name: 'تغيير', exact: true })).toBeInViewport({ ratio: 1 });
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('feature-switches-phone.png'), fullPage: true });
+    await row.getByRole('button', { name: 'تغيير', exact: true }).click();
+    const modal = page.getByRole('dialog');
+    await expect(modal.getByRole('spinbutton', { name: /^نسبة المستخدمين/ })).toHaveValue('100');
+    await modal.getByRole('textbox', { name: /^سبب القرار/ }).fill('Browser isolated operational decision');
+    await modal.getByRole('spinbutton', { name: /^نسبة المستخدمين/ }).fill('25');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('feature-switches-modal-phone.png'), fullPage: true });
+    await modal.getByRole('button', { name: 'تطبيق القرار', exact: true }).click();
+    await expect(page.getByText('تم تطبيق قرار التشغيل', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(row).toContainText('25٪');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.reload();
+    await expect(row).toContainText('Browser isolated operational decision');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('feature-switches-desktop.png'), fullPage: true });
+});
+
 test('content staff native editor creates an account and confirms isolated MFA recovery', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/operations/content-staff/create');
