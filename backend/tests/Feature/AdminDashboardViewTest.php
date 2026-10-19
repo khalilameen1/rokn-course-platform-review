@@ -67,7 +67,6 @@ final class AdminDashboardViewTest extends TestCase
             'feedback details' => route('admin.feedback.show', $feedback),
             'project list' => route('admin.project-submissions.index'),
             'project review' => route('admin.project-submissions.show', $submission),
-            'device sessions' => route('admin.user-sessions.index'),
             'payment reconciliation queue' => route('admin.payment-reconciliation-findings.index'),
             'settings dashboard' => route('admin.settings'),
             'home dashboard' => route('admin.dashboard'),

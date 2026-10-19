@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 use App\Models\AdminAuditLog;
+use App\Models\ApiToken;
 use App\Models\Contact;
 use App\Models\Order;
 use App\Models\Package;
@@ -97,6 +98,13 @@ foreach (['admin', 'moderator', 'client'] as $role) {
     ])->save();
 }
 $student = User::query()->where('email', 'client@dashboard.example.test')->firstOrFail();
+$deviceSession = ApiToken::query()->firstOrNew(['session_id' => 'f6a60374-3c52-4354-8e66-381e6333ceac']);
+$deviceSession->forceFill([
+    'user_id' => $student->id, 'token' => hash('sha256', 'disposable-dashboard-session-fixture'),
+    'device_id' => 'c757c164-c739-43df-9585-b5be35dd6999', 'platform' => 'android', 'device_class' => 'phone',
+    'app_version' => '1.0.68', 'app_build' => '68', 'auth_provider' => 'google',
+    'issued_at' => now(), 'last_used_at' => now(), 'expired_at' => now()->addDay(), 'revoked_at' => null,
+])->save();
 AdminAuditLog::query()->firstOrCreate(['route_name' => 'admin.browser.audit'], [
     'request_id' => 'be70a508-12ea-4cde-bbbf-b394f429019a',
     'actor_id' => User::query()->where('email', 'admin@dashboard.example.test')->value('id'),

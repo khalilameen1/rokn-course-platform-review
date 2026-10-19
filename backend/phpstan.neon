@@ -38,6 +38,7 @@ parameters:
                 - app/Http/Controllers/Admin/PackageController.php
                 - app/Http/Controllers/Admin/CouponController.php
                 - app/Http/Controllers/Admin/ContactsController.php
+                - app/Http/Controllers/Admin/UserSessionController.php
         # Larastan resolves the DB facade to Illuminate\Database\Connection.
         -
             method:
@@ -70,6 +71,7 @@ parameters:
                 - app/Http/Controllers/Admin/PackageController.php
                 - app/Http/Controllers/Admin/CouponController.php
                 - app/Http/Controllers/Admin/ContactsController.php
+                - app/Http/Controllers/Admin/UserSessionController.php
         -
             method:
                 - 'Illuminate\Database\Eloquent\Builder::lockForUpdate()'

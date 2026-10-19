@@ -1,6 +1,45 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('device sessions use public record identifiers and native revoke confirmation on mobile', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/device-sessions');
+    await page.locator('.fi-ta-search-field input').fill('client@dashboard.example.test');
+    const row = page.getByRole('row').filter({ hasText: 'client@dashboard.example.test' });
+    await expect(row.getByText('Android', { exact: true })).toBeVisible();
+    await row.getByRole('button', { name: 'إجراءات الجلسة', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'تفاصيل', exact: true }).click();
+    await expect(page.getByRole('dialog').getByText('1.0.68', { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('session-detail-phone.png'), fullPage: true });
+    await page.getByRole('dialog').getByRole('button', { name: 'إغلاق', exact: true }).first().click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await expect(page.locator('.fi-modal-window').filter({ hasText: 'تفاصيل الجلسة' })).not.toBeVisible();
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('session-list-phone.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(row.getByText('1.0.68', { exact: true })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'جلسات الأجهزة', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('session-list-desktop.png'), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await row.getByRole('button', { name: 'إجراءات الجلسة', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'إنهاء', exact: true }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'تأكيد', exact: true }).click();
+    await expect(row).not.toBeVisible();
+    await expect(page.getByText('تم إنهاء جلسة الجهاز', { exact: true })).toBeVisible();
+    await expect(page.locator('.fi-wi-stats-overview-stat').filter({ hasText: 'كل الأجهزة' }).locator('.fi-wi-stats-overview-stat-value')).toHaveText('0');
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.getByRole('navigation', { name: 'القائمة الجانبية' }).getByRole('link', { name: 'جلسات الأجهزة', exact: true }).locator('.fi-sidebar-item-label')).toHaveCSS('opacity', '1');
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('session-empty-desktop.png'), fullPage: true });
+    expect(errors).toEqual([]);
+});
+
 test('audit trail keeps native date filters and read-only before-after detail on mobile', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
