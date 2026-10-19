@@ -169,6 +169,24 @@ queries. Explicit per-row query methods (for example `relation()->count()`)
 also need bounded-query checks: Laravel's relation guard does not intercept
 those. Do not replace the guard with logging or disable it for a failing page.
 
+### D4. One dashboard identity, authorized native hydration
+Filament uses the existing web guard, dashboard identity pin and MFA; it does not
+own another login. Its actual `CanAuthorizeAccess` mount/hydrate hooks recheck
+custom-page access on Livewire requests. Native resources and write actions use
+the same `AdminPermissionMatrix` and application owners as retained HTTP adapters.
+`StaffMember` is Spatie's authorization subject, not another user or guard.
+API endpoints continue to use the API guard plus route authorization, not the
+browser session-cookie boundary. The visitor API belongs to `operations.read`.
+
+### D5. Daily overview, scoped reports and truthful operational status
+`AdminTodayReadService` owns the lightweight daily metrics. Full financial,
+commercial, product and content projections have one read owner per concern;
+native components only format and select scope. Unknown costs or settlements
+never become confirmed zeros, and cash does not become a virtual-coin total.
+Chart widgets remount with their applied period. Heavy reports do not poll.
+Horizon/Pulse configuration is not evidence of a running worker or recorded
+traffic; external activation needs the proof in `ADMIN-OPERATIONS-SETUP.md`.
+
 ## Tests
 Behaviour through HTTP, services, hooks or rendered output. No new tests that
 read source text (`SourceTextTestRatchetTest`).

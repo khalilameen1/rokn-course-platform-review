@@ -53,7 +53,18 @@ Existing OpenRouter request identities and paid-response recovery bodies are unc
 `npm run test:dashboard` starts a disposable Laravel HTTP server on 127.0.0.1:8793, using isolated SQLite/storage and fixture accounts. It does not load a copy of production data or bypass password/MFA via an endpoint. Reports and authentication state are ignored by Git.
 The checked-in toolchain remains Node 22.23.2 / npm 10.9.3. A machine-local `php.ini` is optional, not required by CI.
 
-The dashboard migration is still incremental. The course studio and any unmigrated specialized workspace must remain reachable until its replacement covers the full workflow and is checked, then remove the replaced views and keep only necessary URL compatibility.
+The administration screens now use native Filament components; the specialized
+course catalogue/studio, media authoring and learner/certificate previews retain
+their existing workflow. Replaced Blade editors and orphan assets are removed,
+and necessary saved GET URLs redirect to their native equivalent. Classic POST
+compatibility adapters still call the same owning services through FormRequests;
+they are not parallel editors.
+
+`/operations` is the lightweight daily overview. `/operations/content-workspace`
+uses the content-only read owner and opens the actual working-copy studio.
+`/operations/financial-overview` owns the former financial home report and its
+period selector. Heavy history reports do not poll; operational queues and lists
+use native periodic refresh where it is useful, not a claim of WebSocket delivery.
 
 `npm run measure:dashboard` uses Lighthouse's official authenticated-session Node API
 (https://github.com/GoogleChrome/lighthouse/blob/main/docs/readme.md#using-programmatically).

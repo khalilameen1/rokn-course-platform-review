@@ -1,17 +1,24 @@
 # Home dashboard read ownership
 
-`HomeController` owns HTTP period validation and role-based view selection only.
-It resolves exactly one projection after checking the role. Do not constructor-inject
-the administrator projection into the controller: that would instantiate financial
-report dependencies during a moderator request.
+`HomeController` owns HTTP period validation and authorized destination selection
+only. The default administrator URL redirects to the lightweight native dashboard;
+an explicit saved period redirects to `FinancialOverview`. A content operator goes
+to `ContentWorkspace`; another restricted operator goes to the native dashboard.
+Do not constructor-inject the financial projection into this adapter.
 
-`ModeratorHomeReadService` owns the paginated content workspace. Pagination counts
+`TodayStats` uses `AdminTodayReadService`, not the complete financial history report.
+`FinancialOverview` alone uses `AdminHomeReadService` and native Filament charts.
+Period changes remount those charts rather than retaining a previous scope.
+
+`ModeratorHomeReadService` owns the native content workspace's projection. Pagination counts
 canonical courses, then replaces visible cards with their active working copies.
 Archived revisions never consume a slot. Publishing audits are keyed to the actual
-card/editor identity, including draft IDs. Page number and URL query parameters are
+row/editor identity, including draft IDs. Incomplete drafts retain priority within
+the current 12-course page. The page creates a separate safe display paginator;
+it does not replace the owner's model collection with arrays. Page number and URL query parameters are
 explicit inputs, not ambient requests inside the read service.
 
-`AdminHomeReadService` assembles the administrator home from the existing payment,
+`AdminHomeReadService` assembles the dedicated financial overview from the existing payment,
 financial ledger, AI usage and provider invoice report owners. It does not introduce
 another money calculation or combine cash with virtual coins. Period, settlement
 completeness, chart and comparison semantics remain those of the existing reports.
@@ -25,5 +32,7 @@ requires `is_coming_soon = false`. This inventory is not the public discovery fi
 Coverage added in `AdminHomeReadOwnershipTest` exercises canonical/draft/archive
 counts, deleted parents, shared projections, read-only SQL, pagination and HTTP
 role/period behavior. Existing financial-isolation and report-period integration
-tests remain applicable. See the repository README for local verification evidence
-and limits.
+tests remain applicable. `FilamentContentWorkspaceTest` also checks native page
+changes, safe display fields and the default home's independence from the heavy
+financial owner. See `docs/DASHBOARD-MODERNIZATION-20261019-AR.md` at repository root
+for verification evidence and limits.
