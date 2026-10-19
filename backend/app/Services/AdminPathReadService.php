@@ -6,13 +6,33 @@ namespace App\Services;
 
 use App\Models\Classification;
 use App\Models\Course;
+use App\Models\CourseAuthoringRevision;
 use App\Models\Path;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 
 /** The path editor works with logical courses, never revision implementation rows. */
 final readonly class AdminPathReadService
 {
     public function __construct(private AdminContentInventoryReadService $inventory) {}
+
+    /** @param array<string, mixed> $queryParameters */
+    public function listing(string $search, array $queryParameters): LengthAwarePaginator
+    {
+        $paths = Path::query()->with('interests')->withCount([
+            'courses' => fn (Builder $courses) => $courses->whereNotIn(
+                'courses.id', CourseAuthoringRevision::query()->select('revision_course_id')
+            ),
+        ]);
+        if ($search !== '') {
+            $paths->where(function (Builder $query) use ($search): void {
+                $query->where('title_ar', 'LIKE', "%{$search}%")
+                    ->orWhere('title_en', 'LIKE', "%{$search}%");
+            });
+        }
+
+        return $paths->latest()->latest('id')->paginate(10)->appends($queryParameters);
+    }
 
     /** @return Builder<Course> */
     public function courses(): Builder

@@ -17,6 +17,15 @@ parameters:
     reportUnmatchedIgnoredErrors: true
 
     disallowedStaticCalls:
+        -
+            method:
+                - 'Illuminate\Database\Eloquent\Model::*()'
+                - 'Illuminate\Database\Connection::select()'
+                - 'Illuminate\Database\Connection::table()'
+            message: 'dashboard controllers delegate database reads to the owning read service (ARCHITECTURE.md B1)'
+            disallowIn:
+                - app/Http/Controllers/Admin/TeacherController.php
+                - app/Http/Controllers/Admin/PathController.php
         # Larastan resolves the DB facade to Illuminate\Database\Connection.
         -
             method:
@@ -27,6 +36,15 @@ parameters:
                 - app/Http/Controllers/*
 
     disallowedMethodCalls:
+        -
+            method:
+                - 'Illuminate\Database\Eloquent\Builder::*()'
+                - 'Illuminate\Database\Query\Builder::*()'
+                - 'Illuminate\Database\Eloquent\Relations\Relation::*()'
+            message: 'dashboard controllers delegate database reads to the owning read service (ARCHITECTURE.md B1)'
+            disallowIn:
+                - app/Http/Controllers/Admin/TeacherController.php
+                - app/Http/Controllers/Admin/PathController.php
         -
             method:
                 - 'Illuminate\Database\Eloquent\Builder::lockForUpdate()'

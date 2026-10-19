@@ -284,6 +284,39 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
         $show->assertSee('الكورس المنشور')->assertDontSee('نسخة التحرير الداخلية');
     }
 
+    public function test_teacher_search_obeys_credential_visibility_and_rejects_non_scalar_filters(): void
+    {
+        $teacher = $this->teacher();
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $administrator = $this->dashboardUser('admin', 'search-admin@example.test');
+        $moderator = $this->dashboardUser('moderator', 'search-moderator@example.test');
+
+        $adminResponse = $this->actingAs($administrator)->get(route('admin.teachers.index', ['search' => $teacher->email]))->assertOk();
+        self::assertSame([$teacher->id], $adminResponse->original->getData()['teachers']->getCollection()->modelKeys());
+        session()->flush();
+        $moderatorResponse = $this->actingAs($moderator)->get(route('admin.teachers.index', ['search' => $teacher->email]))->assertOk();
+        self::assertSame([], $moderatorResponse->original->getData()['teachers']->getCollection()->modelKeys());
+        $this->getJson(route('admin.teachers.index', ['search' => ['not-a-string']]))->assertUnprocessable()->assertJsonValidationErrors('search');
+    }
+
+    public function test_teacher_profile_validation_rejects_an_unrelated_account_id(): void
+    {
+        $administrator = $this->dashboardUser('admin', 'profile-admin@example.test');
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $this->actingAs($administrator)->patchJson(route('admin.teachers.update', $administrator), [
+            'name_ar' => 'ليس محاضرًا', 'editor_version' => str_repeat('a', 64),
+        ])->assertNotFound();
+        self::assertSame('admin', $administrator->fresh()->role);
+    }
+
+    public function test_teacher_thumbnail_uses_the_stored_photo_url_and_handles_an_empty_profile(): void
+    {
+        $teacher = $this->teacher();
+        self::assertNull($teacher->thumbnail);
+        $teacher->allPhotos()->create(['path' => 'users/instructor.jpg', 'type' => 'featured']);
+        self::assertSame(Storage::disk('public')->url('users/instructor.jpg'), $teacher->fresh()->thumbnail);
+    }
+
     /** @return array<string, mixed> */
     private function publicProfilePayload(User $teacher): array
     {

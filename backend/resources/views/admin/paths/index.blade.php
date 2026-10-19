@@ -56,7 +56,7 @@
                                                 <span class="badge bg-info">{{ $interest->name_ar }}</span>
                                             @endforeach
                                         </td>
-                                        <td>{{ $path->courses_count ?? $path->courses()->count() }}</td>
+                                        <td>{{ $path->courses_count }}</td>
                                         @if(strtolower(trim((string) auth()->user()?->role)) === 'admin')<td>
                                             <a href="{{ route('admin.paths.edit', $path->id) }}" class="btn btn-sm btn-warning text-white">
                                                 <i class="fa fa-edit"></i> تعديل

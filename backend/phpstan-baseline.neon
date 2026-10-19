@@ -330,11 +330,6 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/API/WatchHistoryController.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/WatchHistoryController.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>duration_seconds" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -390,11 +385,6 @@ parameters:
 			count: 2
 			path: app/Http/Controllers/API/WhatsAppConnectionController.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\AdminNotification model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Admin/AdminNotificationsController.php
 
 		-
 			message: '#^Method App\\Http\\Controllers\\Admin\\AppVersionController\:\:create\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
@@ -804,59 +794,14 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/Admin/SettingsController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\TeacherController\:\:create\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/TeacherController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\TeacherController\:\:deactive\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/TeacherController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\TeacherController\:\:destroy\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 2
-			path: app/Http/Controllers/Admin/TeacherController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\TeacherController\:\:edit\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/TeacherController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\TeacherController\:\:index\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/TeacherController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\TeacherController\:\:show\(\) should return Illuminate\\Http\\Response but returns Illuminate\\View\\View\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/TeacherController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\TeacherController\:\:store\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/TeacherController.php
 
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\TeacherController\:\:update\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\RedirectResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/TeacherController.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 3
-			path: app/Http/Controllers/Admin/TeacherController.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -3516,11 +3461,6 @@ parameters:
 			count: 1
 			path: app/Models/AdminNotification.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/AdminNotification.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$photos\.$#'
@@ -3672,11 +3612,6 @@ parameters:
 			count: 1
 			path: app/Models/Category.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Category\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/Category.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Category\:\:\$photos\.$#'
@@ -3822,11 +3757,6 @@ parameters:
 			count: 1
 			path: app/Models/Coupon.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Coupon\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/Coupon.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Coupon\:\:\$photos\.$#'
@@ -3894,11 +3824,6 @@ parameters:
 			count: 1
 			path: app/Models/Course.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 5
-			path: app/Models/Course.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$photos\.$#'
@@ -4038,11 +3963,6 @@ parameters:
 			count: 1
 			path: app/Models/Level.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Level\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/Level.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Level\:\:\$photos\.$#'
@@ -4224,11 +4144,6 @@ parameters:
 			count: 1
 			path: app/Models/User.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/User.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\User\:\:\$photos\.$#'
@@ -4308,11 +4223,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminCouponAuthoringService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Coupon\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/AdminCouponAuthoringService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Coupon\:\:\$starts_at\.$#'
@@ -4494,17 +4404,7 @@ parameters:
 			count: 2
 			path: app/Services/AdminCoursePageService.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminCoursePageService.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AdminCoursePageService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Course\:\:\$authoring_version\.$#'
@@ -4842,11 +4742,6 @@ parameters:
 			count: 1
 			path: app/Services/AdminStudentReadService.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/AdminStudentReadService.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -5436,11 +5331,6 @@ parameters:
 			count: 1
 			path: app/Services/CoursePresentationService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Services/CoursePublishingService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$active\.$#'
@@ -5526,11 +5416,6 @@ parameters:
 			count: 1
 			path: app/Services/CoursePublishingService.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/CoursePublishingService.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>duration_seconds" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -6012,11 +5897,6 @@ parameters:
 			count: 1
 			path: app/Services/MediaHealthService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Course\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/MediaReconciliationService.php
 
 		-
 			message: '#^Offset ''state'' on array\{state\: string, details\: array\|null, http_status\: int\|null\} on left side of \?\? always exists and is not nullable\.$#'
@@ -6048,11 +5928,6 @@ parameters:
 			count: 1
 			path: app/Services/MediaReconciliationService.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/MediaReconciliationService.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>available_qualities" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -6078,11 +5953,6 @@ parameters:
 			count: 2
 			path: app/Services/MediaReconciliationService.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\Course model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/ModeratorHomeReadService.php
 
 		-
 			message: '#^Parameter \#1 \$array \(list\<int\>\) of array_values is already a list, call has no effect\.$#'
@@ -7080,11 +6950,6 @@ parameters:
 			count: 1
 			path: app/Support/BusinessClock.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\Coupon model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Support/CouponEditorVersion.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>path" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -7092,17 +6957,7 @@ parameters:
 			count: 1
 			path: app/Support/CouponEditorVersion.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Level\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/LevelEditorVersion.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\Level model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Support/LevelEditorVersion.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\AdminNotification\:\:\$action_label_ar\.$#'
@@ -7176,11 +7031,6 @@ parameters:
 			count: 1
 			path: app/Support/NotificationTemplateEditorVersion.php
 
-		-
-			message: '#^Relation ''photo'' is not found in App\\Models\\AdminNotification model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Support/NotificationTemplateEditorVersion.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>path" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -7290,11 +7140,6 @@ parameters:
 			count: 1
 			path: app/Support/SentryEventScrubber.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$photo\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/TeacherEditorVersion.php
 
 		-
 			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'

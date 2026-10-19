@@ -7,6 +7,7 @@ use App\Models\Photo;
 use App\Services\StoredFileDeletionService;
 use App\Services\StoredFileUploadService;
 use App\Support\PublicDiskUrl;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -58,10 +59,8 @@ trait HasPhoto
         return $this->morphOne(Photo::class, 'photoable')->where('type', 'gallery');
     }
 
-    /**
-     * @return mixed
-     */
-    public function photo()
+    /** @return MorphOne<Photo, $this> */
+    public function photo(): MorphOne
     {
         return $this->morphOne(Photo::class, 'photoable')->where('type', 'featured');
     }
@@ -252,7 +251,7 @@ trait HasPhoto
      */
     public function getThumbnailAttribute()
     {
-        return $this->photo->getThumbnail();
+        return $this->photo?->assetPath();
     }
 
     /**
