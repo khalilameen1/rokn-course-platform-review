@@ -77,7 +77,7 @@ final class StaffAccess
             'notifications' => ['admin.notifications.', 'admin.admin_notifications.'],
             'support' => ['admin.feedback.', 'admin.contacts.'],
             'team' => ['admin.moderators.'],
-            'operations' => ['admin.product-operations.', 'admin.product-analytics.', 'admin.audit-log.', 'admin.user-sessions.', 'admin.playback-operations.', 'admin.app-versions.', 'horizon.', 'pulse'],
+            'operations' => ['admin.product-operations.', 'admin.product-analytics.', 'admin.audit-log.', 'admin.user-sessions.', 'admin.playback-operations.', 'admin.app-versions.', 'api.visitors.', 'horizon.', 'pulse'],
             'settings' => ['admin.settings', 'admin.design-settings.', 'admin.abouts.', 'admin.privacy', 'admin.policy', 'admin.about'],
         ];
         foreach ($groups as $group => $prefixes) {
