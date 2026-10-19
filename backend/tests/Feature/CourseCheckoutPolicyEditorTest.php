@@ -4,20 +4,23 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\Admin\CoinEarningMethodController;
+use App\Filament\Pages\RewardSettings;
+use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
 use App\Models\Setting;
+use App\Models\User;
 use App\Services\CourseAccessPlanService;
 use App\Services\CoursePlanAuthoringService;
 use App\Services\CoursePlanEconomicsService;
 use App\Support\CourseAccessPlanSnapshot;
+use Filament\Facades\Filament;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class CourseCheckoutPolicyEditorTest extends TestCase
@@ -152,15 +155,20 @@ final class CourseCheckoutPolicyEditorTest extends TestCase
 
     public function test_dashboard_rejects_percentage_above_approved_twenty_percent_ceiling(): void
     {
-        $this->expectException(ValidationException::class);
-        app(CoinEarningMethodController::class)->updateSettings(Request::create('/', 'POST', [
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $this->actingAs(User::query()->forceCreate(['role' => 'admin', 'active' => true]), 'web');
+        $this->postJson(route('admin.coin-earning-methods.update-settings'), [
             'reward_balance_cap' => 1200,
             'max_reward_contribution_per_course' => 20,
             'max_course_promotion_percent' => 21,
             'recommended_social_provider' => 'google',
             'recommended_provider_bonus_coins' => 0,
             'editor_version' => str_repeat('0', 64),
-        ]));
+        ])->assertUnprocessable()->assertJsonValidationErrors('max_course_promotion_percent');
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(RewardSettings::class)->fillForm(['max_course_promotion_percent' => 21])->call('save')
+            ->assertHasFormErrors(['max_course_promotion_percent' => 'max']);
+        self::assertSame(0, Setting::query()->count());
     }
 
     public function test_editor_renders_explicit_legacy_offer_notice_and_unknown_cost_state(): void
