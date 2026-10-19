@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use App\Auth\StaffAccess;
 use BezhanSalleh\FilamentShield\Resources\Roles\RoleResource;
 use Filament\Pages\Dashboard;
 use Filament\Widgets\AccountWidget;
@@ -252,7 +253,7 @@ return [
     |
     */
 
-    'custom_permissions' => App\Auth\StaffAccess::permissionLabels(),
+    'custom_permissions' => StaffAccess::permissionLabels(),
 
     /*
     |--------------------------------------------------------------------------

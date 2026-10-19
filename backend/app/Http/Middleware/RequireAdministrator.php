@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Auth\AdminPermissionMatrix;
 use Closure;
 use Illuminate\Http\Request;
 
@@ -14,7 +15,7 @@ final class RequireAdministrator
         abort_unless(
             $user
                 && (bool) $user->active
-                && app(\App\Auth\AdminPermissionMatrix::class)->allows($user, $request->route()?->getName(), $request->method()),
+                && app(AdminPermissionMatrix::class)->allows($user, $request->route()?->getName(), $request->method()),
             403
         );
 
