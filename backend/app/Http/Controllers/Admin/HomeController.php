@@ -6,11 +6,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Auth\AdminPermissionMatrix;
 use App\Auth\StaffAccess;
+use App\Filament\Pages\FinancialOverview;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ReportPeriodRequest;
-use App\Services\AdminHomeReadService;
 use App\Services\ModeratorHomeReadService;
-use App\Support\ReportPeriod;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -32,8 +31,6 @@ class HomeController extends Controller
 
         $filters = $request->validated();
 
-        return view('admin.home.index', app(AdminHomeReadService::class)->read(
-            ReportPeriod::fromKey($filters['period'] ?? '30d')
-        ));
+        return redirect(FinancialOverview::getUrl(['filters' => ['period' => $filters['period'] ?? '30d']]));
     }
 }

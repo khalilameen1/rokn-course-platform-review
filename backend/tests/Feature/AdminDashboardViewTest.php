@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\AppSettings;
 use App\Filament\Resources\CourseCodeResource;
 use App\Filament\Resources\OrderResource;
 use App\Filament\Resources\OrderResource\Pages\ListOrders;
@@ -64,8 +65,6 @@ final class AdminDashboardViewTest extends TestCase
         ]);
 
         $pages = [
-            'settings dashboard' => route('admin.settings'),
-            'home dashboard' => route('admin.dashboard'),
             'courses list' => route('admin.courses.index'),
             'course details' => route('admin.courses.show', $course),
             'course create' => route('admin.courses.create'),
@@ -73,6 +72,8 @@ final class AdminDashboardViewTest extends TestCase
         foreach ($pages as $page => $url) {
             $this->assertAdminMarkupWithoutInlineStyles($this->adminGet($admin, $url)->assertOk()->getContent(), $page);
         }
+        $this->adminGet($admin, route('admin.settings'))->assertRedirect(AppSettings::getUrl());
+        $this->adminGet($admin, AppSettings::getUrl())->assertOk();
         $this->adminGet($admin, route('admin.project-submissions.index'))->assertRedirect(ProjectSubmissionResource::listUrl());
         $this->adminGet($admin, route('admin.course-codes.index'))->assertRedirect(CourseCodeResource::listUrl());
         $this->adminGet($admin, CourseCodeResource::getUrl())->assertOk()->assertSee($code->code);
@@ -162,7 +163,7 @@ final class AdminDashboardViewTest extends TestCase
 
     public function test_admin_runtime_assets_are_cache_busted_by_the_deployed_file(): void
     {
-        $html = (string) $this->adminGet($this->dashboardUser('admin'), route('admin.dashboard'))->assertOk()->getContent();
+        $html = (string) $this->adminGet($this->dashboardUser('admin'), route('admin.courses.index'))->assertOk()->getContent();
         $sources = [];
         foreach ($this->dom($html)->query('//script/@src') as $src) {
             $sources[] = (string) $src->nodeValue;
@@ -212,9 +213,11 @@ final class AdminDashboardViewTest extends TestCase
     public function test_ai_policy_is_owned_by_admin_settings_not_course_authoring(): void
     {
         $admin = $this->dashboardUser('admin');
-        $settings = $this->dom((string) $this->adminGet($admin, route('admin.settings'))->assertOk()->getContent());
+        $this->adminGet($admin, route('admin.settings'))->assertRedirect(AppSettings::getUrl());
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $settings = Livewire::test(AppSettings::class);
         foreach (['chat_enabled', 'project_feedback_level'] as $policy) {
-            self::assertGreaterThan(0, $settings->query('//form//*[@name="ai_plan_policy[basic]['.$policy.']"]')->length, $policy);
+            $settings->assertFormFieldExists('ai_plan_policy.basic.'.$policy);
         }
 
         $course = $this->draftCourse();

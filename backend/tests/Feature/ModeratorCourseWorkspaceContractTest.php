@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Auth\AdminPermissionMatrix;
+use App\Filament\Pages\FinancialOverview;
+use App\Filament\Pages\PlaybackOperations;
+use App\Filament\Pages\ProductOperations;
 use App\Filament\Resources\NotificationCampaignResource;
+use App\Filament\Resources\OrderResource;
+use App\Filament\Resources\ProjectSubmissionResource;
 use App\Filament\Resources\StudentResource\Pages\ViewStudent;
 use App\Filament\Resources\StudentResource\RelationManagers\OrdersRelationManager;
 use App\Http\Middleware\RequireAdminMfa;
@@ -206,15 +211,12 @@ final class ModeratorCourseWorkspaceContractTest extends TestCase
 
     public function test_administrator_home_leads_with_operational_follow_up(): void
     {
-        $xpath = $this->dom($this->actingAs($this->user('admin'), 'web')
-            ->get(route('admin.dashboard'))->assertOk());
-
-        self::assertSame([
-            route('admin.product-operations.index'),
-            route('admin.playback-operations.index'),
-            route('admin.project-submissions.index'),
-            route('admin.orders.index'),
-        ], $this->hrefs($xpath, '//nav[contains(@class, "dashboard-priority-nav")]/a'));
+        $this->actingAs($this->user('admin'), 'web')->get(route('admin.dashboard'))->assertRedirect();
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        Livewire::test(FinancialOverview::class)->assertActionHasUrl('operations', ProductOperations::getUrl())
+            ->assertActionHasUrl('playback', PlaybackOperations::getUrl())
+            ->assertActionHasUrl('projects', ProjectSubmissionResource::getUrl())
+            ->assertActionHasUrl('payments', OrderResource::getUrl());
     }
 
     public function test_administrator_student_view_leads_with_what_the_learner_paid_from_the_ledger(): void

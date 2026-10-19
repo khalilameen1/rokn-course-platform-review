@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Filament\Pages\CommercialReport;
+use App\Filament\Pages\FinancialOverview;
 use App\Filament\Pages\ProductAnalytics;
 use App\Http\Middleware\RequireAdminMfa;
 use App\Models\AiUsageEvent;
@@ -51,12 +52,8 @@ final class PlatformReportPeriodTest extends TestCase
     public function test_actual_dashboard_and_analytics_render_and_retain_every_period(string $key): void
     {
         $this->actingAs($this->user('admin'), 'web');
-        $home = $this->get(route('admin.dashboard', ['period' => $key]))
-            ->assertOk()->assertViewIs('admin.home.index')
-            ->assertSee(versioned_asset('admin/assets/css/home-dashboard.css'), false)
-            ->assertViewHas('period', fn (ReportPeriod $period): bool => $period->key === $key)
-            ->assertSee('value="'.$key.'" selected', false)
-            ->assertSee(route('admin.product-analytics.index', ['period' => $key]), false)
+        $home = $this->financial(['period' => $key])
+            ->assertOk()->assertSet('appliedPeriod', $key)
             ->assertSee('لم تسجل فواتير لهذه الفترة بعد وهذا لا يعني أن التشغيل بلا تكلفة');
         $analytics = $this->analytics(['period' => $key])
             ->assertOk()->assertSet('appliedFilters.period', $key)
@@ -65,7 +62,7 @@ final class PlatformReportPeriodTest extends TestCase
             ->assertDontSee('مسار الاستخدام');
 
         if ($key === 'all') {
-            self::assertNull($home->viewData('revenueStats')['revenue_change']['percentage']);
+            self::assertNull($home->instance()->report()['revenueStats']['revenue_change']['percentage']);
             self::assertSame('unavailable', $analytics->instance()->report()['analytics']['changes']['events']['status']);
         }
     }
@@ -171,13 +168,13 @@ final class PlatformReportPeriodTest extends TestCase
         ]);
         $this->actingAs($admin, 'web');
 
-        $home = $this->get(route('admin.dashboard', ['period' => '7d']))->assertOk();
-        $stats = $home->viewData('revenueStats');
+        $home = $this->financial(['period' => '7d'])->assertOk();
+        $stats = $home->instance()->report()['revenueStats'];
         self::assertSame(200.0, $stats['total_revenue']);
         self::assertSame(100.0, $stats['previous_period_revenue']);
         self::assertSame('unavailable', $stats['revenue_change']['status']);
         self::assertSame('unavailable', $stats['net_change']['status']);
-        self::assertSame(200.0, (float) collect($home->viewData('monthlyRevenue'))->sum('course_revenue'));
+        self::assertSame(200.0, (float) collect($home->instance()->report()['monthlyRevenue'])->sum('course_revenue'));
         $analytics = $this->analytics(['period' => '7d'])->assertOk();
         self::assertSame(200.0, $analytics->instance()->report()['paymentChannelReport']['egp']['confirmed_gross_amount']);
         self::assertSame('unavailable', $analytics->instance()->report()['paymentChanges']['net']['status']);
@@ -192,13 +189,13 @@ final class PlatformReportPeriodTest extends TestCase
         $this->payment($admin, $package, $period->previous()->start, 100);
         $this->payment($admin, $package, $period->start, 200);
         $this->actingAs($admin, 'web');
-        $home = $this->get(route('admin.dashboard', ['period' => '7d']))->assertOk();
-        self::assertSame(100.0, $home->viewData('revenueStats')['revenue_change']['percentage']);
-        self::assertSame(100.0, $home->viewData('revenueStats')['net_change']['percentage']);
+        $home = $this->financial(['period' => '7d'])->assertOk();
+        self::assertSame(100.0, $home->instance()->report()['revenueStats']['revenue_change']['percentage']);
+        self::assertSame(100.0, $home->instance()->report()['revenueStats']['net_change']['percentage']);
         Order::where('approved_at', $period->start)->update([
             'gateway_settlement_status' => 'catalog_estimate', 'gateway_net_amount' => null,
         ]);
-        $this->get(route('admin.dashboard', ['period' => '7d']))->assertOk()->assertSee('بانتظار تأكيد التحصيل');
+        $this->financial(['period' => '7d'])->assertOk()->assertSee('بانتظار تأكيد التحصيل');
         $analytics = $this->analytics(['period' => '7d'])
             ->assertOk()->assertSee('بانتظار تأكيد التحصيل');
         self::assertSame('unavailable', $analytics->instance()->report()['paymentChanges']['gross']['status']);
@@ -252,9 +249,9 @@ final class PlatformReportPeriodTest extends TestCase
         self::assertSame(1, $analytics['ai']['estimated_cost_requests']);
         self::assertSame(3, $analytics['ai']['completed_requests']);
         self::assertSame('unavailable', $analytics['changes']['cost_usd']['status']);
-        $home = $this->get(route('admin.dashboard', ['period' => '7d']))->assertOk();
-        self::assertSame(.32, $home->viewData('ai')['cost_usd']);
-        self::assertSame('unavailable', $home->viewData('aiChange')['status']);
+        $home = $this->financial(['period' => '7d'])->assertOk();
+        self::assertSame(.32, $home->instance()->report()['ai']['cost_usd']);
+        self::assertSame('unavailable', $home->instance()->report()['aiChange']['status']);
     }
 
     public function test_analytics_resolves_revision_links_to_canonical_events_and_preserves_archived_history(): void
@@ -362,6 +359,7 @@ final class PlatformReportPeriodTest extends TestCase
 
         return Livewire::withQueryParams($query)->test(ProductAnalytics::class);
     }
+
     private function commercial(array $filters): Testable
     {
         $redirect = $this->get(route('admin.operating-costs.report', $filters))->assertRedirect();
@@ -371,6 +369,14 @@ final class PlatformReportPeriodTest extends TestCase
         return Livewire::withQueryParams($query)->test(CommercialReport::class);
     }
 
+    private function financial(array $filters): Testable
+    {
+        $redirect = $this->get(route('admin.dashboard', $filters))->assertRedirect();
+        parse_str(parse_url($redirect->headers->get('Location'), PHP_URL_QUERY) ?? '', $query);
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+
+        return Livewire::withQueryParams($query)->test(FinancialOverview::class);
+    }
 
     private function analyticsEntry(Testable $page, string $field): TextEntry
     {

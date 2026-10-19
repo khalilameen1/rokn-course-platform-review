@@ -1,6 +1,34 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('native financial overview remounts charts with period and keeps mobile actions visible', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/financial-overview');
+    await expect(page.getByRole('heading', { name: 'الأداء المالي', level: 1, exact: true })).toBeVisible();
+    const chart = page.locator('[wire\\:id]').filter({ has: page.getByRole('heading', { name: 'تحصيل الفترة حسب الشهر', exact: true }) }).last();
+    await expect(chart.locator('canvas')).toBeVisible();
+    const originalChart = await chart.getAttribute('wire:id');
+    await page.getByRole('combobox', { name: /^الفترة/ }).selectOption('7d');
+    await page.getByRole('button', { name: 'عرض التقرير', exact: true }).click();
+    await expect(chart).not.toHaveAttribute('wire:id', originalChart);
+    await expect(chart.locator('canvas')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'فتح التحليلات', exact: true })).toHaveAttribute('href', /7d/);
+    await page.reload();
+    await expect(page.getByRole('combobox', { name: /^الفترة/ })).toHaveValue('7d');
+    await expect(page.getByRole('button', { name: 'متابعة التشغيل', exact: true })).toBeInViewport({ ratio: 1 });
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('financial-phone.png'), fullPage: true });
+    await page.getByRole('tab', { name: 'الفواتير', exact: true }).click();
+    await expect(page.getByText('لم تسجل فواتير لهذه الفترة بعد وهذا لا يعني أن التشغيل بلا تكلفة', { exact: true })).toBeVisible();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.getByRole('tab', { name: 'عملات الكورسات', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'العملات المصروفة على الكورسات منذ البداية', exact: true })).toBeVisible();
+    await page.evaluate(() => scrollTo(0, 0));
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('financial-coins-desktop.png'), fullPage: true });
+});
+
 test('native commercial report preserves scope and student details on phones', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/operations/commercial-report');

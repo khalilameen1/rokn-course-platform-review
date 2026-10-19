@@ -234,6 +234,19 @@ try {
         ])->save();
     }
     $package = Package::query()->firstOrCreate(['name_en' => 'Browser fixture coins'], ['name_ar' => 'حزمة المتصفح', 'price' => '11.11', 'coins' => 900]);
+    $debit = DB::table('wallet_transactions')->insertGetId([
+        'public_id' => (string) Str::uuid(), 'user_id' => $student->id, 'direction' => 'debit',
+        'category' => 'course_purchase', 'bucket' => 'mixed', 'amount' => 450,
+        'paid_amount' => 400, 'reward_amount' => 50, 'balance_after' => 0,
+        'paid_balance_after' => 0, 'reward_balance_after' => 0,
+        'source_type' => Course::class, 'source_id' => $course->id,
+        'idempotency_key' => 'browser-course-debit', 'occurred_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    Order::query()->create(['order_ref' => 'BROWSER-COURSE', 'user_id' => $student->id, 'course_id' => $course->id,
+        'payment_method' => Order::PAYMENT_METHOD_WALLET_COINS, 'status' => Order::STATUS_APPROVED,
+        'financial_status' => Order::FINANCIAL_SETTLED, 'approved_at' => now(),
+        'amount' => 450, 'final_amount' => 450, 'total_coins' => 450, 'wallet_transaction_id' => $debit,
+        'paid_coins' => 400, 'reward_coins' => 50]);
     Order::query()->firstOrCreate(['order_ref' => 'BROWSER-PAID-900'], [
         'user_id' => $student->id, 'package_id' => $package->id, 'package_coins' => 900,
         'payment_method' => Order::PAYMENT_METHOD_GOOGLE_PLAY, 'status' => Order::STATUS_APPROVED,
