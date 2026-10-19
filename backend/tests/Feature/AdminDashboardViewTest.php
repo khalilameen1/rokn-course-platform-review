@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Filament\Pages\AppSettings;
+use App\Filament\Pages\ContentWorkspace;
 use App\Filament\Resources\CourseCodeResource;
 use App\Filament\Resources\OrderResource;
 use App\Filament\Resources\OrderResource\Pages\ListOrders;
@@ -86,10 +87,9 @@ final class AdminDashboardViewTest extends TestCase
             ->assertRedirect(ProjectSubmissionResource::getUrl('view', ['record' => $submission]));
         $this->adminGet($admin, ProjectSubmissionResource::getUrl('view', ['record' => $submission]))->assertOk()->assertSee($submission->public_id);
 
-        $this->assertAdminMarkupWithoutInlineStyles(
-            $this->adminGet($this->dashboardUser('moderator'), route('admin.dashboard'))->assertOk()->getContent(),
-            'moderator workspace'
-        );
+        $moderator = $this->dashboardUser('moderator');
+        $this->adminGet($moderator, route('admin.dashboard'))->assertRedirect(ContentWorkspace::getUrl(['page' => 1]));
+        $this->adminGet($moderator, ContentWorkspace::getUrl())->assertOk()->assertSee('ملخص المحتوى');
     }
 
     public function test_mfa_pages_use_the_admin_auth_layout(): void

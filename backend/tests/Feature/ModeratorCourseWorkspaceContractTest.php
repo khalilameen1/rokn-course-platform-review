@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Auth\AdminPermissionMatrix;
+use App\Filament\Pages\ContentWorkspace;
+use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\FinancialOverview;
 use App\Filament\Pages\PlaybackOperations;
 use App\Filament\Pages\ProductOperations;
@@ -181,20 +183,14 @@ final class ModeratorCourseWorkspaceContractTest extends TestCase
         $incomplete = $this->draft('مسودة ناقصة');
         $incomplete->forceFill(['updated_at' => now()->subDays(3)])->saveQuietly();
 
-        $xpath = $this->dom($this->actingAs($this->user('moderator'), 'web')
-            ->get(route('admin.dashboard'))->assertOk()->assertViewIs('admin.home.moderator'));
-
-        $rows = array_map(
-            static fn (\DOMElement $row): string => trim($row->textContent),
-            iterator_to_array($xpath->query('//*[contains(@class, "moderator-course-row")]//h3'))
-        );
-        self::assertSame(['مسودة ناقصة', 'كورس جاهز'], $rows);
-        self::assertSame('يحتاج تدخلًا الآن', trim($xpath->evaluate('string(//*[contains(@class, "moderator-workspace__section-heading")]//h2)')));
-        foreach ($this->hrefs($xpath, '//*[contains(@class, "moderator-course-row")]//a') as $href) {
-            self::assertContains($href, [route('admin.courses.show', $incomplete), route('admin.courses.show', $ready)]);
-        }
-        // The flat, gradient-free workspace styling is presentation only and has no
-        // rendered-behaviour contract to assert here.
+        $this->actingAs($this->user('moderator'), 'web')->get(route('admin.dashboard'))
+            ->assertRedirect(ContentWorkspace::getUrl(['page' => 1]));
+        Filament::setCurrentPanel(Filament::getPanel('operations'));
+        $page = Livewire::test(ContentWorkspace::class)->assertOk()->assertSee('عناصر مطلوبة في البيانات الأساسية');
+        $rows = $page->instance()->getTableRecords()->getCollection();
+        self::assertSame(['مسودة ناقصة', 'كورس جاهز'], $rows->pluck('title')->all());
+        self::assertSame([route('admin.courses.show', $incomplete), route('admin.courses.show', $ready)], $rows->pluck('url')->all());
+        self::assertSame(['مسودة', 'منشور'], $rows->pluck('status')->all());
     }
 
     public function test_shared_layout_does_not_render_an_empty_breadcrumb_row(): void
@@ -211,7 +207,7 @@ final class ModeratorCourseWorkspaceContractTest extends TestCase
 
     public function test_administrator_home_leads_with_operational_follow_up(): void
     {
-        $this->actingAs($this->user('admin'), 'web')->get(route('admin.dashboard'))->assertRedirect();
+        $this->actingAs($this->user('admin'), 'web')->get(route('admin.dashboard'))->assertRedirect(Dashboard::getUrl());
         Filament::setCurrentPanel(Filament::getPanel('operations'));
         Livewire::test(FinancialOverview::class)->assertActionHasUrl('operations', ProductOperations::getUrl())
             ->assertActionHasUrl('playback', PlaybackOperations::getUrl())

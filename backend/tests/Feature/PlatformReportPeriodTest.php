@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Filament\Pages\CommercialReport;
+use App\Filament\Pages\ContentWorkspace;
 use App\Filament\Pages\FinancialOverview;
 use App\Filament\Pages\ProductAnalytics;
 use App\Http\Middleware\RequireAdminMfa;
@@ -345,7 +346,8 @@ final class PlatformReportPeriodTest extends TestCase
             });
         }
         $this->actingAs($this->user('moderator'), 'web')->get(route('admin.dashboard', ['period' => '7d']))
-            ->assertOk()->assertViewIs('admin.home.moderator')->assertViewMissing('ai')->assertViewMissing('invoiceReport');
+            ->assertRedirect(ContentWorkspace::getUrl(['page' => 1]));
+        $this->get(ContentWorkspace::getUrl())->assertOk()->assertDontSee('استهلاك الذكاء الاصطناعي');
         $this->get(route('admin.product-analytics.index', ['period' => '7d']))->assertForbidden();
         self::assertSame([], $resolved);
     }

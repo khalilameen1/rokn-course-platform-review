@@ -1,6 +1,32 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('native content workspace and daily home preserve the studio entry on phones', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/\/operations$/);
+    await expect(page.getByText('مبيعات اليوم المؤكدة', { exact: true })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('daily-home-phone.png'), fullPage: true });
+    await page.goto('/operations/content-workspace');
+    await expect(page.getByRole('heading', { name: 'مساحة المحتوى', level: 1, exact: true })).toBeVisible();
+    const row = page.getByRole('row').filter({ hasText: 'كورس المتصفح' });
+    const studio = row.getByRole('link', { name: 'فتح الاستوديو', exact: true });
+    await studio.scrollIntoViewIfNeeded();
+    await expect(studio).toBeInViewport({ ratio: 1 });
+    await expect(studio).toHaveAttribute('href', /\/dashboard\/courses\/\d+$/);
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('content-workspace-phone.png'), fullPage: true });
+    await studio.click();
+    await expect(page.locator('#courseStudio')).toBeVisible();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/operations/content-workspace');
+    await expect(page.getByRole('heading', { name: 'مساحة المحتوى', level: 1, exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('content-workspace-desktop.png'), fullPage: true });
+});
+
 test('native financial overview remounts charts with period and keeps mobile actions visible', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/operations/financial-overview');
