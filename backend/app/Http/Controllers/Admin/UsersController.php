@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Auth\AdminPermissionMatrix;
 use App\Filament\Resources\StudentResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StudentDeviceResetRequest;
@@ -161,7 +162,7 @@ class UsersController extends Controller
      */
     public function deleteNote(UserNote $note, Request $request)
     {
-        if (! $this->notes->delete((int) $note->id, (int) $request->user()->id, $request->user()->role === 'admin')) {
+        if (! $this->notes->delete((int) $note->id, (int) $request->user()->id, app(AdminPermissionMatrix::class)->allows($request->user(), 'admin.users.notes.delete', 'DELETE'))) {
             return redirect()->back()->with('error', 'غير مصرح لك بحذف هذه الملاحظة');
         }
 

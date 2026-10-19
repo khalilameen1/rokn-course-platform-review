@@ -23,12 +23,12 @@ final class AdminStudentNoteService
         }, 3);
     }
 
-    /** Returns false when the actor neither authored the note nor holds the administrator role. */
-    public function delete(int $noteId, int $actorId, bool $isAdmin): bool
+    /** Permission adapters supply the same students.manage decision for deleting another author's note. */
+    public function delete(int $noteId, int $actorId, bool $canManageOthers): bool
     {
-        return DB::transaction(function () use ($noteId, $actorId, $isAdmin): bool {
+        return DB::transaction(function () use ($noteId, $actorId, $canManageOthers): bool {
             $note = UserNote::query()->whereKey($noteId)->lockForUpdate()->firstOrFail();
-            if ((int) $note->created_by !== $actorId && ! $isAdmin) {
+            if ((int) $note->created_by !== $actorId && ! $canManageOthers) {
                 return false;
             }
             $note->delete();
