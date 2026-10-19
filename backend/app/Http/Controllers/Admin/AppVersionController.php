@@ -2,71 +2,45 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\AppVersionResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AppVersionProfileRequest;
 use App\Http\Requests\Admin\EditorVersionRequest;
 use App\Models\AppVersion;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AppReleaseAuthoringService;
-use App\Services\AppReleasePolicyService;
-use App\Support\AppVersionEditorVersion;
-use Illuminate\Http\Response;
+use Illuminate\Http\RedirectResponse;
 
 class AppVersionController extends Controller
 {
     public function __construct(
-        private readonly AppReleasePolicyService $releasePolicy,
         private readonly AppReleaseAuthoringService $authoring
     ) {}
 
     /**
      * Display a listing of the resource.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function index()
     {
-        $versions = AppVersion::orderBy('id', 'desc')->paginate(10);
-        $releaseReadiness = $this->releasePolicy->launchReadiness();
-        $editorVersions = $versions->getCollection()->mapWithKeys(
-            fn (AppVersion $version): array => [$version->id => AppVersionEditorVersion::for($version)]
-        );
-
-        return view('admin.app-versions.index', compact('versions', 'releaseReadiness', 'editorVersions'));
+        return redirect(AppVersionResource::getUrl());
     }
 
     /**
      * Show the form for creating a new resource.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function create()
     {
-        $latestIdentifiers = collect($this->releasePolicy->channels())
-            ->mapWithKeys(function (string $channel): array {
-                $platform = $this->releasePolicy->platformForChannel($channel);
-                $identifier = $channel === AppReleasePolicyService::CHANNEL_APP_STORE
-                    ? 'build_number'
-                    : 'version_code';
-
-                return [$channel => [
-                    'channel' => (int) AppVersion::query()
-                        ->where('platform', $platform)
-                        ->where('distribution_channel', $channel)
-                        ->max($identifier),
-                    'platform' => (int) AppVersion::query()
-                        ->where('platform', $platform)
-                        ->max($identifier),
-                ]];
-            })->all();
-
-        return view('admin.app-versions.create', compact('latestIdentifiers'));
+        return redirect(AppVersionResource::getUrl('create'));
     }
 
     /**
      * Store a newly created resource in storage.
      *
-     * @return Response
+     * @return RedirectResponse
      */
     public function store(AppVersionProfileRequest $request, AdminAuthoringCreateIntentService $createIntents)
     {
@@ -86,23 +60,10 @@ class AppVersionController extends Controller
     }
 
     /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return Response
-     */
-    public function show($id)
-    {
-        AppVersion::findOrFail($id);
-
-        return redirect()->route('admin.app-versions.edit', $id);
-    }
-
-    /**
      * Show the form for editing the specified resource.
      *
      * @param  int  $id
-     * @return Response
+     * @return RedirectResponse
      */
     public function edit($id)
     {
@@ -113,16 +74,15 @@ class AppVersionController extends Controller
                 'هذا سجل قديم بلا قناة محددة ويمكن إيقافه فقط. أنشئ إصدارًا جديدًا للقناة الصحيحة.'
             );
         }
-        $editorVersion = AppVersionEditorVersion::for($version);
 
-        return view('admin.app-versions.edit', compact('version', 'editorVersion'));
+        return redirect(AppVersionResource::getUrl('edit', ['record' => $version->id]));
     }
 
     /**
      * Update the specified resource in storage.
      *
      * @param  int  $id
-     * @return Response
+     * @return RedirectResponse
      */
     public function update(AppVersionProfileRequest $request, $id)
     {
@@ -139,7 +99,7 @@ class AppVersionController extends Controller
      * Remove the specified resource from storage.
      *
      * @param  int  $id
-     * @return Response
+     * @return RedirectResponse
      */
     public function destroy(EditorVersionRequest $request, $id)
     {
@@ -160,7 +120,7 @@ class AppVersionController extends Controller
      * Toggle the active status of the specified resource.
      *
      * @param  int  $id
-     * @return Response
+     * @return RedirectResponse
      */
     public function toggleActive(EditorVersionRequest $request, $id)
     {

@@ -1,6 +1,42 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('release editor reuses native forms and keeps platform builds separate on phone and desktop', async ({ page }, testInfo) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    const build = Math.floor(Date.now() / 1000);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/operations/app-versions/create');
+    await page.getByLabel('قناة التوزيع', { exact: false }).selectOption('appstore');
+    await expect(page.getByLabel('رقم بناء iOS', { exact: false })).toBeVisible();
+    await expect(page.getByLabel('كود إصدار Android', { exact: false })).not.toBeVisible();
+    await page.getByLabel('اسم الإصدار', { exact: false }).fill('1.0.71');
+    await page.getByLabel('رقم بناء iOS', { exact: false }).fill(String(build));
+    await page.getByLabel('رابط التحديث', { exact: false }).fill('https://apps.apple.com/app/id1234567890');
+    await page.getByRole('switch', { name: 'نشط', exact: true }).check();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('release-create-phone.png'), fullPage: true });
+    await page.getByRole('button', { name: 'إضافة', exact: true }).click();
+    await expect(page).toHaveURL(/\/operations\/app-versions$/);
+    const row = page.getByRole('row').filter({ hasText: String(build) });
+    await expect(row.getByText('App Store', { exact: true })).toBeVisible();
+    await row.getByRole('link', { name: 'تعديل', exact: true }).click();
+    await expect(page.getByLabel('رقم بناء iOS', { exact: false })).toBeDisabled();
+    await page.getByLabel('رسالة التحديث بالعربية', { exact: true }).fill('النسخة الأحدث جاهزة');
+    await page.getByRole('button', { name: 'حفظ التغييرات', exact: true }).click();
+    await expect(page.getByText('تم الحفظ', { exact: true })).toBeVisible();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath('release-edit-desktop.png'), fullPage: true });
+    await page.goto('/operations/app-versions');
+    await expect(page.getByText('رابط التحديث جاهز', { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('release-list-desktop.png'), fullPage: true });
+    expect(errors).toEqual([]);
+});
+
 test('payment report keeps currency separate and applies its native filters on mobile', async ({ page }, testInfo) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

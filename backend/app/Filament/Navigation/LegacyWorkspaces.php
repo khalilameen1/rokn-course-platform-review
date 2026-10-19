@@ -25,7 +25,6 @@ final class LegacyWorkspaces
             ['المكافآت والمهام', 'التطبيق', 'admin.coin-earning-methods.index'],
             ['الإشعارات', 'التطبيق', 'admin.notifications.index'],
             ['صور وهوية التطبيق', 'التطبيق', 'admin.design-settings.index'],
-            ['إصدارات التطبيق', 'التطبيق', 'admin.app-versions.index'],
             ['تشغيل المنتج', 'التشغيل', 'admin.product-operations.index'],
             ['تحليلات المنتج', 'التشغيل', 'admin.product-analytics.index'],
             ['سجل التغييرات', 'التشغيل', 'admin.audit-log.index'],
