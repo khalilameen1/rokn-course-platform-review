@@ -215,7 +215,7 @@ test('operational recovery confirms a documented action on the selected phone ro
     await page.getByRole('menuitem', { name: 'تجاوز الحدث', exact: true }).click();
     const modal = page.getByRole('alertdialog');
     await modal.getByRole('textbox', { name: /^سبب الإجراء/ }).fill('Reviewed obsolete isolated browser fixture');
-    await expect(page.locator('.fi-modal-window').filter({ has: modal.getByRole('textbox', { name: /^سبب الإجراء/ }) })).toHaveCSS('opacity', '1');
+    await expect(modal.locator('.fi-modal-window')).toHaveCSS('opacity', '1');
     expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath('operational-recovery-modal-phone.png'), fullPage: true });
     await modal.getByRole('button', { name: 'تجاوز الحدث', exact: true }).click();
