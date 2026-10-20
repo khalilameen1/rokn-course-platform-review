@@ -151,156 +151,165 @@ const CourseChatOverlay = ({
       hardwareAccelerated={Platform.OS === 'android'}
       statusBarTranslucent
       onRequestClose={onClose}>
-      <KeyboardAvoidingView style={styles.modal} behavior="padding">
-        {/* Measure this Dialog, not the Activity behind it. Insets inside the
+      <View style={styles.modal}>
+        {/* The scrim belongs to the whole Dialog, including the area exposed
+            while Android animates the IME. Only the sheet avoids the keyboard. */}
+        <Pressable
+          accessible={false}
+          importantForAccessibility="no-hide-descendants"
+          style={styles.backdrop}
+          onPress={onClose}
+        />
+        <KeyboardAvoidingView
+          pointerEvents="box-none"
+          style={styles.modal}
+          behavior="padding">
+          {/* Measure this Dialog, not the Activity behind it. Insets inside the
             avoided viewport exclude a keyboard that already covers the bars. */}
-        <SafeAreaListener
-          style={[
-            styles.modal,
-            {paddingLeft: insets.left, paddingRight: insets.right},
-          ]}
-          onChange={metrics => setInsets(metrics.insets)}>
-          <View
-            style={styles.modal}
-            onLayout={event =>
-              setViewportHeight(event.nativeEvent.layout.height)
-            }>
-            <Pressable
-              accessible={false}
-              importantForAccessibility="no-hide-descendants"
-              style={styles.backdrop}
-              onPress={onClose}
-            />
+          <SafeAreaListener
+            pointerEvents="box-none"
+            style={[
+              styles.modal,
+              {paddingLeft: insets.left, paddingRight: insets.right},
+            ]}
+            onChange={metrics => setInsets(metrics.insets)}>
             <View
-              accessibilityViewIsModal
-              style={[
-                styles.sheet,
-                {
-                  height: sheetLayout.height,
-                },
-              ]}>
-              {!sheetLayout.compact && <View style={styles.handle} />}
+              pointerEvents="box-none"
+              style={styles.modal}
+              onLayout={event =>
+                setViewportHeight(event.nativeEvent.layout.height)
+              }>
               <View
+                accessibilityViewIsModal
                 style={[
-                  styles.header,
-                  sheetLayout.compact && styles.compactHeader,
+                  styles.sheet,
+                  {
+                    height: sheetLayout.height,
+                  },
                 ]}>
-                <View style={styles.headerCopy}>
-                  <Text style={styles.title} numberOfLines={1}>
-                    استفسارات الكورس
-                  </Text>
-                  <View style={styles.presenceRow}>
-                    <View
-                      style={[
-                        styles.presenceDot,
-                        assistantPresence === 'connected' &&
-                          styles.presenceDotConnected,
-                        ['working', 'submitting', 'checking'].includes(
-                          assistantPresence,
-                        ) && styles.presenceDotWorking,
-                      ]}
-                    />
-                    <Text
-                      accessibilityLiveRegion="polite"
-                      numberOfLines={1}
-                      style={styles.presenceText}>
-                      {presenceLabel(assistantPresence)}
+                {!sheetLayout.compact && <View style={styles.handle} />}
+                <View
+                  style={[
+                    styles.header,
+                    sheetLayout.compact && styles.compactHeader,
+                  ]}>
+                  <View style={styles.headerCopy}>
+                    <Text style={styles.title} numberOfLines={1}>
+                      استفسارات الكورس
                     </Text>
+                    <View style={styles.presenceRow}>
+                      <View
+                        style={[
+                          styles.presenceDot,
+                          assistantPresence === 'connected' &&
+                            styles.presenceDotConnected,
+                          ['working', 'submitting', 'checking'].includes(
+                            assistantPresence,
+                          ) && styles.presenceDotWorking,
+                        ]}
+                      />
+                      <Text
+                        accessibilityLiveRegion="polite"
+                        numberOfLines={1}
+                        style={styles.presenceText}>
+                        {presenceLabel(assistantPresence)}
+                      </Text>
+                    </View>
                   </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="إغلاق"
+                    hitSlop={10}
+                    style={styles.closeButton}
+                    onPress={onClose}>
+                    <Text style={styles.closeText} maxFontSizeMultiplier={1.1}>
+                      ×
+                    </Text>
+                  </Pressable>
                 </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="إغلاق"
-                  hitSlop={10}
-                  style={styles.closeButton}
-                  onPress={onClose}>
-                  <Text style={styles.closeText} maxFontSizeMultiplier={1.1}>
-                    ×
-                  </Text>
-                </Pressable>
-              </View>
 
-              {!assistantIncluded &&
-              choosingUpgrade &&
-              !chatAccessUnavailable &&
-              !courseAccessRequired &&
-              !courseChatUnavailable ? (
-                <FullTrackUpgradeSheet
-                  requiredFeature="chat"
-                  quotaExhausted={planLimitReached}
-                  visible={visible}
-                  courseId={String(course.id)}
-                  courseTitle={course.title}
-                  onClose={onClose}
-                  onUpgraded={onEntitlementChanged}
-                  embedded
-                />
-              ) : !assistantIncluded ? (
-                <CourseChatGate
-                  accessUnavailable={chatAccessUnavailable}
-                  courseAccessRequired={courseAccessRequired}
-                  courseChatUnavailable={courseChatUnavailable}
-                  onUpgrade={() => setChoosingUpgrade(true)}
-                  onOpenCourseAccess={() => {
-                    onClose();
-                    onOpenCourseAccess();
-                  }}
-                  planLimitReached={planLimitReached}
-                  upgradeStatus={upgradeStatus}
-                  onRetryUpgrade={retryUpgradeQuote}
-                />
-              ) : !hydrated ? (
-                <StatusView
-                  state={hydrationError ? 'error' : 'loading'}
-                  title={
-                    hydrationError
-                      ? 'تعذّر استعادة المحادثة'
-                      : 'جارٍ استعادة المحادثة'
-                  }
-                  actionLabel={hydrationError ? 'إعادة المحاولة' : undefined}
-                  onAction={hydrationError ? retryHydration : undefined}
-                />
-              ) : (
-                <CourseChatConversation
-                  courseId={String(course.id)}
-                  answerPending={answerPending}
-                  assistantPresence={assistantPresence}
-                  attachmentLimit={attachmentLimit}
-                  attachments={attachments}
-                  attachmentsEnabled={Boolean(course.chatAttachmentsEnabled)}
-                  bottomInset={insets.bottom}
-                  inputMaxHeight={sheetLayout.inputMaxHeight}
-                  hasSendableInput={hasSendableInput}
-                  input={input}
-                  composerLocked={consentPending}
-                  messages={messages}
-                  onInputChange={value =>
-                    setInput(truncateGraphemes(value, 1600))
-                  }
-                  onOpenAttachment={file => {
-                    void openCourseAssistantAttachment(file).catch(() =>
-                      Alert.alert('تعذّر فتح الملف', learnerCopy.retry),
-                    );
-                  }}
-                  onPickAttachments={() => void pickAttachments()}
-                  onRemoveAttachment={file => {
-                    if (isSendInFlight()) return;
-                    setAttachments(current =>
-                      current.filter(item => item.uploadId !== file.uploadId),
-                    );
-                    void removeLearnerDraftFile(file);
-                  }}
-                  onRetry={retry}
-                  onSend={sendCurrentMessage}
-                  onStop={() => void stop()}
-                  scrollRef={scrollRef}
-                  sending={turnBusy}
-                />
-              )}
+                {!assistantIncluded &&
+                choosingUpgrade &&
+                !chatAccessUnavailable &&
+                !courseAccessRequired &&
+                !courseChatUnavailable ? (
+                  <FullTrackUpgradeSheet
+                    requiredFeature="chat"
+                    quotaExhausted={planLimitReached}
+                    visible={visible}
+                    courseId={String(course.id)}
+                    courseTitle={course.title}
+                    onClose={onClose}
+                    onUpgraded={onEntitlementChanged}
+                    embedded
+                  />
+                ) : !assistantIncluded ? (
+                  <CourseChatGate
+                    accessUnavailable={chatAccessUnavailable}
+                    courseAccessRequired={courseAccessRequired}
+                    courseChatUnavailable={courseChatUnavailable}
+                    onUpgrade={() => setChoosingUpgrade(true)}
+                    onOpenCourseAccess={() => {
+                      onClose();
+                      onOpenCourseAccess();
+                    }}
+                    planLimitReached={planLimitReached}
+                    upgradeStatus={upgradeStatus}
+                    onRetryUpgrade={retryUpgradeQuote}
+                  />
+                ) : !hydrated ? (
+                  <StatusView
+                    state={hydrationError ? 'error' : 'loading'}
+                    title={
+                      hydrationError
+                        ? 'تعذّر استعادة المحادثة'
+                        : 'جارٍ استعادة المحادثة'
+                    }
+                    actionLabel={hydrationError ? 'إعادة المحاولة' : undefined}
+                    onAction={hydrationError ? retryHydration : undefined}
+                  />
+                ) : (
+                  <CourseChatConversation
+                    courseId={String(course.id)}
+                    answerPending={answerPending}
+                    assistantPresence={assistantPresence}
+                    attachmentLimit={attachmentLimit}
+                    attachments={attachments}
+                    attachmentsEnabled={Boolean(course.chatAttachmentsEnabled)}
+                    bottomInset={insets.bottom}
+                    inputMaxHeight={sheetLayout.inputMaxHeight}
+                    hasSendableInput={hasSendableInput}
+                    input={input}
+                    composerLocked={consentPending}
+                    messages={messages}
+                    onInputChange={value =>
+                      setInput(truncateGraphemes(value, 1600))
+                    }
+                    onOpenAttachment={file => {
+                      void openCourseAssistantAttachment(file).catch(() =>
+                        Alert.alert('تعذّر فتح الملف', learnerCopy.retry),
+                      );
+                    }}
+                    onPickAttachments={() => void pickAttachments()}
+                    onRemoveAttachment={file => {
+                      if (isSendInFlight()) return;
+                      setAttachments(current =>
+                        current.filter(item => item.uploadId !== file.uploadId),
+                      );
+                      void removeLearnerDraftFile(file);
+                    }}
+                    onRetry={retry}
+                    onSend={sendCurrentMessage}
+                    onStop={() => void stop()}
+                    scrollRef={scrollRef}
+                    sending={turnBusy}
+                  />
+                )}
+              </View>
             </View>
-          </View>
-        </SafeAreaListener>
-      </KeyboardAvoidingView>
+          </SafeAreaListener>
+        </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 };

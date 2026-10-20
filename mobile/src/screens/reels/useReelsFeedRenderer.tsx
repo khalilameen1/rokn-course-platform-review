@@ -93,6 +93,7 @@ type ReelsFeedActions = {
  */
 export type ReelsFeedState = {
   actions: MutableRefObject<ReelsFeedActions>;
+  controlsHidden: boolean;
   bottomInset: number;
   course: CourseLearningData | null;
   currentIndex: number;
@@ -282,6 +283,7 @@ const ReelsFeedRow = memo(
         pageHeight={feed.pageHeight}
         frameWidth={feed.frameWidth}
         isVisible={isVisible}
+        controlsHidden={feed.controlsHidden}
         // A hidden row can never play. Keeping it blocked avoids re-rendering
         // the paused neighbour on every drag start/settle.
         playbackBlocked={isVisible ? feed.playbackBlocked : true}
@@ -336,6 +338,7 @@ const renderReelsFeedItem = ({
 }) => <ReelsFeedRow item={item} index={index} />;
 
 export const useReelsFeedRenderer = ({
+  controlsHidden = false,
   bottomInset,
   changePlaybackSpeed,
   changeQuality,
@@ -377,6 +380,7 @@ export const useReelsFeedRenderer = ({
   toggleSaved,
   topInset,
 }: {
+  controlsHidden?: boolean;
   bottomInset: number;
   changePlaybackSpeed: (speed: number) => void;
   changeQuality: (quality: VideoQuality) => void;
@@ -479,6 +483,7 @@ export const useReelsFeedRenderer = ({
   const feedState = useMemo<ReelsFeedState>(
     () => ({
       actions,
+      controlsHidden,
       bottomInset,
       course,
       currentIndex,
@@ -500,6 +505,7 @@ export const useReelsFeedRenderer = ({
       topInset,
     }),
     [
+      controlsHidden,
       bottomInset,
       course,
       currentIndex,

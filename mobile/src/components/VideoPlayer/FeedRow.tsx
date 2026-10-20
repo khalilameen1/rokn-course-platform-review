@@ -35,6 +35,7 @@ interface FeedRowProps {
   pageHeight: number;
   frameWidth: number;
   isVisible: boolean;
+  controlsHidden?: boolean;
   playbackBlocked: boolean;
   shouldMountVideo: boolean;
   nativePreloadOwner?: string;
@@ -82,6 +83,7 @@ const FeedRow = ({
   pageHeight,
   frameWidth,
   isVisible,
+  controlsHidden = false,
   playbackBlocked,
   shouldMountVideo,
   nativePreloadOwner,
@@ -268,6 +270,7 @@ const FeedRow = ({
             width={frameWidth}
             height={pageHeight}
             isVisible={isVisible}
+            controlsHidden={controlsHidden}
             playbackBlocked={playbackBlocked || localOverlayVisible}
             playbackSpeed={playbackSpeed}
             selectedQuality={effectiveQuality}
@@ -320,7 +323,7 @@ const FeedRow = ({
               ))}
           </View>
         )}
-        {isVisible && (
+        {isVisible && !controlsHidden && (
           <>
             <FeedHeader
               playbackSpeed={playbackSpeed}

@@ -94,31 +94,33 @@ const VideoSurface = (controller: VideoController) => {
         </Animated.View>
       )}
 
-      <VideoChrome
-        bottomInset={controller.bottomInset}
-        captionsAvailable={controller.captionsAvailable}
-        captionsEnabled={controller.captionsEnabled}
-        currentTime={controller.currentTime}
-        failureKind={controller.failureKind}
-        isBuffering={controller.isBuffering}
-        isLoaded={controller.isLoaded}
-        onRetry={controller.retryPlayback}
-        onSeekBy={controller.seekBy}
-        onTogglePaused={controller.togglePaused}
-        onToggleCaptions={controller.toggleCaptions}
-        onResetZoom={controller.zoom.reset}
-        zoomGesture={controller.zoom.gesture}
-        zoomed={controller.zoom.zoomed}
-        onTrackWidth={controller.setTrackWidth}
-        panHandlers={controller.panHandlers}
-        pausedByUser={playbackPaused}
-        previewTime={controller.previewTime}
-        recoveryMessage={controller.recoveryMessage}
-        sourceFailed={controller.sourceFailed}
-        timeline={controller.timeline}
-        trackWidth={controller.trackWidth}
-        unsupportedSource={controller.unsupportedSource}
-      />
+      {!controller.controlsHidden && (
+        <VideoChrome
+          bottomInset={controller.bottomInset}
+          captionsAvailable={controller.captionsAvailable}
+          captionsEnabled={controller.captionsEnabled}
+          currentTime={controller.currentTime}
+          failureKind={controller.failureKind}
+          isBuffering={controller.isBuffering}
+          isLoaded={controller.isLoaded}
+          onRetry={controller.retryPlayback}
+          onSeekBy={controller.seekBy}
+          onTogglePaused={controller.togglePaused}
+          onToggleCaptions={controller.toggleCaptions}
+          onResetZoom={controller.zoom.reset}
+          zoomGesture={controller.zoom.gesture}
+          zoomed={controller.zoom.zoomed}
+          onTrackWidth={controller.setTrackWidth}
+          panHandlers={controller.panHandlers}
+          pausedByUser={playbackPaused}
+          previewTime={controller.previewTime}
+          recoveryMessage={controller.recoveryMessage}
+          sourceFailed={controller.sourceFailed}
+          timeline={controller.timeline}
+          trackWidth={controller.trackWidth}
+          unsupportedSource={controller.unsupportedSource}
+        />
+      )}
     </View>
   );
 };

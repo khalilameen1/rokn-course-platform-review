@@ -178,7 +178,7 @@ jest.mock('../src/screens/reels/useReelsProgress', () => ({
 const mockVideoRenders: Record<string, number> = {};
 const mockVideoProps: Record<
   string,
-  {isVisible: boolean; playbackBlocked?: boolean}
+  {isVisible: boolean; playbackBlocked?: boolean; controlsHidden?: boolean}
 > = {};
 const mockChromeRenders: Record<string, number> = {};
 jest.mock('../src/components/VideoPlayer/VideoComponent', () => ({
@@ -282,5 +282,20 @@ it('re-renders only the rows whose state changes across one swipe', async () => 
   expect(mockVideoRenders['reel-1']).toBe(before.video['reel-1']);
   expect(mockVideoProps['reel-2'].playbackBlocked).toBe(false);
   expect(mockChromeRenders['reel-3']).toBeUndefined();
+  // Opening chat must pause the current reel AND remove its controls. A
+  // keyboard resize can expose the Activity underneath the native Dialog.
+  const chromeBeforeChat = {...mockChromeRenders};
+  await act(() => controller.feedState.actions.current.setChatVisible(true));
+  expect(mockVideoProps['reel-2']).toMatchObject({
+    playbackBlocked: true,
+    controlsHidden: true,
+  });
+  expect(mockChromeRenders).toEqual(chromeBeforeChat);
+  await act(() => controller.closeChat());
+  expect(mockVideoProps['reel-2']).toMatchObject({
+    playbackBlocked: false,
+    controlsHidden: false,
+  });
+  expect(mockChromeRenders['reel-2']).toBe(chromeBeforeChat['reel-2'] + 1);
   await act(() => renderer.unmount());
 });

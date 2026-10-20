@@ -570,6 +570,7 @@ export const useReelsController = () => {
     navigation,
     persistProgress,
     playbackSpeed,
+    controlsHidden: chatVisible,
     playbackBlocked:
       !isScreenFocused || !appIsActive || interactionLocked || paging,
     // Paging pauses playback, but must not discard the next decoder's preload.

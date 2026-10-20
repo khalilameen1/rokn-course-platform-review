@@ -47,6 +47,7 @@ export interface VideoComponentProps {
   height: number;
   isVisible: boolean;
   playbackBlocked?: boolean;
+  controlsHidden?: boolean;
   playbackSpeed?: number;
   selectedQuality?: VideoQuality;
   initialPosition?: number;
@@ -68,6 +69,7 @@ export const useVideoController = (
     height,
     isVisible,
     playbackBlocked = false,
+    controlsHidden = false,
     playbackSpeed = 1,
     selectedQuality = 'auto',
     initialPosition = 0,
@@ -668,6 +670,7 @@ export const useVideoController = (
     zoom,
     nativePreloadOwner,
     bottomInset,
+    controlsHidden,
     currentTime,
     data,
     effectiveQuality,

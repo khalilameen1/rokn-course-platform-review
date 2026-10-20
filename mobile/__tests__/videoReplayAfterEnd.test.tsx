@@ -103,6 +103,36 @@ describe('explicit replay after a reel finishes on screen', () => {
     jest.useRealTimers();
   });
 
+  it('removes the timeline while chat owns the screen without remounting or rewinding the decoder', async () => {
+    const h = await mount();
+    try {
+      const decoder = h.native();
+      await act(() =>
+        decoder.props.onProgress({currentTime: 9, seekableDuration: 20}),
+      );
+      expect(
+        h.renderer.root.findAllByProps({testID: 'video-timeline-touch-track'})
+          .length,
+      ).toBeGreaterThan(0);
+      await h.update({controlsHidden: true, playbackBlocked: true});
+      expect(h.native()).toBe(decoder);
+      expect(h.native().props.paused).toBe(true);
+      expect(
+        h.renderer.root.findAllByProps({testID: 'video-timeline-touch-track'}),
+      ).toHaveLength(0);
+      await h.update({controlsHidden: false, playbackBlocked: false});
+      expect(h.native()).toBe(decoder);
+      expect(h.native().props.paused).toBe(false);
+      expect(
+        h.renderer.root.findAllByProps({testID: 'video-timeline-touch-track'})
+          .length,
+      ).toBeGreaterThan(0);
+      expect(mockSeek).not.toHaveBeenCalled();
+    } finally {
+      await h.unmount();
+    }
+  });
+
   it('restarts the ended decoder on the next explicit play tap without an automatic replay', async () => {
     const h = await mount();
     try {
