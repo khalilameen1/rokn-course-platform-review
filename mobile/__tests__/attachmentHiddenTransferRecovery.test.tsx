@@ -56,19 +56,12 @@ jest.mock(
   '../src/components/VideoPlayer/feedSideBar/CourseIndexModule',
   () => () => null,
 );
-jest.mock('../src/components/VideoPlayer/feedSideBar/FeedActions', () => {
-  const {Pressable} = require('react-native');
-  return {
-    __esModule: true,
-    AttachmentIcon: () => null,
-    default: ({onOpenAttachments}: {onOpenAttachments: () => void}) => (
-      <Pressable
-        accessibilityLabel="افتح المرفقات"
-        onPress={onOpenAttachments}
-      />
-    ),
-  };
-});
+jest.mock('../src/components/VideoPlayer/feedSideBar/FeedActions', () => ({
+  __esModule: true,
+  AttachmentIcon: () => null,
+  default: () => null,
+}));
+let mockPresentAttachments: () => void = () => undefined;
 jest.mock(
   '../src/components/VideoPlayer/feedSideBar/useAttachmentPrompt',
   () => ({
@@ -78,11 +71,13 @@ jest.mock(
     }: {
       course: {attachments: unknown[]};
       present: () => void;
-    }) => ({
-      attachments: course.attachments,
-      markAttachmentsVisible: jest.fn(),
-      openAttachments: present,
-    }),
+    }) => {
+      mockPresentAttachments = present;
+      return {
+        attachments: course.attachments,
+        markAttachmentsVisible: jest.fn(),
+      };
+    },
   }),
 );
 jest.mock(
@@ -264,6 +259,13 @@ describe('return to a hidden iOS attachment transfer', () => {
       await flush();
     });
   };
+  // Drive the existing timed prompt independently of the removed rail button.
+  const presentAttachments = async () => {
+    await act(async () => {
+      mockPresentAttachments();
+      await flush();
+    });
+  };
   const visibleCancellation = (label = 'إلغاء تنزيل ملف الهاتف') =>
     renderer.root.findAll(node => {
       if (
@@ -356,7 +358,7 @@ describe('return to a hidden iOS attachment transfer', () => {
   it.each(['same reel', 'another reel'] as const)(
     'keeps cancellation reachable after Hide and return from %s without another transfer',
     async returningFrom => {
-      await press('افتح المرفقات');
+      await presentAttachments();
       await press('تنزيل ملف الهاتف');
       expect(RNFS.downloadFile).toHaveBeenCalledTimes(1);
       act(() => progressModal().props.onShow());
@@ -370,7 +372,7 @@ describe('return to a hidden iOS attachment transfer', () => {
       } else {
         await press('إغلاق نافذة المرفقات');
       }
-      await press('افتح المرفقات');
+      await presentAttachments();
       if (button('تنزيل ملف الهاتف')) await press('تنزيل ملف الهاتف');
       expect(RNFS.downloadFile).toHaveBeenCalledTimes(1);
       expect(Share.open).not.toHaveBeenCalled();
@@ -461,7 +463,7 @@ describe('return to a hidden iOS attachment transfer', () => {
         render(1, {...course, attachments: [...course.attachments, second]}),
       );
     });
-    await press('افتح المرفقات');
+    await presentAttachments();
     await press('تنزيل ملف الهاتف');
     act(() => progressModal().props.onShow());
     const oldCancel = visibleCancellation()[0].props.onPress;
@@ -498,7 +500,7 @@ describe('return to a hidden iOS attachment transfer', () => {
   });
 
   it('retires failed transfer cancellation before its error presentation and permits retry', async () => {
-    await press('افتح المرفقات');
+    await presentAttachments();
     await press('تنزيل ملف الهاتف');
     act(() => progressModal().props.onShow());
     const oldCancel = visibleCancellation()[0].props.onPress;
@@ -523,7 +525,7 @@ describe('return to a hidden iOS attachment transfer', () => {
   });
 
   it('cannot route an old account cancel to the same attachment under a new account', async () => {
-    await press('افتح المرفقات');
+    await presentAttachments();
     await press('تنزيل ملف الهاتف');
     hideProgress();
     const oldCancel = visibleCancellation()[0].props.onPress;
@@ -536,7 +538,7 @@ describe('return to a hidden iOS attachment transfer', () => {
       renderer.update(render(2));
     });
     expect(RNFS.cancelDownload).toHaveBeenCalledWith(71);
-    await press('افتح المرفقات');
+    await presentAttachments();
     await press('تنزيل ملف الهاتف');
     act(() => oldCancel());
     expect(RNFS.cancelDownload).toHaveBeenCalledTimes(1);
@@ -551,7 +553,7 @@ describe('return to a hidden iOS attachment transfer', () => {
   });
 
   it('still aborts a finished transfer waiting for foreground when the root host retires', async () => {
-    await press('افتح المرفقات');
+    await presentAttachments();
     await press('تنزيل ملف الهاتف');
     hideProgress();
     act(() => changeAppState('background'));

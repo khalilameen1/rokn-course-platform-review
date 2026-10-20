@@ -104,12 +104,11 @@ const FeedSideBar = ({
     () => saveSheetRef.current?.dismiss(),
     [],
   );
-  const {attachments, markAttachmentsVisible, openAttachments} =
-    useAttachmentPrompt({
-      course,
-      currentTime,
-      present: presentAttachments,
-    });
+  const {attachments, markAttachmentsVisible} = useAttachmentPrompt({
+    course,
+    currentTime,
+    present: presentAttachments,
+  });
   const saveScopeKey = `${course.id}:${currentFeedKey}`;
   const {
     close: closeSavedFolderPicker,
@@ -253,9 +252,7 @@ const FeedSideBar = ({
         currentReelNumber={currentReel.reelNumber}
         isSaved={isSaved}
         savePending={savePending}
-        showAttachments={attachments.length > 0}
         totalReels={course.totalReels}
-        onOpenAttachments={openAttachments}
         onOpenChat={onOpenChat}
         onOpenIndex={() => indexSheetRef.current?.present()}
         onPressSave={pressSave}
@@ -413,7 +410,10 @@ const FeedSideBar = ({
                   {cancelDownload ? (
                     <Text style={styles.attachmentAction}>إلغاء التنزيل</Text>
                   ) : busy ? (
-                    <ActivityIndicator color={Palette.primaryTint} size="small" />
+                    <ActivityIndicator
+                      color={Palette.primaryTint}
+                      size="small"
+                    />
                   ) : attachment.platform === 'computer' ? (
                     <CopyIcon />
                   ) : (
@@ -461,7 +461,10 @@ const FeedSideBar = ({
             تحفظه فين؟
           </Text>
           {foldersLoading && !folderLoadError ? (
-            <ActivityIndicator color={Palette.primaryTint} style={styles.folderLoader} />
+            <ActivityIndicator
+              color={Palette.primaryTint}
+              style={styles.folderLoader}
+            />
           ) : (
             <View style={styles.folderList}>
               <Pressable

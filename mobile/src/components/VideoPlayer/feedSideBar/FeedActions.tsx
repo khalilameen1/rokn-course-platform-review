@@ -102,9 +102,7 @@ type FeedActionsProps = {
   currentReelNumber: number;
   isSaved: boolean;
   savePending: boolean;
-  showAttachments: boolean;
   totalReels: number;
-  onOpenAttachments: () => void;
   onOpenChat: () => void;
   onOpenIndex: () => void;
   /** Saves to the default list, or opens the lists when already saved. */
@@ -120,9 +118,7 @@ const FeedActions = ({
   currentReelNumber,
   isSaved,
   savePending,
-  showAttachments,
   totalReels,
-  onOpenAttachments,
   onOpenChat,
   onOpenIndex,
   onPressSave,
@@ -165,14 +161,6 @@ const FeedActions = ({
           <BookmarkIcon filled={isSaved} />
         )}
       </FeedActionButton>
-      {showAttachments && (
-        <FeedActionButton
-          label="ملفات"
-          compact={compact}
-          onPress={onOpenAttachments}>
-          <AttachmentIcon />
-        </FeedActionButton>
-      )}
       <FeedActionButton label="الفهرس" compact={compact} onPress={onOpenIndex}>
         <Text style={styles.counter} maxFontSizeMultiplier={1.1}>
           {formatArabicNumber(currentReelNumber)}/
