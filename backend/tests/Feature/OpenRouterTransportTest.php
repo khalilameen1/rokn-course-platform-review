@@ -145,6 +145,70 @@ final class OpenRouterTransportTest extends TestCase
         Http::assertSentCount(1);
     }
 
+    public static function currentClaudeReasoningContracts(): array
+    {
+        return [
+            'Sonnet 5.5 legacy off' => ['anthropic/claude-sonnet-5.5', 'none', ['effort' => 'low', 'exclude' => true]],
+            'Sonnet 5.5 minimal' => ['anthropic/claude-sonnet-5.5', 'minimal', ['effort' => 'low', 'exclude' => true]],
+            'Sonnet 5.5 report' => ['anthropic/claude-sonnet-5.5', 'medium', ['effort' => 'medium', 'exclude' => true]],
+            'Haiku 5.5 remains optional' => ['anthropic/claude-haiku-5.5', 'none', ['enabled' => false, 'exclude' => true]],
+        ];
+    }
+
+    #[DataProvider('currentClaudeReasoningContracts')]
+    public function test_current_claude_requests_obey_model_specific_reasoning_contract(
+        string $model, string $effort, array $expected
+    ): void {
+        config([
+            'openrouter.api_key' => 'local-test-only',
+            'openrouter.endpoint' => 'https://openrouter.test/chat/completions',
+            'openrouter.allowed_models' => [$model],
+            'openrouter.fallback_models' => [],
+            'openrouter.reasoning_effort' => $effort,
+            'openrouter.max_tokens' => 800,
+        ]);
+        Http::preventStrayRequests();
+        // Reproduce the live gateway rejection, rather than returning success
+        // regardless of whether the request could ever reach the model.
+        Http::fake(['openrouter.test/*' => function ($request) use ($model) {
+            if ($model === 'anthropic/claude-sonnet-5.5'
+                && (data_get($request->data(), 'reasoning.enabled') === false
+                    || data_get($request->data(), 'reasoning.effort') === 'none')) {
+                return Http::response(['error' => [
+                    'code' => 400,
+                    'message' => 'Reasoning is mandatory for this endpoint and cannot be disabled.',
+                ]], 400);
+            }
+
+            return Http::response([
+                'id' => 'model-contract', 'model' => $model,
+                'choices' => [['finish_reason' => 'stop', 'message' => ['content' => 'ابدأ بتحديد الهدف']]],
+                'usage' => ['total_tokens' => 40, 'cost' => .001],
+            ]);
+        }]);
+        $result = app(OpenRouterService::class)->chat(
+            $model, [['role' => 'user', 'content' => 'اشرح المثال']], .35, 800
+        );
+        self::assertSame('ابدأ بتحديد الهدف', $result['message']);
+        Http::assertSent(fn ($request): bool => $request['reasoning'] === $expected
+            && $request['max_tokens'] === 800);
+        Http::assertSentCount(1);
+    }
+
+    public function test_disabled_reasoning_never_routes_to_a_mandatory_reasoning_fallback(): void
+    {
+        config([
+            'openrouter.allowed_models' => ['anthropic/claude-haiku-5.5', 'anthropic/claude-sonnet-5.5'],
+            'openrouter.fallback_models' => ['anthropic/claude-sonnet-5.5'],
+            'openrouter.reasoning_effort' => 'none',
+        ]);
+        $payload = app(OpenRouterRequestPolicy::class)->payload(
+            'anthropic/claude-haiku-5.5', [['role' => 'user', 'content' => 'hello']], .35, 800
+        );
+        self::assertSame('anthropic/claude-haiku-5.5', $payload['model']);
+        self::assertArrayNotHasKey('models', $payload);
+    }
+
     protected function tearDown(): void
     {
         $this->server?->stop();

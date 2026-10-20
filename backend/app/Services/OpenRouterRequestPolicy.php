@@ -68,7 +68,8 @@ final class OpenRouterRequestPolicy
             $models = array_values(array_filter(
                 $models,
                 fn (string $candidate): bool => $this->supportsNoReasoning($candidate)
-                    || ($disableSonnetReasoning && $this->isClaudeFive($candidate))
+                    || ($disableSonnetReasoning && $this->isClaudeFive($candidate)
+                        && ! $this->requiresReasoning($candidate))
             ));
         }
         $payload = [
@@ -210,6 +211,13 @@ final class OpenRouterRequestPolicy
             true
         ) ? $effort : 'none';
 
+        if ($this->requiresReasoning($model) && in_array($effort, ['none', 'minimal'], true)) {
+            // OpenRouter's model catalogue marks Sonnet 5.5 mandatory, unlike
+            // Sonnet 5 and Haiku 5.5. Keep the existing reserved output ceiling;
+            // translating legacy "none" must not add unreserved paid tokens.
+            return 'low';
+        }
+
         if ($this->isGeminiThreeEightFlash($model)) {
             // Gemini 3.8 requires thinking and accepts only these three levels.
             // Keep the legacy no-thinking chat setting on its lowest latency level.
@@ -268,12 +276,19 @@ final class OpenRouterRequestPolicy
 
     private function isClaudeFive(string $model): bool
     {
-        // Claude 5.x models share one parameter contract on OpenRouter:
-        // optional thinking without a `none` effort, and no temperature.
+        // Family matching is only for shared parameters. Thinking being
+        // optional is model-specific; see requiresReasoning().
         return preg_match(
             '/^anthropic\/claude-(?:sonnet|haiku)-5(?:\.\d+)?$/',
             strtolower(trim($model))
         ) === 1;
+    }
+
+    private function requiresReasoning(string $model): bool
+    {
+        // Verified against GET /api/v1/models and a live rejected request on
+        // 2026-10-20. Do not infer capabilities for future family versions.
+        return strtolower(trim($model)) === 'anthropic/claude-sonnet-5.5';
     }
 
     private function supportsTemperature(string $model): bool
