@@ -42,21 +42,24 @@ final class AiCoachModelPolicyTest extends TestCase
 
     public static function claudeFiveModels(): array
     {
-        return [['anthropic/claude-sonnet-5.5'], ['anthropic/claude-haiku-5.5']];
+        return [
+            ['anthropic/claude-sonnet-5.5', ['effort' => 'low', 'exclude' => true]],
+            ['anthropic/claude-haiku-5.5', ['enabled' => false, 'exclude' => true]],
+        ];
     }
 
     #[DataProvider('claudeFiveModels')]
-    public function test_claude_five_models_get_their_advertised_parameters(string $model): void
+    public function test_claude_five_models_get_their_advertised_parameters(string $model, array $reasoning): void
     {
         $this->fakeAnswer('تمام');
 
         app(OpenRouterService::class)->chat($model, [['role' => 'user', 'content' => 'سؤال']], .3, 600);
 
-        Http::assertSent(function ($request) use ($model): bool {
+        Http::assertSent(function ($request) use ($model, $reasoning): bool {
             $payload = $request->data();
             self::assertSame($model, $payload['model']);
             self::assertArrayNotHasKey('temperature', $payload);
-            self::assertSame(['enabled' => false, 'exclude' => true], $payload['reasoning']);
+            self::assertSame($reasoning, $payload['reasoning']);
             self::assertSame(600, $payload['max_tokens']);
 
             return true;
