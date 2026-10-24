@@ -238,7 +238,7 @@ test('retains every package legal file and every reviewed absence record', () =>
 
   const appData = JSON.parse(artifacts.appData);
   assert.equal(appData.schemaVersion, 2);
-  assert.equal(appData.packages.length, 754);
+  assert.equal(appData.packages.length, artifacts.inventory.packages.length);
   assert.equal(appData.licenseTexts, undefined);
   assert.ok(Buffer.byteLength(artifacts.appData) < 250000);
 
