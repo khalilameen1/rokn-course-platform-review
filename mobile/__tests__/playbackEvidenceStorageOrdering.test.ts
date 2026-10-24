@@ -210,14 +210,42 @@ describe('durable playback evidence acknowledgement ordering', () => {
     expect(apiPost).toHaveBeenCalledTimes(2);
     expect(apiPost.mock.calls[1][1]).toEqual(
       expect.objectContaining({
-        event_type: 'complete',
+        event_type: 'stop',
         is_completed: true,
-        sequence: 2,
+        sequence: 3,
         playback_session_id: 'active-session',
         position_seconds: 60,
       }),
     );
   });
+
+  it.each([false, true])(
+    'records a rewind and new progress after a completion claim in the same session (offline: %s)',
+    async offline => {
+      if (offline) apiPost.mockRejectedValue(new Error('offline'));
+      const context = {playbackSessionId: 'rewatch-session'};
+      await savePlaybackPosition('31', 'reel-72', 57, '72', 60, true, context);
+      await savePlaybackPosition('31', 'reel-72', 0, '72', 60, false, context);
+      apiPost.mockResolvedValue({} as never);
+      await retryPendingPlaybackPositions();
+      expect(apiPost).toHaveBeenLastCalledWith(
+        'user/watch-history',
+        expect.objectContaining({
+          playback_session_id: 'rewatch-session',
+          position_seconds: 0,
+          is_completed: false,
+          event_type: 'heartbeat',
+          sequence: 2,
+        }),
+      );
+      await savePlaybackPosition('31', 'reel-72', 50, '72', 60, false, context);
+      await retryPendingPlaybackPositions();
+      expect(apiPost).toHaveBeenLastCalledWith(
+        'user/watch-history',
+        expect.objectContaining({position_seconds: 50, sequence: 3}),
+      );
+    },
+  );
 
   it('retries a failed terminal lifecycle event through the same durable evidence path', async () => {
     apiPost.mockRejectedValue(new Error('offline'));

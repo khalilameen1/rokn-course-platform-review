@@ -255,6 +255,31 @@ final class WatchHistoryReadWritePathTest extends ApiTestCase
         ])->assertStatus(422)->assertJsonValidationErrors(['lesson_id']);
     }
 
+    public function test_seeking_to_the_end_then_rewatching_can_complete_in_the_same_session(): void
+    {
+        $session = $this->enrolledSession();
+        DB::table('lesson_media_states')->where('lesson_id', 10)->update(['duration_seconds' => 60]);
+        $this->sample($session, 1, 0)->assertOk();
+        $this->travel(1)->seconds();
+        $this->actingAs($this->user, 'api')->postJson('/api/v1/user/watch-history', [
+            'lesson_id' => 10, 'playback_session_id' => $session->id, 'sequence' => 2,
+            'position_seconds' => 57, 'duration_seconds' => 60,
+            'is_completed' => true, 'event_type' => 'complete',
+        ])->assertOk();
+        self::assertNull($session->fresh()->ended_at);
+        $complete = "/api/v1/courses/{$this->courseId}/sections/{$this->sectionId}/complete";
+        $this->postJson($complete)->assertStatus(409)->assertJsonPath('code', 'verified_watch_required');
+
+        $this->sample($session, 3, 0)->assertOk();
+        $this->travel(25)->seconds();
+        $this->sample($session, 4, 25)->assertOk();
+        $this->travel(25)->seconds();
+        $this->sample($session, 5, 50)->assertOk();
+        $this->postJson($complete)->assertOk();
+        self::assertNull($session->fresh()->ended_at);
+        self::assertSame(5, $session->fresh()->last_sequence);
+    }
+
     private function history(array $query = []): TestResponse
     {
         return $this->actingAs($this->user, 'api')

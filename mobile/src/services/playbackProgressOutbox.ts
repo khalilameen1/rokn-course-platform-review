@@ -46,7 +46,8 @@ export const isPendingWatchHistory = (
  * Coalesce to the newest sample. Resume means the latest observed position,
  * not the furthest point reached: a learner can rewind and leave before the
  * 30-second flush, and WatchHistoryController orders samples by session.
- * Completion is sticky; the longest known duration wins.
+ * A closing sample retains an unsent completion; a rewind does not retain
+ * the old playhead or completion claim. The longest known duration wins.
  */
 export const mergePendingWatchHistory = (
   previous: PendingWatchHistory | undefined,
@@ -56,17 +57,13 @@ export const mergePendingWatchHistory = (
     ? next
     : {
         ...next,
-        positionSeconds: previous?.completed
-          ? Math.max(previous.positionSeconds, next.positionSeconds)
-          : next.positionSeconds,
+        positionSeconds: next.positionSeconds,
         durationSeconds:
           Math.max(previous?.durationSeconds || 0, next.durationSeconds || 0) ||
           undefined,
-        completed: previous?.completed === true || next.completed,
-        eventType:
-          previous?.completed === true || next.completed
-            ? 'complete'
-            : next.eventType,
+        completed:
+          next.completed ||
+          (isTerminalWatchHistory(next) && previous?.completed === true),
       };
 
 export const playbackEvidenceId = (
@@ -77,8 +74,6 @@ export const playbackEvidenceId = (
     : String(sample.lessonId);
 
 export const isTerminalWatchHistory = (sample: PendingWatchHistory) =>
-  sample.completed ||
-  sample.eventType === 'complete' ||
   sample.eventType === 'stop' ||
   (sample.eventType === 'error' && Boolean(sample.endReason));
 

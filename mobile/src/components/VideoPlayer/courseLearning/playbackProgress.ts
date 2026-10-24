@@ -351,7 +351,8 @@ const flushQueuedSample = async (
 ) => {
   if (!queued) return false;
   const {key, item, owner, generation} = queued;
-  const drain = immediate || isTerminalWatchHistory(item.payload);
+  const drain =
+    immediate || item.payload.completed || isTerminalWatchHistory(item.payload);
   const elapsed = Date.now() - (watchHistoryLastSyncedAt.get(key) || 0);
   if (!drain && elapsed < WATCH_HISTORY_SYNC_INTERVAL_MS) {
     if (!watchHistoryTimers.has(key) && !watchHistoryFlights.has(key)) {
