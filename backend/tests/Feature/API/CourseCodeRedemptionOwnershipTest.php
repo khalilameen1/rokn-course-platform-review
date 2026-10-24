@@ -6,6 +6,8 @@ namespace Tests\Feature\API;
 
 use App\Exceptions\CourseCodeUnavailable;
 use App\Jobs\SendUserPushNotification;
+use App\Models\AiEntitlementUsage;
+use App\Models\AiUsageEvent;
 use App\Models\Bill;
 use App\Models\Course;
 use App\Models\CourseCode;
@@ -14,6 +16,7 @@ use App\Models\CourseGrantClaim;
 use App\Models\Order;
 use App\Models\StudentNotification;
 use App\Models\User;
+use App\Services\AiUsageSettlementService;
 use App\Services\CourseCodeRedemptionService;
 use App\Services\StudentNotificationService;
 use App\Support\CourseCodeRejection;
@@ -24,6 +27,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -126,6 +130,56 @@ final class CourseCodeRedemptionOwnershipTest extends ApiTestCase
         self::assertSame(2, (int) $enrollment->completed_curriculum_revision);
         self::assertSame(Order::FINANCIAL_CHARGEBACK, $order->fresh()->financial_status);
         self::assertSame(1, CourseEnrollment::query()->count());
+    }
+
+    public static function pendingProviderStates(): array
+    {
+        return ['not sent' => [false], 'already sent to provider' => [true]];
+    }
+
+    #[DataProvider('pendingProviderStates')]
+    public function test_replacing_inactive_access_with_a_grant_releases_old_ai_reservations(bool $providerStarted): void
+    {
+        $order = $this->paidOrder(Order::FINANCIAL_CHARGEBACK);
+        $enrollment = CourseEnrollment::query()->create([
+            'user_id' => $this->user->id, 'course_id' => $this->courseId, 'order_id' => $order->id,
+            'access_plan_order_id' => $order->id, 'is_active' => false, 'enrolled_at' => now()->subDay(),
+        ]);
+        $usage = AiEntitlementUsage::query()->create([
+            'enrollment_id' => $enrollment->id, 'feature' => 'course_chat',
+            'used_requests' => 3, 'used_tokens' => 300, 'used_cost_usd' => '0.050000',
+            'reserved_requests' => 1, 'reserved_tokens' => 100, 'reserved_cost_usd' => '0.020000',
+        ]);
+        $event = AiUsageEvent::query()->create([
+            'request_id' => (string) Str::uuid(), 'enrollment_id' => $enrollment->id,
+            'user_id' => $this->user->id, 'course_id' => $this->courseId,
+            'feature' => 'course_chat', 'model' => 'test/model', 'status' => 'reserved',
+            'reserved_tokens' => 100, 'reserved_cost_usd' => '0.020000',
+            'reservation_expires_at' => now()->addMinutes(5),
+            'metadata' => $providerStarted ? ['provider_call_state' => 'started'] : [],
+        ]);
+        $this->redeem()->assertOk()->assertJsonPath('data.chat_available', false);
+        self::assertSame($enrollment->id, CourseEnrollment::query()->sole()->id);
+        self::assertSame(0, $usage->fresh()->reserved_requests);
+        self::assertSame(0, $usage->fresh()->reserved_tokens);
+        self::assertSame('0.000000', $usage->fresh()->reserved_cost_usd);
+        self::assertSame(3, $usage->fresh()->used_requests);
+        self::assertSame(300, $usage->fresh()->used_tokens);
+        self::assertSame('0.050000', $usage->fresh()->used_cost_usd);
+        if ($providerStarted) {
+            self::assertTrue(data_get($event->fresh()->metadata, 'reservation_detached'));
+            $outcome = app(AiUsageSettlementService::class)->settleForActiveUser($event, [
+                'message' => 'Late answer', 'usage' => ['total_tokens' => 80, 'cost' => '0.012500', 'cost_reported' => true],
+            ], $this->user->id);
+            self::assertSame(AiUsageSettlementService::SETTLEMENT_TERMINAL_CONFLICT, $outcome);
+            self::assertSame('0.012500', $event->fresh()->cost_usd);
+            self::assertSame(3, $usage->fresh()->used_requests);
+        } else {
+            self::assertSame('cancelled', $event->fresh()->status);
+        }
+        $this->redeem()->assertOk()->assertJsonPath('data.already_enrolled', true);
+        self::assertSame(0, $usage->fresh()->reserved_requests);
+        self::assertSame(3, $usage->fresh()->used_requests);
     }
 
     #[DataProvider('denials')]

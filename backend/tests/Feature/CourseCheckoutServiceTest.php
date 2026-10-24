@@ -517,6 +517,44 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame(0, CourseEnrollment::query()->count());
     }
 
+    public static function unboundStoreReceiptTimes(): array
+    {
+        return [
+            'google one second earlier' => ['google', true],
+            'google missing time' => ['google', false],
+            'apple one second earlier' => ['apple', true],
+            'apple missing time' => ['apple', false],
+        ];
+    }
+
+    #[DataProvider('unboundStoreReceiptTimes')]
+    public function test_unbound_receipt_preserves_credit_and_reconfirmation_needs_no_second_payment(string $provider, bool $hasTime): void
+    {
+        [$user, $course, $service] = $this->fixture(0, 200);
+        $package = $this->storePackage(350);
+        $package->forceFill(['apple_enabled' => true, 'apple_product_id' => 'rokn.test.apple'])->save();
+        $input = array_replace($this->input($course), ['channel' => $provider]);
+        $quote = $service->create($user, $input + ['package_id' => $package->id]);
+        $service->authorize($user, $quote['id']);
+        $authorizedAt = CourseCheckout::query()->where('public_id', $quote['id'])->sole()->authorized_at;
+        $receipt = $this->fund($user, $package);
+        $audit = $hasTime ? ($provider === 'apple'
+            ? ['purchase_date' => $authorizedAt->copy()->subSecond()->getTimestampMs()]
+            : ['purchase_completed_at' => $authorizedAt->copy()->subSecond()->toIso8601String()]) : [];
+        $receipt->forceFill(['provider' => $provider, 'provider_payload' => $audit])->save();
+        self::assertSame('reconfirm_required', $service->bindStorePurchase($user, $quote['id'], $receipt)['status']);
+        self::assertSame(350, (int) $user->fresh()->wallet_purchased_coins);
+        self::assertSame(0, CourseEnrollment::query()->count());
+        self::assertNull($service->awaitingSettlementSummary($user));
+        $replacement = $service->create($user, $input);
+        self::assertSame(0, $replacement['deficit']);
+        self::assertSame('completed', $service->authorize($user, $replacement['id'])['status']);
+        self::assertSame('completed', $service->authorize($user, $replacement['id'])['status']);
+        self::assertSame(1, StorePurchase::query()->where('user_id', $user->id)->count());
+        self::assertSame(1, CourseEnrollment::query()->where('user_id', $user->id)->count());
+        self::assertSame(350 - $replacement['allocation']['paid_coins'], (int) $user->fresh()->wallet_purchased_coins);
+    }
+
     public function test_upgrade_charges_only_the_plan_difference_from_purchased_coins(): void
     {
         [$user, $course, $service] = $this->fixture(1000, 500);
