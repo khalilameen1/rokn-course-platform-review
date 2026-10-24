@@ -44,6 +44,9 @@ jest.mock('../src/services/learnerDraftFiles', () => ({
   cacheLearnerDraftFile: (...args: unknown[]) => mockCacheFile(...args),
   removeLearnerDraftFile: (file?: unknown) => mockRemoveFile(file),
 }));
+jest.mock('../src/services/deviceSessions', () => ({
+  revokeCurrentDeviceSession: jest.fn(async () => undefined),
+}));
 jest.mock('../src/services/roknApi', () => ({
   getProfile: (...args: unknown[]) => mockGetProfile(...args),
   hasSession: jest.fn(async () => true),
