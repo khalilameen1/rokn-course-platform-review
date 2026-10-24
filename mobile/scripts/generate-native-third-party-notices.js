@@ -208,7 +208,7 @@ const EXPO_GIT_HEAD_C8 = 'c8f16914a2713c37fe446c46d613004626b3e6b3';
 const EXPO_GIT_HEAD_7C = '7c081282cf88968f81732feb67a71840e769a40f';
 const EXPO_GIT_HEAD_FC = 'fcb091766242d53248cd3c5949965961dbc5ec1d';
 const EXPO_GIT_HEAD_85 = '856b99321eeb04bd528b33f90c0e7fa2859a1fcb';
-const EXPO_GIT_HEAD_30 = '30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f';
+const EXPO_GIT_HEAD_0C = '0cf0c5a69371bf46b796226ab69a20a77a344e91';
 const ANDROID_UPSTREAM_LEGAL_DOCUMENTS = new Map([
   [
     'expo.modules.image:expo.modules.image:55.0.11',
@@ -271,7 +271,7 @@ const POD_UPSTREAM_LEGAL_DOCUMENTS = new Map([
     'EXConstants@55.0.17',
     expoUpstreamLicense('expo-constants@55.0.17', EXPO_GIT_HEAD_C8),
   ],
-  ['Expo@55.0.31', expoUpstreamLicense('expo@55.0.31', EXPO_GIT_HEAD_30)],
+  ['Expo@55.0.32', expoUpstreamLicense('expo@55.0.32', EXPO_GIT_HEAD_0C)],
   [
     'ExpoAppleAuthentication@55.0.17',
     expoUpstreamLicense('expo-apple-authentication@55.0.17', EXPO_GIT_HEAD_85),
@@ -309,12 +309,12 @@ const POD_UPSTREAM_LEGAL_DOCUMENTS = new Map([
     expoUpstreamLicense('@expo/log-box@55.0.13', EXPO_GIT_HEAD_C8),
   ],
   [
-    'ExpoModulesCore@55.0.26',
-    expoUpstreamLicense('expo-modules-core@55.0.26', EXPO_GIT_HEAD_30),
+    'ExpoModulesCore@55.0.27',
+    expoUpstreamLicense('expo-modules-core@55.0.27', EXPO_GIT_HEAD_0C),
   ],
   [
-    'ExpoModulesJSI@55.0.26',
-    expoUpstreamLicense('expo-modules-core@55.0.26', EXPO_GIT_HEAD_30),
+    'ExpoModulesJSI@55.0.27',
+    expoUpstreamLicense('expo-modules-core@55.0.27', EXPO_GIT_HEAD_0C),
   ],
   [
     'ExpoNotifications@55.0.27',
