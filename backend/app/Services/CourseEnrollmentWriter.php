@@ -101,8 +101,9 @@ final readonly class CourseEnrollmentWriter
      * Free course-code access grants the course's lowest plan (owner decision,
      * 2026-10-17): its terms are captured as a receipt exactly like a purchase,
      * so chat, projects and certificate follow what that plan allows. A paid
-     * plan never carries over to a code grant; completion facts and the AI
-     * budget rows are kept. A course that publishes no plan is still opened,
+     * plan never carries over to a code grant; completion facts and consumed
+     * AI usage are kept, while reservations leave the old entitlement before
+     * its source changes. A course that publishes no plan is still opened,
      * watch-only, as before.
      *
      * @return array{enrollment: CourseEnrollment, created: bool}
@@ -117,6 +118,7 @@ final readonly class CourseEnrollmentWriter
         ];
         $enrollment = $this->lockedFor($userId, $courseId);
         if ($enrollment) {
+            $this->aiBudget->cancelOutstandingReservations($enrollment, 'course_code_replaced_entitlement');
             $enrollment->forceFill($planFields + [
                 'order_id' => $order->id,
                 'is_active' => true,
