@@ -82,6 +82,30 @@ final class CourseHeroSelectionConcurrencyTest extends TestCase
         self::assertSame(1, Course::query()->where('is_main_course', true)->count());
     }
 
+    public function test_partial_draft_save_and_publication_preserve_the_selected_hero(): void
+    {
+        $oldHero = $this->publishedCourse(true, 4);
+        $course = $this->readyComingSoonCourse(7);
+        $course->forceFill(['is_main_course' => true])->save();
+        $this->actingAsAdministrator();
+
+        $this->patch(route('admin.courses.update', $course), [
+            'authoring_version' => 7,
+            'name_ar' => 'عنوان المسودة بعد التعديل',
+        ])->assertSessionMissing('error');
+        self::assertTrue((bool) $course->fresh()->is_main_course);
+        self::assertTrue((bool) $oldHero->fresh()->is_main_course);
+
+        $this->patch(route('admin.courses.update', $course), [
+            'authoring_version' => $course->fresh()->authoring_version,
+            'publishing_intent' => 'publish',
+            'is_catalog_visible' => '1',
+        ])->assertSessionMissing('error');
+        self::assertFalse((bool) $course->fresh()->is_coming_soon);
+        self::assertTrue((bool) $course->fresh()->is_main_course);
+        self::assertFalse((bool) $oldHero->fresh()->is_main_course);
+    }
+
     public function test_course_update_hands_its_owned_revision_to_the_catalog_card_stage(): void
     {
         $course = $this->publishedCourse(false, 2);

@@ -132,7 +132,7 @@ final readonly class AdminCourseAuthoringService
             // explicitly checks or unchecks the control, the draft owns that
             // intent across every later partial save.
             ? ($explicitHero ?? (bool) $canonical->is_main_course)
-            : (! (bool) $course->is_coming_soon && (bool) $course->is_main_course);
+            : (bool) $course->is_main_course;
         $heroRequested = $canCurateHome && $edit->mainCourse !== null
             ? $edit->mainCourse
             : $preservedHero;
