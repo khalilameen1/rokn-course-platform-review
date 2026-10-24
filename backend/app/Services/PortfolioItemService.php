@@ -63,7 +63,7 @@ final readonly class PortfolioItemService
                         $media->where('file_type', 'image')->limit(1);
                     }
                 },
-                'course',
+                'course.photo',
             ])
             ->orderByDesc('is_featured')
             ->orderBy('sort_order')
@@ -123,6 +123,7 @@ final readonly class PortfolioItemService
             ->when($usedCurrentProjectIds->isNotEmpty(), fn ($query) => $query->whereNotIn('id', $usedCurrentProjectIds))
             ->with([
                 'section.course:id,name_ar,name_en,image',
+                'section.course.photo',
                 'section.module:id,course_id,title,title_ar,title_en,order',
             ])->get()->keyBy('id');
         $eligible = $this->revisionReads
@@ -218,7 +219,7 @@ final readonly class PortfolioItemService
             $equivalentSourceProjectIds
         ): array {
             $existingRequest = $user->portfolioItems()
-                ->with(['mediaFiles', 'course'])
+                ->with(['mediaFiles', 'course.photo'])
                 ->where('client_request_id', $clientRequestId)
                 ->first();
             if ($existingRequest) {
@@ -302,7 +303,7 @@ final readonly class PortfolioItemService
                 $this->shareIdentity->ensure($lockedUser);
 
                 $existing = $lockedUser->portfolioItems()
-                    ->with(['mediaFiles', 'course'])
+                    ->with(['mediaFiles', 'course.photo'])
                     ->where('client_request_id', $clientRequestId)
                     ->first();
                 if ($existing) {
@@ -393,7 +394,7 @@ final readonly class PortfolioItemService
         $item = $user->portfolioItems()
             ->available()
             ->withCount('mediaFiles')
-            ->with(['mediaFiles', 'course'])
+            ->with(['mediaFiles', 'course.photo'])
             ->find($id);
 
         return $item ? $this->resource($item) : null;

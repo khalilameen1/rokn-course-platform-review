@@ -394,7 +394,7 @@ final class SavedLibraryService
     private function lessonRelations(): array
     {
         return [
-            'course',
+            'course.photo',
             'mediaState',
         ];
     }

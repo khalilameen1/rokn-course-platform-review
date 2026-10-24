@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\API;
 
+use App\Models\Course;
+use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -13,6 +15,39 @@ use Illuminate\Support\Facades\DB;
  */
 class SavedFolderEndpointTest extends ApiTestCase
 {
+    public function test_saved_course_covers_are_loaded_in_one_query_for_multiple_courses(): void
+    {
+        $originalCourse = Course::findOrFail($this->courseId);
+        $originalLesson = Lesson::findOrFail(10);
+        $originalSection = DB::table('course_sections')->where('id', $this->sectionId)->first();
+        foreach ([1, 2] as $index) {
+            $course = $originalCourse->replicate();
+            $course->save();
+            $lesson = $originalLesson->replicate();
+            $lesson->forceFill(['list_id' => $course->id, 'course_id' => $course->id])->save();
+            $section = (array) $originalSection;
+            unset($section['id']);
+            $section['course_id'] = $course->id;
+            $section['sectionable_id'] = $lesson->id;
+            DB::table('course_sections')->insert($section);
+            DB::table('saved_folder_lessons')->insert([
+                'saved_folder_id' => 1, 'lesson_id' => $lesson->id,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        DB::enableQueryLog();
+        try {
+            $this->actingAs($this->user, 'api')->getJson('/api/v1/saved-lessons')
+                ->assertOk()->assertJsonCount(3, 'data.lessons');
+            $photoQueries = collect(DB::getQueryLog())->filter(
+                fn (array $query): bool => str_contains($query['query'], 'from "photos"')
+            );
+            self::assertCount(1, $photoQueries);
+        } finally {
+            DB::disableQueryLog();
+        }
+    }
+
     public function test_saved_lessons_requires_authentication(): void
     {
         $this->getJson('/api/v1/saved-lessons')->assertUnauthorized();
