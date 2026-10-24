@@ -501,7 +501,9 @@ export const reportPlaybackSessionEvent = async (
   event: PlaybackSessionEvent,
 ): Promise<boolean> => {
   const generation = playbackRuntimeGeneration;
-  const boundary = captureAccountSessionBoundary();
+  // Observe a failed capture immediately, even while an earlier native write
+  // owns the queue. The lifecycle caller receives false, never an unhandled rejection.
+  const boundary = captureAccountSessionBoundary().catch(() => null);
   // Use the same write-ahead queue as completion; lifecycle is not a second
   // direct HTTP path that can close a session before its evidence is durable.
   try {
@@ -509,6 +511,7 @@ export const reportPlaybackSessionEvent = async (
       evidenceWriteKey(generation, event.lessonId, event.playbackSessionId),
       async () => {
         const owner = await boundary;
+        if (!owner) return null;
         assertWatchHistoryOwner(generation, owner);
         const lessonId = Number(event.lessonId);
         if (
