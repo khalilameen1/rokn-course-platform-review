@@ -622,6 +622,16 @@ describe('same-sheet course checkout authorization', () => {
     expect(mockPayment).not.toHaveBeenCalled();
     expect(mockAuthorize).not.toHaveBeenCalled();
     expect(mockQuote).not.toHaveBeenCalled();
+    // An expired payment URL is not an inescapable purchase lock. The sheet
+    // still exposes cancellation for pending requests, even without resume.
+    mockLatest.mockResolvedValue({...pending, status: 'cancelled'});
+    mockQuote.mockResolvedValue({...base, channel: 'direct'});
+    await act(async () => {
+      await view.current().cancelPending();
+    });
+    expect(mockCancel).toHaveBeenCalledWith(pending.id);
+    expect(mockQuote).toHaveBeenCalled();
+    expect(view.current().pending).toBe(false);
     await act(() => view.renderer.unmount());
   });
 
