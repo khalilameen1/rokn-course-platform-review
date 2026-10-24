@@ -531,6 +531,32 @@ final class FinancialProvenanceTest extends ApiTestCase
         self::assertSame($upgrade->id, $enrollment->fresh()->access_plan_order_id);
     }
 
+    public function test_one_reversed_package_funding_the_base_and_both_upgrades_restores_once(): void
+    {
+        $funding = $this->paidPackage(300);
+        [$base, $enrollment] = $this->courseSpend(100, issueCertificate: false);
+        $this->setPurchasedPlan($base, $enrollment, 'basic', false);
+        $plus = $this->planUpgradeSpend(100, $enrollment);
+        $this->setPurchasedPlan($plus, $enrollment, 'guided', true);
+        $pro = $this->planUpgradeSpend(100, $enrollment);
+        $this->setPurchasedPlan($pro, $enrollment, 'mentor', true);
+        $certificate = $this->certificate();
+        $lifecycle = app(OrderLifecycleService::class);
+        $review = $lifecycle->registerReversal($funding, Order::FINANCIAL_CHARGEBACK,
+            'Shared funding reversed', 'gateway:shared-plan-funding');
+        self::assertSame(3, FinancialEntitlementHold::query()->where('status', 'active')->count());
+        self::assertFalse((bool) $enrollment->fresh()->is_active);
+        self::assertSame($base->id, $enrollment->fresh()->access_plan_order_id);
+        self::assertSame('revoked', $certificate->fresh()->status);
+        $this->travel(2)->seconds();
+        $lifecycle->resolveFinancialReview($review, 'waived', 'finance:shared-plan-funding', null, 'Resolved');
+        self::assertTrue((bool) $enrollment->fresh()->is_active);
+        self::assertSame($pro->id, $enrollment->fresh()->access_plan_order_id);
+        self::assertSame('active', $certificate->fresh()->status);
+        self::assertSame(0, FinancialEntitlementHold::query()->where('status', 'active')->count());
+        self::assertSame(0, (int) $this->user->fresh()->wallet_purchased_coins);
+    }
+
     public function test_later_independent_enrollment_and_certificate_are_untouched(): void
     {
         $package = $this->paidPackage(400);

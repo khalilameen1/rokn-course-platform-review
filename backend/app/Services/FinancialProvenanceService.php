@@ -627,6 +627,9 @@ final readonly class FinancialProvenanceService
             $holds = FinancialEntitlementHold::query()
                 ->where('source_order_id', $lockedOrder->id)
                 ->where('status', FinancialEntitlementHold::STATUS_ACTIVE)
+                // One package can fund the base and several upgrades. Restore
+                // their immutable purchase order, not a database scan order.
+                ->orderBy('course_order_id')
                 ->lockForUpdate()
                 ->get();
 
