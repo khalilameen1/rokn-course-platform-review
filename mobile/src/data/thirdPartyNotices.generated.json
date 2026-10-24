@@ -3,7 +3,7 @@
   "generatedFrom": "package-lock.json production dependency closure",
   "packageCount": 753,
   "packagePathCount": 830,
-  "inventoryHash": "bfcf2d6d03045a9b720d1e13fe8904ec0660975d8ab4ace37b3527d7cd03cf9a",
+  "inventoryHash": "d04b2e352ce08f787b6b443bccae502aecb77ec3ed7cf4c2410ea076c841e9b4",
   "packages": [
     {
       "name": "@babel/code-frame",
@@ -4267,10 +4267,10 @@
     },
     {
       "name": "follow-redirects",
-      "version": "1.16.0",
+      "version": "1.16.1",
       "license": "MIT",
       "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/follow-redirects/v/1.16.0",
+      "sourceUrl": "https://www.npmjs.com/package/follow-redirects/v/1.16.1",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
