@@ -7,7 +7,7 @@ Reviewed against `89190bb0`, not an older production deployment. Deployment was 
 
 The backend closed a session on `complete`/`is_completed`, before verified learning eligibility was computed. The mobile outbox also rejected all subsequent samples in that same session. Fixing only one side would not repair the journey.
 
-Both sides now distinguish a completion claim from a terminal `stop`/terminal error. Rewinding retains the latest position, not the completed playhead. Coalescing a pending completion into a real stop retains its completion claim without dropping the stop. The existing durable outbox, account isolation and monotonically ordered session sequence remain the only delivery engine. The hook avoids streaming completion requests for every frame after confirmation.
+Both sides now distinguish a completion claim from a terminal `stop`/terminal error. Rewinding retains the latest position, not the completed playhead. Coalescing a pending completion into a real stop retains its completion claim without dropping the stop. The existing durable outbox, account isolation and monotonically ordered session sequence remain the only delivery engine. The hook avoids streaming completion requests for every frame after confirmation. A real stop following the last completion sample retains the completed-view outcome used by the dashboard rollup; it does not grant academic completion.
 
 Behavior tests exercise seek-to-95%, refusal, rewind, verified rewatch and successful completion in the same session; mobile tests cover online/offline rewind, in-flight completion/stop ordering and repeated checkpoint callbacks.
 
@@ -44,6 +44,8 @@ Fourteen provider/state regressions cover Google and Apple with delayed delivery
 ## Verification at handoff
 
 - Focused backend run: 106 cases passed; six initial Apple test-fixture errors were caused by trying to edit an immutable Google order into an Apple order. The fixture was corrected to create the actual provider order initially; all 12 delayed-receipt cases then passed (50 assertions). No production immutability guard was weakened.
+- Expanded delayed-receipt matrix including cancellation after expiry: **14 tests / 62 assertions passed**. Playback lifecycle and dashboard rollup: **4 tests / 42 assertions passed**.
 - Mobile playback/outbox focused tests: 34 passed; completion/navigation tests: 5 passed. Full mobile release suite: **379 suites, 3487 tests passed, exit 0**; TypeScript and changed-file ESLint passed.
 - Full backend CI: pending final revision. Do not treat this document as release approval until final results are recorded.
 - No production deployment, main promotion or Play upload performed as part of this review so far.
+- Production read-only preflight (Cloud command 308): blocked only by `backup_recent`. Read-only TLS probe (command after 309) still fails verified certificate validation; no backup-export certificate exception was reused without fresh approval. No legacy `LEARNING_MAXIMUM_CREDIT_PER_HEARTBEAT` environment override was detected, so the derived default will apply on deployment.
