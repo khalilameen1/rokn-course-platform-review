@@ -24,6 +24,8 @@ final class FinancialEntitlementHold extends Model
         'course_order_id',
         'source_order_id',
         'enrollment_id',
+        'enrollment_order_id',
+        'plan_restore_order_id',
         'enrollment_deactivated_at',
         'plan_reverted_at',
         'certificate_id',

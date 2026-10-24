@@ -8,11 +8,14 @@ use App\Console\Commands\ProductionPreflight;
 use App\Exceptions\FinancialProvenanceException;
 use App\Models\Certificate;
 use App\Models\Course;
+use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
 use App\Models\FinancialEntitlementHold;
 use App\Models\Order;
 use App\Models\WalletCreditLot;
 use App\Models\WalletTransaction;
+use App\Services\CourseAccessPlanService;
+use App\Services\CourseEnrollmentWriter;
 use App\Services\CourseEntitlementService;
 use App\Services\FinancialProvenanceService;
 use App\Services\KashierOrderSettlementService;
@@ -23,6 +26,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 final class FinancialProvenanceTest extends ApiTestCase
 {
@@ -359,6 +363,145 @@ final class FinancialProvenanceTest extends ApiTestCase
         self::assertTrue((bool) $enrollment->fresh()->is_active);
         self::assertSame($baseOrder->id, $enrollment->fresh()->order_id);
         self::assertSame($planOrder->id, $enrollment->fresh()->access_plan_order_id);
+    }
+
+    public static function upgradeReversalOrders(): array
+    {
+        return [
+            'oldest reversed and restored first' => [false, false],
+            'oldest reversed, newest restored first' => [false, true],
+            'newest reversed, oldest restored first' => [true, false],
+            'newest reversed and restored first' => [true, true],
+        ];
+    }
+
+    #[DataProvider('upgradeReversalOrders')]
+    public function test_chained_upgrade_reversals_restore_only_fully_funded_ancestry(bool $reverseReversals, bool $reverseResolutions): void
+    {
+        $this->paidPackage(100);
+        [$base, $enrollment] = $this->courseSpend(100, issueCertificate: false);
+        $plusFunding = $this->paidPackage(100);
+        $plus = $this->planUpgradeSpend(100, $enrollment);
+        $proFunding = $this->paidPackage(100);
+        $pro = $this->planUpgradeSpend(100, $enrollment);
+        $lifecycle = app(OrderLifecycleService::class);
+        $funding = [$plusFunding, $proFunding];
+        $reviews = [];
+        foreach ($reverseReversals ? [1, 0] : [0, 1] as $index) {
+            $reviews[$index] = $lifecycle->registerReversal(
+                $funding[$index], Order::FINANCIAL_CHARGEBACK,
+                'Upgrade funding reversed', 'gateway:chain:'.$index
+            );
+            self::assertSame($index === 1 && count($reviews) === 1 ? $plus->id : $base->id,
+                $enrollment->fresh()->access_plan_order_id);
+        }
+        self::assertSame(2, FinancialEntitlementHold::query()->where('entitlement_scope', 'plan')->count());
+        foreach (FinancialEntitlementHold::query()->get() as $hold) {
+            self::assertSame($base->id, (int) $hold->enrollment_order_id);
+            self::assertSame($pro->id, (int) $hold->plan_restore_order_id);
+        }
+        $resolved = [];
+        foreach ($reverseResolutions ? [1, 0] : [0, 1] as $index) {
+            $lifecycle->resolveFinancialReview($reviews[$index], 'waived', 'finance:chain:'.$index, null, 'Review resolved');
+            $resolved[] = $index;
+            $expected = count($resolved) === 2 ? $pro->id : ($index === 0 ? $plus->id : $base->id);
+            self::assertSame($expected, $enrollment->fresh()->access_plan_order_id);
+            self::assertTrue((bool) $enrollment->fresh()->is_active);
+            self::assertSame(0, (int) $this->user->fresh()->wallet_purchased_coins);
+        }
+        $lifecycle->resolveFinancialReview($reviews[0]->fresh(), 'waived', 'finance:chain:0', null, 'Duplicate delivery');
+        self::assertSame($pro->id, $enrollment->fresh()->access_plan_order_id);
+        self::assertSame(0, (int) $this->user->fresh()->wallet_purchased_coins);
+    }
+
+    public function test_resolving_old_upgrade_does_not_replace_a_new_independent_upgrade_branch(): void
+    {
+        $this->paidPackage(100);
+        [$base, $enrollment] = $this->courseSpend(100, issueCertificate: false);
+        $oldFunding = $this->paidPackage(100);
+        $this->planUpgradeSpend(100, $enrollment);
+        $this->paidPackage(100);
+        $this->planUpgradeSpend(100, $enrollment);
+        $lifecycle = app(OrderLifecycleService::class);
+        $review = $lifecycle->registerReversal($oldFunding, Order::FINANCIAL_CHARGEBACK, 'Reversed', 'gateway:old-branch');
+        self::assertSame($base->id, $enrollment->fresh()->access_plan_order_id);
+        $this->paidPackage(200);
+        $replacement = $this->planUpgradeSpend(200, $enrollment->fresh());
+        self::assertSame($base->id, $replacement->parent_order_id);
+        $lifecycle->resolveFinancialReview($review, 'waived', 'finance:old-branch', null, 'Resolved');
+        self::assertSame($replacement->id, $enrollment->fresh()->access_plan_order_id);
+    }
+
+    public static function certificateFallbacks(): array
+    {
+        return ['basic loses certificate' => [false], 'plus keeps certificate' => [true]];
+    }
+
+    #[DataProvider('certificateFallbacks')]
+    public function test_upgrade_refund_reconciles_certificate_against_the_fallback_purchase(bool $fallbackHasCertificate): void
+    {
+        $this->paidPackage(100);
+        [$base, $enrollment] = $this->courseSpend(100, issueCertificate: false);
+        $this->setPurchasedPlan($base, $enrollment, $fallbackHasCertificate ? 'guided' : 'basic', $fallbackHasCertificate);
+        $funding = $this->paidPackage(100);
+        $upgrade = $this->planUpgradeSpend(100, $enrollment);
+        $this->setPurchasedPlan($upgrade, $enrollment, 'mentor', true);
+        $certificate = $this->certificate();
+        $lifecycle = app(OrderLifecycleService::class);
+        $review = $lifecycle->registerReversal($funding, Order::FINANCIAL_CHARGEBACK, 'Upgrade reversed', 'gateway:certificate-plan');
+        self::assertSame($fallbackHasCertificate ? 'active' : 'revoked', $certificate->fresh()->status);
+        self::assertSame($fallbackHasCertificate, app(CourseEntitlementService::class)->enrollmentHasCertificateAccess($enrollment->fresh()));
+        $lifecycle->resolveFinancialReview($review, 'waived', 'finance:certificate-plan', null, 'Resolved');
+        self::assertSame('active', $certificate->fresh()->status);
+        self::assertNull($certificate->fresh()->revoked_at);
+        self::assertSame($certificate->image_path, $certificate->fresh()->image_path);
+    }
+
+    private function setPurchasedPlan(Order $order, CourseEnrollment $enrollment, string $code, bool $certificate): void
+    {
+        $plan = CourseAccessPlan::query()->updateOrCreate([
+            'course_id' => $this->courseId, 'code' => $code,
+        ], [
+            'name_ar' => $code,
+            'price_coins' => 100, 'minimum_paid_coins' => 100,
+            'certificate_enabled' => $certificate, 'is_active' => true,
+            'project_feedback_level' => 'pass_only',
+        ]);
+        $order->forceFill([
+            'access_plan_id' => $plan->id,
+            'access_plan_snapshot' => app(CourseAccessPlanService::class)->snapshot($plan->fresh(), now()),
+        ])->save();
+        app(CourseEnrollmentWriter::class)->reassignPlanOrder($enrollment, $order, 'test_purchased_plan');
+    }
+
+    #[DataProvider('upgradeReversalOrders')]
+    public function test_base_and_upgrade_refunds_preserve_learning_and_certificate_ownership(bool $reverseReversals, bool $reverseResolutions): void
+    {
+        $baseFunding = $this->paidPackage(100);
+        [$base, $enrollment] = $this->courseSpend(100, issueCertificate: false);
+        $this->setPurchasedPlan($base, $enrollment, 'basic', false);
+        $upgradeFunding = $this->paidPackage(100);
+        $upgrade = $this->planUpgradeSpend(100, $enrollment);
+        $this->setPurchasedPlan($upgrade, $enrollment, 'guided', true);
+        $certificate = $this->certificate();
+        $lifecycle = app(OrderLifecycleService::class);
+        $funding = [$baseFunding, $upgradeFunding];
+        $reviews = [];
+        foreach ($reverseReversals ? [1, 0] : [0, 1] as $index) {
+            $this->travel(2)->seconds();
+            $reviews[$index] = $lifecycle->registerReversal($funding[$index], Order::FINANCIAL_CHARGEBACK,
+                'Purchase reversed', 'gateway:mixed:'.$index);
+            self::assertSame('revoked', $certificate->fresh()->status);
+        }
+        $resolved = [];
+        foreach ($reverseResolutions ? [1, 0] : [0, 1] as $index) {
+            $this->travel(2)->seconds();
+            $lifecycle->resolveFinancialReview($reviews[$index], 'waived', 'finance:mixed:'.$index, null, 'Resolved');
+            $resolved[] = $index;
+            self::assertSame(in_array(0, $resolved, true), (bool) $enrollment->fresh()->is_active);
+            self::assertSame(count($resolved) === 2 ? 'active' : 'revoked', $certificate->fresh()->status);
+        }
+        self::assertSame($upgrade->id, $enrollment->fresh()->access_plan_order_id);
     }
 
     public function test_later_independent_enrollment_and_certificate_are_untouched(): void
@@ -700,6 +843,8 @@ final class FinancialProvenanceTest extends ApiTestCase
             $table->unsignedBigInteger('enrollment_id')->nullable();
             $table->timestamp('enrollment_deactivated_at')->nullable();
             $table->timestamp('plan_reverted_at')->nullable();
+            $table->unsignedBigInteger('enrollment_order_id')->nullable();
+            $table->unsignedBigInteger('plan_restore_order_id')->nullable();
             $table->unsignedBigInteger('certificate_id')->nullable();
             $table->timestamp('certificate_revoked_at')->nullable();
             $table->unsignedBigInteger('resolved_by')->nullable();

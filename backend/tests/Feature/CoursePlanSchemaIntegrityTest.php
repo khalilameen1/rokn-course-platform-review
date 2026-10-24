@@ -24,6 +24,8 @@ final class CoursePlanSchemaIntegrityTest extends TestCase
         self::assertTrue(Schema::hasColumn('ai_usage_events', 'reservation_expires_at'));
         self::assertTrue(Schema::hasColumn('orders', 'parent_order_id'));
         self::assertTrue(Schema::hasColumn('course_enrollments', 'access_plan_order_id'));
+        self::assertTrue(Schema::hasColumn('financial_entitlement_holds', 'enrollment_order_id'));
+        self::assertTrue(Schema::hasColumn('financial_entitlement_holds', 'plan_restore_order_id'));
         self::assertTrue(
             Schema::hasColumn('financial_entitlement_holds', 'plan_reverted_at')
         );

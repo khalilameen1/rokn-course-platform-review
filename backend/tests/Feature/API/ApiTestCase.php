@@ -890,6 +890,8 @@ abstract class ApiTestCase extends TestCase
             $table->unsignedBigInteger('enrollment_id')->nullable();
             $table->timestamp('enrollment_deactivated_at')->nullable();
             $table->timestamp('plan_reverted_at')->nullable();
+            $table->unsignedBigInteger('enrollment_order_id')->nullable();
+            $table->unsignedBigInteger('plan_restore_order_id')->nullable();
             $table->unsignedBigInteger('certificate_id')->nullable();
             $table->timestamp('certificate_revoked_at')->nullable();
             $table->unsignedBigInteger('resolved_by')->nullable();

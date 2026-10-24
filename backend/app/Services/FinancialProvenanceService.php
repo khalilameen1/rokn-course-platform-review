@@ -24,7 +24,9 @@ final readonly class FinancialProvenanceService
 {
     public function __construct(
         private WalletService $wallet,
-        private CourseEnrollmentWriter $enrollments
+        private CourseEnrollmentWriter $enrollments,
+        private CoursePlanLineageService $planLineage,
+        private CourseEntitlementService $courseAccess
     ) {}
 
     public function recordPaidPackageCredit(
@@ -429,39 +431,24 @@ final readonly class FinancialProvenanceService
             $enrollmentQuery = CourseEnrollment::query()
                 ->where('user_id', $courseOrder->user_id)
                 ->where('course_id', $courseOrder->course_id);
-            if ($entitlementScope === 'plan') {
-                $enrollmentQuery->where('access_plan_order_id', $courseOrder->id);
-            } else {
+            if ($entitlementScope !== 'plan') {
                 $enrollmentQuery->where('order_id', $courseOrder->id);
             }
             $enrollment = $enrollmentQuery->lockForUpdate()->first();
-            if (! $enrollment && $priorPlanHold?->enrollment_id) {
-                // All lots in one plan debit share the same enrollment hold.
-                $enrollment = CourseEnrollment::query()
-                    ->whereKey($priorPlanHold->enrollment_id)
-                    ->where('user_id', $courseOrder->user_id)
-                    ->where('course_id', $courseOrder->course_id)
-                    ->lockForUpdate()
-                    ->first();
-            }
 
             // Unrelated replacement entitlements remain active.
             if (! $enrollment) {
                 continue;
             }
 
-            $parentPlanOrder = null;
+            $planLineage = collect();
             if ($entitlementScope === 'plan') {
-                $parentPlanOrder = Order::query()
-                    ->whereKey($courseOrder->parent_order_id)
-                    ->where('user_id', $courseOrder->user_id)
-                    ->where('course_id', $courseOrder->course_id)
-                    ->lockForUpdate()
-                    ->first();
-                if (! $parentPlanOrder) {
-                    throw new FinancialProvenanceException(
-                        'Plan upgrade has no valid parent order; reversal requires manual reconciliation.'
-                    );
+                $planLineage = $this->planLineage->forEnrollment($enrollment);
+                if (! $planLineage->has((int) $courseOrder->id)) {
+                    continue;
+                }
+                if (! $courseOrder->parent_order_id || (int) $courseOrder->id === (int) $enrollment->order_id) {
+                    throw new FinancialProvenanceException('Plan upgrade has no valid purchase ancestry.');
                 }
             }
 
@@ -482,20 +469,6 @@ final readonly class FinancialProvenanceService
             $planRevertedAt = $entitlementScope === 'plan'
                 ? ($priorPlanHold?->plan_reverted_at ?: now())
                 : null;
-            $certificate = $entitlementScope === 'course'
-                ? Certificate::query()
-                    ->where('user_id', $courseOrder->user_id)
-                    ->where('course_id', $courseOrder->course_id)
-                    ->where('status', 'active')
-                    ->lockForUpdate()
-                    ->first()
-                : null;
-            $financialCertificateId = $certificate?->id;
-            $certificateRevokedAt = $certificate ? now() : null;
-            if (! $financialCertificateId && $entitlementScope === 'course') {
-                $financialCertificateId = $priorFinancialHold?->certificate_id;
-                $certificateRevokedAt = $priorFinancialHold?->certificate_revoked_at;
-            }
 
             $hold = FinancialEntitlementHold::query()->firstOrNew(
                 [
@@ -508,11 +481,11 @@ final readonly class FinancialProvenanceService
                 'user_id' => $courseOrder->user_id,
                 'course_id' => $courseOrder->course_id,
                 'enrollment_id' => $enrollment?->id,
+                'enrollment_order_id' => $enrollment->order_id,
+                'plan_restore_order_id' => $planLineage->last()?->id,
                 'enrollment_deactivated_at' => $enrollmentDeactivatedAt
                     ?: $hold->enrollment_deactivated_at,
                 'plan_reverted_at' => $planRevertedAt ?: $hold->plan_reverted_at,
-                'certificate_id' => $financialCertificateId ?: $hold->certificate_id,
-                'certificate_revoked_at' => $certificateRevokedAt ?: $hold->certificate_revoked_at,
                 'status' => FinancialEntitlementHold::STATUS_ACTIVE,
                 'entitlement_scope' => $entitlementScope,
                 'reason' => $reason,
@@ -533,23 +506,17 @@ final readonly class FinancialProvenanceService
                 $this->enrollments->suspendForReversedPayment($enrollment, $enrollmentDeactivatedAt);
             }
 
-            if (
-                $entitlementScope === 'plan'
-                && (int) $enrollment->access_plan_order_id === (int) $courseOrder->id
-            ) {
-                $this->enrollments->reassignPlanOrder(
-                    $enrollment,
-                    $parentPlanOrder,
-                    'plan_payment_reversed',
-                    $planRevertedAt
-                );
+            if ($entitlementScope === 'plan') {
+                $effectivePlan = $this->planLineage->effectiveOrder($planLineage);
+                if (! $effectivePlan) {
+                    throw new FinancialProvenanceException('Plan reversal has no valid fallback purchase.');
+                }
+                if ((int) $enrollment->access_plan_order_id !== (int) $effectivePlan->id) {
+                    $this->enrollments->reassignPlanOrder($enrollment, $effectivePlan, 'plan_payment_reversed', $planRevertedAt);
+                }
             }
-
-            if ($entitlementScope === 'course' && $certificate) {
-                $certificate->forceFill([
-                    'status' => 'revoked',
-                    'revoked_at' => $certificateRevokedAt,
-                ])->save();
+            if (in_array($entitlementScope, ['course', 'plan'], true)) {
+                $this->reconcileCertificate($enrollment, $hold, false);
             }
         }
 
@@ -558,6 +525,57 @@ final readonly class FinancialProvenanceService
             'unrecovered' => max(0, (int) $lot->original_amount - $recoverable),
             'holds' => $holds,
         ];
+    }
+
+    /** Reconcile the credential with the effective purchase, preserving manual revocations. */
+    private function reconcileCertificate(CourseEnrollment $enrollment, FinancialEntitlementHold $hold, bool $restoring): void
+    {
+        $enrollment = CourseEnrollment::query()->findOrFail($enrollment->id);
+        $certificate = Certificate::query()->where('user_id', $enrollment->user_id)
+            ->where('course_id', $enrollment->course_id)->lockForUpdate()->first();
+        if (! $certificate) {
+            return;
+        }
+        $allowed = $this->courseAccess->enrollmentHasCertificateAccess($enrollment);
+        if (! $allowed && $certificate->status === 'active' && ! $certificate->revoked_at) {
+            $certificate->forceFill(['status' => 'revoked', 'revoked_at' => now()])->save();
+            $hold->forceFill([
+                'certificate_id' => $certificate->id,
+                'certificate_revoked_at' => $certificate->revoked_at,
+            ])->save();
+
+            return;
+        }
+        if ($certificate->status !== 'revoked' || ! $certificate->revoked_at) {
+            return;
+        }
+        $lineage = $this->planLineage->forEnrollment($enrollment, $hold);
+        $ownedRevocation = FinancialEntitlementHold::query()
+            ->where('user_id', $enrollment->user_id)->where('course_id', $enrollment->course_id)
+            ->where('enrollment_id', $enrollment->id)
+            ->where('certificate_id', $certificate->id)
+            ->where('certificate_revoked_at', $certificate->revoked_at)
+            ->whereIn('entitlement_scope', ['course', 'plan'])
+            ->where(function (Builder $query) use ($enrollment, $lineage): void {
+                $query->where('enrollment_order_id', $enrollment->order_id)
+                    ->orWhere(function (Builder $legacy) use ($enrollment, $lineage): void {
+                        $legacy->whereNull('enrollment_order_id')
+                            ->whereIn('course_order_id', $lineage->keys()->push((int) $enrollment->order_id));
+                    });
+            })->exists();
+        if (! $ownedRevocation) {
+            return;
+        }
+        if (! $allowed) {
+            // Several reversed lots/upgrade steps can own the same revocation.
+            // Whichever resolves last must retain its original stamp.
+            $hold->forceFill([
+                'certificate_id' => $certificate->id,
+                'certificate_revoked_at' => $certificate->revoked_at,
+            ])->save();
+        } elseif ($restoring) {
+            $certificate->forceFill(['status' => 'active', 'revoked_at' => null])->save();
+        }
     }
 
     /** @return array{restored_coins:int,released_holds:int} */
@@ -671,50 +689,29 @@ final readonly class FinancialProvenanceService
                         $this->enrollments->reinstateAfterRestoredPayment($restoredEnrollment);
                     }
                 }
-                if (
-                    $hold->entitlement_scope === 'course'
-                    && ! $hasAnotherHold
-                    && $hold->certificate_id
-                ) {
-                    Certificate::query()
-                        ->whereKey($hold->certificate_id)
-                        ->where('status', 'revoked')
-                        ->where('revoked_at', $hold->certificate_revoked_at)
-                        ->update([
-                            'status' => 'active',
-                            'revoked_at' => null,
-                            'updated_at' => now(),
-                        ]);
+                $enrollment = $hold->enrollment_id
+                    ? CourseEnrollment::query()->whereKey($hold->enrollment_id)
+                        ->where('user_id', $hold->user_id)->where('course_id', $hold->course_id)
+                        ->lockForUpdate()->first()
+                    : null;
+                if (! $enrollment || ($hold->enrollment_order_id
+                    && (int) $enrollment->order_id !== (int) $hold->enrollment_order_id)) {
+                    continue;
                 }
-                if (
-                    $hold->entitlement_scope === 'plan'
-                    && ! $hasAnotherHold
-                    && $hold->enrollment_id
-                    && $hold->plan_reverted_at
-                ) {
-                    $planOrder = Order::query()
-                        ->whereKey($hold->course_order_id)
-                        ->where('user_id', $hold->user_id)
-                        ->where('course_id', $hold->course_id)
-                        ->first();
-                    if (! $planOrder || ! $planOrder->parent_order_id) {
-                        throw new FinancialProvenanceException(
-                            'Resolved plan hold has no valid upgrade lineage.'
-                        );
+                if ($hold->entitlement_scope === 'plan') {
+                    $lineage = $this->planLineage->forEnrollment($enrollment, $hold);
+                    if (! $lineage->has((int) $hold->course_order_id)) {
+                        continue;
                     }
-                    $enrollment = CourseEnrollment::query()
-                        ->whereKey($hold->enrollment_id)
-                        ->where('access_plan_order_id', $planOrder->parent_order_id)
-                        ->lockForUpdate()
-                        ->first();
-                    if ($enrollment) {
-                        $this->enrollments->reassignPlanOrder(
-                            $enrollment,
-                            $planOrder,
-                            'plan_payment_restored'
-                        );
+                    $effectivePlan = $this->planLineage->effectiveOrder($lineage);
+                    if ($effectivePlan && (int) $enrollment->access_plan_order_id !== (int) $effectivePlan->id) {
+                        $this->enrollments->reassignPlanOrder($enrollment, $effectivePlan, 'plan_payment_restored');
                     }
+                } elseif ($hold->entitlement_scope !== 'course'
+                    || (int) $enrollment->order_id !== (int) $hold->course_order_id) {
+                    continue;
                 }
+                $this->reconcileCertificate($enrollment, $hold, true);
             }
 
             return [
