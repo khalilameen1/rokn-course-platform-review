@@ -73,8 +73,8 @@ final readonly class CoursePlanUpgradeEligibilityService
                     return $this->upgradePrice($course, $enrollment, $plan) !== null;
                 } catch (ValidationException $exception) {
                     return false;
-                } catch (\DomainException $exception) {
-                    if ($exception->getMessage() !== 'full_track_upgrade_paid_floor_unfunded') {
+                } catch (CourseCheckoutRejected $exception) {
+                    if ($exception->reason !== CourseCheckoutRejected::FULL_TRACK_UPGRADE_PAID_FLOOR_UNFUNDED) {
                         throw $exception;
                     }
 
@@ -89,7 +89,15 @@ final readonly class CoursePlanUpgradeEligibilityService
             return null;
         }
         $current = $this->plans->termsForEnrollment($enrollment);
-        $difference = max(0, (int) $targetPlan->price_coins - (int) ($current['price_coins'] ?? 0));
+        // A grant captures Basic capabilities, not a purchase credit. Follow
+        // the CURRENT plan receipt so a subsequent paid Plus -> Pro upgrade
+        // still deducts Plus, even when learning originally began with a code.
+        $sourceMethod = Order::query()
+            ->whereKey($enrollment->access_plan_order_id ?: $enrollment->order_id)
+            ->value('payment_method');
+        $currentCredit = $sourceMethod === Order::PAYMENT_METHOD_COURSE_CODE
+            ? 0 : (int) ($current['price_coins'] ?? 0);
+        $difference = max(0, (int) $targetPlan->price_coins - $currentCredit);
         $remainingPaidFloor = max(0, (int) $targetPlan->minimum_paid_coins
             - $this->wallet->coursePaidContribution((int) $enrollment->user_id, (int) $course->id));
         if ($remainingPaidFloor > $difference) {

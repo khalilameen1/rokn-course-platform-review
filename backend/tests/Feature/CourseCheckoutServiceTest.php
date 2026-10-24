@@ -572,6 +572,35 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame(500, (int) $user->fresh()->wallet_reward_coins);
     }
 
+    public function test_free_code_grant_can_buy_plus_then_upgrade_to_pro_without_reward_spend(): void
+    {
+        [$user, $course, $service] = $this->fixture(1500, 500);
+        $course->accessPlans()->where('code', 'guided')->update(['minimum_paid_coins' => 520]);
+        $course->accessPlans()->where('code', 'mentor')->update(['minimum_paid_coins' => 720]);
+        $grantOrder = Order::query()->create(['user_id' => $user->id, 'course_id' => $course->id,
+            'payment_method' => Order::PAYMENT_METHOD_COURSE_CODE, 'amount' => 0, 'discount_amount' => 0,
+            'final_amount' => 0, 'status' => Order::STATUS_APPROVED, 'financial_status' => Order::FINANCIAL_SETTLED,
+            'approved_at' => now()]);
+        $grant = DB::transaction(fn (): array => app(CourseEnrollmentWriter::class)
+            ->grantCourseCode((int) $user->id, (int) $course->id, $grantOrder));
+        $enrollment = $grant['enrollment'];
+        self::assertSame(['guided', 'mentor'], app(CoursePlanUpgradeEligibilityService::class)
+            ->availablePlans($course, $enrollment)->pluck('code')->all());
+
+        foreach (['guided' => 650, 'mentor' => 250] as $code => $price) {
+            $quote = $service->create($user->fresh(), ['course_id' => $course->id,
+                'access_plan_code' => $code, 'mode' => 'upgrade', 'channel' => 'google']);
+            self::assertSame($price, $quote['final_price']);
+            self::assertSame(['paid_coins' => $price, 'reward_coins' => 0], $quote['allocation']);
+            self::assertSame('completed', $service->authorize($user, $quote['id'])['status']);
+            self::assertSame('completed', $service->authorize($user, $quote['id'])['status']);
+        }
+        self::assertSame(600, (int) $user->fresh()->wallet_purchased_coins);
+        self::assertSame(500, (int) $user->fresh()->wallet_reward_coins);
+        self::assertSame('mentor', $enrollment->fresh()->access_plan_snapshot['code']);
+        self::assertSame((int) $grantOrder->id, (int) $enrollment->fresh()->order_id);
+    }
+
     public function test_coupon_purchase_keeps_the_redeemable_code_out_of_wallet_metadata_and_notes(): void
     {
         [$user, $course, $service] = $this->fixture(1000, 0);
