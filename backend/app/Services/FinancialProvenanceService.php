@@ -512,7 +512,7 @@ final readonly class FinancialProvenanceService
                     throw new FinancialProvenanceException('Plan reversal has no valid fallback purchase.');
                 }
                 if ((int) $enrollment->access_plan_order_id !== (int) $effectivePlan->id) {
-                    $this->enrollments->reassignPlanOrder($enrollment, $effectivePlan, 'plan_payment_reversed', $planRevertedAt);
+                    $this->moveFinancialPlan($enrollment, $effectivePlan, 'plan_payment_reversed', $planRevertedAt);
                 }
             }
             if (in_array($entitlementScope, ['course', 'plan'], true)) {
@@ -525,6 +525,21 @@ final readonly class FinancialProvenanceService
             'unrecovered' => max(0, (int) $lot->original_amount - $recoverable),
             'holds' => $holds,
         ];
+    }
+
+    /** A plan-only change must not lose an existing financial suspension's ownership stamp. */
+    private function moveFinancialPlan(CourseEnrollment $enrollment, Order $plan, string $reason, ?\DateTimeInterface $at = null): void
+    {
+        $previousStamp = $enrollment->updated_at;
+        $this->enrollments->reassignPlanOrder($enrollment, $plan, $reason, $at);
+        if (! $enrollment->is_active && $previousStamp) {
+            FinancialEntitlementHold::query()
+                ->where('user_id', $enrollment->user_id)->where('course_id', $enrollment->course_id)
+                ->where('enrollment_id', $enrollment->id)->where('course_order_id', $enrollment->order_id)
+                ->where('entitlement_scope', 'course')->where('status', FinancialEntitlementHold::STATUS_ACTIVE)
+                ->where('enrollment_deactivated_at', $previousStamp)
+                ->update(['enrollment_deactivated_at' => $enrollment->updated_at]);
+        }
     }
 
     /** Reconcile the credential with the effective purchase, preserving manual revocations. */
@@ -705,7 +720,7 @@ final readonly class FinancialProvenanceService
                     }
                     $effectivePlan = $this->planLineage->effectiveOrder($lineage);
                     if ($effectivePlan && (int) $enrollment->access_plan_order_id !== (int) $effectivePlan->id) {
-                        $this->enrollments->reassignPlanOrder($enrollment, $effectivePlan, 'plan_payment_restored');
+                        $this->moveFinancialPlan($enrollment, $effectivePlan, 'plan_payment_restored');
                     }
                 } elseif ($hold->entitlement_scope !== 'course'
                     || (int) $enrollment->order_id !== (int) $hold->course_order_id) {

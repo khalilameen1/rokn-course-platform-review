@@ -36,7 +36,11 @@ final readonly class CoursePlanLineageService
         if ($restoring) {
             $holds->push($restoring);
         }
-        foreach ($holds as $hold) {
+        // After a second reversal the current plan can be the common root of
+        // two branches. Prefer the most recently purchased tip, not whichever
+        // older hold the database happens to return first. Upgrade orders are
+        // created under the learner lock and their ancestry is immutable.
+        foreach ($holds->sortByDesc(fn (FinancialEntitlementHold $hold): int => (int) ($hold->plan_restore_order_id ?: $hold->course_order_id)) as $hold) {
             if ($hold->enrollment_order_id && (int) $hold->enrollment_order_id !== $base) {
                 continue;
             }

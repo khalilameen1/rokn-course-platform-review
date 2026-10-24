@@ -437,6 +437,33 @@ final class FinancialProvenanceTest extends ApiTestCase
         return ['basic loses certificate' => [false], 'plus keeps certificate' => [true]];
     }
 
+    public static function replacementResolutionOrders(): array
+    {
+        return ['old review resolved first' => [false], 'replacement review resolved first' => [true]];
+    }
+
+    #[DataProvider('replacementResolutionOrders')]
+    public function test_reversing_a_replacement_upgrade_never_resurrects_the_old_branch(bool $resolveNewFirst): void
+    {
+        $this->paidPackage(100);
+        [$base, $enrollment] = $this->courseSpend(100, issueCertificate: false);
+        $oldFunding = $this->paidPackage(100);
+        $this->planUpgradeSpend(100, $enrollment);
+        $this->paidPackage(100);
+        $this->planUpgradeSpend(100, $enrollment);
+        $lifecycle = app(OrderLifecycleService::class);
+        $oldReview = $lifecycle->registerReversal($oldFunding, Order::FINANCIAL_CHARGEBACK, 'Reversed', 'gateway:previous');
+        $newFunding = $this->paidPackage(200);
+        $replacement = $this->planUpgradeSpend(200, $enrollment->fresh());
+        $newReview = $lifecycle->registerReversal($newFunding, Order::FINANCIAL_CHARGEBACK, 'Reversed', 'gateway:replacement');
+        self::assertSame($base->id, $enrollment->fresh()->access_plan_order_id);
+        foreach ($resolveNewFirst ? [$newReview, $oldReview] : [$oldReview, $newReview] as $index => $review) {
+            $lifecycle->resolveFinancialReview($review, 'waived', 'finance:replacement:'.$index, null, 'Resolved');
+            self::assertSame($resolveNewFirst || $index === 1 ? $replacement->id : $base->id,
+                $enrollment->fresh()->access_plan_order_id);
+        }
+    }
+
     #[DataProvider('certificateFallbacks')]
     public function test_upgrade_refund_reconciles_certificate_against_the_fallback_purchase(bool $fallbackHasCertificate): void
     {
