@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
  * GET /user/watch-history is always a safe read (RFC 9110): superseded resume
@@ -278,6 +279,35 @@ final class WatchHistoryReadWritePathTest extends ApiTestCase
         $this->postJson($complete)->assertOk();
         self::assertNull($session->fresh()->ended_at);
         self::assertSame(5, $session->fresh()->last_sequence);
+    }
+
+    public static function normalPlaybackSpeeds(): array
+    {
+        return [[1.0], [1.25], [1.5], [2.0]];
+    }
+
+    #[DataProvider('normalPlaybackSpeeds')]
+    public function test_a_single_watch_at_every_supported_speed_completes_with_thirty_second_heartbeats(float $speed): void
+    {
+        $session = $this->enrolledSession();
+        DB::table('lesson_media_states')->where('lesson_id', 10)->update(['duration_seconds' => 60]);
+        $this->sample($session, 1, 0)->assertOk();
+        $sequence = 1;
+        $elapsed = 0;
+        $last = (int) ceil(57 / $speed);
+        while ($elapsed < $last) {
+            $gap = min(30, $last - $elapsed);
+            $this->travel($gap)->seconds();
+            $elapsed += $gap;
+            $position = min(57, (int) floor($elapsed * $speed));
+            $this->actingAs($this->user, 'api')->postJson('/api/v1/user/watch-history', [
+                'lesson_id' => 10, 'playback_session_id' => $session->id, 'sequence' => ++$sequence,
+                'position_seconds' => $position, 'duration_seconds' => 60, 'playback_rate' => $speed,
+                'is_completed' => $position === 57, 'event_type' => $position === 57 ? 'complete' : 'heartbeat',
+            ])->assertOk();
+        }
+        self::assertSame(57, (int) DB::table('lesson_watch_evidence')->where('user_id', $this->user->id)->value('verified_seconds'));
+        $this->postJson("/api/v1/courses/{$this->courseId}/sections/{$this->sectionId}/complete")->assertOk();
     }
 
     private function history(array $query = []): TestResponse

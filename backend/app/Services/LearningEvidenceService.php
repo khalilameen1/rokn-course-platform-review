@@ -102,7 +102,7 @@ final readonly class LearningEvidenceService
                 $positionDelta = max(0, $positionSeconds - $previousPosition);
                 $maxGap = max(10, (int) config('learning_evidence.maximum_heartbeat_gap_seconds', 45));
                 $maxRate = max(1.0, min(2.5, (float) config('learning_evidence.maximum_playback_rate', 2.0)));
-                $maxCredit = max(5, (int) config('learning_evidence.maximum_credit_per_heartbeat', 30));
+                $maxCredit = max(5, (int) config('learning_evidence.maximum_credit_per_heartbeat', (int) ceil($maxGap * $maxRate)));
 
                 if ($elapsed >= 1 && $elapsed <= $maxGap && $positionDelta > 0) {
                     $credited = min(
