@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\API;
 
 use App\Models\BunnyVideoCleanupCandidate;
+use App\Models\Course;
 use App\Models\User;
 use App\Services\BunnyDeliveryService;
 use App\Services\BunnyMediaRegistry;
@@ -37,6 +38,33 @@ class PortfolioEndpointTest extends ApiTestCase
     {
         $response = $this->actingAs($this->user, 'api')->getJson('/api/v1/portfolio');
         $this->assertNotEquals(404, $response->status());
+    }
+
+    public function test_portfolio_course_covers_are_loaded_in_one_query_for_multiple_courses(): void
+    {
+        $original = Course::query()->findOrFail($this->courseId);
+        DB::table('portfolio_items')->where('id', 1)->update(['course_id' => $original->id]);
+        foreach ([1, 2] as $index) {
+            $course = $original->replicate();
+            $course->save();
+            DB::table('portfolio_items')->insert([
+                'user_id' => $this->user->id, 'course_id' => $course->id,
+                'title' => 'Course project '.$index, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        foreach (['/api/v1/portfolio', '/api/v1/portfolio?summary=1&page=1&per_page=20'] as $endpoint) {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            try {
+                $this->actingAs($this->user, 'api')->getJson($endpoint)
+                    ->assertOk()->assertJsonCount(3, 'data');
+                self::assertCount(1, collect(DB::getQueryLog())->filter(
+                    fn (array $query): bool => str_contains($query['query'], 'from "photos"')
+                ));
+            } finally {
+                DB::disableQueryLog();
+            }
+        }
     }
 
     public function test_portfolio_list_supports_bounded_pages_without_changing_item_contract(): void
