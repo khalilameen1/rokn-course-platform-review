@@ -156,12 +156,15 @@ export const useReelsProgress = ({
       );
       const lastSaved = refs.lastPersisted.current[reel.id] || 0;
       const reachedCompletion = duration > 0 && currentTime / duration >= 0.95;
+      const needsCompletion =
+        reachedCompletion &&
+        !refs.completionSent.current.has(reel.sectionId);
       const evidence = buildPlaybackEvidence(reel, runtime, playbackSpeed);
       let progressSave: Promise<void> | null = null;
       if (
         !hasSavedSample ||
         Math.abs(currentTime - lastSaved) >= 15 ||
-        reachedCompletion
+        needsCompletion
       ) {
         refs.lastPersisted.current[reel.id] = currentTime;
         progressSave = savePlaybackPosition(
@@ -175,10 +178,7 @@ export const useReelsProgress = ({
         );
         if (!reachedCompletion) progressSave.catch(() => undefined);
       }
-      if (
-        reachedCompletion &&
-        !refs.completionSent.current.has(reel.sectionId)
-      ) {
+      if (needsCompletion) {
         refs.completionSent.current.add(reel.sectionId);
         const finalEvidenceSave =
           progressSave ??

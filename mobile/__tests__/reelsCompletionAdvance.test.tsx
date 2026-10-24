@@ -168,6 +168,27 @@ describe('reel completion navigation', () => {
     await act(async () => harness.renderer.unmount());
   });
 
+  it('does not stream completion requests for every frame after the checkpoint', async () => {
+    const reel = firstReel();
+    const harness = await renderProgress({
+      course: courseWith([reel]),
+      feedItems: [{key: `reel-${reel.id}`, type: 'reel', moduleId: reel.moduleId, reel}],
+    });
+    await act(async () => harness.api().persistProgress(reel, 95, 100));
+    await act(async () => {
+      for (const position of [95.25, 96, 97, 99, 100]) {
+        harness.api().persistProgress(reel, position, 100);
+      }
+    });
+    expect(savePlaybackPosition).toHaveBeenCalledTimes(1);
+    expect(markSectionComplete).toHaveBeenCalledTimes(1);
+    await act(async () => harness.api().persistProgress(reel, 0, 100));
+    expect(savePlaybackPosition).toHaveBeenLastCalledWith(
+      'course-1', reel.id, 0, reel.lessonId, 100, false, expect.anything(),
+    );
+    await act(async () => harness.renderer.unmount());
+  });
+
   it('opens the authored project boundary through a fresh learning map', async () => {
     const first = firstReel();
     const project = {
