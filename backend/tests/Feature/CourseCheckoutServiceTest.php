@@ -495,7 +495,7 @@ final class CourseCheckoutServiceTest extends TestCase
     {
         $cases = [];
         foreach (['google', 'apple'] as $provider) {
-            foreach (['pending', 'expired', 'cancelled', 'new_consent', 'changed_terms', 'paid_late'] as $state) {
+            foreach (['pending', 'expired', 'cancelled', 'expired_then_cancelled', 'new_consent', 'changed_terms', 'paid_late'] as $state) {
                 $cases[$provider.' '.$state] = [$provider, $state];
             }
         }
@@ -518,8 +518,11 @@ final class CourseCheckoutServiceTest extends TestCase
             $service->cancel($user, $quote['id']);
         }
         $this->travel(20)->minutes();
-        if ($state === 'expired') {
+        if (in_array($state, ['expired', 'expired_then_cancelled'], true)) {
             self::assertSame('expired', $service->resume($user, $quote['id'])['status']);
+        }
+        if ($state === 'expired_then_cancelled') {
+            self::assertSame('cancelled', $service->cancel($user, $quote['id'])['status']);
         }
         if ($state === 'new_consent') {
             $newQuote = $service->create($user, $input);
@@ -536,7 +539,7 @@ final class CourseCheckoutServiceTest extends TestCase
             + ($provider === 'apple' ? ['purchase_date' => $purchasedAt->getTimestampMs()]
                 : ['purchase_completed_at' => $purchasedAt->toIso8601String()])])->save();
         $expected = match ($state) {
-            'cancelled' => 'cancelled',
+            'cancelled', 'expired_then_cancelled' => 'cancelled',
             'new_consent', 'changed_terms' => 'reconfirm_required',
             'paid_late' => 'expired',
             default => 'completed',

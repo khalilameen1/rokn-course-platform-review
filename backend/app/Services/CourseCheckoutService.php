@@ -118,7 +118,8 @@ final readonly class CourseCheckoutService
         return DB::transaction(function () use ($user, $id): array {
             User::query()->lockForUpdate()->findOrFail($user->id);
             $checkout = $this->locked($user, $id);
-            if (in_array($checkout->status, ['quoted', 'pending_payment'], true)) {
+            if (in_array($checkout->status, ['quoted', 'pending_payment'], true)
+                || ($checkout->status === 'expired' && $checkout->error_code === 'checkout_expired')) {
                 return $this->stop($checkout, 'cancelled', 'checkout_cancelled');
             }
 
