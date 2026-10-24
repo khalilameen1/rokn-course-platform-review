@@ -66,7 +66,21 @@ authorized target. This review does not deploy production or publish a store bui
 
 ### Verification status (not release approval)
 
+- Verified application revision: `012858d100efeb84020c4a23a189908419c2f9fb`.
 - Full mobile Jest run: 379 suites, 3484 tests passed; process exited 0.
+  The latest mobile commit is `57a45302f8ec82a13f21c953b27ad85f50ea87fe`;
+  no mobile code changed between that run and the verified application revision.
+- Final [Backend CI run 40067606375](https://github.com/khalilameen1/rokn-course-platform-review/actions/runs/40067606375): **success**.
+  The early payment/recovery group passed 261 tests (1766 assertions).
+  The full suite passed 3080 tests (26259 assertions). Its 6 SQLite skips are
+  MySQL-specific contracts, not omitted verification: the separate MySQL group
+  passed all 17 tests (126 assertions), including the three affected test classes.
+  Clean schema replay, forward-only migration checks, Redis, configuration/route/
+  view compilation, dependency audits, Pint, Larastan, certificate artwork and
+  repository credential-history checks all passed in the same run.
+- Final [Dashboard browser run 40067606470](https://github.com/khalilameen1/rokn-course-platform-review/actions/runs/40067606470): **success**
+  at the same application revision, with 72 browser tests passed and the
+  authenticated Lighthouse gate passed.
 - Backend baseline CI run `40064916797`: success, including full tests,
   MySQL contracts and certificate artwork checks, before the financial lineage changes.
 - Dashboard browser run `40066370265`: success for commit `91c3fc36`.
@@ -74,9 +88,16 @@ authorized target. This review does not deploy production or publish a store bui
   All five failures occurred while constructing a new test receipt: its pass-only
   report mode still retained the seeded guided plan's nonzero report budget.
   The fixture was corrected without relaxing production snapshot validation.
-  Later commits and the final financial scenarios still require a green run.
+  The final successful run above includes that correction and all later scenarios.
 - Local Larastan and touched-file Pint checks passed; Windows Application Control
   blocks the local SQLite extension, so behavioral PHP results must come from CI.
+- Completion audit: all eight reported findings and three conditional cases are
+  accounted for in the map above. The expiry deadlock was not reproduced against
+  the current checkout; timestamp uncertainty preserves credit and requires fresh
+  consent rather than another charge. Intentional hero fallback and owner-only
+  mixed-domain statistics were preserved, not treated as defects.
+- The isolated review branch is pushed to `cloud`. Remote `main` remains at the
+  base revision listed above; these fixes have not been deployed.
 - No native-device purchase/upload test, release build, production migration,
   or store publication is implied by these checks.
 
