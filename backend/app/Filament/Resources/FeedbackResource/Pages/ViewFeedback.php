@@ -6,6 +6,7 @@ use App\Filament\Resources\FeedbackResource;
 use App\Models\FeedbackAttachment;
 use App\Models\FeedbackReport;
 use App\Models\User;
+use App\Rules\SupportAssignee;
 use App\Services\AdminSupportCaseReadService;
 use App\Services\PortfolioModerationService;
 use App\Services\SupportCaseCompensationService;
@@ -21,7 +22,6 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -126,7 +126,7 @@ final class ViewFeedback extends ViewRecord
                     Select::make('priority')->label('الأولوية')->options(FeedbackResource::PRIORITIES)->required(),
                     Select::make('assigned_to')->label('المسؤول')->placeholder('غير مسند')->searchable()
                         ->options(fn (): array => app(AdminSupportCaseReadService::class)->assignees()->mapWithKeys(fn ($user): array => [$user->id => $user->getFilamentName()])->all())
-                        ->rules([Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'admin'))]),
+                        ->rules(['integer', new SupportAssignee]),
                     Select::make('resolution_kind')->label('نتيجة المعالجة')->options(FeedbackResource::RESOLUTIONS),
                 ])->modalSubmitActionLabel('حفظ الحالة')
                 ->action(fn (Action $action, array $data) => $this->perform($action, 'update', fn () => app(SupportCaseService::class)->updateState(

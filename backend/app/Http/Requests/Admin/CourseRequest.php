@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Auth\AdminPermissionMatrix;
 use App\Data\CourseAuthoringEdit;
 use App\Services\CertificateTextTemplateService;
 use App\Support\UnicodeText;
@@ -54,7 +55,7 @@ class CourseRequest extends FormRequest
                 );
                 // Cost approval is an administrator operation. Moderators may
                 // edit content/offers but cannot declare their delivery free.
-                if ($this->user()?->role !== 'admin') {
+                if (! app(AdminPermissionMatrix::class)->isAdministrator($this->user())) {
                     unset($plans[$code]['delivery_cost_usd']);
                 }
                 foreach (['name_ar', 'name_en'] as $field) {

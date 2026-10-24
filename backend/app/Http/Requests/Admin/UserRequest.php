@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Auth\AdminPermissionMatrix;
 use App\Models\User;
 use App\Support\UnicodeText;
 use Illuminate\Foundation\Http\FormRequest;
@@ -26,7 +27,7 @@ class UserRequest extends FormRequest
      */
     public function authorize()
     {
-        return strtolower((string) $this->user()?->role) === 'admin';
+        return app(AdminPermissionMatrix::class)->allows($this->user(), 'admin.users.update', 'PUT');
     }
 
     /**

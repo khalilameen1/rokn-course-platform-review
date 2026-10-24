@@ -40,7 +40,7 @@ final class FinancialOverview extends Page
 
     public static function canAccess(): bool
     {
-        return app(AdminPermissionMatrix::class)->isAdministrator(auth('web')->user());
+        return app(AdminPermissionMatrix::class)->allowsCapability(auth('web')->user(), AdminPermissionMatrix::FINANCIAL_REPORTS);
     }
 
     public function mount(): void

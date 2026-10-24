@@ -7,10 +7,35 @@ namespace App\Auth;
 use App\Models\StaffMember;
 use App\Models\User;
 use App\Support\DatabaseCapabilities;
+use Illuminate\Database\Eloquent\Builder;
+use Spatie\Permission\Models\Permission;
 
 /** One permission vocabulary for Filament and the remaining classic workflows. */
 final class StaffAccess
 {
+    /**
+     * The same Spatie permissions used for access also select assignable staff.
+     * Unmigrated administrators retain their existing access; a migrated admin
+     * never bypasses their narrower permission set because of users.role.
+     *
+     * @return Builder<User>
+     */
+    public function usersWithPermission(string $permission): Builder
+    {
+        $query = User::query()->where('active', true)
+            ->whereIn('role', ['admin', 'moderator']);
+        if (! DatabaseCapabilities::hasTable('staff_members')) {
+            return $query->where('role', 'admin');
+        }
+        $permissions = Permission::query()->where('name', $permission)->where('guard_name', 'web')->get();
+
+        return $query->where(function (Builder $users) use ($permissions): void {
+            $users->where(function (Builder $legacy): void {
+                $legacy->where('role', 'admin')->whereNotIn('id', StaffMember::query()->select('user_id'));
+            })->orWhereIn('id', StaffMember::query()->permission($permissions)->select('user_id'));
+        });
+    }
+
     public static function permissionLabels(): array
     {
         $groups = ['content' => 'المحتوى', 'projects' => 'مشاريع الطلاب', 'portfolio' => 'البورتفوليو',

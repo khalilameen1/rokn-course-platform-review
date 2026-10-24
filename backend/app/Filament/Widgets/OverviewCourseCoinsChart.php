@@ -30,7 +30,7 @@ final class OverviewCourseCoinsChart extends ChartWidget
 
     public static function canView(): bool
     {
-        return app(AdminPermissionMatrix::class)->isAdministrator(auth('web')->user());
+        return app(AdminPermissionMatrix::class)->allowsCapability(auth('web')->user(), AdminPermissionMatrix::FINANCIAL_REPORTS);
     }
 
     protected function getData(): array

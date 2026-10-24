@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Auth\StaffAccess;
 use App\Models\FeedbackAttachment;
 use App\Models\FeedbackReport;
 use App\Models\SupportCaseMessage;
@@ -24,7 +25,8 @@ final readonly class AdminSupportCaseReadService
     /** @return Collection<int, User> */
     public function assignees(): Collection
     {
-        return User::query()->where('role', 'admin')->orderBy('name')->get(['id', 'name', 'name_ar', 'name_en', 'email']);
+        return app(StaffAccess::class)->usersWithPermission('support.manage')
+            ->orderBy('name')->get(['id', 'name', 'name_ar', 'name_en', 'email']);
     }
 
     /** @return Builder<FeedbackReport> */

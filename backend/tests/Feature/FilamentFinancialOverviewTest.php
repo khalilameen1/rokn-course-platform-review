@@ -7,12 +7,14 @@ namespace Tests\Feature;
 use App\Filament\Pages\FinancialOverview;
 use App\Filament\Widgets\OverviewRevenueChart;
 use App\Http\Middleware\RequireAdminMfa;
+use App\Models\StaffMember;
 use App\Models\User;
 use App\Services\AdminHomeReadService;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 final class FilamentFinancialOverviewTest extends TestCase
@@ -47,5 +49,16 @@ final class FilamentFinancialOverviewTest extends TestCase
         });
         $this->get(FinancialOverview::getUrl())->assertForbidden();
         Livewire::test(OverviewRevenueChart::class, ['months' => []])->assertForbidden();
+    }
+
+    public function test_granular_finance_operator_can_render_the_actual_report(): void
+    {
+        $operator = User::query()->forceCreate(['role' => 'moderator', 'active' => true]);
+        $member = StaffMember::query()->create(['user_id' => $operator->id]);
+        $member->givePermissionTo(Permission::findOrCreate('finance.read', 'web'));
+        $this->actingAs($operator, 'web');
+        $this->get(FinancialOverview::getUrl())->assertOk();
+        Livewire::test(FinancialOverview::class)->assertOk()->assertSee('تحصيل الفترة حسب الشهر');
+        Livewire::test(OverviewRevenueChart::class, ['months' => []])->assertOk();
     }
 }

@@ -19,6 +19,8 @@ final class AdminPermissionMatrix
 
     public const CONTENT_CURATION = 'content.curation';
 
+    public const FINANCIAL_REPORTS = 'finance.reports';
+
     /** @var array<string, list<string>> */
     private const MODERATOR_RULES = [
         'admin.dashboard' => ['GET'],
@@ -131,6 +133,7 @@ final class AdminPermissionMatrix
             $permission = match ($capability) {
                 self::ACCOUNT_CREDENTIALS => 'credentials.manage',
                 self::CONTENT_CURATION => 'content.manage',
+                self::FINANCIAL_REPORTS => 'finance.read',
                 default => '__unmapped_capability__',
             };
             $granular = app(StaffAccess::class)->allows($role, $permission);
@@ -142,6 +145,7 @@ final class AdminPermissionMatrix
 
         return match ($capability) {
             self::ACCOUNT_CREDENTIALS => $this->isAdministrator($role),
+            self::FINANCIAL_REPORTS => $this->isAdministrator($role),
             self::CONTENT_CURATION => in_array(
                 $this->normalizedRole($role),
                 ['admin', 'moderator'],
