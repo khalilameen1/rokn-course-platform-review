@@ -53,6 +53,47 @@ describe('saved lesson canonical mapper', () => {
     await AsyncStorage.clear();
   });
 
+  it.each(['all', 'folder'])(
+    'keeps a lesson with an unknown zero duration without breaking the %s list',
+    async scope => {
+      const data = folderResponse().data.data;
+      const lessons = [
+        {...data.lessons[0], duration_seconds: 0},
+        {...data.lessons[0], id: 45},
+      ].map(lesson => ({...lesson, folder_memberships: [data.folder]}));
+      apiGet.mockResolvedValue({
+        data: {data: {...data, lessons}},
+      } as never);
+
+      const result =
+        scope === 'all'
+          ? await getSavedLessonsPage()
+          : await getSavedFolderLessonsPage('7');
+      expect(result.lessons).toEqual([
+        expect.objectContaining({id: '44', duration: ''}),
+        expect.objectContaining({id: '45', duration: '02:05'}),
+      ]);
+    },
+  );
+
+  it.each([-1, 1.5, null, undefined, '', '0:00', 'invalid'])(
+    'does not mistake malformed duration %s for an unknown numeric duration',
+    async duration => {
+      const data = folderResponse().data.data;
+      apiGet.mockResolvedValue({
+        data: {
+          data: {
+            ...data,
+            lessons: [{...data.lessons[0], duration_seconds: duration}],
+          },
+        },
+      } as never);
+      await expect(getSavedFolderLessonsPage('7')).rejects.toThrow(
+        'SAVED_LESSONS_CONTRACT_INVALID',
+      );
+    },
+  );
+
   it('keeps one missing thumbnail local instead of failing the whole library', async () => {
     apiGet.mockResolvedValue({
       data: {

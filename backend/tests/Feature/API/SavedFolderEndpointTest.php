@@ -15,6 +15,19 @@ use Illuminate\Support\Facades\DB;
  */
 class SavedFolderEndpointTest extends ApiTestCase
 {
+    public function test_unknown_saved_lesson_duration_is_numeric_zero_in_both_lists(): void
+    {
+        DB::table('lessons')->where('id', 10)->update(['duration_minutes' => 0]);
+        DB::table('lesson_media_states')->where('lesson_id', 10)->update(['duration_seconds' => 0]);
+
+        foreach (['/api/v1/saved-lessons', '/api/v1/saved-folders/1/lessons'] as $endpoint) {
+            $this->actingAs($this->user, 'api')->getJson($endpoint)
+                ->assertOk()
+                ->assertJsonPath('data.lessons.0.id', 10)
+                ->assertJsonPath('data.lessons.0.duration_seconds', 0);
+        }
+    }
+
     public function test_saved_course_covers_are_loaded_in_one_query_for_multiple_courses(): void
     {
         $originalCourse = Course::findOrFail($this->courseId);

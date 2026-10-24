@@ -43,7 +43,9 @@ export const SavedLessonRow = ({item, onPress, trailing}: Props) => (
       <Text numberOfLines={1} style={styles.course}>
         {formatAuthoredDisplayText(item.courseTitle)}
       </Text>
-      <Text style={styles.duration}>{toArabicDigits(item.duration)}</Text>
+      {item.duration ? (
+        <Text style={styles.duration}>{toArabicDigits(item.duration)}</Text>
+      ) : null}
     </View>
     {trailing}
   </Pressable>

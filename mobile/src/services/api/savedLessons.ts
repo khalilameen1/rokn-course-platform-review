@@ -160,8 +160,11 @@ const invalidSavedLesson = (lesson: SavedLessonDto): boolean => {
     !/^\d+$/.test(String(lesson.course?.id ?? '').trim()) ||
     !String(lesson.title || '').trim() ||
     !String(lesson.course?.title || '').trim() ||
+    (typeof lesson.duration_seconds !== 'number' &&
+      (typeof lesson.duration_seconds !== 'string' ||
+        !/^\d+$/.test(lesson.duration_seconds))) ||
     !Number.isSafeInteger(durationSeconds) ||
-    durationSeconds < 1 ||
+    durationSeconds < 0 ||
     !Array.isArray(lesson.folder_memberships) ||
     memberships.length === 0 ||
     memberships.some(
@@ -183,10 +186,15 @@ const mapSavedLesson = (lesson: SavedLessonDto): SavedLesson[] => {
     courseId: String(lesson.course?.id).trim(),
     title: String(lesson.title).trim(),
     courseTitle: String(lesson.course?.title).trim(),
-    duration: `${String(Math.floor(durationSeconds / 60)).padStart(
-      2,
-      '0',
-    )}:${String(durationSeconds % 60).padStart(2, '0')}`,
+    // The API uses numeric zero when media duration is not known yet. It is
+    // optional display metadata, not a reason to reject all saved lessons.
+    duration:
+      durationSeconds > 0
+        ? `${String(Math.floor(durationSeconds / 60)).padStart(
+            2,
+            '0',
+          )}:${String(durationSeconds % 60).padStart(2, '0')}`
+        : '',
     imageUrl: imageUrl || undefined,
   }));
 };
