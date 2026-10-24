@@ -52,7 +52,9 @@ final class PlaybackSessionService
 
             $position = max(0, (int) ($sample['position_seconds'] ?? 0));
             $eventType = (string) ($sample['event_type'] ?? 'heartbeat');
-            $isCompleted = ! empty($sample['is_completed']) || $eventType === 'complete';
+            $isCompleted = ! empty($sample['is_completed']) || $eventType === 'complete'
+                || ($eventType === 'stop' && $session->event_type === 'complete'
+                    && $position >= (int) $session->last_position_seconds);
             // A playhead completion is not a view/session end. The same player
             // may seek back or loop, including after an unverified completion.
             // Only leaving the player or a terminal error closes this session.

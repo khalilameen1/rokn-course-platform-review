@@ -97,6 +97,23 @@ final class PlaybackSessionLifecycleTest extends TestCase
         self::assertSame('session_ended', $afterEnd['reason']);
     }
 
+    public function test_completion_keeps_the_view_open_but_the_later_stop_retains_its_dashboard_outcome(): void
+    {
+        $user = $this->user(42);
+        $session = $this->playbackSession($user, 92);
+        $service = new PlaybackSessionService(new PlaybackCapabilityService);
+        $service->accept($user, 92, ['playback_session_id' => $session->id,
+            'sequence' => 1, 'event_type' => 'complete', 'position_seconds' => 57, 'duration_seconds' => 60]);
+        self::assertNull($session->fresh()->ended_at);
+        $service->accept($user, 92, ['playback_session_id' => $session->id,
+            'sequence' => 2, 'event_type' => 'stop', 'position_seconds' => 60, 'end_reason' => 'lesson_changed']);
+        self::assertSame('completed', $session->fresh()->end_reason);
+        self::assertNotNull($session->fresh()->ended_at);
+        $metrics = new PlaybackMetricsService;
+        self::assertSame(1, $metrics->rollupEndedSessions());
+        self::assertSame(1, $metrics->summary(24, 92)['overall']['completed_sessions']);
+    }
+
     public function test_stale_sessions_are_closed_then_rolled_up_without_a_student_identifier(): void
     {
         $session = $this->playbackSession($this->user(52), 73, [
