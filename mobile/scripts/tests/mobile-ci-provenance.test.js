@@ -82,7 +82,7 @@ test('iOS privacy declares account-linked crash and nonfatal diagnostics', () =>
 test('iOS privacy declares retained account-linked playback performance', () => {
   const manifest = readPrivacyManifest();
   const sender = fs.readFileSync(path.join(root,
-    'src/components/VideoPlayer/courseLearning/playbackSession.ts'), 'utf8');
+    'src/components/VideoPlayer/courseLearning/playbackProgress.ts'), 'utf8');
   const receiver = fs.readFileSync(path.join(root,
     '../backend/app/Services/PlaybackSessionService.php'), 'utf8');
   const model = fs.readFileSync(path.join(root,

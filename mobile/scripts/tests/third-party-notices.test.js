@@ -138,17 +138,24 @@ test('retains every package legal file and every reviewed absence record', () =>
       ALLOWED_LICENSES.has(item.license),
     ),
   );
-  assert.equal(artifacts.snapshot.packages.length, 754);
+  assert.equal(
+    artifacts.snapshot.packages.length,
+    artifacts.inventory.packages.length,
+  );
+  assert.deepEqual(
+    new Set(artifacts.snapshot.packages.map(item => item.coordinate)),
+    new Set(artifacts.inventory.packages.map(item => item.coordinate)),
+  );
   assert.equal(
     artifacts.snapshot.packages.filter(
       item => item.legalSource === 'package-root',
     ).length,
-    624,
+    artifacts.inventory.packages.length - LEGAL_FILE_ABSENCE_ALLOWLIST.size,
   );
   const fallbacks = artifacts.snapshot.packages.filter(
     item => item.legalSource === 'reviewed-metadata-fallback',
   );
-  assert.equal(fallbacks.length, 130);
+  assert.equal(fallbacks.length, LEGAL_FILE_ABSENCE_ALLOWLIST.size);
   assert.deepEqual(
     new Set(fallbacks.map(item => item.coordinate)),
     LEGAL_FILE_ABSENCE_ALLOWLIST,
