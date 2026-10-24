@@ -19,7 +19,7 @@ PODS:
     - ExpoModulesCore
   - EXConstants (55.0.17):
     - ExpoModulesCore
-  - Expo (55.0.31):
+  - Expo (55.0.32):
     - boost
     - DoubleConversion
     - ExpoModulesCore
@@ -82,7 +82,7 @@ PODS:
     - ExpoModulesCore
   - ExpoLogBox (55.0.13):
     - React-Core
-  - ExpoModulesCore (55.0.26):
+  - ExpoModulesCore (55.0.27):
     - boost
     - DoubleConversion
     - ExpoModulesJSI
@@ -113,7 +113,7 @@ PODS:
     - RNWorklets
     - SocketRocket
     - Yoga
-  - ExpoModulesJSI (55.0.26):
+  - ExpoModulesJSI (55.0.27):
     - hermes-engine
     - React-Core
     - React-runtimescheduler
@@ -135,13 +135,13 @@ PODS:
     - AppCheckCore (~> 11.0)
     - GTMAppAuth (~> 5.0)
     - GTMSessionFetcher/Core (~> 3.3)
-  - GoogleUtilities/Environment (8.1.4):
+  - GoogleUtilities/Environment (8.1.5):
     - GoogleUtilities/Privacy
-  - GoogleUtilities/Logger (8.1.4):
+  - GoogleUtilities/Logger (8.1.5):
     - GoogleUtilities/Environment
     - GoogleUtilities/Privacy
-  - GoogleUtilities/Privacy (8.1.4)
-  - GoogleUtilities/UserDefaults (8.1.4):
+  - GoogleUtilities/Privacy (8.1.5)
+  - GoogleUtilities/UserDefaults (8.1.5):
     - GoogleUtilities/Logger
     - GoogleUtilities/Privacy
   - GTMAppAuth (5.0.0):
@@ -3831,7 +3831,7 @@ SPEC CHECKSUMS:
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
   EXApplication: 093f79372a8ebd9ef65a5255d25818ce2feb0492
   EXConstants: dd0b0af9c628c00bc5ce556964210c4465ac9ffe
-  Expo: cd74e48f2decdaa4a2410f8c261247b4cfa100ec
+  Expo: 62447772ad11331e4f716481f51929f939e7d428
   ExpoAdapterGoogleSignIn: 3332ac2d96d803350f53f84047244b35e2efc994
   ExpoAppleAuthentication: ab3d5d027724c02652f5be78bf81e43ac0e684c6
   ExpoAsset: 64ff088f684d008431f518c0d40fccefb9cda593
@@ -3844,8 +3844,8 @@ SPEC CHECKSUMS:
   ExpoImage: eeba1f2a1c6f89ba079e832dfef2b29a5ed1d8ca
   ExpoKeepAwake: 45e456e29335bbd400554646a2f29e628c24072e
   ExpoLogBox: 87ffef2b3ae204b602748ab4020eb1cc5454a6d6
-  ExpoModulesCore: 9aabd1a060f905848cac6f42baf658921db697d4
-  ExpoModulesJSI: 483d791904bf8579a384c2bf5f6265bf6e8362cb
+  ExpoModulesCore: 0e0531727eb71fc9f6ccfad8606a2f340d081434
+  ExpoModulesJSI: b806a187b07c721530aafac36e1bdad60a48b3f0
   ExpoNotifications: 793cb016faf9ee414ed9ae94e8951c95ca31d619
   ExpoSecureStore: 93300a260cf19518f78afc7a114fbf2c287eef70
   ExpoSplashScreen: 6b9802828ad09baa793f0aa7805be92fd8116b0c
@@ -3855,7 +3855,7 @@ SPEC CHECKSUMS:
   fmt: 530618a01105dae0fa3a2f27c81ae11fa8f67eac
   glog: 0456694f3aaf09460b660ea327cfc11defbeea4c
   GoogleSignIn: e449a40a92e9f2eea56e98b5214d13725dc5a00a
-  GoogleUtilities: db34c1c11c6f2eccb6fab2340cb8ceb1451299dc
+  GoogleUtilities: 7dc09b3fa9ecb5c2298b952313d14628b61b9da3
   GTMAppAuth: 217a876b249c3c585a54fd6f73e6b58c4f5c4238
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
   hermes-engine: f37e1d6f1eb198649a60b3f17b6f685a6ac12470
