@@ -491,6 +491,62 @@ final class CourseCheckoutServiceTest extends TestCase
         }
     }
 
+    public static function delayedStoreReceiptStates(): array
+    {
+        $cases = [];
+        foreach (['google', 'apple'] as $provider) {
+            foreach (['pending', 'expired', 'cancelled', 'new_consent', 'changed_terms', 'paid_late'] as $state) {
+                $cases[$provider.' '.$state] = [$provider, $state];
+            }
+        }
+
+        return $cases;
+    }
+
+    #[DataProvider('delayedStoreReceiptStates')]
+    public function test_receipt_delivery_time_does_not_replace_verified_purchase_time(string $provider, string $state): void
+    {
+        [$user, $course, $service] = $this->fixture(0, 200);
+        $package = $this->storePackage(350);
+        $package->forceFill(['apple_enabled' => true, 'apple_product_id' => 'rokn.test.apple'])->save();
+        $input = array_replace($this->input($course), ['channel' => $provider, 'package_id' => $package->id]);
+        $quote = $service->create($user, $input);
+        $service->authorize($user, $quote['id']);
+        $this->travel(1)->minutes();
+        $purchasedAt = now()->toImmutable();
+        if ($state === 'cancelled') {
+            $service->cancel($user, $quote['id']);
+        }
+        $this->travel(20)->minutes();
+        if ($state === 'expired') {
+            self::assertSame('expired', $service->resume($user, $quote['id'])['status']);
+        }
+        if ($state === 'new_consent') {
+            $newQuote = $service->create($user, $input);
+            $service->authorize($user, $newQuote['id']);
+        }
+        if ($state === 'changed_terms') {
+            $course->forceFill(['authoring_version' => 2, 'last_published_authoring_version' => 2])->save();
+        }
+        if ($state === 'paid_late') {
+            $purchasedAt = now()->toImmutable();
+        }
+        $receipt = $this->fund($user, $package, $provider);
+        $receipt->forceFill(['provider' => $provider, 'provider_payload' => ['checkout_profile_id' => $quote['id']]
+            + ($provider === 'apple' ? ['purchase_date' => $purchasedAt->getTimestampMs()]
+                : ['purchase_completed_at' => $purchasedAt->toIso8601String()])])->save();
+        $expected = match ($state) {
+            'cancelled' => 'cancelled',
+            'new_consent', 'changed_terms' => 'reconfirm_required',
+            'paid_late' => 'expired',
+            default => 'completed',
+        };
+        self::assertSame($expected, $service->bindStorePurchase($user, $quote['id'], $receipt)['status']);
+        self::assertSame($expected, $service->bindStorePurchase($user, $quote['id'], $receipt)['status']);
+        self::assertSame($expected === 'completed' ? 30 : 350, (int) $user->fresh()->wallet_purchased_coins);
+        self::assertSame($expected === 'completed' ? 1 : 0, CourseEnrollment::query()->where('user_id', $user->id)->count());
+    }
+
     public function test_price_revision_change_after_payment_requires_new_consent(): void
     {
         [$user, $course, $service] = $this->fixture(0, 200);
@@ -1567,19 +1623,22 @@ final class CourseCheckoutServiceTest extends TestCase
             'price' => 100, 'is_active' => true, 'google_enabled' => true, 'google_product_id' => 'rokn.test.'.$this->key('package')]);
     }
 
-    private function fund(User $user, Package $package): StorePurchase
+    private function fund(User $user, Package $package, string $provider = 'google'): StorePurchase
     {
         $order = Order::query()->create(['user_id' => $user->id, 'package_id' => $package->id, 'package_coins' => $package->coins,
-            'payment_method' => Order::PAYMENT_METHOD_GOOGLE_PLAY, 'amount' => 100, 'final_amount' => 100,
+            'payment_method' => $provider === 'apple' ? Order::PAYMENT_METHOD_APP_STORE : Order::PAYMENT_METHOD_GOOGLE_PLAY,
+            'amount' => 100, 'final_amount' => 100,
             'status' => Order::STATUS_APPROVED, 'financial_status' => Order::FINANCIAL_SETTLED, 'approved_at' => now()]);
         $credit = app(WalletService::class)->credit($user->id, $package->coins, 'package_purchase', $this->key('fund'), $order, [], WalletTransaction::BUCKET_PAID);
         app(FinancialProvenanceService::class)->recordPaidPackageCredit($order, $credit);
 
         return StorePurchase::query()->create(['public_id' => (string) Str::uuid(), 'user_id' => $user->id,
-            'package_id' => $package->id, 'order_id' => $order->id, 'provider' => 'google', 'product_id' => $package->google_product_id,
+            'package_id' => $package->id, 'order_id' => $order->id, 'provider' => $provider,
+            'product_id' => $provider === 'apple' ? $package->apple_product_id : $package->google_product_id,
             'external_transaction_id' => $this->key('transaction'), 'purchase_token_hash' => hash('sha256', $this->key('token')), 'purchase_token' => $this->key('encrypted'),
             'environment' => 'test', 'status' => 'credited', 'verified_at' => now(),
-            'provider_payload' => ['purchase_completed_at' => now()->addSecond()->toIso8601String()]]);
+            'provider_payload' => $provider === 'apple' ? ['purchase_date' => now()->addSecond()->getTimestampMs()]
+                : ['purchase_completed_at' => now()->addSecond()->toIso8601String()]]);
     }
 
     private function user(): User

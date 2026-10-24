@@ -140,7 +140,13 @@ final readonly class CourseCheckoutService
             if (is_string($profile) && $profile !== '' && ! hash_equals($id, $profile)) {
                 throw new CourseCheckoutRejected(CourseCheckoutRejected::CHECKOUT_FUNDING_MISMATCH);
             }
-            if (in_array($checkout->status, ['completed', 'cancelled', 'expired', 'reconfirm_required'], true)) {
+            // Resume may have observed expiry before the delayed store receipt
+            // arrived. Only that expiry is recoverable; cancellation and changed
+            // consent remain final. Provider purchase time decides below.
+            $recoverableExpiry = $checkout->status === 'expired'
+                && $checkout->error_code === 'checkout_expired';
+            if (in_array($checkout->status, ['completed', 'cancelled', 'reconfirm_required'], true)
+                || ($checkout->status === 'expired' && ! $recoverableExpiry)) {
                 return $this->payload($checkout);
             }
             $audit = $purchase->provider_payload ?? [];
@@ -156,10 +162,17 @@ final readonly class CourseCheckoutService
             if (! $checkout->authorized_at || ! $occurred || $occurred->lt($checkout->authorized_at)) {
                 return $this->stop($checkout, 'reconfirm_required', 'checkout_receipt_not_bound');
             }
-            if ($checkout->quoteHasExpired()) {
+            if ($occurred->gt($checkout->expires_at)) {
                 return $this->stop($checkout, 'expired', 'checkout_expired');
             }
+            if (CourseCheckout::query()->where('user_id', $user->id)->where('course_id', $checkout->course_id)
+                ->where('id', '>', $checkout->id)->whereNotNull('authorized_at')->exists()) {
+                return $this->stop($checkout, 'reconfirm_required', 'course_access_changed');
+            }
             $this->attachFunding($checkout, $purchase->order()->firstOrFail());
+            if ($recoverableExpiry) {
+                $checkout->forceFill(['status' => 'pending_payment', 'error_code' => null])->save();
+            }
 
             return $this->fulfillLocked($user, $checkout);
         }, 3);
