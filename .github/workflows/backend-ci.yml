@@ -257,7 +257,17 @@ jobs:
           CACHE_DRIVER: array
           DB_CONNECTION: sqlite
           DB_DATABASE: ":memory:"
-        run: vendor/bin/phpunit tests/Feature/WebWalletTest.php tests/Feature/SocialAuthConfigurationSecurityTest.php tests/Feature/KashierPaymentTest.php tests/Feature/KashierReconciliationTest.php tests/Unit/PaymentResultViewTest.php
+        run: >-
+          vendor/bin/phpunit
+          tests/Feature/WebWalletTest.php
+          tests/Feature/SocialAuthConfigurationSecurityTest.php
+          tests/Feature/KashierPaymentTest.php
+          tests/Feature/KashierReconciliationTest.php
+          tests/Feature/API/FinancialProvenanceTest.php
+          tests/Feature/CourseCheckoutServiceTest.php
+          tests/Feature/API/CourseCodeRedemptionOwnershipTest.php
+          tests/Feature/API/PortfolioEndpointTest.php
+          tests/Unit/PaymentResultViewTest.php
 
       - name: Verify clean MySQL schema replay
         run: php artisan migrate:fresh --force --no-interaction

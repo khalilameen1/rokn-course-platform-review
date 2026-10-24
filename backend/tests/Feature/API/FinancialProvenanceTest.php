@@ -493,6 +493,9 @@ final class FinancialProvenanceTest extends ApiTestCase
             'price_coins' => 100, 'minimum_paid_coins' => 100,
             'certificate_enabled' => $certificate, 'is_active' => true,
             'project_feedback_level' => 'pass_only',
+            'project_feedback_token_budget' => 0,
+            'project_feedback_budget_usd' => 0,
+            'project_feedback_reserve_usd' => 0,
         ]);
         $order->forceFill([
             'access_plan_id' => $plan->id,

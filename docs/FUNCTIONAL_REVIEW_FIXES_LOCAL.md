@@ -70,8 +70,11 @@ authorized target. This review does not deploy production or publish a store bui
 - Backend baseline CI run `40064916797`: success, including full tests,
   MySQL contracts and certificate artwork checks, before the financial lineage changes.
 - Dashboard browser run `40066370265`: success for commit `91c3fc36`.
-- Backend financial run `40066370288`: still running when this section was written.
-  Later local commits are not covered by it; a final run is required.
+- Backend financial run `40066370288`: 3065 passed, 6 skipped, 5 failed.
+  All five failures occurred while constructing a new test receipt: its pass-only
+  report mode still retained the seeded guided plan's nonzero report budget.
+  The fixture was corrected without relaxing production snapshot validation.
+  Later commits and the final financial scenarios still require a green run.
 - Local Larastan and touched-file Pint checks passed; Windows Application Control
   blocks the local SQLite extension, so behavioral PHP results must come from CI.
 - No native-device purchase/upload test, release build, production migration,
