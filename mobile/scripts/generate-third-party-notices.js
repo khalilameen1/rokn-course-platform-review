@@ -103,6 +103,10 @@ const UPSTREAM_LICENSE_SOURCES = new Map(
 // coordinate fails closed and requires a fresh review instead of inheriting a
 // broad family exception.
 const LEGAL_FILE_ABSENCE_ALLOWLIST = new Set([
+  '@expo/cli@55.0.37',
+  'expo@55.0.32',
+  'expo-modules-autolinking@55.0.28',
+  'expo-modules-core@55.0.27',
   '@firebase/ai@2.14.0',
   '@firebase/analytics-compat@0.2.29',
   '@firebase/analytics-types@0.8.4',
@@ -213,14 +217,11 @@ const LEGAL_FILE_ABSENCE_ALLOWLIST = new Set([
   'metro-minify-terser@0.83.8',
   'metro-resolver@0.83.8',
   'metro-runtime@0.83.8',
-  'metro-source-map@0.83.7',
   'metro-source-map@0.83.8',
-  'metro-symbolicate@0.83.7',
   'metro-symbolicate@0.83.8',
   'metro-transform-plugins@0.83.8',
   'metro-transform-worker@0.83.8',
   'metro@0.83.8',
-  'ob1@0.83.7',
   'ob1@0.83.8',
   'react-devtools-core@6.1.5',
   'standard-navigation@0.0.8',
