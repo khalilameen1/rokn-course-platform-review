@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
   "generatedFrom": "verified package-lock.json production closure",
-  "packageCount": 754,
-  "packagePathCount": 839,
+  "packageCount": 753,
+  "packagePathCount": 830,
   "packages": [
     {
       "coordinate": "@babel/code-frame@7.10.4",
@@ -1925,22 +1925,22 @@
       ]
     },
     {
-      "coordinate": "@expo/cli@55.0.36",
+      "coordinate": "@expo/cli@55.0.37",
       "name": "@expo/cli",
-      "version": "55.0.36",
+      "version": "55.0.37",
       "selectedLicense": "MIT",
       "declaredLicense": "MIT",
-      "integrity": "sha512-jVMEXmxeUKXAzJdRWQer7fyogjPMYiTbrGOrlioJlwMuFqKfao3FeFInmATMNGLhNN01aBs/s6pnJKqiAdlUQg==",
-      "resolved": "https://registry.npmjs.org/@expo/cli/-/cli-55.0.36.tgz",
+      "integrity": "sha512-ennGX6iY1Ba/88cKWomD7xCIPEY0FDU14zAHyFpQTQV+9vg32i45sCRzOWUqkDXuZq4QzzznNqq87eFnlKfh/A==",
+      "resolved": "https://registry.npmjs.org/@expo/cli/-/cli-55.0.37.tgz",
       "legalSource": "reviewed-metadata-fallback",
-      "sourceReference": "https://registry.npmjs.org/@expo/cli/-/cli-55.0.36.tgz",
+      "sourceReference": "https://registry.npmjs.org/@expo/cli/-/cli-55.0.37.tgz",
       "publishedLegalFileCount": 0,
       "apacheNotice": null,
       "files": [
         {
           "path": "ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt",
-          "sha256": "461ca4f115eb936b97ffe46c922137e7c82e04c324d7c0407612b1d86db05e3e",
-          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: @expo/cli@55.0.36\nExact npm tarball: https://registry.npmjs.org/@expo/cli/-/cli-55.0.36.tgz\nTarball integrity: sha512-jVMEXmxeUKXAzJdRWQer7fyogjPMYiTbrGOrlioJlwMuFqKfao3FeFInmATMNGLhNN01aBs/s6pnJKqiAdlUQg==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: Expo\nRepository metadata: https://github.com/expo/expo.git\nHomepage metadata: https://github.com/expo/expo/tree/main/packages/@expo/cli\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nStandard terms source: @babel/code-frame@7.29.7/LICENSE\n\nMIT License\n\nCopyright (c) 2014-present Sebastian McKenzie and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+          "sha256": "752114345e1d15e45817441c89701b3355145cc871fcddf4608a89b49d68a7a0",
+          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: @expo/cli@55.0.37\nExact npm tarball: https://registry.npmjs.org/@expo/cli/-/cli-55.0.37.tgz\nTarball integrity: sha512-ennGX6iY1Ba/88cKWomD7xCIPEY0FDU14zAHyFpQTQV+9vg32i45sCRzOWUqkDXuZq4QzzznNqq87eFnlKfh/A==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: Expo\nRepository metadata: https://github.com/expo/expo.git\nHomepage metadata: https://github.com/expo/expo/tree/main/packages/@expo/cli\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nUpstream terms source: https://github.com/expo/expo/blob/0cf0c5a69371bf46b796226ab69a20a77a344e91/LICENSE\nRetained upstream file: scripts/licenses/upstream/expo-expo-LICENSE\nUpstream SHA-256: 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa\n\nThe MIT License (MIT)\n\nCopyright (c) 2015-present 650 Industries, Inc. (aka Expo)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
         }
       ]
     },
@@ -1974,6 +1974,26 @@
       "resolved": "https://registry.npmjs.org/@expo/config-plugins/-/config-plugins-55.0.11.tgz",
       "legalSource": "package-root",
       "sourceReference": "https://registry.npmjs.org/@expo/config-plugins/-/config-plugins-55.0.11.tgz",
+      "publishedLegalFileCount": 1,
+      "apacheNotice": null,
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
+          "text": "The MIT License (MIT)\n\nCopyright (c) 2015-present 650 Industries, Inc. (aka Expo)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
+        }
+      ]
+    },
+    {
+      "coordinate": "@expo/config-plugins@55.0.12",
+      "name": "@expo/config-plugins",
+      "version": "55.0.12",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-Z6KlUKqQDZaGU7jag1AaX2wCyFLvGwH/FTEjjIvLV0wTbrj1I91LhlVKYsI6BhUuzan0DOxvYBs9p88jGY5Lrw==",
+      "resolved": "https://registry.npmjs.org/@expo/config-plugins/-/config-plugins-55.0.12.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/@expo/config-plugins/-/config-plugins-55.0.12.tgz",
       "publishedLegalFileCount": 1,
       "apacheNotice": null,
       "files": [
@@ -2025,22 +2045,22 @@
       ]
     },
     {
-      "coordinate": "@expo/devcert@1.2.1",
+      "coordinate": "@expo/devcert@1.2.2",
       "name": "@expo/devcert",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "selectedLicense": "MIT",
       "declaredLicense": "MIT",
-      "integrity": "sha512-qC4eaxmKMTmJC2ahwyui6ud8f3W60Ss7pMkpBq40Hu3zyiAaugPXnZ24145U7K36qO9UHdZUVxsCvIpz2RYYCA==",
-      "resolved": "https://registry.npmjs.org/@expo/devcert/-/devcert-1.2.1.tgz",
-      "legalSource": "reviewed-metadata-fallback",
-      "sourceReference": "https://registry.npmjs.org/@expo/devcert/-/devcert-1.2.1.tgz",
-      "publishedLegalFileCount": 0,
+      "integrity": "sha512-wz1YedXwdNbYqk/PRr34vixnuw1+l6uSwmPXUj649cot5iYNccb2zIOnK7Nonb1Pfd/dxAY6CvU6KM3uSdxC7A==",
+      "resolved": "https://registry.npmjs.org/@expo/devcert/-/devcert-1.2.2.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/@expo/devcert/-/devcert-1.2.2.tgz",
+      "publishedLegalFileCount": 1,
       "apacheNotice": null,
       "files": [
         {
-          "path": "ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt",
-          "sha256": "05e7495f9a93a30ef25ad0f3ef09f7607cbaa71ebc93e1e98fb28eff6020e3b7",
-          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: @expo/devcert@1.2.1\nExact npm tarball: https://registry.npmjs.org/@expo/devcert/-/devcert-1.2.1.tgz\nTarball integrity: sha512-qC4eaxmKMTmJC2ahwyui6ud8f3W60Ss7pMkpBq40Hu3zyiAaugPXnZ24145U7K36qO9UHdZUVxsCvIpz2RYYCA==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: Dave Wasmer\nRepository metadata: git+https://github.com/expo/devcert.git\nHomepage metadata: https://github.com/expo/devcert#readme\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nStandard terms source: @babel/code-frame@7.29.7/LICENSE\n\nMIT License\n\nCopyright (c) 2014-present Sebastian McKenzie and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+          "path": "LICENSE",
+          "sha256": "61ecba86545d06a28112eb771e5e47a1ce8810c28588fc5d6778cc38c336a2f5",
+          "text": "The MIT License (MIT)\n\nCopyright (c) 2017 Dave Wasmer\nCopyright (c) 2021-present 650 Industries, Inc. (aka Expo)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
         }
       ]
     },
@@ -2205,15 +2225,15 @@
       ]
     },
     {
-      "coordinate": "@expo/json-file@11.0.1",
+      "coordinate": "@expo/json-file@11.2.1",
       "name": "@expo/json-file",
-      "version": "11.0.1",
+      "version": "11.2.1",
       "selectedLicense": "MIT",
       "declaredLicense": "MIT",
-      "integrity": "sha512-zxHWj4MKKMAL29ZQSY/Fssx4Thluk40JmuGNaeS078wy/NhlFhnVi+rHHunulE3xJAJ0CM73m8VK2+GkF9eRwQ==",
-      "resolved": "https://registry.npmjs.org/@expo/json-file/-/json-file-11.0.1.tgz",
+      "integrity": "sha512-UPhKoFCj8BcwgLB1rKQ1CuR/REITnZLiqxHEHOeH1tPsdXcHGtUDh0P5bLbr7oU0nKVdtJ5rzyKx8jniMQdESQ==",
+      "resolved": "https://registry.npmjs.org/@expo/json-file/-/json-file-11.2.1.tgz",
       "legalSource": "package-root",
-      "sourceReference": "https://registry.npmjs.org/@expo/json-file/-/json-file-11.0.1.tgz",
+      "sourceReference": "https://registry.npmjs.org/@expo/json-file/-/json-file-11.2.1.tgz",
       "publishedLegalFileCount": 1,
       "apacheNotice": null,
       "files": [
@@ -2305,15 +2325,15 @@
       ]
     },
     {
-      "coordinate": "@expo/osascript@2.7.1",
+      "coordinate": "@expo/osascript@2.8.1",
       "name": "@expo/osascript",
-      "version": "2.7.1",
+      "version": "2.8.1",
       "selectedLicense": "MIT",
       "declaredLicense": "MIT",
-      "integrity": "sha512-Zn03EX6In7ts2lPUW2ESUSkEhEWQN1qqsiXjadtZMJOuZRkMiAg1ZQHuvz9DjByDWNJ2pBwAGyrts9lj9k389g==",
-      "resolved": "https://registry.npmjs.org/@expo/osascript/-/osascript-2.7.1.tgz",
+      "integrity": "sha512-SCi+6q6uOkGhiAn6AIP/OPFgaIq/iKD2oYpnAOg2rShHStJ8ey7wyT127RbOaZXmlcY/62rHOX1WiiMnD8u/BA==",
+      "resolved": "https://registry.npmjs.org/@expo/osascript/-/osascript-2.8.1.tgz",
       "legalSource": "package-root",
-      "sourceReference": "https://registry.npmjs.org/@expo/osascript/-/osascript-2.7.1.tgz",
+      "sourceReference": "https://registry.npmjs.org/@expo/osascript/-/osascript-2.8.1.tgz",
       "publishedLegalFileCount": 1,
       "apacheNotice": null,
       "files": [
@@ -2325,15 +2345,15 @@
       ]
     },
     {
-      "coordinate": "@expo/package-manager@1.13.1",
+      "coordinate": "@expo/package-manager@1.14.2",
       "name": "@expo/package-manager",
-      "version": "1.13.1",
+      "version": "1.14.2",
       "selectedLicense": "MIT",
       "declaredLicense": "MIT",
-      "integrity": "sha512-y/K+CaYYpZpNGZhSX4HyLT/vyIunFjNfyoxNysPBCefeLKI/VCx6f9LNPzrxayr3rCYO5bl9O8H+HRQK265Nkg==",
-      "resolved": "https://registry.npmjs.org/@expo/package-manager/-/package-manager-1.13.1.tgz",
+      "integrity": "sha512-sftl0eRVVCarI6grMdjAB3jX2pX1Mt3cdSnajlXS4QyeDkaKRM/ntBy6dcagj1VL0+cEfEqctlyvinmlZdNubg==",
+      "resolved": "https://registry.npmjs.org/@expo/package-manager/-/package-manager-1.14.2.tgz",
       "legalSource": "package-root",
-      "sourceReference": "https://registry.npmjs.org/@expo/package-manager/-/package-manager-1.13.1.tgz",
+      "sourceReference": "https://registry.npmjs.org/@expo/package-manager/-/package-manager-1.14.2.tgz",
       "publishedLegalFileCount": 1,
       "apacheNotice": null,
       "files": [
@@ -2550,22 +2570,22 @@
       ]
     },
     {
-      "coordinate": "@expo/xcpretty@4.4.4",
+      "coordinate": "@expo/xcpretty@4.4.7",
       "name": "@expo/xcpretty",
-      "version": "4.4.4",
-      "selectedLicense": "BSD-3-Clause",
-      "declaredLicense": "BSD-3-Clause",
-      "integrity": "sha512-4aQzz9vgxcNXFfo/iyNgDDYfsU5XGKKxWxZopw0cVotHiW+U8IJbIxMaxsINs6bHhtkG3StKNPcOrn3eBuxKPw==",
-      "resolved": "https://registry.npmjs.org/@expo/xcpretty/-/xcpretty-4.4.4.tgz",
-      "legalSource": "reviewed-metadata-fallback",
-      "sourceReference": "https://registry.npmjs.org/@expo/xcpretty/-/xcpretty-4.4.4.tgz",
-      "publishedLegalFileCount": 0,
+      "version": "4.4.7",
+      "selectedLicense": "MIT",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-EbxYllZ7/ozONVZd425cm4XnolfW+AmSFT5aP7Jdno6oc3WrYQcHz2CO20z/2rwWwYgztmV2PXvYH+BQ8YFjqg==",
+      "resolved": "https://registry.npmjs.org/@expo/xcpretty/-/xcpretty-4.4.7.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/@expo/xcpretty/-/xcpretty-4.4.7.tgz",
+      "publishedLegalFileCount": 1,
       "apacheNotice": null,
       "files": [
         {
-          "path": "ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt",
-          "sha256": "ac4789c750a82622bf3f83dda50d4b74154b583ed624b2175854b653cc736c5f",
-          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: @expo/xcpretty@4.4.4\nExact npm tarball: https://registry.npmjs.org/@expo/xcpretty/-/xcpretty-4.4.4.tgz\nTarball integrity: sha512-4aQzz9vgxcNXFfo/iyNgDDYfsU5XGKKxWxZopw0cVotHiW+U8IJbIxMaxsINs6bHhtkG3StKNPcOrn3eBuxKPw==\nDeclared license: BSD-3-Clause\nSelected license: BSD-3-Clause\nAuthor metadata: Evan Bacon <bacon@expo.io> (https://github.com/evanbacon)\nRepository metadata: https://github.com/expo/expo-cli.git\nHomepage metadata: https://github.com/expo/expo-cli\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nStandard terms source: @sinonjs/commons@3.0.1/LICENSE\n\nBSD 3-Clause License\n\nCopyright (c) 2018, Sinon.JS\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n* Redistributions of source code must retain the above copyright notice, this\n  list of conditions and the following disclaimer.\n\n* Redistributions in binary form must reproduce the above copyright notice,\n  this list of conditions and the following disclaimer in the documentation\n  and/or other materials provided with the distribution.\n\n* Neither the name of the copyright holder nor the names of its\n  contributors may be used to endorse or promote products derived from\n  this software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\nAND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\nFOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
+          "path": "LICENSE",
+          "sha256": "248a2941a50f30150435a011bbb207252cdbc7eb75b1d27114c9249133118406",
+          "text": "The MIT License (MIT)\n\nCopyright (c) 2013-2016 Marin Usalj\nCopyright (c) 2021-present 650 Industries, Inc. (aka Expo)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
         }
       ]
     },
@@ -8130,42 +8150,42 @@
       ]
     },
     {
-      "coordinate": "expo-modules-autolinking@55.0.27",
+      "coordinate": "expo-modules-autolinking@55.0.28",
       "name": "expo-modules-autolinking",
-      "version": "55.0.27",
+      "version": "55.0.28",
       "selectedLicense": "MIT",
       "declaredLicense": "MIT",
-      "integrity": "sha512-gBRONXQT41PwfsQgeZfFlaeK+zrYMYjRMgxocecnQuSXEm7wCTqD8SsTJmWAf3SDayMQGDZFBlMODeVEnv8FmA==",
-      "resolved": "https://registry.npmjs.org/expo-modules-autolinking/-/expo-modules-autolinking-55.0.27.tgz",
+      "integrity": "sha512-kPdjouLw5QHofEIlpCxAyAcXTDXAL5xiz9QRVF8VUJhBqlekQ/9BSA9/0FafeJVt86gT0TkX45zG88AHp+gi0Q==",
+      "resolved": "https://registry.npmjs.org/expo-modules-autolinking/-/expo-modules-autolinking-55.0.28.tgz",
       "legalSource": "reviewed-metadata-fallback",
-      "sourceReference": "https://registry.npmjs.org/expo-modules-autolinking/-/expo-modules-autolinking-55.0.27.tgz",
+      "sourceReference": "https://registry.npmjs.org/expo-modules-autolinking/-/expo-modules-autolinking-55.0.28.tgz",
       "publishedLegalFileCount": 0,
       "apacheNotice": null,
       "files": [
         {
           "path": "ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt",
-          "sha256": "6b5abec391780ecf6cc32fb977b8d0cf86a5a963596da13d30132b1988e64c07",
-          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: expo-modules-autolinking@55.0.27\nExact npm tarball: https://registry.npmjs.org/expo-modules-autolinking/-/expo-modules-autolinking-55.0.27.tgz\nTarball integrity: sha512-gBRONXQT41PwfsQgeZfFlaeK+zrYMYjRMgxocecnQuSXEm7wCTqD8SsTJmWAf3SDayMQGDZFBlMODeVEnv8FmA==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: 650 Industries, Inc.\nRepository metadata: https://github.com/expo/expo.git\nHomepage metadata: https://github.com/expo/expo/tree/main/packages/expo-modules-autolinking#readme\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nStandard terms source: @babel/code-frame@7.29.7/LICENSE\n\nMIT License\n\nCopyright (c) 2014-present Sebastian McKenzie and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+          "sha256": "06a723887aec4d8fb7976b22de677b51691c0930c3c2ab848fa47435f2cbb807",
+          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: expo-modules-autolinking@55.0.28\nExact npm tarball: https://registry.npmjs.org/expo-modules-autolinking/-/expo-modules-autolinking-55.0.28.tgz\nTarball integrity: sha512-kPdjouLw5QHofEIlpCxAyAcXTDXAL5xiz9QRVF8VUJhBqlekQ/9BSA9/0FafeJVt86gT0TkX45zG88AHp+gi0Q==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: 650 Industries, Inc.\nRepository metadata: https://github.com/expo/expo.git\nHomepage metadata: https://github.com/expo/expo/tree/main/packages/expo-modules-autolinking#readme\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nUpstream terms source: https://github.com/expo/expo/blob/0cf0c5a69371bf46b796226ab69a20a77a344e91/LICENSE\nRetained upstream file: scripts/licenses/upstream/expo-expo-LICENSE\nUpstream SHA-256: 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa\n\nThe MIT License (MIT)\n\nCopyright (c) 2015-present 650 Industries, Inc. (aka Expo)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
         }
       ]
     },
     {
-      "coordinate": "expo-modules-core@55.0.26",
+      "coordinate": "expo-modules-core@55.0.27",
       "name": "expo-modules-core",
-      "version": "55.0.26",
+      "version": "55.0.27",
       "selectedLicense": "MIT",
       "declaredLicense": "MIT",
-      "integrity": "sha512-nyQMIlNuAEif2kZEjaRiWxZsGyT8/pFm7VPwlYI92a0hyRxXrw3jG04I1OgfKy6oDFqMLn17D5C2zIGPP/fPLQ==",
-      "resolved": "https://registry.npmjs.org/expo-modules-core/-/expo-modules-core-55.0.26.tgz",
+      "integrity": "sha512-YaYxKyL3nSMbsWqFCdDIaOBVwNCtTpJAiX5losi74M8ArEt6P9cetFPSwVfcoocAzjjkvSwGi8xw/gSxLglD0g==",
+      "resolved": "https://registry.npmjs.org/expo-modules-core/-/expo-modules-core-55.0.27.tgz",
       "legalSource": "reviewed-metadata-fallback",
-      "sourceReference": "https://registry.npmjs.org/expo-modules-core/-/expo-modules-core-55.0.26.tgz",
+      "sourceReference": "https://registry.npmjs.org/expo-modules-core/-/expo-modules-core-55.0.27.tgz",
       "publishedLegalFileCount": 0,
       "apacheNotice": null,
       "files": [
         {
           "path": "ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt",
-          "sha256": "793c021ae26b09f1162e3f3362b770da29c20cc6888158598a38fc63b1f32fa3",
-          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: expo-modules-core@55.0.26\nExact npm tarball: https://registry.npmjs.org/expo-modules-core/-/expo-modules-core-55.0.26.tgz\nTarball integrity: sha512-nyQMIlNuAEif2kZEjaRiWxZsGyT8/pFm7VPwlYI92a0hyRxXrw3jG04I1OgfKy6oDFqMLn17D5C2zIGPP/fPLQ==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: 650 Industries, Inc.\nRepository metadata: https://github.com/expo/expo.git\nHomepage metadata: https://github.com/expo/expo/tree/main/packages/expo-modules-core\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nStandard terms source: @babel/code-frame@7.29.7/LICENSE\n\nMIT License\n\nCopyright (c) 2014-present Sebastian McKenzie and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+          "sha256": "d39dfc84a9576a0d83892c4a2fb318306ee02b82cc8edf0c314c73c28772a64d",
+          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: expo-modules-core@55.0.27\nExact npm tarball: https://registry.npmjs.org/expo-modules-core/-/expo-modules-core-55.0.27.tgz\nTarball integrity: sha512-YaYxKyL3nSMbsWqFCdDIaOBVwNCtTpJAiX5losi74M8ArEt6P9cetFPSwVfcoocAzjjkvSwGi8xw/gSxLglD0g==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: 650 Industries, Inc.\nRepository metadata: https://github.com/expo/expo.git\nHomepage metadata: https://github.com/expo/expo/tree/main/packages/expo-modules-core\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nUpstream terms source: https://github.com/expo/expo/blob/0cf0c5a69371bf46b796226ab69a20a77a344e91/LICENSE\nRetained upstream file: scripts/licenses/upstream/expo-expo-LICENSE\nUpstream SHA-256: 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa\n\nThe MIT License (MIT)\n\nCopyright (c) 2015-present 650 Industries, Inc. (aka Expo)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
         }
       ]
     },
@@ -8270,22 +8290,22 @@
       ]
     },
     {
-      "coordinate": "expo@55.0.31",
+      "coordinate": "expo@55.0.32",
       "name": "expo",
-      "version": "55.0.31",
+      "version": "55.0.32",
       "selectedLicense": "MIT",
       "declaredLicense": "MIT",
-      "integrity": "sha512-ZqV6jniU7twd18ADh1xP7moVrgP/BO1OTJwF2OzYnfJI9ak5cXDk+8DrV2jlgj33pMrLKqlnUvNz11zxyhwo7w==",
-      "resolved": "https://registry.npmjs.org/expo/-/expo-55.0.31.tgz",
+      "integrity": "sha512-w0Y4tstI6+s67Icsrw8/EHnqLPJEtYAikQq2UlWLN0cSEWmQOD5KuxSwmJmNf+4m5aUuWKExwr4B9pw8vLnpHQ==",
+      "resolved": "https://registry.npmjs.org/expo/-/expo-55.0.32.tgz",
       "legalSource": "reviewed-metadata-fallback",
-      "sourceReference": "https://registry.npmjs.org/expo/-/expo-55.0.31.tgz",
+      "sourceReference": "https://registry.npmjs.org/expo/-/expo-55.0.32.tgz",
       "publishedLegalFileCount": 0,
       "apacheNotice": null,
       "files": [
         {
           "path": "ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt",
-          "sha256": "dff11ff1a545f399a2b03fc7c027cd547ba193843f809b4004845a06c9896c6d",
-          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: expo@55.0.31\nExact npm tarball: https://registry.npmjs.org/expo/-/expo-55.0.31.tgz\nTarball integrity: sha512-ZqV6jniU7twd18ADh1xP7moVrgP/BO1OTJwF2OzYnfJI9ak5cXDk+8DrV2jlgj33pMrLKqlnUvNz11zxyhwo7w==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: Expo\nRepository metadata: https://github.com/expo/expo.git\nHomepage metadata: https://github.com/expo/expo/tree/main/packages/expo\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nStandard terms source: @babel/code-frame@7.29.7/LICENSE\n\nMIT License\n\nCopyright (c) 2014-present Sebastian McKenzie and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+          "sha256": "aa693dc9a7866304530ce71b1e14cb040c15c16c8d118f8d520caaa3ec27ceae",
+          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: expo@55.0.32\nExact npm tarball: https://registry.npmjs.org/expo/-/expo-55.0.32.tgz\nTarball integrity: sha512-w0Y4tstI6+s67Icsrw8/EHnqLPJEtYAikQq2UlWLN0cSEWmQOD5KuxSwmJmNf+4m5aUuWKExwr4B9pw8vLnpHQ==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: Expo\nRepository metadata: https://github.com/expo/expo.git\nHomepage metadata: https://github.com/expo/expo/tree/main/packages/expo\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nUpstream terms source: https://github.com/expo/expo/blob/0cf0c5a69371bf46b796226ab69a20a77a344e91/LICENSE\nRetained upstream file: scripts/licenses/upstream/expo-expo-LICENSE\nUpstream SHA-256: 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa\n\nThe MIT License (MIT)\n\nCopyright (c) 2015-present 650 Industries, Inc. (aka Expo)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
         }
       ]
     },
@@ -10910,26 +10930,6 @@
       ]
     },
     {
-      "coordinate": "metro-source-map@0.83.7",
-      "name": "metro-source-map",
-      "version": "0.83.7",
-      "selectedLicense": "MIT",
-      "declaredLicense": "MIT",
-      "integrity": "sha512-JgA1h7oc1a1jydBe1GhVFsUoMYo3wLPk7oRA32rjlDsq+sP2JLt9x2p2lWbNSxTm/u8NV4VRid3hvEJgcX8tKw==",
-      "resolved": "https://registry.npmjs.org/metro-source-map/-/metro-source-map-0.83.7.tgz",
-      "legalSource": "reviewed-metadata-fallback",
-      "sourceReference": "https://registry.npmjs.org/metro-source-map/-/metro-source-map-0.83.7.tgz",
-      "publishedLegalFileCount": 0,
-      "apacheNotice": null,
-      "files": [
-        {
-          "path": "ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt",
-          "sha256": "dc5962e381d66fdba24039fd5426dc2e9da90997857414753b5f1305bd5cec1b",
-          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: metro-source-map@0.83.7\nExact npm tarball: https://registry.npmjs.org/metro-source-map/-/metro-source-map-0.83.7.tgz\nTarball integrity: sha512-JgA1h7oc1a1jydBe1GhVFsUoMYo3wLPk7oRA32rjlDsq+sP2JLt9x2p2lWbNSxTm/u8NV4VRid3hvEJgcX8tKw==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: <not published>\nRepository metadata: git+https://github.com/facebook/metro.git\nHomepage metadata: <not published>\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nStandard terms source: @babel/code-frame@7.29.7/LICENSE\n\nMIT License\n\nCopyright (c) 2014-present Sebastian McKenzie and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
-        }
-      ]
-    },
-    {
       "coordinate": "metro-source-map@0.83.8",
       "name": "metro-source-map",
       "version": "0.83.8",
@@ -10946,26 +10946,6 @@
           "path": "ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt",
           "sha256": "124df2d82946f2e2c5b2e1806f694d14bc62c5091fcfc0f087d824e6b0f7f46f",
           "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: metro-source-map@0.83.8\nExact npm tarball: https://registry.npmjs.org/metro-source-map/-/metro-source-map-0.83.8.tgz\nTarball integrity: sha512-60Uor7bM+KsVewLkLCcZfkPFCbqjPDdoSmeBuT3+ye+ac80BuLWbbR8DpyxWpUqQeZPdaAT5ZqFgDIs8BNEcVA==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: <not published>\nRepository metadata: git+https://github.com/react/metro.git\nHomepage metadata: <not published>\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nStandard terms source: @babel/code-frame@7.29.7/LICENSE\n\nMIT License\n\nCopyright (c) 2014-present Sebastian McKenzie and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
-        }
-      ]
-    },
-    {
-      "coordinate": "metro-symbolicate@0.83.7",
-      "name": "metro-symbolicate",
-      "version": "0.83.7",
-      "selectedLicense": "MIT",
-      "declaredLicense": "MIT",
-      "integrity": "sha512-g4suyxw20WOHWI680c+Kq4wC/NF+Hx5pRH9afrMp+sMTxqLeKcPR1Xf4wMhsjlbvx7LbIREdke6q928jEjvJWw==",
-      "resolved": "https://registry.npmjs.org/metro-symbolicate/-/metro-symbolicate-0.83.7.tgz",
-      "legalSource": "reviewed-metadata-fallback",
-      "sourceReference": "https://registry.npmjs.org/metro-symbolicate/-/metro-symbolicate-0.83.7.tgz",
-      "publishedLegalFileCount": 0,
-      "apacheNotice": null,
-      "files": [
-        {
-          "path": "ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt",
-          "sha256": "20f2ab4fff34246ff87c2c12f7ad71c66667afb8e51fdbf4029a6a2acf87044e",
-          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: metro-symbolicate@0.83.7\nExact npm tarball: https://registry.npmjs.org/metro-symbolicate/-/metro-symbolicate-0.83.7.tgz\nTarball integrity: sha512-g4suyxw20WOHWI680c+Kq4wC/NF+Hx5pRH9afrMp+sMTxqLeKcPR1Xf4wMhsjlbvx7LbIREdke6q928jEjvJWw==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: <not published>\nRepository metadata: git+https://github.com/facebook/metro.git\nHomepage metadata: <not published>\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nStandard terms source: @babel/code-frame@7.29.7/LICENSE\n\nMIT License\n\nCopyright (c) 2014-present Sebastian McKenzie and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
         }
       ]
     },
@@ -11570,26 +11550,6 @@
       ]
     },
     {
-      "coordinate": "ob1@0.83.7",
-      "name": "ob1",
-      "version": "0.83.7",
-      "selectedLicense": "MIT",
-      "declaredLicense": "MIT",
-      "integrity": "sha512-9M5kpuOLyTPogMtZiQUIxdAZxl7Dxs6tVBbJErSumsqGMuhVSoUbkfeZ3XNPpLpwBBtqY5QDUzGwggLHX3slQg==",
-      "resolved": "https://registry.npmjs.org/ob1/-/ob1-0.83.7.tgz",
-      "legalSource": "reviewed-metadata-fallback",
-      "sourceReference": "https://registry.npmjs.org/ob1/-/ob1-0.83.7.tgz",
-      "publishedLegalFileCount": 0,
-      "apacheNotice": null,
-      "files": [
-        {
-          "path": "ROKN-REVIEWED-LEGAL-FILE-ABSENCE.txt",
-          "sha256": "fd8d22cdf9be15941d3c432d288b75ec824203b032509b6f307226ae1c4e59ab",
-          "text": "UPSTREAM PACKAGE LEGAL-FILE ABSENCE RECORD\n\nPackage: ob1@0.83.7\nExact npm tarball: https://registry.npmjs.org/ob1/-/ob1-0.83.7.tgz\nTarball integrity: sha512-9M5kpuOLyTPogMtZiQUIxdAZxl7Dxs6tVBbJErSumsqGMuhVSoUbkfeZ3XNPpLpwBBtqY5QDUzGwggLHX3slQg==\nDeclared license: MIT\nSelected license: MIT\nAuthor metadata: <not published>\nRepository metadata: git+https://github.com/facebook/metro.git\nHomepage metadata: <not published>\n\nThe exact npm package root was inspected and did not publish a standalone\nLICENSE, LICENCE, COPYING, NOTICE, or COPYRIGHT file. This coordinate is\ntherefore covered by an exact, reviewed absence exception. The package\nmetadata above and the selected standard license terms are retained here;\nthe exception does not apply to any other name or version.\n\nStandard terms source: @babel/code-frame@7.29.7/LICENSE\n\nMIT License\n\nCopyright (c) 2014-present Sebastian McKenzie and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
-        }
-      ]
-    },
-    {
       "coordinate": "ob1@0.83.8",
       "name": "ob1",
       "version": "0.83.8",
@@ -12090,15 +12050,15 @@
       ]
     },
     {
-      "coordinate": "postcss@8.5.26",
+      "coordinate": "postcss@8.5.31",
       "name": "postcss",
-      "version": "8.5.26",
+      "version": "8.5.31",
       "selectedLicense": "MIT",
       "declaredLicense": "MIT",
-      "integrity": "sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==",
-      "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.26.tgz",
+      "integrity": "sha512-YUbWYCgErwnMAVkjUnYa+KlMBzGpHwiIt/DE7f0G33AuX2LH9UcTk6KgWxd3zRU+pN3u/C+Xl3EnMLM4Hea7Sg==",
+      "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.31.tgz",
       "legalSource": "package-root",
-      "sourceReference": "https://registry.npmjs.org/postcss/-/postcss-8.5.26.tgz",
+      "sourceReference": "https://registry.npmjs.org/postcss/-/postcss-8.5.31.tgz",
       "publishedLegalFileCount": 1,
       "apacheNotice": null,
       "files": [
@@ -14895,15 +14855,15 @@
       ]
     },
     {
-      "coordinate": "ws@8.21.3",
+      "coordinate": "ws@8.22.0",
       "name": "ws",
-      "version": "8.21.3",
+      "version": "8.22.0",
       "selectedLicense": "MIT",
       "declaredLicense": "MIT",
-      "integrity": "sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw==",
-      "resolved": "https://registry.npmjs.org/ws/-/ws-8.21.3.tgz",
+      "integrity": "sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==",
+      "resolved": "https://registry.npmjs.org/ws/-/ws-8.22.0.tgz",
       "legalSource": "package-root",
-      "sourceReference": "https://registry.npmjs.org/ws/-/ws-8.21.3.tgz",
+      "sourceReference": "https://registry.npmjs.org/ws/-/ws-8.22.0.tgz",
       "publishedLegalFileCount": 1,
       "apacheNotice": null,
       "files": [
@@ -14924,6 +14884,31 @@
       "resolved": "https://registry.npmjs.org/xcode/-/xcode-3.0.1.tgz",
       "legalSource": "package-root",
       "sourceReference": "https://registry.npmjs.org/xcode/-/xcode-3.0.1.tgz",
+      "publishedLegalFileCount": 2,
+      "apacheNotice": "included",
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b",
+          "text": "Apache License\n                           Version 2.0, January 2004\n                        http://www.apache.org/licenses/\n\n   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION\n\n   1. Definitions.\n\n      \"License\" shall mean the terms and conditions for use, reproduction,\n      and distribution as defined by Sections 1 through 9 of this document.\n\n      \"Licensor\" shall mean the copyright owner or entity authorized by\n      the copyright owner that is granting the License.\n\n      \"Legal Entity\" shall mean the union of the acting entity and all\n      other entities that control, are controlled by, or are under common\n      control with that entity. For the purposes of this definition,\n      \"control\" means (i) the power, direct or indirect, to cause the\n      direction or management of such entity, whether by contract or\n      otherwise, or (ii) ownership of fifty percent (50%) or more of the\n      outstanding shares, or (iii) beneficial ownership of such entity.\n\n      \"You\" (or \"Your\") shall mean an individual or Legal Entity\n      exercising permissions granted by this License.\n\n      \"Source\" form shall mean the preferred form for making modifications,\n      including but not limited to software source code, documentation\n      source, and configuration files.\n\n      \"Object\" form shall mean any form resulting from mechanical\n      transformation or translation of a Source form, including but\n      not limited to compiled object code, generated documentation,\n      and conversions to other media types.\n\n      \"Work\" shall mean the work of authorship, whether in Source or\n      Object form, made available under the License, as indicated by a\n      copyright notice that is included in or attached to the work\n      (an example is provided in the Appendix below).\n\n      \"Derivative Works\" shall mean any work, whether in Source or Object\n      form, that is based on (or derived from) the Work and for which the\n      editorial revisions, annotations, elaborations, or other modifications\n      represent, as a whole, an original work of authorship. For the purposes\n      of this License, Derivative Works shall not include works that remain\n      separable from, or merely link (or bind by name) to the interfaces of,\n      the Work and Derivative Works thereof.\n\n      \"Contribution\" shall mean any work of authorship, including\n      the original version of the Work and any modifications or additions\n      to that Work or Derivative Works thereof, that is intentionally\n      submitted to Licensor for inclusion in the Work by the copyright owner\n      or by an individual or Legal Entity authorized to submit on behalf of\n      the copyright owner. For the purposes of this definition, \"submitted\"\n      means any form of electronic, verbal, or written communication sent\n      to the Licensor or its representatives, including but not limited to\n      communication on electronic mailing lists, source code control systems,\n      and issue tracking systems that are managed by, or on behalf of, the\n      Licensor for the purpose of discussing and improving the Work, but\n      excluding communication that is conspicuously marked or otherwise\n      designated in writing by the copyright owner as \"Not a Contribution.\"\n\n      \"Contributor\" shall mean Licensor and any individual or Legal Entity\n      on behalf of whom a Contribution has been received by Licensor and\n      subsequently incorporated within the Work.\n\n   2. Grant of Copyright License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      copyright license to reproduce, prepare Derivative Works of,\n      publicly display, publicly perform, sublicense, and distribute the\n      Work and such Derivative Works in Source or Object form.\n\n   3. Grant of Patent License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      (except as stated in this section) patent license to make, have made,\n      use, offer to sell, sell, import, and otherwise transfer the Work,\n      where such license applies only to those patent claims licensable\n      by such Contributor that are necessarily infringed by their\n      Contribution(s) alone or by combination of their Contribution(s)\n      with the Work to which such Contribution(s) was submitted. If You\n      institute patent litigation against any entity (including a\n      cross-claim or counterclaim in a lawsuit) alleging that the Work\n      or a Contribution incorporated within the Work constitutes direct\n      or contributory patent infringement, then any patent licenses\n      granted to You under this License for that Work shall terminate\n      as of the date such litigation is filed.\n\n   4. Redistribution. You may reproduce and distribute copies of the\n      Work or Derivative Works thereof in any medium, with or without\n      modifications, and in Source or Object form, provided that You\n      meet the following conditions:\n\n      (a) You must give any other recipients of the Work or\n          Derivative Works a copy of this License; and\n\n      (b) You must cause any modified files to carry prominent notices\n          stating that You changed the files; and\n\n      (c) You must retain, in the Source form of any Derivative Works\n          that You distribute, all copyright, patent, trademark, and\n          attribution notices from the Source form of the Work,\n          excluding those notices that do not pertain to any part of\n          the Derivative Works; and\n\n      (d) If the Work includes a \"NOTICE\" text file as part of its\n          distribution, then any Derivative Works that You distribute must\n          include a readable copy of the attribution notices contained\n          within such NOTICE file, excluding those notices that do not\n          pertain to any part of the Derivative Works, in at least one\n          of the following places: within a NOTICE text file distributed\n          as part of the Derivative Works; within the Source form or\n          documentation, if provided along with the Derivative Works; or,\n          within a display generated by the Derivative Works, if and\n          wherever such third-party notices normally appear. The contents\n          of the NOTICE file are for informational purposes only and\n          do not modify the License. You may add Your own attribution\n          notices within Derivative Works that You distribute, alongside\n          or as an addendum to the NOTICE text from the Work, provided\n          that such additional attribution notices cannot be construed\n          as modifying the License.\n\n      You may add Your own copyright statement to Your modifications and\n      may provide additional or different license terms and conditions\n      for use, reproduction, or distribution of Your modifications, or\n      for any such Derivative Works as a whole, provided Your use,\n      reproduction, and distribution of the Work otherwise complies with\n      the conditions stated in this License.\n\n   5. Submission of Contributions. Unless You explicitly state otherwise,\n      any Contribution intentionally submitted for inclusion in the Work\n      by You to the Licensor shall be under the terms and conditions of\n      this License, without any additional terms or conditions.\n      Notwithstanding the above, nothing herein shall supersede or modify\n      the terms of any separate license agreement you may have executed\n      with Licensor regarding such Contributions.\n\n   6. Trademarks. This License does not grant permission to use the trade\n      names, trademarks, service marks, or product names of the Licensor,\n      except as required for reasonable and customary use in describing the\n      origin of the Work and reproducing the content of the NOTICE file.\n\n   7. Disclaimer of Warranty. Unless required by applicable law or\n      agreed to in writing, Licensor provides the Work (and each\n      Contributor provides its Contributions) on an \"AS IS\" BASIS,\n      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or\n      implied, including, without limitation, any warranties or conditions\n      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A\n      PARTICULAR PURPOSE. You are solely responsible for determining the\n      appropriateness of using or redistributing the Work and assume any\n      risks associated with Your exercise of permissions under this License.\n\n   8. Limitation of Liability. In no event and under no legal theory,\n      whether in tort (including negligence), contract, or otherwise,\n      unless required by applicable law (such as deliberate and grossly\n      negligent acts) or agreed to in writing, shall any Contributor be\n      liable to You for damages, including any direct, indirect, special,\n      incidental, or consequential damages of any character arising as a\n      result of this License or out of the use or inability to use the\n      Work (including but not limited to damages for loss of goodwill,\n      work stoppage, computer failure or malfunction, or any and all\n      other commercial damages or losses), even if such Contributor\n      has been advised of the possibility of such damages.\n\n   9. Accepting Warranty or Additional Liability. While redistributing\n      the Work or Derivative Works thereof, You may choose to offer,\n      and charge a fee for, acceptance of support, warranty, indemnity,\n      or other liability obligations and/or rights consistent with this\n      License. However, in accepting such obligations, You may act only\n      on Your own behalf and on Your sole responsibility, not on behalf\n      of any other Contributor, and only if You agree to indemnify,\n      defend, and hold each Contributor harmless for any liability\n      incurred by, or claims asserted against, such Contributor by reason\n      of your accepting any such warranty or additional liability.\n\n   END OF TERMS AND CONDITIONS\n\n   APPENDIX: How to apply the Apache License to your work.\n\n      To apply the Apache License to your work, attach the following\n      boilerplate notice, with the fields enclosed by brackets \"[]\"\n      replaced with your own identifying information. (Don't include\n      the brackets!)  The text should be enclosed in the appropriate\n      comment syntax for the file format. We also recommend that a\n      file or class name and description of purpose be included on the\n      same \"printed page\" as the copyright notice for easier\n      identification within third-party archives.\n\n   Copyright [yyyy] [name of copyright owner]\n\n   Licensed under the Apache License, Version 2.0 (the \"License\");\n   you may not use this file except in compliance with the License.\n   You may obtain a copy of the License at\n\n       http://www.apache.org/licenses/LICENSE-2.0\n\n   Unless required by applicable law or agreed to in writing, software\n   distributed under the License is distributed on an \"AS IS\" BASIS,\n   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n   See the License for the specific language governing permissions and\n   limitations under the License."
+        },
+        {
+          "path": "NOTICE",
+          "sha256": "20a69863f36b634077bd84cdabed01a8f1896ca38d9b4fc2e434b226cd4c1301",
+          "text": "Apache Cordova\nCopyright 2012-2020 The Apache Software Foundation\n\nThis product includes software developed at\nThe Apache Software Foundation (http://www.apache.org/)."
+        }
+      ]
+    },
+    {
+      "coordinate": "xcode@4.0.0",
+      "name": "xcode",
+      "version": "4.0.0",
+      "selectedLicense": "Apache-2.0",
+      "declaredLicense": "Apache-2.0",
+      "integrity": "sha512-dDaoWzc9EP2fp9FS9PVZUkyvFxY4y1TOV9pcKaKLk++Ei/qb97XDFEVP7GnW7Osii/TzVABJ0jq2F+9/lq0TVA==",
+      "resolved": "https://registry.npmjs.org/xcode/-/xcode-4.0.0.tgz",
+      "legalSource": "package-root",
+      "sourceReference": "https://registry.npmjs.org/xcode/-/xcode-4.0.0.tgz",
       "publishedLegalFileCount": 2,
       "apacheNotice": "included",
       "files": [
