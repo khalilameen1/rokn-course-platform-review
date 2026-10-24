@@ -2335,7 +2335,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "Expo@55.0.31",
+      "coordinate": "Expo@55.0.32",
       "licenses": [
         "MIT"
       ],
@@ -2439,7 +2439,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "ExpoModulesCore@55.0.26",
+      "coordinate": "ExpoModulesCore@55.0.27",
       "licenses": [
         "MIT"
       ],
@@ -2447,7 +2447,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "ExpoModulesJSI@55.0.26",
+      "coordinate": "ExpoModulesJSI@55.0.27",
       "licenses": [
         "MIT"
       ],
@@ -2519,7 +2519,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "GoogleUtilities@8.1.4",
+      "coordinate": "GoogleUtilities@8.1.5",
       "licenses": [
         "Apache-2.0"
       ],
@@ -3433,5 +3433,5 @@
       ]
     }
   ],
-  "inventoryHash": "f11a2c10eca9151d845fa97230f3104bf6f47f7b30bd7ea7d9de3493a49f82a5"
+  "inventoryHash": "9a06d90bf2a4204787997dbfa4c21b67dfd0c9df437ff156f1d39cb54c31697d"
 }

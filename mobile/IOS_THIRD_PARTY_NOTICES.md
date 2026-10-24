@@ -55,12 +55,12 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Owning npm source: `expo-constants@55.0.17`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
-### Expo@55.0.31
+### Expo@55.0.32
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `cd74e48f2decdaa4a2410f8c261247b4cfa100ec`
-- Owning npm source: `expo@55.0.31`
+- Podspec checksum: `62447772ad11331e4f716481f51929f939e7d428`
+- Owning npm source: `expo@55.0.32`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
 ### ExpoAdapterGoogleSignIn@16.1.2
@@ -159,20 +159,20 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Owning npm source: `@expo/log-box@55.0.13`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
-### ExpoModulesCore@55.0.26
+### ExpoModulesCore@55.0.27
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `9aabd1a060f905848cac6f42baf658921db697d4`
-- Owning npm source: `expo-modules-core@55.0.26`
+- Podspec checksum: `0e0531727eb71fc9f6ccfad8606a2f340d081434`
+- Owning npm source: `expo-modules-core@55.0.27`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
-### ExpoModulesJSI@55.0.26
+### ExpoModulesJSI@55.0.27
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `483d791904bf8579a384c2bf5f6265bf6e8362cb`
-- Owning npm source: `expo-modules-core@55.0.26`
+- Podspec checksum: `b806a187b07c721530aafac36e1bdad60a48b3f0`
+- Owning npm source: `expo-modules-core@55.0.27`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
 ### ExpoNotifications@55.0.27
@@ -239,11 +239,11 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Exact license review: The exact GoogleSignIn 9.2.0 podspec abbreviates its license as 'Apache'; the tagged LICENSE contains the reviewed Apache License 2.0 terms.
 - Retained legal document(s): `283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b`
 
-### GoogleUtilities@8.1.4
+### GoogleUtilities@8.1.5
 
 - Platform: iOS
 - Selected license(s): Apache-2.0
-- Podspec checksum: `db34c1c11c6f2eccb6fab2340cb8ceb1451299dc`
+- Podspec checksum: `7dc09b3fa9ecb5c2298b952313d14628b61b9da3`
 - Retained legal document(s): `283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b`, `d740c03bf4a62abc785a93c7ad5ef6c266124b979f7bb75e2eb80dad836d8f77`
 
 ### PromisesObjC@2.4.1
@@ -1846,7 +1846,7 @@ You may obtain a copy of the Creative Commons Attribution 3.0 License at
 
 ### 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/0cf0c5a69371bf46b796226ab69a20a77a344e91/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/bb1d4bd298e5bcaff86b04aabca7c56659e57138/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -2670,7 +2670,7 @@ SOFTWARE.
 
 ### d740c03bf4a62abc785a93c7ad5ef6c266124b979f7bb75e2eb80dad836d8f77
 
-Source(s): `installed-pod:GoogleUtilities@8.1.4/LICENSE`
+Source(s): `installed-pod:GoogleUtilities@8.1.5/LICENSE`
 
 ```text
 Apache License

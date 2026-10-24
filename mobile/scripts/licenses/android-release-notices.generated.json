@@ -7448,8 +7448,8 @@
       "displayName": "project :expo",
       "projectPath": ":expo",
       "classification": "npm-production-source-project",
-      "npmCoordinate": "expo@55.0.31",
-      "npmIntegrity": "sha512-ZqV6jniU7twd18ADh1xP7moVrgP/BO1OTJwF2OzYnfJI9ak5cXDk+8DrV2jlgj33pMrLKqlnUvNz11zxyhwo7w==",
+      "npmCoordinate": "expo@55.0.32",
+      "npmIntegrity": "sha512-w0Y4tstI6+s67Icsrw8/EHnqLPJEtYAikQq2UlWLN0cSEWmQOD5KuxSwmJmNf+4m5aUuWKExwr4B9pw8vLnpHQ==",
       "selectedLicenses": [
         "MIT"
       ],
@@ -7509,8 +7509,8 @@
       "displayName": "project :expo-modules-core",
       "projectPath": ":expo-modules-core",
       "classification": "npm-production-source-project",
-      "npmCoordinate": "expo-modules-core@55.0.26",
-      "npmIntegrity": "sha512-nyQMIlNuAEif2kZEjaRiWxZsGyT8/pFm7VPwlYI92a0hyRxXrw3jG04I1OgfKy6oDFqMLn17D5C2zIGPP/fPLQ==",
+      "npmCoordinate": "expo-modules-core@55.0.27",
+      "npmIntegrity": "sha512-YaYxKyL3nSMbsWqFCdDIaOBVwNCtTpJAiX5losi74M8ArEt6P9cetFPSwVfcoocAzjjkvSwGi8xw/gSxLglD0g==",
       "selectedLicenses": [
         "MIT"
       ],

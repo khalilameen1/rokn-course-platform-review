@@ -1868,7 +1868,7 @@ This file is bound to the resolved Gradle releaseRuntimeClasspath and retains pa
 
 - Platform: Android project
 - Selected license(s): MIT
-- Classified npm production source: `expo@55.0.31`
+- Classified npm production source: `expo@55.0.32`
 - Retained legal document(s): `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
 ### gradle-project:::expo-constants
@@ -1896,7 +1896,7 @@ This file is bound to the resolved Gradle releaseRuntimeClasspath and retains pa
 
 - Platform: Android project
 - Selected license(s): MIT
-- Classified npm production source: `expo-modules-core@55.0.26`
+- Classified npm production source: `expo-modules-core@55.0.27`
 - Retained legal document(s): `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
 ### gradle-project:::react-native-async-storage_async-storage
