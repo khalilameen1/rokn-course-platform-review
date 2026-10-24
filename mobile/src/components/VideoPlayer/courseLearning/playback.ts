@@ -4,10 +4,7 @@ export type {
   PlaybackManifest,
   PlaybackSessionEvent,
 } from './playbackSession';
-export {
-  openPlaybackSession,
-  reportPlaybackSessionEvent,
-} from './playbackSession';
+export {openPlaybackSession} from './playbackSession';
 export type {CourseRevisionChange} from './playbackRevision';
 export {subscribeCourseRevisionChanges} from './playbackRevision';
 export {
@@ -15,6 +12,7 @@ export {
   persistLocalPlaybackPosition,
   retryPendingPlaybackPositions,
   savePlaybackPosition,
+  reportPlaybackSessionEvent,
 } from './playbackProgress';
 export {
   markSectionComplete,

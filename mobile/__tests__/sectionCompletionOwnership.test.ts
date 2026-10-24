@@ -221,11 +221,11 @@ describe('section completion ownership', () => {
       eventType: 'heartbeat',
       positionSeconds: 39,
     });
-    await Promise.resolve();
-    await Promise.resolve();
+    await settleMicrotasks();
 
     expect(apiPost).toHaveBeenCalledTimes(1);
-    await expect(lateHeartbeat).resolves.toBe(true);
+    // Ignored lifecycle events are not reported as delivered evidence.
+    await expect(lateHeartbeat).resolves.toBe(false);
     stopRequest.resolve({});
     await expect(stop).resolves.toBe(true);
   });

@@ -11,14 +11,11 @@ import {
   type AccountSessionBoundary,
 } from '../../../constants/helpers';
 import {requireProductFeature} from '../../../services/productFeatures';
-import {hasSession} from '../../../services/roknApi';
 import {deadlineFromServerTtl} from '../../../utils/serverClock';
 import {
   type PlaybackDiagnostics,
   type PlaybackEndReason,
   type PlaybackLifecycleEventType,
-  sanitizePlaybackDiagnostics,
-  sanitizePlaybackErrorCode,
 } from '../playbackTelemetry';
 import type {CaptionTrack, VideoQuality, VideoQualitySources} from '../types';
 import {publishCourseRevisionChange} from './playbackRevision';
@@ -72,7 +69,6 @@ export type PlaybackManifest = {
 type SessionState = {
   sequence: number;
   tail: Promise<unknown>;
-  terminal: boolean;
 };
 
 const sessions = new Map<string, SessionState>();
@@ -99,7 +95,6 @@ const sessionState = (
   const created: SessionState = {
     sequence: 0,
     tail: Promise.resolve(),
-    terminal: false,
   };
   sessions.set(key, created);
   while (sessions.size > MAX_SESSION_STATES) {
@@ -130,12 +125,9 @@ export const restorePlaybackSequence = (
   state.sequence = Math.max(state.sequence, sequence);
 };
 
-const isTerminalSample = (payload: Record<string, unknown>) =>
-  payload.event_type === 'stop' || payload.is_terminal === true;
-
 /**
- * The session owns request order and terminality. Once stop/error is queued,
- * an older delayed heartbeat is acknowledged locally but never sent after it.
+ * Serialize actual HTTP deliveries only. The durable evidence owner orders
+ * lifecycle events before this boundary; a missing request is never an ACK.
  */
 export const postPlaybackSample = (
   playbackSessionId: string | undefined,
@@ -167,9 +159,6 @@ export const postPlaybackSample = (
 
   if (!playbackSessionId) return send();
   const state = sessionState(playbackSessionId, boundary.scope);
-  const terminal = isTerminalSample(payload);
-  if (state.terminal) return Promise.resolve(undefined);
-  if (terminal) state.terminal = true;
 
   const request = state.tail.catch(() => undefined).then(send);
   // The caller receives the real failure so durable evidence can stay queued.
@@ -178,106 +167,6 @@ export const postPlaybackSample = (
   const settled = request.catch(() => undefined);
   state.tail = settled;
   return request;
-};
-
-const boundedNumber = (value: unknown, minimum: number, maximum: number) => {
-  const numeric = Number(value);
-  return Number.isFinite(numeric)
-    ? Math.max(minimum, Math.min(maximum, Math.round(numeric)))
-    : undefined;
-};
-
-export const reportPlaybackSessionEvent = async (
-  event: PlaybackSessionEvent,
-): Promise<boolean> => {
-  const generation = runtimeGeneration;
-  let boundary: AccountSessionBoundary;
-  try {
-    boundary = await captureAccountSessionBoundary();
-    assertOwner(generation, boundary);
-  } catch {
-    return false;
-  }
-  const lessonId = Number(event.lessonId);
-  if (
-    !event.playbackSessionId ||
-    !Number.isFinite(lessonId) ||
-    !(await hasSession())
-  ) {
-    return false;
-  }
-
-  const duration = Number(event.durationSeconds);
-  const position = Math.max(0, Math.floor(Number(event.positionSeconds) || 0));
-  const diagnostics = sanitizePlaybackDiagnostics(event.diagnostics);
-  const errorCode = sanitizePlaybackErrorCode(event.errorCode);
-  try {
-    assertOwner(generation, boundary);
-    await postPlaybackSample(
-      event.playbackSessionId,
-      {
-        lesson_id: lessonId,
-        position_seconds:
-          Number.isFinite(duration) && duration > 0
-            ? Math.min(position, Math.floor(duration))
-            : position,
-        ...(Number.isFinite(duration) && duration > 0
-          ? {duration_seconds: Math.floor(duration)}
-          : {}),
-        is_completed: event.completed === true,
-        playback_session_id: event.playbackSessionId,
-        sequence: nextPlaybackSequence(event.playbackSessionId, boundary.scope),
-        event_type: event.eventType,
-        ...(event.endReason ? {end_reason: event.endReason} : {}),
-        ...(event.effectiveQuality
-          ? {effective_quality: event.effectiveQuality}
-          : {}),
-        ...(boundedNumber(event.effectiveBitrateKbps, 1, 100_000)
-          ? {
-              effective_bitrate_kbps: boundedNumber(
-                event.effectiveBitrateKbps,
-                1,
-                100_000,
-              ),
-            }
-          : {}),
-        ...(event.playbackRate ? {playback_rate: event.playbackRate} : {}),
-        ...(boundedNumber(event.recoveryCount, 0, 20) !== undefined
-          ? {recovery_count: boundedNumber(event.recoveryCount, 0, 20)}
-          : {}),
-        ...(boundedNumber(event.bufferCount, 0, 500) !== undefined
-          ? {buffer_count: boundedNumber(event.bufferCount, 0, 500)}
-          : {}),
-        ...(boundedNumber(event.bufferDurationMs, 0, 3_600_000) !== undefined
-          ? {
-              buffer_duration_ms: boundedNumber(
-                event.bufferDurationMs,
-                0,
-                3_600_000,
-              ),
-            }
-          : {}),
-        ...(boundedNumber(event.startupLatencyMs, 0, 120_000) !== undefined
-          ? {
-              startup_latency_ms: boundedNumber(
-                event.startupLatencyMs,
-                0,
-                120_000,
-              ),
-            }
-          : {}),
-        ...(event.eventType === 'error' && event.endReason
-          ? {is_terminal: true}
-          : {}),
-        ...(errorCode ? {error_code: errorCode} : {}),
-        ...(diagnostics ? {diagnostics} : {}),
-      },
-      boundary,
-    );
-    return true;
-  } catch {
-    return false;
-  }
 };
 
 const playbackClientCapabilities = (preference: PlaybackClientPreference) => {
@@ -338,9 +227,6 @@ export const openPlaybackSession = async (
   const playbackSessionId = valueAsString(raw?.playback_session_id);
   if (!sourceUrl || !playbackSessionId) return null;
 
-  const key = sessionKey(playbackSessionId, boundary.scope);
-  const priorState = sessions.get(key);
-  if (priorState?.terminal) sessions.delete(key);
   sessionState(playbackSessionId, boundary.scope);
   const sources = qualitySources(raw);
   const captionTracks = parseCaptionTracks(raw);

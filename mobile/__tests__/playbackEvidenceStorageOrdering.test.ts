@@ -28,7 +28,9 @@ jest.mock('../src/services/learningPlayerState', () => ({
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {publicRequest} from '../src/constants/api';
 import {resetDurableOutboxForTests} from '../src/services/durableOutbox';
+import {updatePlayerStateForScope} from '../src/services/learningPlayerState';
 import {
+  reportPlaybackSessionEvent,
   resetPlaybackRuntimeState,
   retryPendingPlaybackPositions,
   savePlaybackPosition,
@@ -70,8 +72,11 @@ const originalMultiGet = jest
 const originalGet = jest.mocked(AsyncStorage.getItem).getMockImplementation()!;
 const originalSet = jest.mocked(AsyncStorage.setItem).getMockImplementation()!;
 const apiPost = jest.mocked(publicRequest.post);
+const originalPlayerUpdate = jest
+  .mocked(updatePlayerStateForScope)
+  .getMockImplementation()!;
 const ticks = async () => {
-  for (let index = 0; index < 40; index++) await Promise.resolve();
+  for (let index = 0; index < 200; index++) await Promise.resolve();
 };
 const deferred = () => {
   let resolve!: () => void;
@@ -99,6 +104,145 @@ describe('durable playback evidence acknowledgement ordering', () => {
   afterEach(() => {
     resetPlaybackRuntimeState();
     jest.useRealTimers();
+  });
+
+  it('delivers completion before a later stop even while the local resume write is blocked', async () => {
+    const resume = deferred();
+    jest
+      .mocked(updatePlayerStateForScope)
+      .mockImplementationOnce(async (...args) => {
+        await resume.promise;
+        return originalPlayerUpdate(...args);
+      });
+    const saving = savePlaybackPosition('31', 'reel-72', 60, '72', 60, true, {
+      playbackSessionId: 'session-completing',
+    });
+    await ticks();
+    const stopping = reportPlaybackSessionEvent({
+      lessonId: '72',
+      playbackSessionId: 'session-completing',
+      eventType: 'stop',
+      positionSeconds: 60,
+      durationSeconds: 60,
+      endReason: 'lesson_changed',
+    });
+    await ticks();
+    resume.resolve();
+    await Promise.all([saving, stopping]);
+    expect(apiPost.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({
+        playback_session_id: 'session-completing',
+        is_completed: true,
+      }),
+    );
+  });
+
+  it('does not let an offline completion from an old session replace a new session sample', async () => {
+    apiPost.mockRejectedValue(new Error('offline'));
+    await savePlaybackPosition('31', 'reel-72', 57, '72', 60, true, {
+      playbackSessionId: 'old-session',
+    });
+    apiPost.mockClear().mockResolvedValue({} as never);
+    await savePlaybackPosition('31', 'reel-72', 60, '72', 60, true, {
+      playbackSessionId: 'new-session',
+    });
+    expect(apiPost).toHaveBeenCalledWith(
+      'user/watch-history',
+      expect.objectContaining({
+        playback_session_id: 'new-session',
+        position_seconds: 60,
+        sequence: 1,
+      }),
+    );
+    await retryPendingPlaybackPositions();
+    expect(apiPost).toHaveBeenCalledWith(
+      'user/watch-history',
+      expect.objectContaining({
+        playback_session_id: 'old-session',
+        position_seconds: 57,
+        sequence: 1,
+      }),
+    );
+  });
+
+  it('drains completion behind an in-flight heartbeat before closing the same session', async () => {
+    const heartbeatResponse = deferred();
+    apiPost.mockImplementationOnce(async () => {
+      await heartbeatResponse.promise;
+      return {} as never;
+    });
+    const heartbeat = savePlaybackPosition(
+      '31',
+      'reel-72',
+      30,
+      '72',
+      60,
+      false,
+      {
+        playbackSessionId: 'active-session',
+      },
+    );
+    await ticks();
+    expect(apiPost).toHaveBeenCalledTimes(1);
+    const completion = savePlaybackPosition(
+      '31',
+      'reel-72',
+      60,
+      '72',
+      60,
+      true,
+      {
+        playbackSessionId: 'active-session',
+      },
+    );
+    const stopping = reportPlaybackSessionEvent({
+      lessonId: '72',
+      playbackSessionId: 'active-session',
+      eventType: 'stop',
+      positionSeconds: 60,
+      durationSeconds: 60,
+      endReason: 'lesson_changed',
+    });
+    await ticks();
+    expect(apiPost).toHaveBeenCalledTimes(1);
+    heartbeatResponse.resolve();
+    await Promise.all([heartbeat, completion, stopping]);
+    expect(apiPost).toHaveBeenCalledTimes(2);
+    expect(apiPost.mock.calls[1][1]).toEqual(
+      expect.objectContaining({
+        event_type: 'complete',
+        is_completed: true,
+        sequence: 2,
+        playback_session_id: 'active-session',
+        position_seconds: 60,
+      }),
+    );
+  });
+
+  it('retries a failed terminal lifecycle event through the same durable evidence path', async () => {
+    apiPost.mockRejectedValue(new Error('offline'));
+    await expect(
+      reportPlaybackSessionEvent({
+        lessonId: '72',
+        playbackSessionId: 'offline-stop',
+        eventType: 'stop',
+        positionSeconds: 40,
+        durationSeconds: 60,
+        endReason: 'user_exit',
+      }),
+    ).resolves.toBe(false);
+    resetPlaybackRuntimeState();
+    apiPost.mockClear().mockResolvedValue({} as never);
+    await retryPendingPlaybackPositions();
+    expect(apiPost).toHaveBeenCalledWith(
+      'user/watch-history',
+      expect.objectContaining({
+        playback_session_id: 'offline-stop',
+        event_type: 'stop',
+        sequence: 1,
+        position_seconds: 40,
+      }),
+    );
   });
 
   it.each([false, true])(

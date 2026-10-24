@@ -4,7 +4,7 @@ import {createDurableOutbox} from './durableOutbox';
 import {invalidateLearningProgress} from './query/learningInvalidation';
 
 /**
- * Typed M2 adapter: the newest unacknowledged watch sample per lesson. The
+ * Typed M2 adapter: the newest unacknowledged watch sample per session. The
  * feature (courseLearning/playbackProgress) owns sampling and throttling; the
  * engine owns durability, coalescing, generations and the retry clock.
  */
@@ -52,11 +52,13 @@ export const mergePendingWatchHistory = (
   previous: PendingWatchHistory | undefined,
   next: PendingWatchHistory,
 ): PendingWatchHistory =>
-  previous?.completed
-    ? previous
+  previous?.playbackSessionId !== next.playbackSessionId
+    ? next
     : {
         ...next,
-        positionSeconds: next.positionSeconds,
+        positionSeconds: previous?.completed
+          ? Math.max(previous.positionSeconds, next.positionSeconds)
+          : next.positionSeconds,
         durationSeconds:
           Math.max(previous?.durationSeconds || 0, next.durationSeconds || 0) ||
           undefined,
@@ -66,6 +68,19 @@ export const mergePendingWatchHistory = (
             ? 'complete'
             : next.eventType,
       };
+
+export const playbackEvidenceId = (
+  sample: Pick<PendingWatchHistory, 'lessonId' | 'playbackSessionId'>,
+) =>
+  sample.playbackSessionId
+    ? `${sample.lessonId}:${sample.playbackSessionId}`
+    : String(sample.lessonId);
+
+export const isTerminalWatchHistory = (sample: PendingWatchHistory) =>
+  sample.completed ||
+  sample.eventType === 'complete' ||
+  sample.eventType === 'stop' ||
+  (sample.eventType === 'error' && Boolean(sample.endReason));
 
 const decode = (value: unknown): PendingWatchHistory | null => {
   if (!isPendingWatchHistory(value)) return null;
@@ -82,46 +97,45 @@ const status = (error: unknown) =>
       0,
   );
 
-export const playbackProgressOutbox = createDurableOutbox<PendingWatchHistory>(
-  {
-    namespace: '@rokn/watch-evidence/v2',
-    accountScoped: true,
-    maxItems: 200,
-    ttlMs: 30 * 24 * 60 * 60 * 1000,
-    backoff: {baseMs: 30_000, maxMs: 10 * 60 * 1000},
-    decode,
-    coalesce: mergePendingWatchHistory,
-    // A malformed sample is refused for good; everything else (offline,
-    // 401 before refresh, 429, 5xx) keeps the newest sample for retry.
-    classify: error => ([400, 404, 410, 422].includes(status(error)) ? 'drop' : 'retry'),
-    retractOnBoundaryChange: true,
-    onDelivered: (payload, scope) => {
-      if (payload.completed) invalidateLearningProgress(scope);
+export const playbackProgressOutbox = createDurableOutbox<PendingWatchHistory>({
+  namespace: '@rokn/watch-evidence/v2',
+  accountScoped: true,
+  maxItems: 200,
+  ttlMs: 30 * 24 * 60 * 60 * 1000,
+  backoff: {baseMs: 30_000, maxMs: 10 * 60 * 1000},
+  decode,
+  coalesce: mergePendingWatchHistory,
+  // A malformed sample is refused for good; everything else (offline,
+  // 401 before refresh, 429, 5xx) keeps the newest sample for retry.
+  classify: error =>
+    [400, 404, 410, 422].includes(status(error)) ? 'drop' : 'retry',
+  retractOnBoundaryChange: true,
+  onDelivered: (payload, scope) => {
+    if (payload.completed) invalidateLearningProgress(scope);
+  },
+  legacy: {
+    // v1 kept one key per lesson: `${prefix}:${scope}:${lessonId}`.
+    read: async scope => {
+      const prefix = `${LEGACY_PREFIX}:${scope}:`;
+      const keys = (await AsyncStorage.getAllKeys()).filter(key =>
+        key.startsWith(prefix),
+      );
+      if (!keys.length) return [];
+      return (await AsyncStorage.multiGet(keys)).flatMap(([, raw]) => {
+        try {
+          const sample = decode(raw ? JSON.parse(raw) : null);
+          return sample ? [{id: String(sample.lessonId), payload: sample}] : [];
+        } catch {
+          return [];
+        }
+      });
     },
-    legacy: {
-      // v1 kept one key per lesson: `${prefix}:${scope}:${lessonId}`.
-      read: async scope => {
-        const prefix = `${LEGACY_PREFIX}:${scope}:`;
-        const keys = (await AsyncStorage.getAllKeys()).filter(key =>
-          key.startsWith(prefix),
-        );
-        if (!keys.length) return [];
-        return (await AsyncStorage.multiGet(keys)).flatMap(([, raw]) => {
-          try {
-            const sample = decode(raw ? JSON.parse(raw) : null);
-            return sample ? [{id: String(sample.lessonId), payload: sample}] : [];
-          } catch {
-            return [];
-          }
-        });
-      },
-      clear: async scope => {
-        const prefix = `${LEGACY_PREFIX}:${scope}:`;
-        const keys = (await AsyncStorage.getAllKeys()).filter(key =>
-          key.startsWith(prefix),
-        );
-        await Promise.all(keys.map(key => AsyncStorage.removeItem(key)));
-      },
+    clear: async scope => {
+      const prefix = `${LEGACY_PREFIX}:${scope}:`;
+      const keys = (await AsyncStorage.getAllKeys()).filter(key =>
+        key.startsWith(prefix),
+      );
+      await Promise.all(keys.map(key => AsyncStorage.removeItem(key)));
     },
   },
-);
+});

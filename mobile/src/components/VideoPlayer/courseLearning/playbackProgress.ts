@@ -11,19 +11,26 @@ import {
 } from '../../../services/learningPlayerState';
 import {
   playbackProgressOutbox,
+  playbackEvidenceId,
+  isTerminalWatchHistory,
   type PendingWatchHistory,
 } from '../../../services/playbackProgressOutbox';
 import type {DurableOutboxItem} from '../../../services/durableOutbox';
-import {sanitizePlaybackDiagnostics} from '../playbackTelemetry';
+import {
+  sanitizePlaybackDiagnostics,
+  sanitizePlaybackErrorCode,
+} from '../playbackTelemetry';
+import {createKeyedAsyncQueue} from '../../../utils/keyedAsyncQueue';
 import {
   nextPlaybackSequence,
   postPlaybackSample,
   restorePlaybackSequence,
   type PlaybackEvidenceContext,
+  type PlaybackSessionEvent,
 } from './playbackSession';
 
 /**
- * Watch evidence: the newest sample per lesson rides the durable outbox
+ * Watch evidence: the newest sample per session rides the durable outbox
  * (services/playbackProgressOutbox). This module owns sampling and the
  * 30-second heartbeat throttle; the engine owns storage and the retry clock.
  */
@@ -33,6 +40,15 @@ const watchHistoryFlights = new Map<string, Promise<boolean>>();
 const watchHistoryLastSyncedAt = new Map<string, number>();
 const MAX_RECENT_WATCH_SYNC_KEYS = 128;
 let playbackRuntimeGeneration = 0;
+// Reserve enqueue order synchronously, before account/storage awaits. This
+// queue owns only write ordering, never network waits or a second retry clock.
+const evidenceWrites = createKeyedAsyncQueue();
+const closedSessions = new Set<string>();
+const evidenceWriteKey = (
+  generation: number,
+  lessonId: string,
+  sessionId?: string,
+) => `${generation}:${sessionId || lessonId}`;
 
 const assertWatchHistoryOwner = (
   generation: number,
@@ -87,6 +103,9 @@ const sampleBody = (pending: PendingWatchHistory) => ({
     pending.eventType || (pending.completed ? 'complete' : 'heartbeat'),
   ...(pending.endReason ? {end_reason: pending.endReason} : {}),
   ...(pending.errorCode ? {error_code: pending.errorCode} : {}),
+  ...(pending.eventType === 'error' && pending.endReason
+    ? {is_terminal: true}
+    : {}),
   ...(pending.diagnostics ? {diagnostics: pending.diagnostics} : {}),
 });
 
@@ -157,7 +176,7 @@ const scheduleRemaining = async (
   scheduleWatchHistoryFlush(key, boundary, generation, due);
 };
 
-/** One flight per lesson; resolves true when nothing is left unaccepted. */
+/** One flight per evidence id (lesson + session), independent of other sessions. */
 const flushWatchHistoryEntry = (
   key: string,
   boundary: AccountSessionBoundary,
@@ -202,7 +221,7 @@ const flushWatchHistoryEntry = (
   return flight;
 };
 
-const queueWatchHistorySync = async (
+const enqueueWatchHistory = async (
   lessonId: number,
   seconds: number,
   durationSeconds: number | undefined,
@@ -210,9 +229,36 @@ const queueWatchHistorySync = async (
   context: PlaybackEvidenceContext | undefined,
   owner: AccountSessionBoundary,
   generation: number,
+  event?: PlaybackSessionEvent,
 ) => {
   assertWatchHistoryOwner(generation, owner);
-  const key = `${owner.scope}:${lessonId}`;
+  const id = playbackEvidenceId({
+    lessonId,
+    playbackSessionId: context?.playbackSessionId,
+  });
+  const key = `${owner.scope}:${id}`;
+  if (context?.playbackSessionId && closedSessions.has(key)) return null;
+  const pending = await playbackProgressOutbox.get(id, {boundary: owner});
+  // Existing v2 entries used the lesson id. Replay them unchanged, but never
+  // reuse their sequence when recording new evidence for the same session.
+  const legacy =
+    id === String(lessonId)
+      ? null
+      : await playbackProgressOutbox.get(String(lessonId), {boundary: owner});
+  assertWatchHistoryOwner(generation, owner);
+  for (const existing of [pending, legacy]) {
+    if (
+      context?.playbackSessionId &&
+      existing?.payload.playbackSessionId === context.playbackSessionId
+    ) {
+      restorePlaybackSequence(
+        context.playbackSessionId,
+        owner.scope,
+        existing.payload.sequence || 0,
+      );
+      if (isTerminalWatchHistory(existing.payload)) return null;
+    }
+  }
   const diagnostics = sanitizePlaybackDiagnostics(context?.diagnostics);
   const next: PendingWatchHistory = {
     lessonId,
@@ -237,7 +283,7 @@ const queueWatchHistorySync = async (
       ? {
           effectiveBitrateKbps: Math.max(
             1,
-            Math.round(context.effectiveBitrateKbps),
+            Math.min(100_000, Math.round(context.effectiveBitrateKbps)),
           ),
         }
       : {}),
@@ -269,10 +315,14 @@ const queueWatchHistorySync = async (
           ),
         }
       : {}),
-    eventType: completed ? 'complete' : 'heartbeat',
+    eventType: completed ? 'complete' : event?.eventType || 'heartbeat',
+    ...(event?.endReason ? {endReason: event.endReason} : {}),
+    ...(sanitizePlaybackErrorCode(event?.errorCode)
+      ? {errorCode: sanitizePlaybackErrorCode(event?.errorCode)}
+      : {}),
     ...(diagnostics ? {diagnostics} : {}),
   };
-  const item = await playbackProgressOutbox.enqueue(String(lessonId), next, {
+  const item = await playbackProgressOutbox.enqueue(id, next, {
     boundary: owner,
   });
   if (!ownedBy(generation, owner)) {
@@ -280,12 +330,30 @@ const queueWatchHistorySync = async (
     // write. Retract only this exact generation; a newer runtime may already
     // have persisted a newer sample at the same id.
     await playbackProgressOutbox
-      .remove(String(lessonId), {boundary: owner, generation: item.generation})
+      .remove(id, {boundary: owner, generation: item.generation})
       .catch(() => undefined);
     assertWatchHistoryOwner(generation, owner);
   }
+  if (context?.playbackSessionId && isTerminalWatchHistory(item.payload)) {
+    closedSessions.add(key);
+    while (closedSessions.size > 256) {
+      const oldest = closedSessions.values().next().value;
+      if (!oldest) break;
+      closedSessions.delete(oldest);
+    }
+  }
+  return {key, item, owner, generation};
+};
+
+const flushQueuedSample = async (
+  queued: Awaited<ReturnType<typeof enqueueWatchHistory>>,
+  immediate = false,
+) => {
+  if (!queued) return false;
+  const {key, item, owner, generation} = queued;
+  const drain = immediate || isTerminalWatchHistory(item.payload);
   const elapsed = Date.now() - (watchHistoryLastSyncedAt.get(key) || 0);
-  if (!item.payload.completed && elapsed < WATCH_HISTORY_SYNC_INTERVAL_MS) {
+  if (!drain && elapsed < WATCH_HISTORY_SYNC_INTERVAL_MS) {
     if (!watchHistoryTimers.has(key) && !watchHistoryFlights.has(key)) {
       scheduleWatchHistoryFlush(
         key,
@@ -294,23 +362,24 @@ const queueWatchHistorySync = async (
         WATCH_HISTORY_SYNC_INTERVAL_MS - elapsed,
       );
     }
-    return;
+    return true;
   }
   const flushed = await flushWatchHistoryEntry(
     key,
     owner,
     generation,
-    item.payload.completed,
-    item.payload.completed,
+    drain,
+    drain,
   );
   // A completion that arrived while a heartbeat owned the request still has
   // to reach the server now: one bounded drain of the newest sample.
-  if (item.payload.completed && flushed) {
-    await flushWatchHistoryEntry(key, owner, generation, true, true);
+  if (drain && flushed) {
+    return flushWatchHistoryEntry(key, owner, generation, true, true);
   }
+  return flushed;
 };
 
-/** Lifecycle trigger: flush the newest sample of every lesson now. */
+/** Lifecycle trigger: flush the newest sample of every pending session now. */
 export const flushPendingPlaybackPositions = async () => {
   const generation = playbackRuntimeGeneration;
   let boundary: AccountSessionBoundary;
@@ -378,7 +447,7 @@ export const persistLocalPlaybackPosition = async (
   );
 };
 
-export const savePlaybackPosition = async (
+export const savePlaybackPosition = (
   courseId: string,
   reelId: string,
   seconds: number,
@@ -386,30 +455,96 @@ export const savePlaybackPosition = async (
   durationSeconds?: number,
   completed = false,
   context?: PlaybackEvidenceContext,
-) => {
+): Promise<void> => {
   const generation = playbackRuntimeGeneration;
-  const boundary = await captureAccountSessionBoundary();
-  assertWatchHistoryOwner(generation, boundary);
-  await persistLocalPlaybackPosition(courseId, reelId, seconds, boundary);
-  assertWatchHistoryOwner(generation, boundary);
-
-  const remoteLessonId = Number(lessonId);
-  if (lessonId && Number.isFinite(remoteLessonId) && (await hasSession())) {
-    assertWatchHistoryOwner(generation, boundary);
-    await queueWatchHistorySync(
-      remoteLessonId,
-      seconds,
-      durationSeconds,
-      completed,
-      context,
-      boundary,
+  const boundary = captureAccountSessionBoundary();
+  // Queue remote evidence before awaiting the independent local resume mirror.
+  // A stop invoked next cannot overtake an earlier completion on slow storage.
+  const queued = evidenceWrites(
+    evidenceWriteKey(
       generation,
+      lessonId || reelId,
+      context?.playbackSessionId,
+    ),
+    async () => {
+      const owner = await boundary;
+      assertWatchHistoryOwner(generation, owner);
+      const remoteLessonId = Number(lessonId);
+      if (
+        !lessonId ||
+        !Number.isFinite(remoteLessonId) ||
+        !(await hasSession())
+      )
+        return null;
+      return enqueueWatchHistory(
+        remoteLessonId,
+        seconds,
+        durationSeconds,
+        completed,
+        context,
+        owner,
+        generation,
+      );
+    },
+  );
+  const local = boundary.then(owner => {
+    assertWatchHistoryOwner(generation, owner);
+    return persistLocalPlaybackPosition(courseId, reelId, seconds, owner);
+  });
+  return Promise.all([
+    local,
+    queued.then(sample => flushQueuedSample(sample)),
+  ]).then(() => undefined);
+};
+
+export const reportPlaybackSessionEvent = async (
+  event: PlaybackSessionEvent,
+): Promise<boolean> => {
+  const generation = playbackRuntimeGeneration;
+  const boundary = captureAccountSessionBoundary();
+  // Use the same write-ahead queue as completion; lifecycle is not a second
+  // direct HTTP path that can close a session before its evidence is durable.
+  try {
+    const queued = await evidenceWrites(
+      evidenceWriteKey(generation, event.lessonId, event.playbackSessionId),
+      async () => {
+        const owner = await boundary;
+        assertWatchHistoryOwner(generation, owner);
+        const lessonId = Number(event.lessonId);
+        if (
+          !event.playbackSessionId ||
+          !Number.isFinite(lessonId) ||
+          !(await hasSession())
+        )
+          return null;
+        const duration = Number(event.durationSeconds);
+        const position = Math.max(
+          0,
+          Math.floor(Number(event.positionSeconds) || 0),
+        );
+        return enqueueWatchHistory(
+          lessonId,
+          Number.isFinite(duration) && duration > 0
+            ? Math.min(position, Math.floor(duration))
+            : position,
+          duration,
+          event.completed === true || event.eventType === 'complete',
+          event,
+          owner,
+          generation,
+          event,
+        );
+      },
     );
+    return await flushQueuedSample(queued, true);
+  } catch {
+    return false;
   }
 };
 
 export const resetPlaybackProgressRuntime = () => {
   playbackRuntimeGeneration += 1;
+  closedSessions.clear();
   watchHistoryTimers.forEach(timer => clearTimeout(timer));
   watchHistoryTimers.clear();
   watchHistoryFlights.clear();
